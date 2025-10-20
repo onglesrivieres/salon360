@@ -414,6 +414,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       return;
     }
 
+    if (!ticketId && session && !Permissions.tickets.canCreate(session.role_permission)) {
+      showToast('You do not have permission to create tickets', 'error');
+      return;
+    }
+
     if (ticket?.closed_at) {
       showToast('Cannot edit closed ticket', 'error');
       return;
@@ -682,6 +687,29 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     const hours = Math.floor(diffHours);
     const minutes = Math.floor((diffHours - hours) * 60);
     return minutes > 0 ? `${hours}h ${minutes}m remaining` : `${hours}h remaining`;
+  }
+
+  if (!ticketId && session && !Permissions.tickets.canCreate(session.role_permission)) {
+    return (
+      <>
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={onClose}
+        />
+        <div className="fixed inset-0 md:right-0 md:left-auto md:top-0 h-full w-full md:max-w-4xl bg-white shadow-xl z-50 overflow-y-auto flex items-center justify-center">
+          <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Access Denied</h3>
+            <p className="text-gray-600 mb-6">
+              You do not have permission to create tickets. Only Admin and Receptionist roles can create new tickets.
+            </p>
+            <Button onClick={onClose} variant="primary">
+              Close
+            </Button>
+          </div>
+        </div>
+      </>
+    );
   }
 
   return (
