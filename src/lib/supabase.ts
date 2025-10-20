@@ -102,6 +102,8 @@ export interface TicketItem {
   employee_id: string;
   qty: number;
   price_each: number;
+  addon_details?: string;
+  addon_price?: number;
   tip_customer: number;
   tip_receptionist: number;
   notes: string;
