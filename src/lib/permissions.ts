@@ -21,6 +21,12 @@ export const Permissions = {
       if (role === 'Receptionist') return !isClosed && !isApproved;
       return false;
     },
+    canEditNotes: (role: RolePermission, isClosed: boolean): boolean => {
+      if (role === 'Admin') return true;
+      if (role === 'Receptionist') return !isClosed;
+      if (role === 'Technician') return !isClosed;
+      return false;
+    },
     canDelete: (role: RolePermission): boolean => {
       return role === 'Admin';
     },

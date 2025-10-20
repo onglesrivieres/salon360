@@ -60,6 +60,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     isApproved
   );
 
+  const canEditNotes = session && ticket && Permissions.tickets.canEditNotes(
+    session.role_permission,
+    !!ticket.closed_at
+  );
+
   const canClose = session && Permissions.tickets.canClose(session.role_permission);
 
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>('');
@@ -372,6 +377,35 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     }
 
     return `ST-${dateStr}-${nextNum.toString().padStart(4, '0')}`;
+  }
+
+  async function handleSaveComment() {
+    if (!ticketId || !ticket) return;
+
+    try {
+      setSaving(true);
+
+      const { error: updateError } = await supabase
+        .from('sale_tickets')
+        .update({
+          notes: formData.notes,
+          saved_by: session?.employee_id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', ticketId);
+
+      if (updateError) throw updateError;
+
+      await logActivity(ticketId, 'updated', `${session?.display_name} added a comment`);
+
+      showToast('Comment saved successfully', 'success');
+      onClose();
+    } catch (error) {
+      console.error('Error saving comment:', error);
+      showToast('Failed to save comment', 'error');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleSave() {
@@ -1152,24 +1186,25 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              Notes
+              Notes / Comments
             </label>
             <textarea
               value={formData.notes}
               onChange={(e) =>
                 setFormData({ ...formData, notes: e.target.value })
               }
-              rows={1}
+              rows={3}
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={isTicketClosed}
+              disabled={!canEditNotes}
+              placeholder={canEditNotes ? "Add notes or comments..." : ""}
             />
           </div>
 
           <div className="flex gap-2 pt-2 border-t border-gray-200 fixed md:static bottom-0 left-0 right-0 bg-white p-3 md:p-0 shadow-lg md:shadow-none z-10">
             <Button variant="ghost" onClick={onClose}>
-              {isTicketClosed ? 'Close' : 'Cancel'}
+              Close
             </Button>
-            {!isTicketClosed && (
+            {!isTicketClosed && !isReadOnly && (
               <>
                 <Button onClick={handleSave} disabled={saving}>
                   {saving ? 'Saving...' : 'Save'}
@@ -1184,6 +1219,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   </Button>
                 )}
               </>
+            )}
+            {isReadOnly && canEditNotes && ticketId && (
+              <Button onClick={handleSaveComment} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Comment'}
+              </Button>
             )}
           </div>
         </div>
