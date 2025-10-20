@@ -76,6 +76,7 @@ export interface SaleTicket {
   closed_at: string | null;
   customer_name: string;
   customer_phone: string;
+  customer_type?: string;
   payment_method: 'Cash' | 'Card' | 'Mixed' | 'Other';
   discount: number;
   tax: number;
