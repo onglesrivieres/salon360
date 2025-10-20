@@ -257,7 +257,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               className="px-2 py-2 md:py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 md:flex-initial min-h-[44px] md:min-h-0"
             />
           </div>
-          {session && Permissions.endOfDay.canExport(session.role_permission) && (
+          {session && session.role && Permissions.endOfDay.canExport(session.role) && (
             <>
               <Button variant="secondary" size="sm" onClick={exportCSV} className="hidden md:flex">
                 <Download className="w-3 h-3 mr-1" />

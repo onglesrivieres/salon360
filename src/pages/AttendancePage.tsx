@@ -196,7 +196,7 @@ export function AttendancePage() {
   const summary = processAttendanceData();
   const weekRange = `${calendarDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${calendarDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
-  if (session && !Permissions.endOfDay.canView(session.role_permission)) {
+  if (session && session.role && !Permissions.endOfDay.canView(session.role)) {
     return (
       <div className="max-w-7xl mx-auto">
         <div className="bg-white rounded-lg shadow p-8 text-center">
@@ -210,7 +210,7 @@ export function AttendancePage() {
     <div className="max-w-7xl mx-auto">
       <div className="mb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <h2 className="text-base md:text-lg font-bold text-gray-900">Attendance Tracking</h2>
-        {session && Permissions.endOfDay.canExport(session.role_permission) && (
+        {session && session.role && Permissions.endOfDay.canExport(session.role) && (
           <Button variant="secondary" size="sm" onClick={exportCSV}>
             <Download className="w-3 h-3 mr-1" />
             Export
@@ -345,7 +345,7 @@ export function AttendancePage() {
                                 </div>
                               )}
                             </div>
-                            {session && Permissions.attendance.canComment(session.role_permission) && (
+                            {session && session.role && Permissions.attendance.canComment(session.role) && (
                               <button
                                 onClick={() => {
                                   setSelectedAttendance({

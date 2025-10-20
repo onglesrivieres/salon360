@@ -28,20 +28,20 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     if (session?.role_permission === 'Admin') {
       fetchAllStores();
     }
-    if (session?.employee_id && Permissions.tickets.canViewPendingApprovals(session.role_permission)) {
+    if (session?.employee_id && session?.role && Permissions.tickets.canViewPendingApprovals(session.role)) {
       fetchPendingApprovalsCount();
     }
   }, [selectedStoreId, session]);
 
   useEffect(() => {
-    if (!session?.employee_id || !Permissions.tickets.canViewPendingApprovals(session.role_permission)) return;
+    if (!session?.employee_id || !session?.role || !Permissions.tickets.canViewPendingApprovals(session.role)) return;
 
     const interval = setInterval(() => {
       fetchPendingApprovalsCount();
     }, 300000);
 
     return () => clearInterval(interval);
-  }, [session?.employee_id, session?.role_permission]);
+  }, [session?.employee_id, session?.role]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -155,7 +155,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               <div className="hidden md:block">
                 <LanguageSelector />
               </div>
-              {session && Permissions.employees.canView(session.role_permission) && (
+              {session && session.role && Permissions.employees.canView(session.role) && (
                 <button
                   onClick={() => onNavigate('settings')}
                   className="hidden md:flex items-center gap-1 px-2 py-1 text-xs text-gray-700 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
@@ -185,7 +185,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = currentPage === item.id;
-                const hasAccess = session && canAccessPage(item.id, session.role_permission);
+                const hasAccess = session && session.role && canAccessPage(item.id, session.role);
 
                 if (!hasAccess) return null;
 
@@ -220,7 +220,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               <div className="mb-3">
                 <LanguageSelector />
               </div>
-              {session && Permissions.employees.canView(session.role_permission) && (
+              {session && session.role && Permissions.employees.canView(session.role) && (
                 <button
                   onClick={() => {
                     onNavigate('settings');

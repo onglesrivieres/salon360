@@ -427,7 +427,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
               className="px-2 py-1.5 md:py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 md:flex-initial min-h-[44px] md:min-h-0"
             />
           </div>
-          {session && Permissions.tickets.canCreate(session.role_permission) && (
+          {session && session.role && Permissions.tickets.canCreate(session.role) && (
             <Button size="sm" onClick={() => openEditor()} className="min-h-[44px] md:min-h-0">
               <Plus className="w-4 h-4 md:w-3 md:h-3 mr-1" />
               <span className="hidden xs:inline">New Ticket</span>
@@ -485,12 +485,12 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                 });
 
                 const isApproved = ticket.approval_status === 'approved' || ticket.approval_status === 'auto_approved';
-                const canEdit = session && Permissions.tickets.canEdit(
-                  session.role_permission,
+                const canEdit = session && session.role && Permissions.tickets.canEdit(
+                  session.role,
                   !!ticket.closed_at,
                   isApproved
                 );
-                const canView = session && Permissions.tickets.canView(session.role_permission);
+                const canView = session && session.role && Permissions.tickets.canView(session.role);
 
                 return (
                   <tr
@@ -551,7 +551,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
         {tickets.length === 0 && (
           <div className="text-center py-8">
             <p className="text-sm text-gray-500 mb-3">No tickets found for this date</p>
-            {session && Permissions.tickets.canCreate(session.role_permission) && (
+            {session && session.role && Permissions.tickets.canCreate(session.role) && (
               <Button size="sm" onClick={() => openEditor()}>Create First Ticket</Button>
             )}
           </div>
@@ -637,7 +637,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
         {tickets.length === 0 && (
           <div className="bg-white rounded-lg shadow p-8 text-center">
             <p className="text-sm text-gray-500 mb-3">No tickets found for this date</p>
-            {session && Permissions.tickets.canCreate(session.role_permission) && (
+            {session && session.role && Permissions.tickets.canCreate(session.role) && (
               <Button size="sm" onClick={() => openEditor()}>Create First Ticket</Button>
             )}
           </div>

@@ -71,7 +71,7 @@ export function ServicesPage() {
   }
 
   function openDrawer(service?: Service) {
-    if (!session || !Permissions.services.canEdit(session.role_permission)) {
+    if (!session || !session.role || !Permissions.services.canEdit(session.role)) {
       showToast('You do not have permission to edit services', 'error');
       return;
     }
@@ -107,7 +107,7 @@ export function ServicesPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!session || !Permissions.services.canEdit(session.role_permission)) {
+    if (!session || !session.role || !Permissions.services.canEdit(session.role)) {
       showToast('You do not have permission to save services', 'error');
       return;
     }
@@ -166,7 +166,7 @@ export function ServicesPage() {
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-lg font-bold text-gray-900">Services</h2>
-        {session && Permissions.services.canCreate(session.role_permission) && (
+        {session && session.role && Permissions.services.canCreate(session.role) && (
           <Button size="sm" onClick={() => openDrawer()}>
             <Plus className="w-3 h-3 mr-1" />
             Add Service
@@ -250,7 +250,7 @@ export function ServicesPage() {
                     </Badge>
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-xs">
-                    {session && Permissions.services.canEdit(session.role_permission) ? (
+                    {session && session.role && Permissions.services.canEdit(session.role) ? (
                       <button
                         onClick={() => openDrawer(service)}
                         className="text-blue-600 hover:text-blue-800"

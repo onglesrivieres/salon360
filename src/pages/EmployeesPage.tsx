@@ -375,7 +375,7 @@ export function EmployeesPage() {
                       >
                         <Edit2 className="w-3 h-3" />
                       </button>
-                      {session && Permissions.employees.canResetPIN(session.role_permission) && (
+                      {session && session.role && Permissions.employees.canResetPIN(session.role) && (
                         <button
                           onClick={() => handleResetPIN(employee)}
                           className="text-orange-600 hover:text-orange-800"
@@ -444,7 +444,7 @@ export function EmployeesPage() {
               { value: 'Inactive', label: t('emp.inactive') },
             ]}
           />
-          {session && (session.role_permission === 'Admin' || session.role.includes('Manager')) && (
+          {session && session.role && (session.role.includes('Owner') || session.role.includes('Manager')) && (
             <Select
               label="Pay Type *"
               value={formData.pay_type}
