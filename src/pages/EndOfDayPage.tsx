@@ -134,17 +134,24 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     if (!selectedStoreId || !session?.employee_id) return;
 
     try {
+      console.log('Joining ready queue for employee:', session.employee_id, 'store:', selectedStoreId);
+
       const { error } = await supabase
         .rpc('join_ready_queue', {
           p_employee_id: session.employee_id,
           p_store_id: selectedStoreId
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error joining queue:', error);
+        throw error;
+      }
 
+      console.log('Successfully joined queue (tickets marked as completed)');
       showToast("You're now in the ready queue!", 'success');
       fetchQueueStatus();
     } catch (error: any) {
+      console.error('Failed to join queue:', error);
       showToast(error.message || 'Failed to join queue', 'error');
     }
   }
