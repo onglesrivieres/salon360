@@ -38,7 +38,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
     const interval = setInterval(() => {
       fetchPendingApprovalsCount();
-    }, 60000);
+    }, 300000);
 
     return () => clearInterval(interval);
   }, [session?.employee_id, session?.role_permission]);

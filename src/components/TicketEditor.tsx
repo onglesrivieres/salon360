@@ -172,7 +172,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         supabase
           .from('employees')
           .select('*')
-          .eq('status', 'Active')
+          .or('status.eq.Active,status.eq.active')
           .order('display_name'),
       ]);
 

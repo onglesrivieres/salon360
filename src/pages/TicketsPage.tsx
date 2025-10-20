@@ -44,7 +44,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
         .select(
           `
           *,
-          ticket_items (
+          ticket_items!inner (
             id,
             employee_id,
             tip_customer,
@@ -61,22 +61,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
       }
 
       if (session?.role_permission === 'Technician') {
-        const { data: technicianTickets, error: techError } = await supabase
-          .from('ticket_items')
-          .select('sale_ticket_id')
-          .eq('employee_id', session.employee_id);
-
-        if (techError) throw techError;
-
-        const ticketIds = technicianTickets?.map(item => item.sale_ticket_id) || [];
-
-        if (ticketIds.length === 0) {
-          setTickets([]);
-          setLoading(false);
-          return;
-        }
-
-        query = query.in('id', ticketIds);
+        query = query.eq('ticket_items.employee_id', session.employee_id);
       }
 
       query = query.order('opened_at', { ascending: false });
