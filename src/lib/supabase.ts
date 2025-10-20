@@ -92,6 +92,8 @@ export interface SaleTicket {
   ticket_date: string;
   opened_at: string;
   closed_at: string | null;
+  completed_at?: string | null;
+  completed_by?: string | null;
   customer_name: string;
   customer_phone: string;
   customer_type?: string;

@@ -334,6 +334,10 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                     <td className="px-3 py-2 whitespace-nowrap">
                       {ticket.closed_at ? (
                         <Badge variant="success">Closed</Badge>
+                      ) : ticket.completed_at ? (
+                        <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                          Completed
+                        </div>
                       ) : (
                         <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-red-600">
                           {formatDuration(ticket.opened_at)}
@@ -407,6 +411,10 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                 <div className="text-right flex flex-col gap-1 items-end">
                   {ticket.closed_at ? (
                     <Badge variant="success">Closed</Badge>
+                  ) : ticket.completed_at ? (
+                    <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                      Completed
+                    </div>
                   ) : (
                     <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-red-600">
                       {formatDuration(ticket.opened_at)}

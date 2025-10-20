@@ -267,18 +267,18 @@ export function StoreSwitcherPage({ onStoreSelected }: StoreSwitcherPageProps) {
                 if (openTickets && openTickets.length > 0) {
                   const ticketIds = [...new Set(openTickets.map(item => item.sale_ticket_id))];
 
-                  const { error: closeError } = await supabase
+                  const { error: completeError } = await supabase
                     .from('sale_tickets')
                     .update({
-                      closed_at: new Date().toISOString(),
-                      closed_by: session.employee_id,
+                      completed_at: new Date().toISOString(),
+                      completed_by: session.employee_id,
                     })
                     .in('id', ticketIds);
 
-                  if (closeError) throw closeError;
+                  if (completeError) throw completeError;
 
                   const ticketWord = ticketIds.length > 1 ? t('tickets.title') : t('tickets.ticketNo').replace('#', '');
-                  showToast(`${t('actions.closed')} ${ticketIds.length} ${ticketWord}`, 'success');
+                  showToast(`Completed ${ticketIds.length} ${ticketWord}`, 'success');
                 }
 
                 const { error: insertError } = await supabase
