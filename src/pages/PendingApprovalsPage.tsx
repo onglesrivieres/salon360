@@ -38,10 +38,12 @@ export function PendingApprovalsPage() {
   }, [session?.employee_id, selectedStoreId]);
 
   async function fetchApprovalStats() {
+    if (!selectedStoreId) return;
+
     try {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase.rpc('get_approval_statistics', {
-        p_store_id: selectedStoreId || null,
+        p_store_id: selectedStoreId,
         p_start_date: today,
         p_end_date: today,
       });
@@ -59,6 +61,12 @@ export function PendingApprovalsPage() {
     try {
       setLoading(true);
 
+      // Must have store_id to fetch approvals
+      if (!selectedStoreId) {
+        setTickets([]);
+        return;
+      }
+
       const userRoles = session?.role || [];
       const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
 
@@ -67,11 +75,11 @@ export function PendingApprovalsPage() {
       if (isManagement) {
         const regularResult = await supabase.rpc('get_pending_approvals_for_technician', {
           p_employee_id: session?.employee_id,
-          p_store_id: selectedStoreId || null,
+          p_store_id: selectedStoreId,
         });
 
         const managementResult = await supabase.rpc('get_pending_approvals_for_management', {
-          p_store_id: selectedStoreId || null,
+          p_store_id: selectedStoreId,
         });
 
         if (regularResult.error) throw regularResult.error;
@@ -85,7 +93,7 @@ export function PendingApprovalsPage() {
       } else {
         const result = await supabase.rpc('get_pending_approvals_for_technician', {
           p_employee_id: session?.employee_id,
-          p_store_id: selectedStoreId || null,
+          p_store_id: selectedStoreId,
         });
         data = result.data;
         error = result.error;
