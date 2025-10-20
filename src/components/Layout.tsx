@@ -162,7 +162,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                     className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-200 transition-colors"
                   >
                     <StoreIcon className="w-3 h-3" />
-                    {currentStore.name} ({currentStore.code})
+                    {currentStore.name}
                     <ChevronDown className="w-3 h-3" />
                   </button>
                   {isStoreDropdownOpen && (
@@ -176,7 +176,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                           }`}
                         >
                           <StoreIcon className="w-3 h-3" />
-                          {store.name} ({store.code})
+                          {store.name}
                         </button>
                       ))}
                     </div>
@@ -185,7 +185,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               ) : currentStore ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
                   <StoreIcon className="w-3 h-3" />
-                  {currentStore.name} ({currentStore.code})
+                  {currentStore.name}
                 </span>
               ) : null}
             </div>
