@@ -32,8 +32,15 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
       setCurrentTime(new Date());
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, []);
+    const refreshTimer = setInterval(() => {
+      fetchTickets();
+    }, 5000);
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(refreshTimer);
+    };
+  }, [selectedDate, selectedStoreId]);
 
   async function fetchTickets() {
     try {

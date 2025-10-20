@@ -263,23 +263,37 @@ export function StoreSwitcherPage({ onStoreSelected }: StoreSwitcherPageProps) {
                   .is('sale_tickets.closed_at', null)
                   .is('sale_tickets.completed_at', null);
 
-                if (openTicketsError) throw openTicketsError;
+                if (openTicketsError) {
+                  console.error('Error fetching open tickets:', openTicketsError);
+                  throw openTicketsError;
+                }
+
+                console.log('Open tickets found:', openTickets);
 
                 if (openTickets && openTickets.length > 0) {
                   const ticketIds = [...new Set(openTickets.map(item => item.sale_ticket_id))];
+                  console.log('Marking tickets as completed:', ticketIds);
 
-                  const { error: completeError } = await supabase
+                  const { data: updateData, error: completeError } = await supabase
                     .from('sale_tickets')
                     .update({
                       completed_at: new Date().toISOString(),
                       completed_by: session.employee_id,
                     })
-                    .in('id', ticketIds);
+                    .in('id', ticketIds)
+                    .select();
 
-                  if (completeError) throw completeError;
+                  if (completeError) {
+                    console.error('Error marking tickets as completed:', completeError);
+                    throw completeError;
+                  }
+
+                  console.log('Tickets marked as completed:', updateData);
 
                   const ticketWord = ticketIds.length > 1 ? t('tickets.title') : t('tickets.ticketNo').replace('#', '');
                   showToast(`Completed ${ticketIds.length} ${ticketWord}`, 'success');
+                } else {
+                  console.log('No open tickets to complete');
                 }
 
                 const { error: insertError } = await supabase
