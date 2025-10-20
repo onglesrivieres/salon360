@@ -358,7 +358,9 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
         {tickets.length === 0 && (
           <div className="text-center py-8">
             <p className="text-sm text-gray-500 mb-3">No tickets found for this date</p>
-            <Button size="sm" onClick={() => openEditor()}>Create First Ticket</Button>
+            {session && Permissions.tickets.canCreate(session.role_permission) && (
+              <Button size="sm" onClick={() => openEditor()}>Create First Ticket</Button>
+            )}
           </div>
         )}
       </div>
@@ -438,7 +440,9 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
         {tickets.length === 0 && (
           <div className="bg-white rounded-lg shadow p-8 text-center">
             <p className="text-sm text-gray-500 mb-3">No tickets found for this date</p>
-            <Button size="sm" onClick={() => openEditor()}>Create First Ticket</Button>
+            {session && Permissions.tickets.canCreate(session.role_permission) && (
+              <Button size="sm" onClick={() => openEditor()}>Create First Ticket</Button>
+            )}
           </div>
         )}
       </div>
