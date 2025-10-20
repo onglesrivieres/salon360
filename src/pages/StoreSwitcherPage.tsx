@@ -256,11 +256,12 @@ export function StoreSwitcherPage({ onStoreSelected }: StoreSwitcherPageProps) {
                   .from('ticket_items')
                   .select(`
                     sale_ticket_id,
-                    sale_tickets!inner(id, closed_at, store_id)
+                    sale_tickets!inner(id, closed_at, completed_at, store_id)
                   `)
                   .eq('employee_id', session.employee_id)
                   .eq('sale_tickets.store_id', selectedStore)
-                  .is('sale_tickets.closed_at', null);
+                  .is('sale_tickets.closed_at', null)
+                  .is('sale_tickets.completed_at', null);
 
                 if (openTicketsError) throw openTicketsError;
 
