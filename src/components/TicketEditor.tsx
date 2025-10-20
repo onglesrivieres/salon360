@@ -601,21 +601,33 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     try {
       await handleSave();
 
+      const closerRoles = session?.role || [];
+      const hasTechnicianRole = closerRoles.includes('Technician');
+      const hasReceptionistRole = closerRoles.includes('Receptionist');
+      const requiresHigherApproval = hasTechnicianRole && hasReceptionistRole;
+
       const { error } = await supabase
         .from('sale_tickets')
         .update({
           closed_at: new Date().toISOString(),
           closed_by: session?.employee_id,
+          closed_by_roles: closerRoles,
+          requires_higher_approval: requiresHigherApproval,
         })
         .eq('id', ticketId);
 
       if (error) throw error;
 
-      await logActivity(ticketId, 'closed', `${session?.display_name} closed ticket`, {
+      await logActivity(ticketId, 'closed', `${session?.display_name} closed ticket${requiresHigherApproval ? ' (requires management approval)' : ''}`, {
         total: calculateTotal(),
+        requires_higher_approval: requiresHigherApproval,
       });
 
-      showToast('Ticket closed successfully', 'success');
+      if (requiresHigherApproval) {
+        showToast('Ticket closed. Requires management approval due to dual role.', 'success');
+      } else {
+        showToast('Ticket closed successfully', 'success');
+      }
       onClose();
     } catch (error) {
       showToast('Failed to close ticket', 'error');
