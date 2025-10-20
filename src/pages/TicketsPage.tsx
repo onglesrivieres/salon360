@@ -49,7 +49,8 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   }, [selectedDate, selectedStoreId]);
 
   useEffect(() => {
-    if (selectedStoreId && session?.employee_id && session?.role_permission === 'Technician') {
+    const canUseQueue = session?.role_permission === 'Technician' || session?.role_permission === 'Supervisor';
+    if (selectedStoreId && session?.employee_id && canUseQueue) {
       fetchQueueStatus();
 
       const queueChannel = supabase
@@ -345,7 +346,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {session?.role_permission === 'Technician' && !queueStatus && (
+      {(session?.role_permission === 'Technician' || session?.role_permission === 'Supervisor') && !queueStatus && (
         <div className="mb-3 bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-4 shadow">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
