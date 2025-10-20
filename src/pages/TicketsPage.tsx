@@ -181,7 +181,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
           employee_id,
           tip_customer,
           tip_receptionist,
-          service:services(code, name),
+          service:services(code, name, duration_min),
           employee:employees(display_name)
         )
       `;
@@ -315,6 +315,29 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
   function getMaxDate(): string {
     return new Date().toISOString().split('T')[0];
+  }
+
+  function getServiceDuration(ticket: any): number {
+    if (!ticket.ticket_items || ticket.ticket_items.length === 0) return 0;
+    const service = ticket.ticket_items[0]?.service;
+    return service?.duration_min || 0;
+  }
+
+  function getElapsedMinutes(openedAt: string, closedAt?: string): number {
+    const opened = new Date(openedAt);
+    const end = closedAt ? new Date(closedAt) : currentTime;
+    const diff = Math.floor((end.getTime() - opened.getTime()) / 1000 / 60);
+    return Math.max(0, diff);
+  }
+
+  function isTimeDeviationHigh(ticket: any): boolean {
+    const serviceDuration = getServiceDuration(ticket);
+    if (serviceDuration === 0) return false;
+
+    const elapsedMinutes = getElapsedMinutes(ticket.opened_at, ticket.closed_at);
+    const deviation = Math.abs(elapsedMinutes - serviceDuration) / serviceDuration;
+
+    return deviation >= 0.3;
   }
 
   function formatDuration(openedAt: string): string {
@@ -528,13 +551,21 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       {ticket.closed_at ? (
-                        <Badge variant="success">Closed</Badge>
+                        isTimeDeviationHigh(ticket) ? (
+                          <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flash-red">
+                            Closed
+                          </div>
+                        ) : (
+                          <Badge variant="success">Closed</Badge>
+                        )
                       ) : ticket.completed_at ? (
                         <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                           Completed
                         </div>
                       ) : (
-                        <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-red-600">
+                        <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          isTimeDeviationHigh(ticket) ? 'flash-red' : 'bg-orange-100 text-red-600'
+                        }`}>
                           {formatDuration(ticket.opened_at)}
                         </div>
                       )}
@@ -605,13 +636,21 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                 </div>
                 <div className="text-right flex flex-col gap-1 items-end">
                   {ticket.closed_at ? (
-                    <Badge variant="success">Closed</Badge>
+                    isTimeDeviationHigh(ticket) ? (
+                      <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium flash-red">
+                        Closed
+                      </div>
+                    ) : (
+                      <Badge variant="success">Closed</Badge>
+                    )
                   ) : ticket.completed_at ? (
                     <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
                       Completed
                     </div>
                   ) : (
-                    <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-red-600">
+                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      isTimeDeviationHigh(ticket) ? 'flash-red' : 'bg-orange-100 text-red-600'
+                    }`}>
                       {formatDuration(ticket.opened_at)}
                     </div>
                   )}

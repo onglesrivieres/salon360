@@ -43,4 +43,19 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  @keyframes flash-red {
+    0%, 100% {
+      background-color: rgb(254 202 202);
+      color: rgb(153 27 27);
+    }
+    50% {
+      background-color: rgb(220 38 38);
+      color: rgb(255 255 255);
+    }
+  }
+
+  .flash-red {
+    animation: flash-red 1.5s ease-in-out infinite;
+  }
 }
