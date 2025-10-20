@@ -16,8 +16,22 @@ const PendingApprovalsPage = lazy(() => import('./pages/PendingApprovalsPage').t
 type Page = 'tickets' | 'eod' | 'attendance' | 'technicians' | 'services' | 'settings' | 'approvals';
 
 function AppContent() {
-  const { isAuthenticated, selectedStoreId } = useAuth();
-  const [currentPage, setCurrentPage] = useState<Page>('tickets');
+  const { isAuthenticated, selectedStoreId, session } = useAuth();
+
+  // Set default page based on user role
+  const getDefaultPage = (): Page => {
+    if (!session?.role_permission) return 'tickets';
+
+    const role = session.role_permission;
+    // Admin and Manager default to reports (End of Day page)
+    if (role === 'Admin' || role === 'Manager') {
+      return 'eod';
+    }
+    // Technician and Supervisor default to tickets
+    return 'tickets';
+  };
+
+  const [currentPage, setCurrentPage] = useState<Page>(getDefaultPage());
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
   );
@@ -31,7 +45,8 @@ function AppContent() {
       if (action === 'report') {
         setCurrentPage('eod');
       } else {
-        setCurrentPage('tickets');
+        // Set page based on user role after store selection
+        setCurrentPage(getDefaultPage());
       }
     }} />;
   }
