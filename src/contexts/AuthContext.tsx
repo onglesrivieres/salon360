@@ -5,15 +5,19 @@ import { Locale, getDeviceLocale, translations } from '../lib/i18n';
 type TranslationKey = keyof typeof translations.en;
 type NestedTranslation = typeof translations.en[TranslationKey];
 
+export type DeviceMode = 'iphone' | 'ipad';
+
 interface AuthContextType {
   session: AuthSession | null;
   selectedStoreId: string | null;
   locale: Locale;
+  deviceMode: DeviceMode;
   login: (session: AuthSession) => void;
   logout: () => void;
   selectStore: (storeId: string) => void;
   clearStore: () => void;
   setLocale: (locale: Locale) => void;
+  setDeviceMode: (mode: DeviceMode) => void;
   t: (key: string) => string;
   isAuthenticated: boolean;
 }
@@ -21,11 +25,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const LOCALE_KEY = 'salon360_locale';
+const DEVICE_MODE_KEY = 'salon360_device_mode';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [locale, setLocaleState] = useState<Locale>('en');
+  const [deviceMode, setDeviceModeState] = useState<DeviceMode>('iphone');
   const [isLoading, setIsLoading] = useState(true);
 
   const checkSession = useCallback(() => {
@@ -52,6 +58,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const deviceLocale = getDeviceLocale();
       setLocaleState(deviceLocale);
       localStorage.setItem(LOCALE_KEY, deviceLocale);
+    }
+
+    const savedDeviceMode = localStorage.getItem(DEVICE_MODE_KEY) as DeviceMode;
+    if (savedDeviceMode && ['iphone', 'ipad'].includes(savedDeviceMode)) {
+      setDeviceModeState(savedDeviceMode);
+    } else {
+      setDeviceModeState('iphone');
+      localStorage.setItem(DEVICE_MODE_KEY, 'iphone');
     }
 
     setIsLoading(false);
@@ -99,6 +113,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(LOCALE_KEY, newLocale);
   };
 
+  const setDeviceMode = (mode: DeviceMode) => {
+    setDeviceModeState(mode);
+    localStorage.setItem(DEVICE_MODE_KEY, mode);
+  };
+
   const t = (key: string): string => {
     const keys = key.split('.');
     let value: any = translations[locale];
@@ -133,7 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, selectedStoreId, locale, login, logout, selectStore, clearStore, setLocale, t, isAuthenticated: !!session }}>
+    <AuthContext.Provider value={{ session, selectedStoreId, locale, deviceMode, login, logout, selectStore, clearStore, setLocale, setDeviceMode, t, isAuthenticated: !!session }}>
       {children}
     </AuthContext.Provider>
   );

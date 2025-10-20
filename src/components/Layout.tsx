@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
 import { supabase, Store } from '../lib/supabase';
 import { LanguageSelector } from './LanguageSelector';
+import { DeviceToggle } from './DeviceToggle';
 import { NotificationBadge } from './ui/NotificationBadge';
 
 interface LayoutProps {
@@ -13,7 +14,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
-  const { session, selectedStoreId, selectStore, logout, t } = useAuth();
+  const { session, selectedStoreId, selectStore, logout, t, deviceMode } = useAuth();
   const [currentStore, setCurrentStore] = useState<Store | null>(null);
   const [allStores, setAllStores] = useState<Store[]>([]);
   const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
@@ -141,7 +142,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={`min-h-screen bg-gray-50 ${deviceMode === 'iphone' ? 'device-iphone' : 'device-ipad'}`}>
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="px-3 py-2 md:px-4">
           <div className="flex items-center justify-between">
@@ -189,7 +190,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               ) : null}
             </div>
             <div className="flex items-center gap-2 md:gap-3">
-              <div className="hidden md:block">
+              <div className="hidden md:flex md:items-center md:gap-2">
+                <DeviceToggle />
                 <LanguageSelector />
               </div>
               {session && session.role && Permissions.employees.canView(session.role) && (
@@ -254,7 +256,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               })}
             </ul>
             <div className="md:hidden mt-4 pt-4 border-t border-gray-200 px-2">
-              <div className="mb-3">
+              <div className="mb-3 space-y-2">
+                <DeviceToggle />
                 <LanguageSelector />
               </div>
               {session && session.role && Permissions.employees.canView(session.role) && (
@@ -280,7 +283,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           />
         )}
 
-        <main className="flex-1 p-2 md:p-3">{children}</main>
+        <main className="flex-1 p-2 md:p-3 layout-main">{children}</main>
       </div>
     </div>
   );
