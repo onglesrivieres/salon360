@@ -51,10 +51,13 @@ export function AttendancePage() {
       setLoading(true);
       const { startDate, endDate } = getDateRange();
 
+      const isTechnician = session?.role_permission === 'Technician';
+
       const { data, error } = await supabase.rpc('get_store_attendance', {
         p_store_id: selectedStoreId,
         p_start_date: startDate,
-        p_end_date: endDate
+        p_end_date: endDate,
+        p_employee_id: isTechnician ? session?.employee_id : null
       });
 
       if (error) throw error;

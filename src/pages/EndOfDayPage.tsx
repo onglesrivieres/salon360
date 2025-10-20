@@ -153,6 +153,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     try {
       setLoading(true);
 
+      const isTechnician = session?.role_permission === 'Technician';
+
       let query = supabase
         .from('sale_tickets')
         .select(
@@ -161,7 +163,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           total,
           opened_at,
           closed_at,
-          ticket_items (
+          ticket_items${isTechnician ? '!inner' : ''} (
             id,
             service_id,
             employee_id,
@@ -182,6 +184,10 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       if (selectedStoreId) {
         query = query.eq('store_id', selectedStoreId);
+      }
+
+      if (isTechnician && session?.employee_id) {
+        query = query.eq('ticket_items.employee_id', session.employee_id);
       }
 
       const { data: tickets, error: ticketsError } = await query;
