@@ -181,7 +181,6 @@ export function EmployeesPage() {
         role_permission: rolePermission,
         status: formData.status,
         pay_type: formData.pay_type,
-        store_id: formData.store_ids.length > 0 ? formData.store_ids[0] : null,
         notes: formData.notes,
         updated_at: new Date().toISOString(),
       };
