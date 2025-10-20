@@ -39,28 +39,30 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     try {
       setLoading(true);
 
+      const isTechnician = session?.role_permission === 'Technician';
+
+      let selectQuery = `
+        *,
+        ticket_items${isTechnician ? '!inner' : ''} (
+          id,
+          employee_id,
+          tip_customer,
+          tip_receptionist,
+          service:services(code, name),
+          employee:employees(display_name)
+        )
+      `;
+
       let query = supabase
         .from('sale_tickets')
-        .select(
-          `
-          *,
-          ticket_items!inner (
-            id,
-            employee_id,
-            tip_customer,
-            tip_receptionist,
-            service:services(code, name),
-            employee:employees(display_name)
-          )
-        `
-        )
+        .select(selectQuery)
         .eq('ticket_date', selectedDate);
 
       if (selectedStoreId) {
         query = query.eq('store_id', selectedStoreId);
       }
 
-      if (session?.role_permission === 'Technician') {
+      if (isTechnician && session?.employee_id) {
         query = query.eq('ticket_items.employee_id', session.employee_id);
       }
 
