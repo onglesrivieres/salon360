@@ -404,6 +404,32 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                       </div>
                     </div>
 
+                    <div className="mb-1 pb-1 border-b border-gray-200 space-y-0.5">
+                      <p className="text-[9px] font-medium text-gray-500 uppercase tracking-wide">
+                        Tip Given by Client in Card
+                      </p>
+                      <div className="space-y-0.5">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[9px] text-gray-600">Cash</span>
+                          <span className="text-[9px] font-semibold text-gray-900">
+                            ${summary.tips_customer.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[9px] text-gray-600">T. Paired</span>
+                          <span className="text-[9px] font-semibold text-gray-900">
+                            ${summary.tips_receptionist.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
+                          <span className="text-[9px] font-medium text-gray-900">Total Tip in Cash</span>
+                          <span className="text-[10px] font-bold text-green-600">
+                            ${(summary.tips_customer + summary.tips_receptionist).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
                     <div>
                       <p className="text-[9px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">
                         Sale Tickets
