@@ -39,7 +39,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     }, 1000);
 
     const refreshTimer = setInterval(() => {
-      fetchTickets();
+      fetchTickets(true); // silent refresh, don't show loading state
     }, 5000);
 
     return () => {
@@ -164,9 +164,12 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     }
   }
 
-  async function fetchTickets() {
+  async function fetchTickets(silent = false) {
     try {
-      setLoading(true);
+      // Only show loading state on initial load, not on background refreshes
+      if (!silent) {
+        setLoading(true);
+      }
 
       const isTechnician = session?.role_permission === 'Technician';
 
@@ -204,7 +207,9 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     } catch (error) {
       showToast('Failed to load tickets', 'error');
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }
 
