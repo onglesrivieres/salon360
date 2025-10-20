@@ -58,10 +58,38 @@ export function PendingApprovalsPage() {
   async function fetchPendingApprovals() {
     try {
       setLoading(true);
-      const { data, error } = await supabase.rpc('get_pending_approvals_for_technician', {
-        p_employee_id: session?.employee_id,
-        p_store_id: selectedStoreId || null,
-      });
+
+      const userRoles = session?.role || [];
+      const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
+
+      let data, error;
+
+      if (isManagement) {
+        const regularResult = await supabase.rpc('get_pending_approvals_for_technician', {
+          p_employee_id: session?.employee_id,
+          p_store_id: selectedStoreId || null,
+        });
+
+        const managementResult = await supabase.rpc('get_pending_approvals_for_management', {
+          p_store_id: selectedStoreId || null,
+        });
+
+        if (regularResult.error) throw regularResult.error;
+        if (managementResult.error) throw managementResult.error;
+
+        const regularTickets = regularResult.data || [];
+        const managementTickets = managementResult.data || [];
+
+        data = [...regularTickets, ...managementTickets];
+        error = null;
+      } else {
+        const result = await supabase.rpc('get_pending_approvals_for_technician', {
+          p_employee_id: session?.employee_id,
+          p_store_id: selectedStoreId || null,
+        });
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) throw error;
       setTickets(data || []);
@@ -288,6 +316,12 @@ export function PendingApprovalsPage() {
                         )}
                         {timeRemaining}
                       </Badge>
+                      {ticket.requires_higher_approval && (
+                        <Badge variant="warning">
+                          <AlertCircle className="w-3 h-3 mr-1" />
+                          Requires Management
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-gray-600">
                       Customer: <span className="font-medium">{ticket.customer_name}</span>
