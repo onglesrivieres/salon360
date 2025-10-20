@@ -171,7 +171,7 @@ export interface TechnicianWithQueue {
   current_open_ticket_id?: string;
   open_ticket_count: number;
   ticket_start_time?: string;
-  estimated_duration_min: number;
+  estimated_duration_min?: number;
   estimated_completion_time?: string;
 }
 
