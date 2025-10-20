@@ -1,0 +1,420 @@
+import { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Download, Clock, CheckCircle, XCircle, Users, MessageSquare } from 'lucide-react';
+import { supabase, StoreAttendance } from '../lib/supabase';
+import { Button } from '../components/ui/Button';
+import { useToast } from '../components/ui/Toast';
+import { useAuth } from '../contexts/AuthContext';
+import { Permissions } from '../lib/permissions';
+import { AttendanceCommentModal } from '../components/AttendanceCommentModal';
+
+interface AttendanceSummary {
+  [employeeId: string]: {
+    employeeName: string;
+    payType: string;
+    dates: {
+      [date: string]: {
+        attendanceRecordId: string;
+        checkInTime: string;
+        checkOutTime?: string;
+        totalHours?: number;
+        status: string;
+      };
+    };
+    totalHours: number;
+    daysPresent: number;
+  };
+}
+
+export function AttendancePage() {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [attendanceData, setAttendanceData] = useState<StoreAttendance[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [commentModalOpen, setCommentModalOpen] = useState(false);
+  const [selectedAttendance, setSelectedAttendance] = useState<{
+    employeeName: string;
+    workDate: string;
+    attendanceRecordId: string;
+  } | null>(null);
+  const { showToast } = useToast();
+  const { session, selectedStoreId } = useAuth();
+
+  useEffect(() => {
+    if (selectedStoreId) {
+      fetchAttendance();
+    }
+  }, [currentDate, selectedStoreId]);
+
+  async function fetchAttendance() {
+    if (!selectedStoreId) return;
+
+    try {
+      setLoading(true);
+      const { startDate, endDate } = getDateRange();
+
+      const { data, error } = await supabase.rpc('get_store_attendance', {
+        p_store_id: selectedStoreId,
+        p_start_date: startDate,
+        p_end_date: endDate
+      });
+
+      if (error) throw error;
+
+      setAttendanceData(data || []);
+    } catch (error: any) {
+      console.error('Error fetching attendance:', error);
+      showToast('Failed to load attendance data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function getDateRange() {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const day = currentDate.getDate();
+    const dayOfWeek = currentDate.getDay();
+    const startOfWeek = new Date(year, month, day - dayOfWeek);
+    const endOfWeek = new Date(year, month, day - dayOfWeek + 6);
+    const startDate = startOfWeek.toISOString().split('T')[0];
+    const endDate = endOfWeek.toISOString().split('T')[0];
+    return { startDate, endDate };
+  }
+
+  function getCalendarDays() {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const day = currentDate.getDate();
+    const dayOfWeek = currentDate.getDay();
+    const days: Date[] = [];
+
+    for (let i = 0; i < 7; i++) {
+      days.push(new Date(year, month, day - dayOfWeek + i));
+    }
+
+    return days;
+  }
+
+  function processAttendanceData(): AttendanceSummary {
+    const summary: AttendanceSummary = {};
+
+    attendanceData.forEach((record) => {
+      if (!summary[record.employee_id]) {
+        summary[record.employee_id] = {
+          employeeName: record.employee_name,
+          payType: record.pay_type,
+          dates: {},
+          totalHours: 0,
+          daysPresent: 0
+        };
+      }
+
+      summary[record.employee_id].dates[record.work_date] = {
+        attendanceRecordId: record.attendance_record_id,
+        checkInTime: record.check_in_time,
+        checkOutTime: record.check_out_time,
+        totalHours: record.total_hours,
+        status: record.status
+      };
+
+      if (record.total_hours) {
+        summary[record.employee_id].totalHours += record.total_hours;
+      }
+      summary[record.employee_id].daysPresent += 1;
+    });
+
+    return summary;
+  }
+
+  function navigatePrevious() {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() - 7);
+    setCurrentDate(newDate);
+  }
+
+  function navigateNext() {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + 7);
+    setCurrentDate(newDate);
+  }
+
+  function navigateToday() {
+    setCurrentDate(new Date());
+  }
+
+  function exportCSV() {
+    const summary = processAttendanceData();
+    const { startDate, endDate } = getDateRange();
+
+    const headers = ['Employee', 'Pay Type', 'Date', 'Check In', 'Check Out', 'Hours', 'Status'];
+    const rows: string[][] = [];
+
+    Object.values(summary).forEach((employee) => {
+      Object.entries(employee.dates).forEach(([date, record]) => {
+        const checkIn = new Date(record.checkInTime).toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        });
+        const checkOut = record.checkOutTime
+          ? new Date(record.checkOutTime).toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            })
+          : '';
+        const hours = record.totalHours ? record.totalHours.toFixed(2) : '';
+
+        rows.push([
+          employee.employeeName,
+          employee.payType,
+          date,
+          checkIn,
+          checkOut,
+          hours,
+          record.status
+        ]);
+      });
+    });
+
+    const csv = [headers, ...rows].map((row) => row.join(',')).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `attendance-${startDate}-to-${endDate}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+
+    showToast('Attendance report exported successfully', 'success');
+  }
+
+  const calendarDays = getCalendarDays();
+  const summary = processAttendanceData();
+  const weekRange = `${calendarDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${calendarDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+  if (session && !Permissions.endOfDay.canView(session.role_permission)) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <p className="text-gray-600">You don't have permission to view attendance records.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto">
+      <div className="mb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <h2 className="text-base md:text-lg font-bold text-gray-900">Attendance Tracking</h2>
+        {session && Permissions.endOfDay.canExport(session.role_permission) && (
+          <Button variant="secondary" size="sm" onClick={exportCSV}>
+            <Download className="w-3 h-3 mr-1" />
+            Export
+          </Button>
+        )}
+      </div>
+
+      <div className="bg-white rounded-lg shadow mb-4">
+        <div className="p-3 md:p-4 border-b border-gray-200 flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={navigatePrevious} className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0">
+              <ChevronLeft className="w-5 h-5 md:w-4 md:h-4" />
+            </Button>
+            <h3 className="text-sm md:text-base font-semibold text-gray-900 min-w-[200px] text-center">
+              {weekRange}
+            </h3>
+            <Button variant="ghost" size="sm" onClick={navigateNext} className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0">
+              <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
+            </Button>
+          </div>
+          <Button variant="secondary" size="sm" onClick={navigateToday} className="min-h-[44px] md:min-h-0 w-full md:w-auto">
+            Today
+          </Button>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-sm text-gray-500">Loading attendance data...</div>
+          </div>
+        ) : Object.keys(summary).length === 0 ? (
+          <div className="text-center py-12">
+            <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-sm text-gray-500">No attendance records for this period</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left p-3 text-sm font-semibold text-gray-900 sticky left-0 bg-white z-10">
+                    Employee
+                  </th>
+                  <th className="text-left p-3 text-sm font-semibold text-gray-900">
+                    Pay Type
+                  </th>
+                  {calendarDays.map((day, index) => {
+                    const isToday = day.toDateString() === new Date().toDateString();
+                    return (
+                      <th
+                        key={index}
+                        className={`text-center p-3 text-sm font-semibold min-w-[120px] ${
+                          isToday
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-gray-900'
+                        }`}
+                      >
+                        <div>{day.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                        <div className="text-lg">{day.getDate()}</div>
+                      </th>
+                    );
+                  })}
+                  <th className="text-right p-3 text-sm font-semibold text-gray-900 sticky right-0 bg-white z-10">
+                    Total Hours
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(summary).map(([employeeId, employee]) => (
+                  <tr key={employeeId} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="p-3 text-sm font-medium text-gray-900 sticky left-0 bg-white">
+                      {employee.employeeName}
+                    </td>
+                    <td className="p-3 text-sm text-gray-600">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        employee.payType === 'hourly'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-green-100 text-green-700'
+                      }`}>
+                        {employee.payType}
+                      </span>
+                    </td>
+                    {calendarDays.map((day, index) => {
+                      const dateStr = day.toISOString().split('T')[0];
+                      const record = employee.dates[dateStr];
+                      const isToday = day.toDateString() === new Date().toDateString();
+
+                      return (
+                        <td
+                          key={index}
+                          className={`p-2 text-center ${
+                            isToday ? 'bg-blue-50' : ''
+                          }`}
+                        >
+                          {record ? (
+                            <div className="relative group">
+                            <div className="space-y-1">
+                              <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                                record.status === 'checked_in'
+                                  ? 'bg-green-100 text-green-700'
+                                  : record.status === 'checked_out'
+                                  ? 'bg-gray-100 text-gray-700'
+                                  : 'bg-orange-100 text-orange-700'
+                              }`}>
+                                {record.status === 'checked_in' ? (
+                                  <Clock className="w-3 h-3" />
+                                ) : record.status === 'checked_out' ? (
+                                  <CheckCircle className="w-3 h-3" />
+                                ) : (
+                                  <XCircle className="w-3 h-3" />
+                                )}
+                                {record.status === 'checked_in' ? 'Active' : 'Done'}
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                {new Date(record.checkInTime).toLocaleTimeString('en-US', {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  hour12: true
+                                })}
+                              </div>
+                              {record.checkOutTime && (
+                                <div className="text-xs text-gray-600">
+                                  {new Date(record.checkOutTime).toLocaleTimeString('en-US', {
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  })}
+                                </div>
+                              )}
+                              {record.totalHours && (
+                                <div className="text-xs font-semibold text-gray-900">
+                                  {record.totalHours.toFixed(1)}h
+                                </div>
+                              )}
+                            </div>
+                            {session && Permissions.attendance.canComment(session.role_permission) && (
+                              <button
+                                onClick={() => {
+                                  setSelectedAttendance({
+                                    employeeName: employee.employeeName,
+                                    workDate: dateStr,
+                                    attendanceRecordId: record.attendanceRecordId,
+                                  });
+                                  setCommentModalOpen(true);
+                                }}
+                                className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-600"
+                              >
+                                <MessageSquare className="w-4 h-4 mx-auto" />
+                              </button>
+                            )}
+                            </div>
+                          ) : (
+                            <div className="text-gray-300">-</div>
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td className="p-3 text-right text-sm font-bold text-gray-900 sticky right-0 bg-white">
+                      {employee.totalHours.toFixed(1)}h
+                      <div className="text-xs font-normal text-gray-500">
+                        {employee.daysPresent} days
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-lg shadow p-4">
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">Legend</h3>
+        <div className="flex flex-wrap gap-4">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-100 text-green-700">
+              <Clock className="w-3 h-3" />
+              Active
+            </div>
+            <span className="text-xs text-gray-600">Currently checked in</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-100 text-gray-700">
+              <CheckCircle className="w-3 h-3" />
+              Done
+            </div>
+            <span className="text-xs text-gray-600">Checked out</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-orange-100 text-orange-700">
+              <XCircle className="w-3 h-3" />
+              Done
+            </div>
+            <span className="text-xs text-gray-600">Auto checked out</span>
+          </div>
+        </div>
+      </div>
+
+      <AttendanceCommentModal
+        isOpen={commentModalOpen}
+        onClose={() => {
+          setCommentModalOpen(false);
+          setSelectedAttendance(null);
+        }}
+        employeeName={selectedAttendance?.employeeName || ''}
+        workDate={selectedAttendance?.workDate || ''}
+        attendanceRecordId={selectedAttendance?.attendanceRecordId || null}
+      />
+    </div>
+  );
+}
