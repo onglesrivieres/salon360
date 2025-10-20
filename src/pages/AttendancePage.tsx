@@ -148,7 +148,7 @@ export function AttendancePage() {
     const summary = processAttendanceData();
     const { startDate, endDate } = getDateRange();
 
-    const headers = ['Employee', 'Pay Type', 'Date', 'Check In', 'Check Out', 'Hours', 'Status'];
+    const headers = ['Employee', 'Date', 'Check In', 'Check Out', 'Hours', 'Status'];
     const rows: string[][] = [];
 
     Object.values(summary).forEach((employee) => {
@@ -169,7 +169,6 @@ export function AttendancePage() {
 
         rows.push([
           employee.employeeName,
-          employee.payType,
           date,
           checkIn,
           checkOut,
@@ -253,9 +252,6 @@ export function AttendancePage() {
                   <th className="text-left p-3 text-sm font-semibold text-gray-900 sticky left-0 bg-white z-10">
                     Employee
                   </th>
-                  <th className="text-left p-3 text-sm font-semibold text-gray-900">
-                    Pay Type
-                  </th>
                   {calendarDays.map((day, index) => {
                     const isToday = day.toDateString() === new Date().toDateString();
                     return (
@@ -282,15 +278,6 @@ export function AttendancePage() {
                   <tr key={employeeId} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="p-3 text-sm font-medium text-gray-900 sticky left-0 bg-white">
                       {employee.employeeName}
-                    </td>
-                    <td className="p-3 text-sm text-gray-600">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        employee.payType === 'hourly'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-green-100 text-green-700'
-                      }`}>
-                        {employee.payType}
-                      </span>
                     </td>
                     {calendarDays.map((day, index) => {
                       const dateStr = day.toISOString().split('T')[0];
