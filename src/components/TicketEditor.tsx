@@ -604,7 +604,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       const closerRoles = session?.role || [];
       const hasTechnicianRole = closerRoles.includes('Technician');
       const hasReceptionistRole = closerRoles.includes('Receptionist');
-      const requiresHigherApproval = hasTechnicianRole && hasReceptionistRole;
+      const hasSupervisorRole = closerRoles.includes('Supervisor');
+      const requiresHigherApproval = hasSupervisorRole || (hasTechnicianRole && hasReceptionistRole);
 
       const { error } = await supabase
         .from('sale_tickets')
@@ -624,7 +625,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       });
 
       if (requiresHigherApproval) {
-        showToast('Ticket closed. Requires management approval due to dual role.', 'success');
+        const reason = hasSupervisorRole ? 'Supervisor role' : 'dual role';
+        showToast(`Ticket closed. Requires management approval due to ${reason}.`, 'success');
       } else {
         showToast('Ticket closed successfully', 'success');
       }

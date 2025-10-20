@@ -92,7 +92,7 @@ export function EmployeesPage() {
       if (error) throw error;
 
       const allEmployees = (data || []).filter(emp =>
-        emp.role.includes('Technician') || emp.role.includes('Receptionist')
+        emp.role.includes('Technician') || emp.role.includes('Receptionist') || emp.role.includes('Supervisor')
       );
 
       const { data: employeeStoresData } = await supabase
@@ -166,9 +166,11 @@ export function EmployeesPage() {
     }
 
     try {
-      let rolePermission: 'Technician' | 'Receptionist';
+      let rolePermission: 'Technician' | 'Receptionist' | 'Supervisor';
 
-      if (formData.role.includes('Receptionist') || formData.role.includes('Manager') || formData.role.includes('Owner')) {
+      if (formData.role.includes('Supervisor')) {
+        rolePermission = 'Supervisor';
+      } else if (formData.role.includes('Receptionist') || formData.role.includes('Manager') || formData.role.includes('Owner')) {
         rolePermission = 'Receptionist';
       } else {
         rolePermission = 'Technician';
@@ -306,6 +308,7 @@ export function EmployeesPage() {
               { value: 'all', label: 'All Roles' },
               { value: 'Technician', label: t('emp.technician') },
               { value: 'Receptionist', label: t('emp.receptionist') },
+              { value: 'Supervisor', label: t('emp.supervisor') },
               { value: 'Manager', label: t('emp.manager') },
               { value: 'Owner', label: t('emp.owner') },
             ]}
@@ -425,6 +428,7 @@ export function EmployeesPage() {
             options={[
               { value: 'Technician', label: t('emp.technician') },
               { value: 'Receptionist', label: t('emp.receptionist') },
+              { value: 'Supervisor', label: t('emp.supervisor') },
               { value: 'Manager', label: t('emp.manager') },
               { value: 'Owner', label: t('emp.owner') },
             ]}
