@@ -61,7 +61,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   }, [selectedDate, selectedStoreId]);
 
   useEffect(() => {
-    if (selectedStoreId && session?.employee_id) {
+    if (selectedStoreId && session?.employee_id && session?.role_permission === 'Technician') {
       fetchQueueStatus();
 
       const queueChannel = supabase
@@ -84,7 +84,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         supabase.removeChannel(queueChannel);
       };
     }
-  }, [selectedStoreId, session?.employee_id]);
+  }, [selectedStoreId, session?.employee_id, session?.role_permission]);
 
   async function fetchQueueStatus() {
     if (!selectedStoreId || !session?.employee_id) return;
@@ -127,6 +127,25 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       });
     } catch (error) {
       console.error('Error fetching queue status:', error);
+    }
+  }
+
+  async function joinQueue() {
+    if (!selectedStoreId || !session?.employee_id) return;
+
+    try {
+      const { error } = await supabase
+        .rpc('join_ready_queue', {
+          p_employee_id: session.employee_id,
+          p_store_id: selectedStoreId
+        });
+
+      if (error) throw error;
+
+      showToast("You're now in the ready queue!", 'success');
+      fetchQueueStatus();
+    } catch (error: any) {
+      showToast(error.message || 'Failed to join queue', 'error');
     }
   }
 
@@ -371,6 +390,29 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           )}
         </div>
       </div>
+
+      {session?.role_permission === 'Technician' && !queueStatus && (
+        <div className="mb-3 bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-4 shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center w-12 h-12 bg-blue-500 rounded-full">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-blue-900">Ready for Customers?</h3>
+                <p className="text-sm text-blue-700">Join the queue when you're available to take the next customer</p>
+              </div>
+            </div>
+            <button
+              onClick={joinQueue}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            >
+              <Award className="w-4 h-4" />
+              I'm Ready!
+            </button>
+          </div>
+        </div>
+      )}
 
       {queueStatus && queueStatus.isInQueue && (
         <div className="mb-3 bg-gradient-to-r from-green-50 to-green-100 border-2 border-green-400 rounded-lg p-4 shadow-lg">
