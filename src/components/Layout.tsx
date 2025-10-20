@@ -34,14 +34,38 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   }, [selectedStoreId, session]);
 
   useEffect(() => {
-    if (!session?.employee_id || !session?.role || !Permissions.tickets.canViewPendingApprovals(session.role)) return;
+    if (!session?.employee_id || !session?.role || !Permissions.tickets.canViewPendingApprovals(session.role) || !selectedStoreId) return;
 
+    // Poll every 30 seconds for pending approvals
     const interval = setInterval(() => {
       fetchPendingApprovalsCount();
-    }, 300000);
+    }, 30000);
 
-    return () => clearInterval(interval);
-  }, [session?.employee_id, session?.role]);
+    // Subscribe to real-time changes on sale_tickets table
+    const approvalsChannel = supabase
+      .channel(`approvals-${selectedStoreId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sale_tickets',
+          filter: `store_id=eq.${selectedStoreId}`,
+        },
+        (payload) => {
+          // Refresh count when tickets are closed, approved, or updated
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            fetchPendingApprovalsCount();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(approvalsChannel);
+    };
+  }, [session?.employee_id, session?.role, selectedStoreId]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -73,16 +97,29 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   }
 
   async function fetchPendingApprovalsCount() {
-    if (!session?.employee_id) return;
+    if (!session?.employee_id || !selectedStoreId) return;
 
     try {
-      const { data, error } = await supabase.rpc('get_pending_approvals_for_technician', {
-        p_employee_id: session.employee_id,
-        p_store_id: selectedStoreId || null,
-      });
+      // Determine which function to call based on role
+      const isTechnicianOrSupervisor = session.role_permission === 'Technician' || session.role_permission === 'Supervisor';
 
-      if (error) throw error;
-      setPendingApprovalsCount(data?.length || 0);
+      if (isTechnicianOrSupervisor) {
+        const { data, error } = await supabase.rpc('get_pending_approvals_for_technician', {
+          p_employee_id: session.employee_id,
+          p_store_id: selectedStoreId,
+        });
+
+        if (error) throw error;
+        setPendingApprovalsCount(data?.length || 0);
+      } else {
+        // For Receptionist, Manager, Owner - use management function
+        const { data, error } = await supabase.rpc('get_pending_approvals_for_management', {
+          p_store_id: selectedStoreId,
+        });
+
+        if (error) throw error;
+        setPendingApprovalsCount(data?.length || 0);
+      }
     } catch (error) {
       console.error('Error fetching pending approvals count:', error);
     }
