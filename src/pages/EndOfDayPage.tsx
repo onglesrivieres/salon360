@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Download, Printer, Plus, Award, Users, X } from 'lucide-react';
-import { supabase, Technician, TechnicianReadyQueue } from '../lib/supabase';
+import { Calendar, Download, Printer, Plus } from 'lucide-react';
+import { supabase, Technician } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { TicketEditor } from '../components/TicketEditor';
@@ -50,130 +50,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
 
-  const [queueStatus, setQueueStatus] = useState<{
-    position: number;
-    totalInQueue: number;
-    isInQueue: boolean;
-  } | null>(null);
-
   useEffect(() => {
     fetchEODData();
   }, [selectedDate, selectedStoreId]);
-
-  useEffect(() => {
-    if (selectedStoreId && session?.employee_id && session?.role_permission === 'Technician') {
-      fetchQueueStatus();
-
-      const queueChannel = supabase
-        .channel(`my-queue-${selectedStoreId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'technician_ready_queue',
-            filter: `store_id=eq.${selectedStoreId}`,
-          },
-          () => {
-            fetchQueueStatus();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(queueChannel);
-      };
-    }
-  }, [selectedStoreId, session?.employee_id, session?.role_permission]);
-
-  async function fetchQueueStatus() {
-    if (!selectedStoreId || !session?.employee_id) return;
-
-    try {
-      const { data: myQueue, error: myQueueError } = await supabase
-        .from('technician_ready_queue')
-        .select('*')
-        .eq('employee_id', session.employee_id)
-        .eq('store_id', selectedStoreId)
-        .maybeSingle();
-
-      if (myQueueError) throw myQueueError;
-
-      if (!myQueue) {
-        setQueueStatus(null);
-        return;
-      }
-
-      const { data: positionData, error: positionError } = await supabase
-        .rpc('get_technician_queue_position', {
-          p_employee_id: session.employee_id,
-          p_store_id: selectedStoreId
-        });
-
-      if (positionError) throw positionError;
-
-      const { data: allQueue, error: allQueueError } = await supabase
-        .from('technician_ready_queue')
-        .select('*')
-        .eq('store_id', selectedStoreId)
-        .eq('status', 'ready');
-
-      if (allQueueError) throw allQueueError;
-
-      setQueueStatus({
-        position: positionData || 0,
-        totalInQueue: allQueue?.length || 0,
-        isInQueue: true,
-      });
-    } catch (error) {
-      console.error('Error fetching queue status:', error);
-    }
-  }
-
-  async function joinQueue() {
-    if (!selectedStoreId || !session?.employee_id) return;
-
-    try {
-      console.log('Joining ready queue for employee:', session.employee_id, 'store:', selectedStoreId);
-
-      const { error } = await supabase
-        .rpc('join_ready_queue', {
-          p_employee_id: session.employee_id,
-          p_store_id: selectedStoreId
-        });
-
-      if (error) {
-        console.error('Error joining queue:', error);
-        throw error;
-      }
-
-      console.log('Successfully joined queue (tickets marked as completed)');
-      showToast("You're now in the ready queue!", 'success');
-      fetchQueueStatus();
-    } catch (error: any) {
-      console.error('Failed to join queue:', error);
-      showToast(error.message || 'Failed to join queue', 'error');
-    }
-  }
-
-  async function leaveQueue() {
-    if (!selectedStoreId || !session?.employee_id) return;
-
-    try {
-      const { error } = await supabase
-        .rpc('remove_from_ready_queue', {
-          p_employee_id: session.employee_id,
-          p_store_id: selectedStoreId
-        });
-
-      if (error) throw error;
-
-      showToast('You have left the ready queue', 'success');
-      setQueueStatus(null);
-    } catch (error: any) {
-      showToast(error.message || 'Failed to leave queue', 'error');
-    }
-  }
 
   async function fetchEODData() {
     try {
@@ -397,66 +276,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           )}
         </div>
       </div>
-
-      {session?.role_permission === 'Technician' && !queueStatus && (
-        <div className="mb-3 bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-4 shadow">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-12 h-12 bg-blue-500 rounded-full">
-                <Users className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-blue-900">Ready for Customers?</h3>
-                <p className="text-sm text-blue-700">Join the queue when you're available to take the next customer</p>
-              </div>
-            </div>
-            <button
-              onClick={joinQueue}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-            >
-              <Award className="w-4 h-4" />
-              I'm Ready!
-            </button>
-          </div>
-        </div>
-      )}
-
-      {queueStatus && queueStatus.isInQueue && (
-        <div className="mb-3 bg-gradient-to-r from-green-50 to-green-100 border-2 border-green-400 rounded-lg p-4 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-12 h-12 bg-green-600 rounded-full animate-pulse">
-                <Award className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-lg font-bold text-green-900">You're Ready!</h3>
-                  <span className="inline-flex items-center justify-center px-3 py-1 text-sm font-bold bg-white text-green-600 rounded-full shadow">
-                    {queueStatus.position === 1 ? '1st' : queueStatus.position === 2 ? '2nd' : queueStatus.position === 3 ? '3rd' : `${queueStatus.position}th`} in line
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-green-700">
-                  <Users className="w-4 h-4" />
-                  <span>{queueStatus.totalInQueue} technician{queueStatus.totalInQueue !== 1 ? 's' : ''} ready</span>
-                  {queueStatus.position > 1 && (
-                    <>
-                      <span className="text-green-600">•</span>
-                      <span>{queueStatus.position - 1} customer{queueStatus.position - 1 !== 1 ? 's' : ''} ahead</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={leaveQueue}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-green-300 text-green-700 rounded-lg font-medium hover:bg-green-50 transition-colors"
-            >
-              <X className="w-4 h-4" />
-              Leave Queue
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="bg-white rounded-lg shadow mb-3">
         <div className="p-2 border-b border-gray-200 flex items-center justify-between">
