@@ -12,8 +12,12 @@ interface TechnicianSummary {
   technician_name: string;
   services_count: number;
   revenue: number;
-  tips_customer: number;
-  tips_receptionist: number;
+  tips_customer_cash: number;
+  tips_receptionist_cash: number;
+  tips_customer_card: number;
+  tips_receptionist_card: number;
+  tips_total_cash: number;
+  tips_total_card: number;
   tips_total: number;
   items: ServiceItemDetail[];
 }
@@ -23,8 +27,10 @@ interface ServiceItemDetail {
   service_code: string;
   service_name: string;
   price: number;
-  tip_customer: number;
-  tip_receptionist: number;
+  tip_customer_cash: number;
+  tip_receptionist_cash: number;
+  tip_customer_card: number;
+  tip_receptionist_card: number;
   opened_at: string;
   closed_at: string | null;
 }
@@ -119,8 +125,12 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               technician_name: technician.display_name,
               services_count: 0,
               revenue: 0,
-              tips_customer: 0,
-              tips_receptionist: 0,
+              tips_customer_cash: 0,
+              tips_receptionist_cash: 0,
+              tips_customer_card: 0,
+              tips_receptionist_card: 0,
+              tips_total_cash: 0,
+              tips_total_card: 0,
               tips_total: 0,
               items: [],
             });
@@ -129,19 +139,31 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           const summary = technicianMap.get(techId)!;
           summary.services_count += 1;
           summary.revenue += itemRevenue;
-          summary.tips_customer += item.tip_customer;
-          summary.tips_receptionist += item.tip_receptionist;
-          summary.tips_total += item.tip_customer + item.tip_receptionist;
 
-          totalTips += item.tip_customer + item.tip_receptionist;
+          const tipCustomerCash = item.tip_customer || 0;
+          const tipReceptionistCash = item.tip_receptionist || 0;
+          const tipCustomerCard = item.tip_customer_card || 0;
+          const tipReceptionistCard = item.tip_receptionist_card || 0;
+
+          summary.tips_customer_cash += tipCustomerCash;
+          summary.tips_receptionist_cash += tipReceptionistCash;
+          summary.tips_customer_card += tipCustomerCard;
+          summary.tips_receptionist_card += tipReceptionistCard;
+          summary.tips_total_cash += tipCustomerCash + tipReceptionistCash;
+          summary.tips_total_card += tipCustomerCard + tipReceptionistCard;
+          summary.tips_total += tipCustomerCash + tipReceptionistCash + tipCustomerCard + tipReceptionistCard;
+
+          totalTips += tipCustomerCash + tipReceptionistCash + tipCustomerCard + tipReceptionistCard;
 
           summary.items.push({
             ticket_id: ticket.id,
             service_code: item.service?.code || '',
             service_name: item.service?.name || '',
             price: itemRevenue,
-            tip_customer: item.tip_customer,
-            tip_receptionist: item.tip_receptionist,
+            tip_customer_cash: tipCustomerCash,
+            tip_receptionist_cash: tipReceptionistCash,
+            tip_customer_card: tipCustomerCard,
+            tip_receptionist_card: tipReceptionistCard,
             opened_at: (ticket as any).opened_at,
             closed_at: ticket.closed_at,
           });
@@ -183,17 +205,25 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       'Technician',
       'Services Done',
       'Revenue',
-      'Tips (Customer)',
-      'Tips (Receptionist)',
-      'Tips Total',
+      'Tip Customer (Cash)',
+      'Tip Receptionist (Cash)',
+      'Total Tips (Cash)',
+      'Tip Customer (Card)',
+      'Tip Receptionist (Card)',
+      'Total Tips (Card)',
+      'Tips Grand Total',
     ];
 
     const rows = summaries.map((s) => [
       s.technician_name,
       s.services_count.toString(),
       s.revenue.toFixed(2),
-      s.tips_customer.toFixed(2),
-      s.tips_receptionist.toFixed(2),
+      s.tips_customer_cash.toFixed(2),
+      s.tips_receptionist_cash.toFixed(2),
+      s.tips_total_cash.toFixed(2),
+      s.tips_customer_card.toFixed(2),
+      s.tips_receptionist_card.toFixed(2),
+      s.tips_total_card.toFixed(2),
       s.tips_total.toFixed(2),
     ]);
 
@@ -345,15 +375,21 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200">
                   <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Tips (Customer)</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      ${summary.tips_customer.toFixed(2)}
+                    <p className="text-xs text-gray-500 mb-0.5">Tips Cash</p>
+                    <p className="text-sm font-semibold text-green-600">
+                      ${summary.tips_total_cash.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Given: ${summary.tips_customer_cash.toFixed(2)} | Paired: ${summary.tips_receptionist_cash.toFixed(2)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Tips (Receptionist)</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      ${summary.tips_receptionist.toFixed(2)}
+                    <p className="text-xs text-gray-500 mb-0.5">Tips Card</p>
+                    <p className="text-sm font-semibold text-blue-600">
+                      ${summary.tips_total_card.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Given: ${summary.tips_customer_card.toFixed(2)} | Paired: ${summary.tips_receptionist_card.toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -384,20 +420,20 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                       </p>
                       <div className="space-y-0.5">
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-gray-600">T. Given</span>
-                          <span className="text-[9px] font-semibold text-gray-900">
-                            ${summary.tips_customer.toFixed(2)}
+                          <span className="text-[9px] text-gray-600">Cash</span>
+                          <span className="text-[9px] font-semibold text-green-600">
+                            ${summary.tips_total_cash.toFixed(2)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-gray-600">T. Paired</span>
-                          <span className="text-[9px] font-semibold text-gray-900">
-                            ${summary.tips_receptionist.toFixed(2)}
+                          <span className="text-[9px] text-gray-600">Card</span>
+                          <span className="text-[9px] font-semibold text-blue-600">
+                            ${summary.tips_total_card.toFixed(2)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
                           <span className="text-[9px] font-medium text-gray-900">Total</span>
-                          <span className="text-[10px] font-bold text-blue-600">
+                          <span className="text-[10px] font-bold text-gray-900">
                             ${summary.tips_total.toFixed(2)}
                           </span>
                         </div>
@@ -448,18 +484,22 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                                     ${item.price.toFixed(2)}
                                   </span>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-600">T. Given</span>
-                                  <span className="text-[8px] font-semibold text-blue-600">
-                                    ${item.tip_customer.toFixed(2)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-600">T. Paired</span>
-                                  <span className="text-[8px] font-semibold text-green-600">
-                                    ${item.tip_receptionist.toFixed(2)}
-                                  </span>
-                                </div>
+                                {(item.tip_customer_cash > 0 || item.tip_receptionist_cash > 0) && (
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-[8px] text-gray-600">Cash</span>
+                                    <span className="text-[8px] font-semibold text-green-600">
+                                      ${(item.tip_customer_cash + item.tip_receptionist_cash).toFixed(2)}
+                                    </span>
+                                  </div>
+                                )}
+                                {(item.tip_customer_card > 0 || item.tip_receptionist_card > 0) && (
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-[8px] text-gray-600">Card</span>
+                                    <span className="text-[8px] font-semibold text-blue-600">
+                                      ${(item.tip_customer_card + item.tip_receptionist_card).toFixed(2)}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           );
