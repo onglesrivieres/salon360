@@ -103,7 +103,19 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       const { data: tickets, error: ticketsError } = await query;
 
-      if (ticketsError) throw ticketsError;
+      if (ticketsError) {
+        console.error('Error fetching tickets:', ticketsError);
+        throw ticketsError;
+      }
+
+      if (!tickets) {
+        console.log('No tickets returned from query');
+        setSummaries([]);
+        setTotals({ tickets: 0, revenue: 0, tips: 0 });
+        return;
+      }
+
+      console.log('Fetched tickets:', tickets.length);
 
       const technicianMap = new Map<string, TechnicianSummary>();
       let totalRevenue = 0;
@@ -183,6 +195,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         }
       }
 
+      console.log('Final summaries:', filteredSummaries.length, 'technicians');
+
       setSummaries(filteredSummaries);
       setTotals({
         tickets: tickets?.length || 0,
@@ -190,6 +204,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         tips: totalTips,
       });
     } catch (error) {
+      console.error('Error in fetchEODData:', error);
       showToast('Failed to load EOD data', 'error');
     } finally {
       setLoading(false);

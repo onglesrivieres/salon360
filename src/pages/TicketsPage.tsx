@@ -181,6 +181,8 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
           employee_id,
           tip_customer,
           tip_receptionist,
+          tip_customer_card,
+          tip_receptionist_card,
           service:services(code, name, duration_min),
           employee:employees(display_name)
         )
