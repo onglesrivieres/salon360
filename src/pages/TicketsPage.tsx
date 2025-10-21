@@ -335,12 +335,9 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     if (serviceDuration === 0) return false;
 
     const elapsedMinutes = getElapsedMinutes(ticket.opened_at, ticket.closed_at);
+    const deviation = Math.abs(elapsedMinutes - serviceDuration) / serviceDuration;
 
-    if (ticket.closed_at) {
-      return elapsedMinutes < serviceDuration * 0.7;
-    } else {
-      return elapsedMinutes > serviceDuration * 1.3;
-    }
+    return deviation >= 0.3;
   }
 
   function formatDuration(openedAt: string): string {
@@ -555,7 +552,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                     <td className="px-3 py-2 whitespace-nowrap">
                       {ticket.closed_at ? (
                         isTimeDeviationHigh(ticket) ? (
-                          <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 flash-red-border">
+                          <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flash-red">
                             Closed
                           </div>
                         ) : (
@@ -567,7 +564,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                         </div>
                       ) : (
                         <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          isTimeDeviationHigh(ticket) ? 'bg-orange-100 text-red-600 flash-red-border' : 'bg-orange-100 text-red-600'
+                          isTimeDeviationHigh(ticket) ? 'flash-red' : 'bg-orange-100 text-red-600'
                         }`}>
                           {formatDuration(ticket.opened_at)}
                         </div>
@@ -640,7 +637,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                 <div className="text-right flex flex-col gap-1 items-end">
                   {ticket.closed_at ? (
                     isTimeDeviationHigh(ticket) ? (
-                      <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flash-red-border">
+                      <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium flash-red">
                         Closed
                       </div>
                     ) : (
@@ -652,7 +649,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                     </div>
                   ) : (
                     <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      isTimeDeviationHigh(ticket) ? 'bg-orange-100 text-red-600 flash-red-border' : 'bg-orange-100 text-red-600'
+                      isTimeDeviationHigh(ticket) ? 'flash-red' : 'bg-orange-100 text-red-600'
                     }`}>
                       {formatDuration(ticket.opened_at)}
                     </div>
