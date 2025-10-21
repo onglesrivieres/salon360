@@ -497,9 +497,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             qty: parseFloat(item.qty),
             price_each: parseFloat(item.price_each),
             tip_customer: isCardPayment ? 0 : tipCustomer,
-            tip_receptionist: isCardPayment ? 0 : tipReceptionist,
+            tip_receptionist: tipReceptionist,
             tip_customer_card: isCardPayment ? tipCustomer : 0,
-            tip_receptionist_card: isCardPayment ? tipReceptionist : 0,
+            tip_receptionist_card: 0,
             addon_details: formData.addon_details || '',
             addon_price: addonPrice,
             updated_at: new Date().toISOString(),
@@ -555,9 +555,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             qty: parseFloat(item.qty),
             price_each: parseFloat(item.price_each),
             tip_customer: isCardPayment ? 0 : tipCustomer,
-            tip_receptionist: isCardPayment ? 0 : tipReceptionist,
+            tip_receptionist: tipReceptionist,
             tip_customer_card: isCardPayment ? tipCustomer : 0,
-            tip_receptionist_card: isCardPayment ? tipReceptionist : 0,
+            tip_receptionist_card: 0,
             addon_details: formData.addon_details || '',
             addon_price: addonPrice,
           };
@@ -1208,7 +1208,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Tip Paired by Receptionist {formData.payment_method === 'Card' && <span className="text-blue-600">(Card)</span>}
+                    Tip Paired by Receptionist <span className="text-green-600">(Cash)</span>
                   </label>
                   <div className="relative">
                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>

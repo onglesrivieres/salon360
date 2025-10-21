@@ -15,7 +15,6 @@ interface TechnicianSummary {
   tips_customer_cash: number;
   tips_receptionist_cash: number;
   tips_customer_card: number;
-  tips_receptionist_card: number;
   tips_total_cash: number;
   tips_total_card: number;
   tips_total: number;
@@ -30,7 +29,6 @@ interface ServiceItemDetail {
   tip_customer_cash: number;
   tip_receptionist_cash: number;
   tip_customer_card: number;
-  tip_receptionist_card: number;
   opened_at: string;
   closed_at: string | null;
 }
@@ -128,7 +126,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               tips_customer_cash: 0,
               tips_receptionist_cash: 0,
               tips_customer_card: 0,
-              tips_receptionist_card: 0,
               tips_total_cash: 0,
               tips_total_card: 0,
               tips_total: 0,
@@ -143,17 +140,15 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           const tipCustomerCash = item.tip_customer || 0;
           const tipReceptionistCash = item.tip_receptionist || 0;
           const tipCustomerCard = item.tip_customer_card || 0;
-          const tipReceptionistCard = item.tip_receptionist_card || 0;
 
           summary.tips_customer_cash += tipCustomerCash;
           summary.tips_receptionist_cash += tipReceptionistCash;
           summary.tips_customer_card += tipCustomerCard;
-          summary.tips_receptionist_card += tipReceptionistCard;
           summary.tips_total_cash += tipCustomerCash + tipReceptionistCash;
-          summary.tips_total_card += tipCustomerCard + tipReceptionistCard;
-          summary.tips_total += tipCustomerCash + tipReceptionistCash + tipCustomerCard + tipReceptionistCard;
+          summary.tips_total_card += tipCustomerCard;
+          summary.tips_total += tipCustomerCash + tipReceptionistCash + tipCustomerCard;
 
-          totalTips += tipCustomerCash + tipReceptionistCash + tipCustomerCard + tipReceptionistCard;
+          totalTips += tipCustomerCash + tipReceptionistCash + tipCustomerCard;
 
           summary.items.push({
             ticket_id: ticket.id,
@@ -163,7 +158,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             tip_customer_cash: tipCustomerCash,
             tip_receptionist_cash: tipReceptionistCash,
             tip_customer_card: tipCustomerCard,
-            tip_receptionist_card: tipReceptionistCard,
             opened_at: (ticket as any).opened_at,
             closed_at: ticket.closed_at,
           });
@@ -206,10 +200,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       'Services Done',
       'Revenue',
       'Tip Customer (Cash)',
+      'Tip Customer (Card)',
       'Tip Receptionist (Cash)',
       'Total Tips (Cash)',
-      'Tip Customer (Card)',
-      'Tip Receptionist (Card)',
       'Total Tips (Card)',
       'Tips Grand Total',
     ];
@@ -219,10 +212,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       s.services_count.toString(),
       s.revenue.toFixed(2),
       s.tips_customer_cash.toFixed(2),
+      s.tips_customer_card.toFixed(2),
       s.tips_receptionist_cash.toFixed(2),
       s.tips_total_cash.toFixed(2),
-      s.tips_customer_card.toFixed(2),
-      s.tips_receptionist_card.toFixed(2),
       s.tips_total_card.toFixed(2),
       s.tips_total.toFixed(2),
     ]);
@@ -380,7 +372,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                       ${summary.tips_total_cash.toFixed(2)}
                     </p>
                     <p className="text-xs text-gray-400">
-                      Given: ${summary.tips_customer_cash.toFixed(2)} | Paired: ${summary.tips_receptionist_cash.toFixed(2)}
+                      Customer: ${summary.tips_customer_cash.toFixed(2)} | Receptionist: ${summary.tips_receptionist_cash.toFixed(2)}
                     </p>
                   </div>
                   <div>
@@ -389,7 +381,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                       ${summary.tips_total_card.toFixed(2)}
                     </p>
                     <p className="text-xs text-gray-400">
-                      Given: ${summary.tips_customer_card.toFixed(2)} | Paired: ${summary.tips_receptionist_card.toFixed(2)}
+                      Customer Only
                     </p>
                   </div>
                 </div>
@@ -492,11 +484,11 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                                     </span>
                                   </div>
                                 )}
-                                {(item.tip_customer_card > 0 || item.tip_receptionist_card > 0) && (
+                                {item.tip_customer_card > 0 && (
                                   <div className="flex justify-between items-center">
                                     <span className="text-[8px] text-gray-600">Card</span>
                                     <span className="text-[8px] font-semibold text-blue-600">
-                                      ${(item.tip_customer_card + item.tip_receptionist_card).toFixed(2)}
+                                      ${item.tip_customer_card.toFixed(2)}
                                     </span>
                                   </div>
                                 )}
