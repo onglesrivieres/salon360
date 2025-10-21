@@ -81,6 +81,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             addon_price,
             tip_customer,
             tip_receptionist,
+            tip_customer_card,
+            tip_receptionist_card,
             service:services(code, name),
             employee:employees(
               id,
