@@ -27,6 +27,7 @@ interface ServiceItemDetail {
   tip_receptionist: number;
   opened_at: string;
   closed_at: string | null;
+  duration_min: number;
 }
 
 interface EndOfDayPageProps {
@@ -77,7 +78,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             addon_price,
             tip_customer,
             tip_receptionist,
-            service:services(code, name),
+            service:services(code, name, duration_min),
             employee:employees(
               id,
               display_name
@@ -144,6 +145,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             tip_receptionist: item.tip_receptionist,
             opened_at: (ticket as any).opened_at,
             closed_at: ticket.closed_at,
+            duration_min: item.service?.duration_min || 0,
           });
         }
       }
@@ -239,6 +241,25 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   function openNewTicket() {
     setEditingTicketId(null);
     setIsEditorOpen(true);
+  }
+
+  function isTimeDeviationHigh(item: ServiceItemDetail): boolean {
+    if (item.duration_min === 0) return false;
+
+    const openedMs = new Date(item.opened_at).getTime();
+    const closedMs = item.closed_at ? new Date(item.closed_at).getTime() : Date.now();
+    const elapsedMinutes = Math.round((closedMs - openedMs) / 60000);
+
+    // For open tickets: check if running 30% longer
+    if (!item.closed_at) {
+      return elapsedMinutes >= item.duration_min * 1.3;
+    }
+
+    // For closed tickets: check if 30% shorter OR 30% longer
+    const tooFast = elapsedMinutes <= item.duration_min * 0.7;
+    const tooSlow = elapsedMinutes >= item.duration_min * 1.3;
+
+    return tooFast || tooSlow;
   }
 
   return (
@@ -420,12 +441,15 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                           const durationMinutes = Math.round((closedMs - openedMs) / 60000);
 
                           const isOpen = !item.closed_at;
+                          const hasTimeDeviation = isTimeDeviationHigh(item);
 
                           return (
                             <div
                               key={index}
                               className={`border rounded p-1 transition-colors cursor-pointer ${
-                                isOpen
+                                hasTimeDeviation
+                                  ? 'flash-red-border bg-red-50 hover:bg-red-100'
+                                  : isOpen
                                   ? 'border-orange-300 bg-orange-50 hover:bg-orange-100'
                                   : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
                               }`}
