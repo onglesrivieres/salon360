@@ -60,6 +60,21 @@
     border-style: solid;
   }
 
+  @keyframes flash-red {
+    0%, 100% {
+      background-color: rgb(220 38 38);
+      color: white;
+    }
+    50% {
+      background-color: rgb(239 68 68);
+      color: white;
+    }
+  }
+
+  .flash-red {
+    animation: flash-red 1.5s ease-in-out infinite;
+  }
+
   .device-iphone {
     max-width: 430px;
     margin: 0 auto;

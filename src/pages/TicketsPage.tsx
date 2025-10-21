@@ -335,9 +335,17 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     if (serviceDuration === 0) return false;
 
     const elapsedMinutes = getElapsedMinutes(ticket.opened_at, ticket.closed_at);
-    const deviation = Math.abs(elapsedMinutes - serviceDuration) / serviceDuration;
 
-    return deviation >= 0.3;
+    // For open tickets: check if running 30% longer
+    if (!ticket.closed_at) {
+      return elapsedMinutes >= serviceDuration * 1.3;
+    }
+
+    // For closed tickets: check if 30% shorter OR 30% longer
+    const tooFast = elapsedMinutes <= serviceDuration * 0.7;
+    const tooSlow = elapsedMinutes >= serviceDuration * 1.3;
+
+    return tooFast || tooSlow;
   }
 
   function formatDuration(openedAt: string): string {
