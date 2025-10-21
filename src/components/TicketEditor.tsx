@@ -31,8 +31,6 @@ interface TicketItemForm {
   price_each: string;
   tip_customer: string;
   tip_receptionist: string;
-  tip_customer_card: string;
-  tip_receptionist_card: string;
   addon_details: string;
   addon_price: string;
   service?: Service;
@@ -245,10 +243,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             employee_id: item.employee_id,
             qty: item.qty.toString(),
             price_each: item.price_each.toString(),
-            tip_customer: item.tip_customer?.toString() || '0',
-            tip_receptionist: item.tip_receptionist?.toString() || '0',
-            tip_customer_card: item.tip_customer_card?.toString() || '0',
-            tip_receptionist_card: item.tip_receptionist_card?.toString() || '0',
+            tip_customer: item.tip_customer.toString(),
+            tip_receptionist: item.tip_receptionist.toString(),
             addon_details: item.addon_details || '',
             addon_price: item.addon_price?.toString() || '0',
             service: item.service,
@@ -314,8 +310,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         price_each: defaultService?.base_price.toString() || '0',
         tip_customer: '0',
         tip_receptionist: '0',
-        tip_customer_card: '0',
-        tip_receptionist_card: '0',
         addon_details: '',
         addon_price: '0',
         service: defaultService,
@@ -488,7 +482,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
         for (const item of items) {
           const addonPrice = parseFloat(formData.addon_price) || 0;
-          const isCardPayment = formData.payment_method === 'Card';
 
           const itemData = {
             sale_ticket_id: ticketId,
@@ -496,10 +489,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             employee_id: item.employee_id,
             qty: parseFloat(item.qty),
             price_each: parseFloat(item.price_each),
-            tip_customer: isCardPayment ? 0 : tipCustomer,
+            tip_customer: tipCustomer,
             tip_receptionist: tipReceptionist,
-            tip_customer_card: isCardPayment ? tipCustomer : 0,
-            tip_receptionist_card: 0,
             addon_details: formData.addon_details || '',
             addon_price: addonPrice,
             updated_at: new Date().toISOString(),
@@ -546,7 +537,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         if (ticketError) throw ticketError;
 
         const addonPrice = parseFloat(formData.addon_price) || 0;
-        const isCardPayment = formData.payment_method === 'Card';
         const itemsData = items.map((item) => {
           return {
             sale_ticket_id: newTicket.id,
@@ -554,10 +544,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             employee_id: item.employee_id,
             qty: parseFloat(item.qty),
             price_each: parseFloat(item.price_each),
-            tip_customer: isCardPayment ? 0 : tipCustomer,
+            tip_customer: tipCustomer,
             tip_receptionist: tipReceptionist,
-            tip_customer_card: isCardPayment ? tipCustomer : 0,
-            tip_receptionist_card: 0,
             addon_details: formData.addon_details || '',
             addon_price: addonPrice,
           };
@@ -1054,8 +1042,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                             price_each: service.base_price.toString(),
                             tip_customer: '0',
                             tip_receptionist: '0',
-                            tip_customer_card: '0',
-                            tip_receptionist_card: '0',
                             addon_details: '',
                             addon_price: '0',
                             service: service,
@@ -1189,7 +1175,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Tip Given by Customer {formData.payment_method === 'Card' && <span className="text-blue-600">(Card)</span>}
+                    Tip Given by Customer
                   </label>
                   <div className="relative">
                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
@@ -1208,7 +1194,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Tip Paired by Receptionist <span className="text-green-600">(Cash)</span>
+                    Tip Paired by Receptionist
                   </label>
                   <div className="relative">
                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
