@@ -33,20 +33,8 @@ function AppContent() {
     }
   }, [isAuthenticated]);
 
-  // Set default page based on user role
-  const getDefaultPage = (): Page => {
-    if (!session?.role_permission) return 'tickets';
-
-    const role = session.role_permission;
-    // Admin and Manager default to reports (End of Day page)
-    if (role === 'Admin' || role === 'Manager') {
-      return 'eod';
-    }
-    // Technician and Supervisor default to tickets
-    return 'tickets';
-  };
-
-  const [currentPage, setCurrentPage] = useState<Page>(getDefaultPage());
+  // Set default page to tickets for all users
+  const [currentPage, setCurrentPage] = useState<Page>('tickets');
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
   );
