@@ -26,7 +26,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     if (selectedStoreId) {
       fetchStore();
     }
-    if (session?.role_permission === 'Admin') {
+    if (session?.employee_id) {
       fetchAllStores();
     }
     if (session?.employee_id && session?.role && Permissions.tickets.canViewPendingApprovals(session.role)) {
@@ -90,11 +90,36 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   }
 
   async function fetchAllStores() {
-    const { data } = await supabase
-      .from('stores')
-      .select('*')
-      .order('code');
-    if (data) setAllStores(data);
+    if (!session?.employee_id) return;
+
+    // Admin can see all stores
+    if (session?.role_permission === 'Admin') {
+      const { data } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('active', true)
+        .order('code');
+      if (data) setAllStores(data);
+      return;
+    }
+
+    // Other users see only their assigned stores
+    const { data: employeeStores } = await supabase
+      .from('employee_stores')
+      .select('store_id')
+      .eq('employee_id', session.employee_id);
+
+    const employeeStoreIds = employeeStores?.map(es => es.store_id) || [];
+
+    if (employeeStoreIds.length > 0) {
+      const { data } = await supabase
+        .from('stores')
+        .select('*')
+        .in('id', employeeStoreIds)
+        .eq('active', true)
+        .order('code');
+      if (data) setAllStores(data);
+    }
   }
 
   async function fetchPendingApprovalsCount() {
@@ -156,7 +181,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               </button>
               <Receipt className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
               <h1 className="text-base md:text-lg font-bold text-gray-900">Salon360</h1>
-              {currentStore && session?.role_permission === 'Admin' && allStores.length > 0 ? (
+              {currentStore && allStores.length > 1 ? (
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setIsStoreDropdownOpen(!isStoreDropdownOpen)}
