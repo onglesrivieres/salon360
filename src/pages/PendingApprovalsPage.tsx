@@ -315,7 +315,6 @@ export function PendingApprovalsPage() {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-bold text-gray-900">{ticket.ticket_no}</span>
                       <Badge variant={urgency === 'urgent' ? 'error' : urgency === 'warning' ? 'warning' : 'default'}>
                         {urgency === 'urgent' ? (
                           <AlertTriangle className="w-3 h-3 mr-1" />
@@ -341,7 +340,7 @@ export function PendingApprovalsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-gray-50 rounded-lg mb-3">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-3 bg-gray-50 rounded-lg mb-3">
                   <div>
                     <p className="text-xs text-gray-500">Service</p>
                     <p className="text-sm font-semibold text-gray-900">{ticket.service_name}</p>
@@ -353,6 +352,10 @@ export function PendingApprovalsPage() {
                   <div>
                     <p className="text-xs text-gray-500">Tip (Customer)</p>
                     <p className="text-sm font-semibold text-gray-900">${ticket.tip_customer.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Tip (Receptionist)</p>
+                    <p className="text-sm font-semibold text-gray-900">${ticket.tip_receptionist.toFixed(2)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Payment</p>
