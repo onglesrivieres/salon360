@@ -46,19 +46,41 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         return;
       }
 
-      const { data: employeeStores, error: storeError } = await supabase
-        .from('employee_stores')
-        .select('store_id')
-        .eq('employee_id', session.employee_id);
+      let employeeStores: any[] = [];
+      let hasMultipleStores = false;
+      let storeId: string | undefined;
 
-      if (storeError || !employeeStores || employeeStores.length === 0) {
-        setPinError('No store found for this employee.');
-        setIsLoading(false);
-        return;
+      if (session.role_permission === 'Admin' || session.role_permission === 'Manager' || session.role_permission === 'Owner') {
+        const { data: allStores, error: allStoresError } = await supabase
+          .from('stores')
+          .select('id')
+          .eq('active', true);
+
+        if (allStoresError || !allStores || allStores.length === 0) {
+          setPinError('No stores available.');
+          setIsLoading(false);
+          return;
+        }
+
+        employeeStores = allStores;
+        hasMultipleStores = allStores.length > 1;
+        storeId = allStores[0].id;
+      } else {
+        const { data: assignedStores, error: storeError } = await supabase
+          .from('employee_stores')
+          .select('store_id')
+          .eq('employee_id', session.employee_id);
+
+        if (storeError || !assignedStores || assignedStores.length === 0) {
+          setPinError('No store found for this employee.');
+          setIsLoading(false);
+          return;
+        }
+
+        employeeStores = assignedStores;
+        hasMultipleStores = assignedStores.length > 1;
+        storeId = assignedStores[0].store_id;
       }
-
-      const hasMultipleStores = employeeStores.length > 1;
-      const storeId = employeeStores[0].store_id;
 
       const { data: employee, error: empError } = await supabase
         .from('employees')
