@@ -1,41 +1,64 @@
 import { useState } from 'react';
 import { Store as StoreIcon, ClipboardCheck, UserCheck, FileText } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
+import { PinModal } from '../components/PinModal';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { authenticateWithPIN, clearSession } from '../lib/auth';
 
 interface HomePageProps {
   onActionSelected: (action: 'checkin' | 'ready' | 'report') => void;
 }
 
 export function HomePage({ onActionSelected }: HomePageProps) {
-  const { session, selectedStoreId } = useAuth();
+  const [showPinModal, setShowPinModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [pinError, setPinError] = useState('');
+  const [authenticatedSession, setAuthenticatedSession] = useState<{
+    employee_id: string;
+    store_id: string;
+  } | null>(null);
 
-  const handleReadyClick = async () => {
-    console.log('Ready button clicked', {
-      hasSession: !!session,
-      employeeId: session?.employee_id,
-      selectedStoreId
-    });
+  const handleReadyClick = () => {
+    setShowPinModal(true);
+    setPinError('');
+  };
 
-    // If not authenticated, trigger the login flow
-    if (!session?.employee_id || !selectedStoreId) {
-      console.log('Not authenticated or no store selected, triggering login flow');
-      onActionSelected('ready');
-      return;
-    }
-
+  const handlePinSubmit = async (pin: string) => {
     setIsLoading(true);
+    setPinError('');
+
     try {
+      const session = await authenticateWithPIN(pin);
+
+      if (!session) {
+        setPinError('Invalid PIN. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Get the first store for this employee
+      const { data: employeeStores, error: storeError } = await supabase
+        .from('employee_stores')
+        .select('store_id')
+        .eq('employee_id', session.employee_id)
+        .limit(1);
+
+      if (storeError || !employeeStores || employeeStores.length === 0) {
+        setPinError('No store found for this employee.');
+        setIsLoading(false);
+        return;
+      }
+
+      const storeId = employeeStores[0].store_id;
+      setAuthenticatedSession({ employee_id: session.employee_id, store_id: storeId });
+
       // Check if already in queue
-      console.log('Checking queue status...');
       const { data: inQueue, error: checkError } = await supabase.rpc('check_queue_status', {
         p_employee_id: session.employee_id,
-        p_store_id: selectedStoreId
+        p_store_id: storeId
       });
 
       if (checkError) {
@@ -43,18 +66,14 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         throw checkError;
       }
 
-      console.log('Queue status:', inQueue);
+      setShowPinModal(false);
 
       if (inQueue) {
-        // Show confirmation modal
-        console.log('Already in queue, showing confirmation modal');
         setShowConfirmModal(true);
       } else {
-        // Join queue
-        console.log('Joining queue...');
         const { error: joinError } = await supabase.rpc('join_ready_queue', {
           p_employee_id: session.employee_id,
-          p_store_id: selectedStoreId
+          p_store_id: storeId
         });
 
         if (joinError) {
@@ -62,13 +81,12 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           throw joinError;
         }
 
-        console.log('Successfully joined queue');
         setSuccessMessage('You have successfully joined the ready queue!');
         setShowSuccessModal(true);
       }
     } catch (error: any) {
       console.error('Queue operation failed:', error);
-      alert('Failed to process request. Please try again.');
+      setPinError('Failed to process request. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -76,16 +94,18 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
   const handleStayInQueue = () => {
     setShowConfirmModal(false);
+    setAuthenticatedSession(null);
+    clearSession();
   };
 
   const handleLeaveQueue = async () => {
-    if (!session?.employee_id || !selectedStoreId) return;
+    if (!authenticatedSession) return;
 
     setIsLoading(true);
     try {
       const { error } = await supabase.rpc('leave_ready_queue', {
-        p_employee_id: session.employee_id,
-        p_store_id: selectedStoreId
+        p_employee_id: authenticatedSession.employee_id,
+        p_store_id: authenticatedSession.store_id
       });
 
       if (error) throw error;
@@ -104,6 +124,14 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   const handleSuccessClose = () => {
     setShowSuccessModal(false);
     setSuccessMessage('');
+    setAuthenticatedSession(null);
+    clearSession();
+  };
+
+  const handlePinModalClose = () => {
+    setShowPinModal(false);
+    setPinError('');
+    setIsLoading(false);
   };
 
   return (
@@ -175,6 +203,16 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           </button>
         </div>
       </div>
+
+      {/* PIN Modal */}
+      <PinModal
+        isOpen={showPinModal}
+        onClose={handlePinModalClose}
+        onSubmit={handlePinSubmit}
+        title="Enter PIN for Ready Queue"
+        isLoading={isLoading}
+        error={pinError}
+      />
 
       {/* Success Modal */}
       <Modal isOpen={showSuccessModal} onClose={handleSuccessClose} title="Success">

@@ -57,14 +57,6 @@ function AppContent() {
     }
   }, [isAuthenticated, session?.employee_id, showWelcome]);
 
-  useEffect(() => {
-    if (isAuthenticated && selectedStoreId && session?.employee_id && selectedAction === 'ready') {
-      // User has completed login for Ready action, show HomePage again
-      sessionStorage.setItem('welcome_shown', 'false');
-      setShowWelcome(true);
-      setSelectedAction(null);
-    }
-  }, [isAuthenticated, selectedStoreId, session?.employee_id, selectedAction]);
 
 
   async function checkStoreAccess() {
@@ -102,6 +94,10 @@ function AppContent() {
 
   if (showWelcome) {
     return <HomePage onActionSelected={(action) => {
+      // Ready action is handled entirely within HomePage (PIN authentication)
+      if (action === 'ready') {
+        return;
+      }
       sessionStorage.setItem('welcome_shown', 'true');
       setSelectedAction(action);
       setShowWelcome(false);
