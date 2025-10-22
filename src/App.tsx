@@ -171,12 +171,18 @@ function AppContent() {
         showToast(`Welcome ${displayName}! You're checked in and in the ready queue.`, 'success');
         console.log(`${displayName} checked in and joined queue`);
       } else {
-        const { error: checkOutError } = await supabase.rpc('check_out_employee', {
+        const { data: checkOutSuccess, error: checkOutError } = await supabase.rpc('check_out_employee', {
           p_employee_id: session.employee_id,
           p_store_id: selectedStoreId
         });
 
         if (checkOutError) throw checkOutError;
+
+        if (!checkOutSuccess) {
+          showToast('No active check-in found', 'error');
+          setSelectedAction(null);
+          return;
+        }
 
         await supabase
           .from('technician_ready_queue')
@@ -187,9 +193,13 @@ function AppContent() {
         showToast(`Goodbye ${displayName}! You've been checked out. See you soon!`, 'success');
         console.log(`${displayName} checked out and removed from queue`);
 
+        setSelectedAction(null);
+
         setTimeout(() => {
           logout();
         }, 2000);
+
+        return;
       }
 
       setSelectedAction(null);
