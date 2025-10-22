@@ -16,7 +16,15 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleReadyClick = async () => {
+    console.log('Ready button clicked', {
+      hasSession: !!session,
+      employeeId: session?.employee_id,
+      selectedStoreId
+    });
+
+    // If not authenticated, trigger the login flow
     if (!session?.employee_id || !selectedStoreId) {
+      console.log('Not authenticated or no store selected, triggering login flow');
       onActionSelected('ready');
       return;
     }
@@ -24,25 +32,37 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     setIsLoading(true);
     try {
       // Check if already in queue
+      console.log('Checking queue status...');
       const { data: inQueue, error: checkError } = await supabase.rpc('check_queue_status', {
         p_employee_id: session.employee_id,
         p_store_id: selectedStoreId
       });
 
-      if (checkError) throw checkError;
+      if (checkError) {
+        console.error('Check queue error:', checkError);
+        throw checkError;
+      }
+
+      console.log('Queue status:', inQueue);
 
       if (inQueue) {
         // Show confirmation modal
+        console.log('Already in queue, showing confirmation modal');
         setShowConfirmModal(true);
       } else {
         // Join queue
+        console.log('Joining queue...');
         const { error: joinError } = await supabase.rpc('join_ready_queue', {
           p_employee_id: session.employee_id,
           p_store_id: selectedStoreId
         });
 
-        if (joinError) throw joinError;
+        if (joinError) {
+          console.error('Join queue error:', joinError);
+          throw joinError;
+        }
 
+        console.log('Successfully joined queue');
         setSuccessMessage('You have successfully joined the ready queue!');
         setShowSuccessModal(true);
       }

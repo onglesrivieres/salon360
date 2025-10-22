@@ -57,6 +57,15 @@ function AppContent() {
     }
   }, [isAuthenticated, session?.employee_id, showWelcome]);
 
+  useEffect(() => {
+    if (isAuthenticated && selectedStoreId && session?.employee_id && selectedAction === 'ready') {
+      // User has completed login for Ready action, show HomePage again
+      sessionStorage.setItem('welcome_shown', 'false');
+      setShowWelcome(true);
+      setSelectedAction(null);
+    }
+  }, [isAuthenticated, selectedStoreId, session?.employee_id, selectedAction]);
+
 
   async function checkStoreAccess() {
     if (!session?.employee_id) return;
@@ -93,10 +102,6 @@ function AppContent() {
 
   if (showWelcome) {
     return <HomePage onActionSelected={(action) => {
-      if (action === 'ready') {
-        // Ready action is handled by HomePage itself
-        return;
-      }
       sessionStorage.setItem('welcome_shown', 'true');
       setSelectedAction(action);
       setShowWelcome(false);
