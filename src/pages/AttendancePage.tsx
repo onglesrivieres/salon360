@@ -74,8 +74,8 @@ export function AttendancePage() {
   }
 
   function getDateRange() {
-    // Bi-weekly payroll periods starting from October 12, 2024 (Saturday)
-    const payrollStartDate = new Date(2024, 9, 13); // October 13, 2024 (Sunday)
+    // Bi-weekly payroll periods starting from October 12, 2024 (Sunday)
+    const payrollStartDate = new Date(2024, 9, 12); // October 12, 2024 (Sunday)
 
     // Normalize dates to midnight for accurate day calculation
     const normalizedCurrent = new Date(currentDate);
