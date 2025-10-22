@@ -3,7 +3,7 @@ import { Layout } from './components/Layout';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginPage } from './pages/LoginPage';
-import { StoreSwitcherPage } from './pages/StoreSwitcherPage';
+import { HomePage } from './pages/HomePage';
 import { TicketsPage } from './pages/TicketsPage';
 
 const EndOfDayPage = lazy(() => import('./pages/EndOfDayPage').then(m => ({ default: m.EndOfDayPage })));
@@ -13,7 +13,7 @@ const ServicesPage = lazy(() => import('./pages/ServicesPage').then(m => ({ defa
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const PendingApprovalsPage = lazy(() => import('./pages/PendingApprovalsPage').then(m => ({ default: m.PendingApprovalsPage })));
 
-type Page = 'tickets' | 'eod' | 'attendance' | 'technicians' | 'services' | 'settings' | 'approvals';
+type Page = 'home' | 'tickets' | 'eod' | 'attendance' | 'technicians' | 'services' | 'settings' | 'approvals';
 
 function AppContent() {
   const { isAuthenticated, selectedStoreId, session } = useAuth();
@@ -41,11 +41,11 @@ function AppContent() {
   }
 
   if (!selectedStoreId) {
-    return <StoreSwitcherPage onStoreSelected={(action) => {
+    return <HomePage onActionSelected={(action) => {
       if (action === 'report') {
         setCurrentPage('eod');
       } else {
-        // Set page based on user role after store selection
+        // Set page based on user role after action selection
         setCurrentPage(getDefaultPage());
       }
     }} />;
@@ -58,6 +58,11 @@ function AppContent() {
           <div className="text-gray-500">Loading...</div>
         </div>
       }>
+        {currentPage === 'home' && <HomePage onActionSelected={(action) => {
+          if (action === 'report') {
+            setCurrentPage('eod');
+          }
+        }} />}
         {currentPage === 'tickets' && <TicketsPage selectedDate={selectedDate} onDateChange={setSelectedDate} />}
         {currentPage === 'approvals' && <PendingApprovalsPage />}
         {currentPage === 'eod' && <EndOfDayPage selectedDate={selectedDate} onDateChange={setSelectedDate} />}

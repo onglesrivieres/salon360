@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Receipt, Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle } from 'lucide-react';
+import { Receipt, Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
 import { supabase, Store } from '../lib/supabase';
@@ -9,8 +9,8 @@ import { NotificationBadge } from './ui/NotificationBadge';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentPage: 'tickets' | 'eod' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals';
-  onNavigate: (page: 'tickets' | 'eod' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals') => void;
+  currentPage: 'home' | 'tickets' | 'eod' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals';
+  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals') => void;
 }
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
@@ -133,6 +133,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   }
 
   const navItems = [
+    { id: 'home' as const, label: 'Home', icon: Home },
     { id: 'tickets' as const, label: t('nav.tickets'), icon: Receipt },
     { id: 'approvals' as const, label: 'Approvals', icon: CheckCircle, badge: pendingApprovalsCount },
     { id: 'eod' as const, label: t('nav.eod'), icon: DollarSign },
