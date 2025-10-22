@@ -4,11 +4,16 @@ import { authenticateWithPIN } from '../lib/auth';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { LanguageSelector } from '../components/LanguageSelector';
+import { supabase } from '../lib/supabase';
 
-export function LoginPage() {
+interface LoginPageProps {
+  selectedAction?: 'checkin' | 'ready' | 'report' | null;
+}
+
+export function LoginPage({ selectedAction }: LoginPageProps) {
   const [pin, setPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, t } = useAuth();
+  const { login, t, selectedStoreId } = useAuth();
   const { showToast } = useToast();
 
   const handleNumberClick = async (num: string) => {
@@ -30,6 +35,10 @@ export function LoginPage() {
 
       if (session) {
         login(session);
+
+        if (selectedAction === 'ready') {
+          await joinReadyQueue(session.employee_id);
+        }
       } else {
         showToast(t('auth.invalidPIN'), 'error');
         setPin('');
@@ -39,6 +48,41 @@ export function LoginPage() {
       setPin('');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const joinReadyQueue = async (employeeId: string) => {
+    if (!selectedStoreId) {
+      const savedStoreId = sessionStorage.getItem('selected_store_id');
+      if (!savedStoreId) return;
+
+      try {
+        const { error } = await supabase.rpc('join_ready_queue', {
+          p_employee_id: employeeId,
+          p_store_id: savedStoreId
+        });
+
+        if (error) throw error;
+
+        showToast("You're now in the ready queue!", 'success');
+      } catch (error: any) {
+        console.error('Failed to join queue:', error);
+        showToast('Failed to join ready queue', 'error');
+      }
+    } else {
+      try {
+        const { error } = await supabase.rpc('join_ready_queue', {
+          p_employee_id: employeeId,
+          p_store_id: selectedStoreId
+        });
+
+        if (error) throw error;
+
+        showToast("You're now in the ready queue!", 'success');
+      } catch (error: any) {
+        console.error('Failed to join queue:', error);
+        showToast('Failed to join ready queue', 'error');
+      }
     }
   };
 

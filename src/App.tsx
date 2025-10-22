@@ -98,7 +98,7 @@ function AppContent() {
   }
 
   if (!isAuthenticated) {
-    return <LoginPage />;
+    return <LoginPage selectedAction={selectedAction} />;
   }
 
   if (needsStoreSelection && !selectedStoreId) {
