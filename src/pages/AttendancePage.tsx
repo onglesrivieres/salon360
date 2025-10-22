@@ -76,24 +76,21 @@ export function AttendancePage() {
   function getDateRange() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    const day = currentDate.getDate();
-    const dayOfWeek = currentDate.getDay();
-    const startOfWeek = new Date(year, month, day - dayOfWeek);
-    const endOfWeek = new Date(year, month, day - dayOfWeek + 6);
-    const startDate = startOfWeek.toISOString().split('T')[0];
-    const endDate = endOfWeek.toISOString().split('T')[0];
+    const startOfMonth = new Date(year, month, 1);
+    const endOfMonth = new Date(year, month + 1, 0);
+    const startDate = startOfMonth.toISOString().split('T')[0];
+    const endDate = endOfMonth.toISOString().split('T')[0];
     return { startDate, endDate };
   }
 
   function getCalendarDays() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    const day = currentDate.getDate();
-    const dayOfWeek = currentDate.getDay();
     const days: Date[] = [];
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    for (let i = 0; i < 7; i++) {
-      days.push(new Date(year, month, day - dayOfWeek + i));
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(new Date(year, month, i));
     }
 
     return days;
@@ -140,13 +137,13 @@ export function AttendancePage() {
 
   function navigatePrevious() {
     const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() - 7);
+    newDate.setMonth(newDate.getMonth() - 1);
     setCurrentDate(newDate);
   }
 
   function navigateNext() {
     const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() + 7);
+    newDate.setMonth(newDate.getMonth() + 1);
     setCurrentDate(newDate);
   }
 
@@ -205,7 +202,7 @@ export function AttendancePage() {
 
   const calendarDays = getCalendarDays();
   const summary = processAttendanceData();
-  const weekRange = `${calendarDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${calendarDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  const monthRange = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   if (session && session.role && !Permissions.endOfDay.canView(session.role)) {
     return (
@@ -218,9 +215,9 @@ export function AttendancePage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="mb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-        <h2 className="text-base md:text-lg font-bold text-gray-900">Attendance Tracking</h2>
+    <div className="w-full max-w-full mx-auto px-2">
+      <div className="mb-2 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+        <h2 className="text-sm md:text-base font-bold text-gray-900">Attendance Tracking</h2>
         {session && session.role && Permissions.endOfDay.canExport(session.role) && (
           <Button variant="secondary" size="sm" onClick={exportCSV}>
             <Download className="w-3 h-3 mr-1" />
@@ -229,14 +226,14 @@ export function AttendancePage() {
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow mb-4">
-        <div className="p-3 md:p-4 border-b border-gray-200 flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="bg-white rounded-lg shadow mb-2">
+        <div className="p-2 border-b border-gray-200 flex flex-col md:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={navigatePrevious} className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0">
               <ChevronLeft className="w-5 h-5 md:w-4 md:h-4" />
             </Button>
             <h3 className="text-sm md:text-base font-semibold text-gray-900 min-w-[200px] text-center">
-              {weekRange}
+              {monthRange}
             </h3>
             <Button variant="ghost" size="sm" onClick={navigateNext} className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0">
               <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
@@ -261,7 +258,7 @@ export function AttendancePage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left p-3 text-sm font-semibold text-gray-900 sticky left-0 bg-white z-10">
+                  <th className="text-left p-1.5 text-xs font-semibold text-gray-900 sticky left-0 bg-white z-10 min-w-[80px]">
                     Employee
                   </th>
                   {calendarDays.map((day, index) => {
@@ -269,26 +266,26 @@ export function AttendancePage() {
                     return (
                       <th
                         key={index}
-                        className={`text-center p-3 text-sm font-semibold min-w-[120px] ${
+                        className={`text-center p-1 text-xs font-semibold min-w-[60px] ${
                           isToday
                             ? 'bg-blue-50 text-blue-700'
                             : 'text-gray-900'
                         }`}
                       >
-                        <div>{day.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                        <div className="text-lg">{day.getDate()}</div>
+                        <div className="text-xs">{day.toLocaleDateString('en-US', { weekday: 'narrow' })}</div>
+                        <div className="text-sm font-bold">{day.getDate()}</div>
                       </th>
                     );
                   })}
-                  <th className="text-right p-3 text-sm font-semibold text-gray-900 sticky right-0 bg-white z-10">
-                    Total Hours
+                  <th className="text-right p-1.5 text-xs font-semibold text-gray-900 sticky right-0 bg-white z-10 min-w-[60px]">
+                    Total
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {Object.entries(summary).map(([employeeId, employee]) => (
                   <tr key={employeeId} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="p-3 text-sm font-medium text-gray-900 sticky left-0 bg-white">
+                    <td className="p-1.5 text-xs font-medium text-gray-900 sticky left-0 bg-white">
                       {employee.employeeName}
                     </td>
                     {calendarDays.map((day, index) => {
@@ -299,21 +296,21 @@ export function AttendancePage() {
                       return (
                         <td
                           key={index}
-                          className={`p-2 text-center ${
+                          className={`p-0.5 text-center align-top ${
                             isToday ? 'bg-blue-50' : ''
                           }`}
                         >
                           {sessions && sessions.length > 0 ? (
-                            <div className="space-y-2">
+                            <div className="space-y-1">
                               {sessions.map((record, sessionIdx) => (
-                                <div key={sessionIdx} className="relative group border border-gray-200 rounded p-2">
-                                  <div className="space-y-1">
+                                <div key={sessionIdx} className="relative group border border-gray-200 rounded p-1">
+                                  <div className="space-y-0.5">
                                     {sessions.length > 1 && (
-                                      <div className="text-xs font-semibold text-gray-500">
-                                        Session {sessionIdx + 1}
+                                      <div className="text-[10px] font-semibold text-gray-500">
+                                        S{sessionIdx + 1}
                                       </div>
                                     )}
-                                    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                                    <div className={`inline-flex items-center justify-center gap-0.5 px-1 py-0.5 rounded text-[10px] ${
                                       record.status === 'checked_in'
                                         ? 'bg-green-100 text-green-700'
                                         : record.status === 'checked_out'
@@ -321,32 +318,32 @@ export function AttendancePage() {
                                         : 'bg-orange-100 text-orange-700'
                                     }`}>
                                       {record.status === 'checked_in' ? (
-                                        <Clock className="w-3 h-3" />
+                                        <Clock className="w-2 h-2" />
                                       ) : record.status === 'checked_out' ? (
-                                        <CheckCircle className="w-3 h-3" />
+                                        <CheckCircle className="w-2 h-2" />
                                       ) : (
-                                        <XCircle className="w-3 h-3" />
+                                        <XCircle className="w-2 h-2" />
                                       )}
-                                      {record.status === 'checked_in' ? 'Active' : 'Done'}
+                                      <span className="hidden sm:inline">{record.status === 'checked_in' ? 'In' : 'Out'}</span>
                                     </div>
-                                    <div className="text-xs text-gray-600">
+                                    <div className="text-[10px] text-gray-600">
                                       {new Date(record.checkInTime).toLocaleTimeString('en-US', {
                                         hour: 'numeric',
                                         minute: '2-digit',
-                                        hour12: true
+                                        hour12: false
                                       })}
                                     </div>
                                     {record.checkOutTime && (
-                                      <div className="text-xs text-gray-600">
+                                      <div className="text-[10px] text-gray-600">
                                         {new Date(record.checkOutTime).toLocaleTimeString('en-US', {
                                           hour: 'numeric',
                                           minute: '2-digit',
-                                          hour12: true
+                                          hour12: false
                                         })}
                                       </div>
                                     )}
                                     {record.totalHours && (
-                                      <div className="text-xs font-semibold text-gray-900">
+                                      <div className="text-[10px] font-semibold text-gray-900">
                                         {record.totalHours.toFixed(1)}h
                                       </div>
                                     )}
@@ -361,9 +358,9 @@ export function AttendancePage() {
                                   });
                                   setCommentModalOpen(true);
                                       }}
-                                      className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-600"
+                                      className="mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-600"
                                     >
-                                      <MessageSquare className="w-4 h-4 mx-auto" />
+                                      <MessageSquare className="w-3 h-3 mx-auto" />
                                     </button>
                                   )}
                                 </div>
@@ -375,10 +372,10 @@ export function AttendancePage() {
                         </td>
                       );
                     })}
-                    <td className="p-3 text-right text-sm font-bold text-gray-900 sticky right-0 bg-white">
-                      {employee.totalHours.toFixed(1)}h
-                      <div className="text-xs font-normal text-gray-500">
-                        {employee.daysPresent} days
+                    <td className="p-1.5 text-right text-xs font-bold text-gray-900 sticky right-0 bg-white">
+                      <div>{employee.totalHours.toFixed(1)}h</div>
+                      <div className="text-[10px] font-normal text-gray-500">
+                        {employee.daysPresent}d
                       </div>
                     </td>
                   </tr>
