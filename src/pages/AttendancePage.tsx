@@ -74,8 +74,8 @@ export function AttendancePage() {
   }
 
   function getDateRange() {
-    // Bi-weekly payroll periods starting from October 12, 2024 (Sunday)
-    const payrollStartDate = new Date(2024, 9, 12); // October 12, 2024 (Sunday)
+    // Bi-weekly payroll periods starting from October 12, 2024 (Saturday)
+    const payrollStartDate = new Date(2024, 9, 12); // October 12, 2024
 
     // Normalize dates to midnight for accurate day calculation
     const normalizedCurrent = new Date(currentDate);
@@ -93,8 +93,16 @@ export function AttendancePage() {
     const periodEnd = new Date(periodStart);
     periodEnd.setDate(periodEnd.getDate() + 13); // 14 days total (0-13)
 
-    const startDate = periodStart.toISOString().split('T')[0];
-    const endDate = periodEnd.toISOString().split('T')[0];
+    // Use local date formatting to avoid timezone conversion
+    const formatLocalDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const startDate = formatLocalDate(periodStart);
+    const endDate = formatLocalDate(periodEnd);
     return { startDate, endDate };
   }
 
