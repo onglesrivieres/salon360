@@ -35,12 +35,13 @@ function AppContent() {
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
   );
+  const [hasEnteredApp, setHasEnteredApp] = useState(false);
 
   if (!isAuthenticated) {
     return <LoginPage />;
   }
 
-  if (!selectedStoreId) {
+  if (!hasEnteredApp) {
     return <HomePage onActionSelected={(action) => {
       if (action === 'report') {
         setCurrentPage('eod');
@@ -48,11 +49,21 @@ function AppContent() {
         // Set page based on user role after action selection
         setCurrentPage(getDefaultPage());
       }
+      setHasEnteredApp(true);
     }} />;
   }
 
   return (
-    <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
+    <Layout
+      currentPage={currentPage}
+      onNavigate={(page) => {
+        if (page === 'home') {
+          setHasEnteredApp(false);
+        } else {
+          setCurrentPage(page);
+        }
+      }}
+    >
       <Suspense fallback={
         <div className="flex items-center justify-center h-64">
           <div className="text-gray-500">Loading...</div>
