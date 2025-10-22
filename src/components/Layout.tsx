@@ -3,7 +3,6 @@ import { Receipt, Users, Briefcase, DollarSign, LogOut, Settings, Store as Store
 import { useAuth } from '../contexts/AuthContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
 import { supabase, Store } from '../lib/supabase';
-import { LanguageSelector } from './LanguageSelector';
 import { DeviceToggle } from './DeviceToggle';
 import { NotificationBadge } from './ui/NotificationBadge';
 
@@ -226,7 +225,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             <div className="flex items-center gap-2 md:gap-3">
               <div className="hidden md:flex md:items-center md:gap-2">
                 <DeviceToggle />
-                <LanguageSelector />
               </div>
               {session && session.role && Permissions.employees.canView(session.role) && (
                 <button
@@ -290,9 +288,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               })}
             </ul>
             <div className="md:hidden mt-4 pt-4 border-t border-gray-200 px-2">
-              <div className="mb-3 space-y-2">
+              <div className="mb-3">
                 <DeviceToggle />
-                <LanguageSelector />
               </div>
               {session && session.role && Permissions.employees.canView(session.role) && (
                 <button

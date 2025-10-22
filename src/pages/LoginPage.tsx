@@ -3,7 +3,6 @@ import { Lock, Delete, ArrowLeft } from 'lucide-react';
 import { authenticateWithPIN } from '../lib/auth';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/Toast';
-import { LanguageSelector } from '../components/LanguageSelector';
 import { supabase } from '../lib/supabase';
 
 interface LoginPageProps {
@@ -196,10 +195,6 @@ export function LoginPage({ selectedAction, onCheckOutComplete, onBack }: LoginP
       onKeyDown={handleKeyPress}
       tabIndex={0}
     >
-      <div className="absolute top-4 right-4">
-        <LanguageSelector />
-      </div>
-
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">

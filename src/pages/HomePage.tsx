@@ -2,14 +2,17 @@ import { useState } from 'react';
 import { Store as StoreIcon, ClipboardCheck, UserCheck, FileText } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { PinModal } from '../components/PinModal';
+import { LanguageSelector } from '../components/LanguageSelector';
+import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { authenticateWithPIN, clearSession } from '../lib/auth';
+import { authenticateWithPIN } from '../lib/auth';
 
 interface HomePageProps {
   onActionSelected: (action: 'checkin' | 'ready' | 'report') => void;
 }
 
 export function HomePage({ onActionSelected }: HomePageProps) {
+  const { logout } = useAuth();
   const [showPinModal, setShowPinModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -92,11 +95,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     }
   };
 
-  const handleStayInQueue = () => {
-    setShowConfirmModal(false);
-    setAuthenticatedSession(null);
-    clearSession();
-  };
 
   const handleLeaveQueue = async () => {
     if (!authenticatedSession) return;
@@ -125,7 +123,13 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     setShowSuccessModal(false);
     setSuccessMessage('');
     setAuthenticatedSession(null);
-    clearSession();
+    logout();
+  };
+
+  const handleStayInQueue = () => {
+    setShowConfirmModal(false);
+    setAuthenticatedSession(null);
+    logout();
   };
 
   const handlePinModalClose = () => {
@@ -136,6 +140,9 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-3 sm:p-4">
+      <div className="absolute top-4 right-4">
+        <LanguageSelector />
+      </div>
       <div className="w-full max-w-3xl">
         <div className="text-center mb-6 sm:mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-blue-600 rounded-full mb-3 sm:mb-4 shadow-lg">

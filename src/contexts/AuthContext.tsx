@@ -105,6 +105,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearSession();
     sessionStorage.removeItem('selected_store_id');
     sessionStorage.removeItem('welcome_shown');
+    localStorage.removeItem(LOCALE_KEY);
+    const deviceLocale = getDeviceLocale();
+    setLocaleState(deviceLocale);
     setSession(null);
     setSelectedStoreId(null);
   };
