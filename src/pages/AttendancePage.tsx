@@ -110,8 +110,13 @@ export function AttendancePage() {
 
   function getCalendarDays() {
     const { startDate, endDate } = getDateRange();
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+
+    // Parse dates properly to avoid timezone issues
+    const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+    const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+
+    const start = new Date(startYear, startMonth - 1, startDay);
+    const end = new Date(endYear, endMonth - 1, endDay);
     const days: Date[] = [];
 
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
@@ -228,7 +233,14 @@ export function AttendancePage() {
   const calendarDays = getCalendarDays();
   const summary = processAttendanceData();
   const { startDate, endDate } = getDateRange();
-  const periodRange = `${new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+  // Parse dates properly to avoid timezone issues
+  const parseLocalDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const periodRange = `${parseLocalDate(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${parseLocalDate(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
   if (session && session.role && !Permissions.endOfDay.canView(session.role)) {
     return (
