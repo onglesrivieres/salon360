@@ -7,18 +7,20 @@ import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { AttendanceCommentModal } from '../components/AttendanceCommentModal';
 
+interface AttendanceSession {
+  attendanceRecordId: string;
+  checkInTime: string;
+  checkOutTime?: string;
+  totalHours?: number;
+  status: string;
+}
+
 interface AttendanceSummary {
   [employeeId: string]: {
     employeeName: string;
     payType: string;
     dates: {
-      [date: string]: {
-        attendanceRecordId: string;
-        checkInTime: string;
-        checkOutTime?: string;
-        totalHours?: number;
-        status: string;
-      };
+      [date: string]: AttendanceSession[];
     };
     totalHours: number;
     daysPresent: number;
@@ -111,18 +113,26 @@ export function AttendancePage() {
         };
       }
 
-      summary[record.employee_id].dates[record.work_date] = {
+      if (!summary[record.employee_id].dates[record.work_date]) {
+        summary[record.employee_id].dates[record.work_date] = [];
+      }
+
+      summary[record.employee_id].dates[record.work_date].push({
         attendanceRecordId: record.attendance_record_id,
         checkInTime: record.check_in_time,
         checkOutTime: record.check_out_time,
         totalHours: record.total_hours,
         status: record.status
-      };
+      });
 
       if (record.total_hours) {
         summary[record.employee_id].totalHours += record.total_hours;
       }
-      summary[record.employee_id].daysPresent += 1;
+    });
+
+    // Calculate days present (unique dates)
+    Object.values(summary).forEach(employee => {
+      employee.daysPresent = Object.keys(employee.dates).length;
     });
 
     return summary;
@@ -152,29 +162,31 @@ export function AttendancePage() {
     const rows: string[][] = [];
 
     Object.values(summary).forEach((employee) => {
-      Object.entries(employee.dates).forEach(([date, record]) => {
-        const checkIn = new Date(record.checkInTime).toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        });
-        const checkOut = record.checkOutTime
-          ? new Date(record.checkOutTime).toLocaleTimeString('en-US', {
-              hour: 'numeric',
-              minute: '2-digit',
-              hour12: true
-            })
-          : '';
-        const hours = record.totalHours ? record.totalHours.toFixed(2) : '';
+      Object.entries(employee.dates).forEach(([date, sessions]) => {
+        sessions.forEach((record) => {
+          const checkIn = new Date(record.checkInTime).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          });
+          const checkOut = record.checkOutTime
+            ? new Date(record.checkOutTime).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+              })
+            : '';
+          const hours = record.totalHours ? record.totalHours.toFixed(2) : '';
 
-        rows.push([
-          employee.employeeName,
+          rows.push([
+            employee.employeeName,
           date,
           checkIn,
           checkOut,
           hours,
           record.status
-        ]);
+          ]);
+        });
       });
     });
 
@@ -281,7 +293,7 @@ export function AttendancePage() {
                     </td>
                     {calendarDays.map((day, index) => {
                       const dateStr = day.toISOString().split('T')[0];
-                      const record = employee.dates[dateStr];
+                      const sessions = employee.dates[dateStr];
                       const isToday = day.toDateString() === new Date().toDateString();
 
                       return (
@@ -291,62 +303,71 @@ export function AttendancePage() {
                             isToday ? 'bg-blue-50' : ''
                           }`}
                         >
-                          {record ? (
-                            <div className="relative group">
-                            <div className="space-y-1">
-                              <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
-                                record.status === 'checked_in'
-                                  ? 'bg-green-100 text-green-700'
-                                  : record.status === 'checked_out'
-                                  ? 'bg-gray-100 text-gray-700'
-                                  : 'bg-orange-100 text-orange-700'
-                              }`}>
-                                {record.status === 'checked_in' ? (
-                                  <Clock className="w-3 h-3" />
-                                ) : record.status === 'checked_out' ? (
-                                  <CheckCircle className="w-3 h-3" />
-                                ) : (
-                                  <XCircle className="w-3 h-3" />
-                                )}
-                                {record.status === 'checked_in' ? 'Active' : 'Done'}
-                              </div>
-                              <div className="text-xs text-gray-600">
-                                {new Date(record.checkInTime).toLocaleTimeString('en-US', {
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                  hour12: true
-                                })}
-                              </div>
-                              {record.checkOutTime && (
-                                <div className="text-xs text-gray-600">
-                                  {new Date(record.checkOutTime).toLocaleTimeString('en-US', {
-                                    hour: 'numeric',
-                                    minute: '2-digit',
-                                    hour12: true
-                                  })}
-                                </div>
-                              )}
-                              {record.totalHours && (
-                                <div className="text-xs font-semibold text-gray-900">
-                                  {record.totalHours.toFixed(1)}h
-                                </div>
-                              )}
-                            </div>
-                            {session && session.role && Permissions.attendance.canComment(session.role) && (
-                              <button
-                                onClick={() => {
+                          {sessions && sessions.length > 0 ? (
+                            <div className="space-y-2">
+                              {sessions.map((record, sessionIdx) => (
+                                <div key={sessionIdx} className="relative group border border-gray-200 rounded p-2">
+                                  <div className="space-y-1">
+                                    {sessions.length > 1 && (
+                                      <div className="text-xs font-semibold text-gray-500">
+                                        Session {sessionIdx + 1}
+                                      </div>
+                                    )}
+                                    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                                      record.status === 'checked_in'
+                                        ? 'bg-green-100 text-green-700'
+                                        : record.status === 'checked_out'
+                                        ? 'bg-gray-100 text-gray-700'
+                                        : 'bg-orange-100 text-orange-700'
+                                    }`}>
+                                      {record.status === 'checked_in' ? (
+                                        <Clock className="w-3 h-3" />
+                                      ) : record.status === 'checked_out' ? (
+                                        <CheckCircle className="w-3 h-3" />
+                                      ) : (
+                                        <XCircle className="w-3 h-3" />
+                                      )}
+                                      {record.status === 'checked_in' ? 'Active' : 'Done'}
+                                    </div>
+                                    <div className="text-xs text-gray-600">
+                                      {new Date(record.checkInTime).toLocaleTimeString('en-US', {
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                        hour12: true
+                                      })}
+                                    </div>
+                                    {record.checkOutTime && (
+                                      <div className="text-xs text-gray-600">
+                                        {new Date(record.checkOutTime).toLocaleTimeString('en-US', {
+                                          hour: 'numeric',
+                                          minute: '2-digit',
+                                          hour12: true
+                                        })}
+                                      </div>
+                                    )}
+                                    {record.totalHours && (
+                                      <div className="text-xs font-semibold text-gray-900">
+                                        {record.totalHours.toFixed(1)}h
+                                      </div>
+                                    )}
+                                  </div>
+                                  {session && session.role && Permissions.attendance.canComment(session.role) && (
+                                    <button
+                                      onClick={() => {
                                   setSelectedAttendance({
                                     employeeName: employee.employeeName,
                                     workDate: dateStr,
                                     attendanceRecordId: record.attendanceRecordId,
                                   });
                                   setCommentModalOpen(true);
-                                }}
-                                className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-600"
-                              >
-                                <MessageSquare className="w-4 h-4 mx-auto" />
-                              </button>
-                            )}
+                                      }}
+                                      className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-600"
+                                    >
+                                      <MessageSquare className="w-4 h-4 mx-auto" />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           ) : (
                             <div className="text-gray-300">-</div>
