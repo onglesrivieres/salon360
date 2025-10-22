@@ -124,7 +124,14 @@ function AppContent() {
   }
 
   if (!isAuthenticated) {
-    return <LoginPage selectedAction={selectedAction} />;
+    return <LoginPage
+      selectedAction={selectedAction}
+      onCheckOutComplete={() => {
+        sessionStorage.setItem('welcome_shown', 'false');
+        setShowWelcome(true);
+        setSelectedAction(null);
+      }}
+    />;
   }
 
   if (needsStoreSelection && !selectedStoreId) {

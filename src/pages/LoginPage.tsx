@@ -8,9 +8,10 @@ import { supabase } from '../lib/supabase';
 
 interface LoginPageProps {
   selectedAction?: 'checkin' | 'ready' | 'report' | null;
+  onCheckOutComplete?: () => void;
 }
 
-export function LoginPage({ selectedAction }: LoginPageProps) {
+export function LoginPage({ selectedAction, onCheckOutComplete }: LoginPageProps) {
   const [pin, setPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login, t, selectedStoreId } = useAuth();
@@ -119,14 +120,24 @@ export function LoginPage({ selectedAction }: LoginPageProps) {
           return;
         }
 
-        await supabase
+        const { error: deleteError } = await supabase
           .from('technician_ready_queue')
           .delete()
           .eq('employee_id', session.employee_id)
           .eq('store_id', storeId);
 
+        if (deleteError) {
+          console.error('Failed to remove from queue:', deleteError);
+        }
+
         showToast(`Goodbye ${displayName}! You've been checked out. See you soon!`, 'success');
         console.log(`${displayName} checked out and removed from queue`);
+
+        setTimeout(() => {
+          if (onCheckOutComplete) {
+            onCheckOutComplete();
+          }
+        }, 2000);
       }
     } catch (error: any) {
       console.error('Check-in/out failed:', error);
