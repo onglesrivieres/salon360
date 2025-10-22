@@ -57,13 +57,6 @@ function AppContent() {
     }
   }, [isAuthenticated, session?.employee_id, showWelcome]);
 
-  useEffect(() => {
-    if (isAuthenticated && selectedStoreId && session?.employee_id) {
-      if (selectedAction === 'ready') {
-        joinReadyQueue();
-      }
-    }
-  }, [isAuthenticated, selectedStoreId, selectedAction, session?.employee_id]);
 
   async function checkStoreAccess() {
     if (!session?.employee_id) return;
@@ -97,26 +90,13 @@ function AppContent() {
     }
   }
 
-  async function joinReadyQueue() {
-    if (!session?.employee_id || !selectedStoreId) return;
-
-    try {
-      const { error } = await supabase.rpc('join_ready_queue', {
-        p_employee_id: session.employee_id,
-        p_store_id: selectedStoreId
-      });
-
-      if (error) throw error;
-
-      console.log('Successfully joined ready queue');
-      setSelectedAction(null);
-    } catch (error: any) {
-      console.error('Failed to join queue:', error);
-    }
-  }
 
   if (showWelcome) {
     return <HomePage onActionSelected={(action) => {
+      if (action === 'ready') {
+        // Ready action is handled by HomePage itself
+        return;
+      }
       sessionStorage.setItem('welcome_shown', 'true');
       setSelectedAction(action);
       setShowWelcome(false);

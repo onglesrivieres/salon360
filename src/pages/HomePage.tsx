@@ -1,10 +1,91 @@
+import { useState } from 'react';
 import { Store as StoreIcon, ClipboardCheck, UserCheck, FileText } from 'lucide-react';
+import { Modal } from '../components/ui/Modal';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 interface HomePageProps {
   onActionSelected: (action: 'checkin' | 'ready' | 'report') => void;
 }
 
 export function HomePage({ onActionSelected }: HomePageProps) {
+  const { session, selectedStoreId } = useAuth();
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleReadyClick = async () => {
+    if (!session?.employee_id || !selectedStoreId) {
+      onActionSelected('ready');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Check if already in queue
+      const { data: inQueue, error: checkError } = await supabase.rpc('check_queue_status', {
+        p_employee_id: session.employee_id,
+        p_store_id: selectedStoreId
+      });
+
+      if (checkError) throw checkError;
+
+      if (inQueue) {
+        // Show confirmation modal
+        setShowConfirmModal(true);
+      } else {
+        // Join queue
+        const { error: joinError } = await supabase.rpc('join_ready_queue', {
+          p_employee_id: session.employee_id,
+          p_store_id: selectedStoreId
+        });
+
+        if (joinError) throw joinError;
+
+        setSuccessMessage('You have successfully joined the ready queue!');
+        setShowSuccessModal(true);
+      }
+    } catch (error: any) {
+      console.error('Queue operation failed:', error);
+      alert('Failed to process request. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStayInQueue = () => {
+    setShowConfirmModal(false);
+  };
+
+  const handleLeaveQueue = async () => {
+    if (!session?.employee_id || !selectedStoreId) return;
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.rpc('leave_ready_queue', {
+        p_employee_id: session.employee_id,
+        p_store_id: selectedStoreId
+      });
+
+      if (error) throw error;
+
+      setShowConfirmModal(false);
+      setSuccessMessage('You have left the ready queue.');
+      setShowSuccessModal(true);
+    } catch (error: any) {
+      console.error('Failed to leave queue:', error);
+      alert('Failed to leave queue. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSuccessClose = () => {
+    setShowSuccessModal(false);
+    setSuccessMessage('');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-3 sm:p-4">
       <div className="w-full max-w-3xl">
@@ -39,8 +120,9 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           </button>
 
           <button
-            onClick={() => onActionSelected('ready')}
-            className="bg-white rounded-xl p-5 sm:p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform active:scale-95"
+            onClick={handleReadyClick}
+            disabled={isLoading}
+            className="bg-white rounded-xl p-5 sm:p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="flex flex-col items-center text-center">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-blue-100 flex items-center justify-center mb-2 sm:mb-3">
@@ -73,6 +155,45 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           </button>
         </div>
       </div>
+
+      {/* Success Modal */}
+      <Modal isOpen={showSuccessModal} onClose={handleSuccessClose} title="Success">
+        <div className="text-center py-4">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <ClipboardCheck className="w-8 h-8 text-green-600" />
+          </div>
+          <p className="text-lg text-gray-900 mb-6">{successMessage}</p>
+          <button
+            onClick={handleSuccessClose}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            OK
+          </button>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal isOpen={showConfirmModal} onClose={() => setShowConfirmModal(false)} title="Queue Status">
+        <div className="text-center py-4">
+          <p className="text-lg text-gray-900 mb-6">You are already in the ready queue. What would you like to do?</p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={handleStayInQueue}
+              disabled={isLoading}
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+            >
+              Stay in Queue
+            </button>
+            <button
+              onClick={handleLeaveQueue}
+              disabled={isLoading}
+              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              Leave Queue
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
