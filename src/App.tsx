@@ -93,19 +93,35 @@ function AppContent() {
 
 
   if (showWelcome) {
-    return <HomePage onActionSelected={(action, session, storeId) => {
+    return <HomePage onActionSelected={(action, session, storeId, hasMultipleStores) => {
       // Check-in and Ready actions are handled entirely within HomePage
       if (action === 'checkin' || action === 'ready') {
         return;
       }
 
       // Report action needs to redirect to app
-      if (action === 'report' && session && storeId) {
+      if (action === 'report' && session) {
         sessionStorage.setItem('welcome_shown', 'true');
-        selectStore(storeId);
         login(session);
         setSelectedAction(action);
         setShowWelcome(false);
+
+        // If user has multiple stores, check for previously selected store
+        if (hasMultipleStores) {
+          const previouslySelectedStore = sessionStorage.getItem('selected_store_id');
+          if (previouslySelectedStore) {
+            selectStore(previouslySelectedStore);
+            setNeedsStoreSelection(false);
+          } else {
+            setNeedsStoreSelection(true);
+          }
+        } else {
+          // Single store - select it directly
+          if (storeId) {
+            selectStore(storeId);
+          }
+          setNeedsStoreSelection(false);
+        }
       }
     }} />;
   }

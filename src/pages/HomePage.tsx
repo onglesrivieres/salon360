@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase';
 import { authenticateWithPIN } from '../lib/auth';
 
 interface HomePageProps {
-  onActionSelected: (action: 'checkin' | 'ready' | 'report', session?: any, storeId?: string) => void;
+  onActionSelected: (action: 'checkin' | 'ready' | 'report', session?: any, storeId?: string, hasMultipleStores?: boolean) => void;
 }
 
 export function HomePage({ onActionSelected }: HomePageProps) {
@@ -49,8 +49,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       const { data: employeeStores, error: storeError } = await supabase
         .from('employee_stores')
         .select('store_id')
-        .eq('employee_id', session.employee_id)
-        .limit(1);
+        .eq('employee_id', session.employee_id);
 
       if (storeError || !employeeStores || employeeStores.length === 0) {
         setPinError('No store found for this employee.');
@@ -58,6 +57,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         return;
       }
 
+      const hasMultipleStores = employeeStores.length > 1;
       const storeId = employeeStores[0].store_id;
 
       const { data: employee, error: empError } = await supabase
@@ -85,7 +85,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       } else if (selectedAction === 'ready') {
         await handleReady(session.employee_id, storeId);
       } else if (selectedAction === 'report') {
-        onActionSelected('report', session, storeId);
+        onActionSelected('report', session, storeId, hasMultipleStores);
       }
     } catch (error: any) {
       console.error('Authentication failed:', error);
