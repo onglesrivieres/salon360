@@ -75,6 +75,11 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       }
 
       setStores(availableStores);
+
+      // Automatically select the store if there's only one
+      if (availableStores.length === 1 && !selectedStoreId) {
+        selectStore(availableStores[0].id);
+      }
     } catch (error) {
       showToast(t('messages.failed'), 'error');
     } finally {
@@ -107,7 +112,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
             </p>
           )}
 
-          {stores.length > 0 && (
+          {stores.length > 1 && (
             <div className="flex justify-center mt-4">
               <div className="relative" ref={dropdownRef}>
                 <button
