@@ -8,11 +8,12 @@ import { supabase } from '../lib/supabase';
 import { authenticateWithPIN } from '../lib/auth';
 
 interface HomePageProps {
-  onActionSelected: (action: 'checkin' | 'ready' | 'report') => void;
+  onActionSelected: (action: 'checkin' | 'ready' | 'report', session?: any, storeId?: string) => void;
 }
 
 export function HomePage({ onActionSelected }: HomePageProps) {
   const { logout } = useAuth();
+  const [selectedAction, setSelectedAction] = useState<'checkin' | 'ready' | 'report' | null>(null);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -22,9 +23,12 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   const [authenticatedSession, setAuthenticatedSession] = useState<{
     employee_id: string;
     store_id: string;
+    display_name: string;
+    pay_type: string;
   } | null>(null);
 
-  const handleReadyClick = () => {
+  const handleActionClick = (action: 'checkin' | 'ready' | 'report') => {
+    setSelectedAction(action);
     setShowPinModal(true);
     setPinError('');
   };
@@ -42,7 +46,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         return;
       }
 
-      // Get the first store for this employee
       const { data: employeeStores, error: storeError } = await supabase
         .from('employee_stores')
         .select('store_id')
@@ -56,33 +59,129 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       }
 
       const storeId = employeeStores[0].store_id;
-      setAuthenticatedSession({ employee_id: session.employee_id, store_id: storeId });
 
-      // Check if already in queue
+      const { data: employee, error: empError } = await supabase
+        .from('employees')
+        .select('pay_type, display_name')
+        .eq('id', session.employee_id)
+        .maybeSingle();
+
+      if (empError) throw empError;
+
+      const payType = employee?.pay_type || 'hourly';
+      const displayName = employee?.display_name || session.display_name || 'Employee';
+
+      setAuthenticatedSession({
+        employee_id: session.employee_id,
+        store_id: storeId,
+        display_name: displayName,
+        pay_type: payType
+      });
+
+      setShowPinModal(false);
+
+      if (selectedAction === 'checkin') {
+        await handleCheckInOut(session.employee_id, storeId, displayName, payType);
+      } else if (selectedAction === 'ready') {
+        await handleReady(session.employee_id, storeId);
+      } else if (selectedAction === 'report') {
+        onActionSelected('report', session, storeId);
+      }
+    } catch (error: any) {
+      console.error('Authentication failed:', error);
+      setPinError('Failed to process request. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCheckInOut = async (employeeId: string, storeId: string, displayName: string, payType: string) => {
+    try {
+      if (payType === 'daily') {
+        setSuccessMessage(`${displayName}, you don't need to check in/out. You're paid daily!`);
+        setShowSuccessModal(true);
+        return;
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      const { data: attendance } = await supabase
+        .from('attendance_records')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .eq('store_id', storeId)
+        .eq('work_date', today)
+        .maybeSingle();
+
+      const isCheckedIn = attendance && attendance.status === 'checked_in';
+
+      if (!isCheckedIn) {
+        const { error: checkInError } = await supabase.rpc('check_in_employee', {
+          p_employee_id: employeeId,
+          p_store_id: storeId,
+          p_pay_type: payType
+        });
+
+        if (checkInError) throw checkInError;
+
+        const { error: queueError } = await supabase.rpc('join_ready_queue', {
+          p_employee_id: employeeId,
+          p_store_id: storeId
+        });
+
+        if (queueError) console.error('Failed to join queue:', queueError);
+
+        setSuccessMessage(`Welcome ${displayName}! You're checked in and in the ready queue.`);
+        setShowSuccessModal(true);
+      } else {
+        const { data: checkOutSuccess, error: checkOutError } = await supabase.rpc('check_out_employee', {
+          p_employee_id: employeeId,
+          p_store_id: storeId
+        });
+
+        if (checkOutError) throw checkOutError;
+
+        if (!checkOutSuccess) {
+          setPinError('No active check-in found');
+          return;
+        }
+
+        const { error: deleteError } = await supabase
+          .from('technician_ready_queue')
+          .delete()
+          .eq('employee_id', employeeId)
+          .eq('store_id', storeId);
+
+        if (deleteError) {
+          console.error('Failed to remove from queue:', deleteError);
+        }
+
+        setSuccessMessage(`Goodbye ${displayName}! You've been checked out. See you soon!`);
+        setShowSuccessModal(true);
+      }
+    } catch (error: any) {
+      console.error('Check-in/out failed:', error);
+      setPinError('Check-in/out failed. Please try again.');
+    }
+  };
+
+  const handleReady = async (employeeId: string, storeId: string) => {
+    try {
       const { data: inQueue, error: checkError } = await supabase.rpc('check_queue_status', {
-        p_employee_id: session.employee_id,
+        p_employee_id: employeeId,
         p_store_id: storeId
       });
 
-      if (checkError) {
-        console.error('Check queue error:', checkError);
-        throw checkError;
-      }
-
-      setShowPinModal(false);
+      if (checkError) throw checkError;
 
       if (inQueue) {
         setShowConfirmModal(true);
       } else {
         const { error: joinError } = await supabase.rpc('join_ready_queue', {
-          p_employee_id: session.employee_id,
+          p_employee_id: employeeId,
           p_store_id: storeId
         });
 
-        if (joinError) {
-          console.error('Join queue error:', joinError);
-          throw joinError;
-        }
+        if (joinError) throw joinError;
 
         setSuccessMessage('You have successfully joined the ready queue!');
         setShowSuccessModal(true);
@@ -90,11 +189,15 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     } catch (error: any) {
       console.error('Queue operation failed:', error);
       setPinError('Failed to process request. Please try again.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
+  const handleStayInQueue = () => {
+    setShowConfirmModal(false);
+    setAuthenticatedSession(null);
+    setSelectedAction(null);
+    logout();
+  };
 
   const handleLeaveQueue = async () => {
     if (!authenticatedSession) return;
@@ -123,12 +226,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     setShowSuccessModal(false);
     setSuccessMessage('');
     setAuthenticatedSession(null);
-    logout();
-  };
-
-  const handleStayInQueue = () => {
-    setShowConfirmModal(false);
-    setAuthenticatedSession(null);
+    setSelectedAction(null);
     logout();
   };
 
@@ -136,6 +234,14 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     setShowPinModal(false);
     setPinError('');
     setIsLoading(false);
+    setSelectedAction(null);
+  };
+
+  const getPinModalTitle = () => {
+    if (selectedAction === 'checkin') return 'Enter PIN for Check In/Out';
+    if (selectedAction === 'ready') return 'Enter PIN for Ready Queue';
+    if (selectedAction === 'report') return 'Enter PIN for Reports';
+    return 'Enter PIN';
   };
 
   return (
@@ -158,8 +264,9 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <button
-            onClick={() => onActionSelected('checkin')}
-            className="bg-white rounded-xl p-5 sm:p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform active:scale-95"
+            onClick={() => handleActionClick('checkin')}
+            disabled={isLoading}
+            className="bg-white rounded-xl p-5 sm:p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="flex flex-col items-center text-center">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-green-100 flex items-center justify-center mb-2 sm:mb-3">
@@ -175,7 +282,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           </button>
 
           <button
-            onClick={handleReadyClick}
+            onClick={() => handleActionClick('ready')}
             disabled={isLoading}
             className="bg-white rounded-xl p-5 sm:p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -193,8 +300,9 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           </button>
 
           <button
-            onClick={() => onActionSelected('report')}
-            className="bg-white rounded-xl p-5 sm:p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform active:scale-95"
+            onClick={() => handleActionClick('report')}
+            disabled={isLoading}
+            className="bg-white rounded-xl p-5 sm:p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="flex flex-col items-center text-center">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-orange-100 flex items-center justify-center mb-2 sm:mb-3">
@@ -211,17 +319,15 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         </div>
       </div>
 
-      {/* PIN Modal */}
       <PinModal
         isOpen={showPinModal}
         onClose={handlePinModalClose}
         onSubmit={handlePinSubmit}
-        title="Enter PIN for Ready Queue"
+        title={getPinModalTitle()}
         isLoading={isLoading}
         error={pinError}
       />
 
-      {/* Success Modal */}
       <Modal isOpen={showSuccessModal} onClose={handleSuccessClose} title="Success">
         <div className="text-center py-4">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -237,7 +343,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         </div>
       </Modal>
 
-      {/* Confirmation Modal */}
       <Modal isOpen={showConfirmModal} onClose={() => setShowConfirmModal(false)} title="Queue Status">
         <div className="text-center py-4">
           <p className="text-lg text-gray-900 mb-6">You are already in the ready queue. What would you like to do?</p>

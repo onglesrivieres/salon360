@@ -18,7 +18,7 @@ const PendingApprovalsPage = lazy(() => import('./pages/PendingApprovalsPage').t
 type Page = 'tickets' | 'eod' | 'attendance' | 'technicians' | 'services' | 'settings' | 'approvals';
 
 function AppContent() {
-  const { isAuthenticated, selectedStoreId, selectStore, session } = useAuth();
+  const { isAuthenticated, selectedStoreId, selectStore, session, login } = useAuth();
   const [showWelcome, setShowWelcome] = useState(() => {
     return sessionStorage.getItem('welcome_shown') !== 'true';
   });
@@ -93,14 +93,20 @@ function AppContent() {
 
 
   if (showWelcome) {
-    return <HomePage onActionSelected={(action) => {
-      // Ready action is handled entirely within HomePage (PIN authentication)
-      if (action === 'ready') {
+    return <HomePage onActionSelected={(action, session, storeId) => {
+      // Check-in and Ready actions are handled entirely within HomePage
+      if (action === 'checkin' || action === 'ready') {
         return;
       }
-      sessionStorage.setItem('welcome_shown', 'true');
-      setSelectedAction(action);
-      setShowWelcome(false);
+
+      // Report action needs to redirect to app
+      if (action === 'report' && session && storeId) {
+        sessionStorage.setItem('welcome_shown', 'true');
+        selectStore(storeId);
+        login(session);
+        setSelectedAction(action);
+        setShowWelcome(false);
+      }
     }} />;
   }
 
