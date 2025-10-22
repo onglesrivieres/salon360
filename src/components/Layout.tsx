@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Receipt, Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home } from 'lucide-react';
+import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
 import { supabase, Store } from '../lib/supabase';
@@ -185,22 +185,18 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               >
                 {isMobileMenuOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
               </button>
-              <Receipt className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
-              <h1 className="text-base md:text-lg font-bold text-gray-900">Salon360</h1>
-            </div>
-            <div className="flex items-center gap-2 md:gap-3">
               {currentStore && allStores.length > 0 ? (
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setIsStoreDropdownOpen(!isStoreDropdownOpen)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-200 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
                   >
-                    <StoreIcon className="w-3 h-3" />
+                    <StoreIcon className="w-4 h-4" />
                     {currentStore.name}
-                    <ChevronDown className="w-3 h-3" />
+                    <ChevronDown className="w-4 h-4" />
                   </button>
                   {isStoreDropdownOpen && (
-                    <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[200px] z-50">
+                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[200px] z-50">
                       {allStores.map((store) => (
                         <button
                           key={store.id}
@@ -217,11 +213,13 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   )}
                 </div>
               ) : currentStore ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                  <StoreIcon className="w-3 h-3" />
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
+                  <StoreIcon className="w-4 h-4" />
                   {currentStore.name}
                 </span>
               ) : null}
+            </div>
+            <div className="flex items-center gap-2 md:gap-3">
               {session && session.role && Permissions.employees.canView(session.role) && (
                 <button
                   onClick={() => onNavigate('settings')}
