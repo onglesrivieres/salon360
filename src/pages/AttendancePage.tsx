@@ -74,23 +74,30 @@ export function AttendancePage() {
   }
 
   function getDateRange() {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const startOfMonth = new Date(year, month, 1);
-    const endOfMonth = new Date(year, month + 1, 0);
-    const startDate = startOfMonth.toISOString().split('T')[0];
-    const endDate = endOfMonth.toISOString().split('T')[0];
+    // Bi-weekly payroll periods starting from October 12, 2024
+    const payrollStartDate = new Date(2024, 9, 12); // October 12, 2024
+    const daysSinceStart = Math.floor((currentDate.getTime() - payrollStartDate.getTime()) / (1000 * 60 * 60 * 24));
+    const periodNumber = Math.floor(daysSinceStart / 14);
+
+    const periodStart = new Date(payrollStartDate);
+    periodStart.setDate(periodStart.getDate() + (periodNumber * 14));
+
+    const periodEnd = new Date(periodStart);
+    periodEnd.setDate(periodEnd.getDate() + 13); // 14 days total (0-13)
+
+    const startDate = periodStart.toISOString().split('T')[0];
+    const endDate = periodEnd.toISOString().split('T')[0];
     return { startDate, endDate };
   }
 
   function getCalendarDays() {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
+    const { startDate, endDate } = getDateRange();
+    const start = new Date(startDate);
+    const end = new Date(endDate);
     const days: Date[] = [];
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(new Date(year, month, i));
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      days.push(new Date(d));
     }
 
     return days;
@@ -137,13 +144,13 @@ export function AttendancePage() {
 
   function navigatePrevious() {
     const newDate = new Date(currentDate);
-    newDate.setMonth(newDate.getMonth() - 1);
+    newDate.setDate(newDate.getDate() - 14);
     setCurrentDate(newDate);
   }
 
   function navigateNext() {
     const newDate = new Date(currentDate);
-    newDate.setMonth(newDate.getMonth() + 1);
+    newDate.setDate(newDate.getDate() + 14);
     setCurrentDate(newDate);
   }
 
@@ -202,7 +209,8 @@ export function AttendancePage() {
 
   const calendarDays = getCalendarDays();
   const summary = processAttendanceData();
-  const monthRange = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const { startDate, endDate } = getDateRange();
+  const periodRange = `${new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
   if (session && session.role && !Permissions.endOfDay.canView(session.role)) {
     return (
@@ -233,7 +241,7 @@ export function AttendancePage() {
               <ChevronLeft className="w-5 h-5 md:w-4 md:h-4" />
             </Button>
             <h3 className="text-sm md:text-base font-semibold text-gray-900 min-w-[200px] text-center">
-              {monthRange}
+              {periodRange}
             </h3>
             <Button variant="ghost" size="sm" onClick={navigateNext} className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0">
               <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
