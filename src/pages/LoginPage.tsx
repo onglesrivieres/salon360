@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Delete } from 'lucide-react';
+import { Lock, Delete, ArrowLeft } from 'lucide-react';
 import { authenticateWithPIN } from '../lib/auth';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/Toast';
@@ -9,9 +9,10 @@ import { supabase } from '../lib/supabase';
 interface LoginPageProps {
   selectedAction?: 'checkin' | 'ready' | 'report' | null;
   onCheckOutComplete?: () => void;
+  onBack?: () => void;
 }
 
-export function LoginPage({ selectedAction, onCheckOutComplete }: LoginPageProps) {
+export function LoginPage({ selectedAction, onCheckOutComplete, onBack }: LoginPageProps) {
   const [pin, setPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login, t, selectedStoreId } = useAuth();
@@ -232,7 +233,7 @@ export function LoginPage({ selectedAction, onCheckOutComplete }: LoginPageProps
           </div>
 
           <div className="grid grid-cols-3 gap-3 mb-4">
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
+            {['1', '2', '3', '4', '5', '6'].map((num) => (
               <button
                 key={num}
                 onClick={() => handleNumberClick(num)}
@@ -242,7 +243,39 @@ export function LoginPage({ selectedAction, onCheckOutComplete }: LoginPageProps
                 {num}
               </button>
             ))}
-            <div className="h-16"></div>
+            <button
+              onClick={() => handleNumberClick('7')}
+              disabled={isLoading}
+              className="h-16 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 rounded-xl text-2xl font-semibold text-gray-900 transition-all duration-150 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            >
+              7
+            </button>
+            <button
+              onClick={() => handleNumberClick('8')}
+              disabled={isLoading}
+              className="h-16 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 rounded-xl text-2xl font-semibold text-gray-900 transition-all duration-150 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            >
+              8
+            </button>
+            <button
+              onClick={() => handleNumberClick('9')}
+              disabled={isLoading}
+              className="h-16 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 rounded-xl text-2xl font-semibold text-gray-900 transition-all duration-150 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            >
+              9
+            </button>
+            {onBack ? (
+              <button
+                onClick={onBack}
+                disabled={isLoading}
+                className="h-16 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 rounded-xl text-sm font-medium text-gray-700 transition-all duration-150 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm flex items-center justify-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                {t('actions.back')}
+              </button>
+            ) : (
+              <div className="h-16"></div>
+            )}
             <button
               onClick={() => handleNumberClick('0')}
               disabled={isLoading}

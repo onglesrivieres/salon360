@@ -131,6 +131,11 @@ function AppContent() {
         setShowWelcome(true);
         setSelectedAction(null);
       }}
+      onBack={() => {
+        sessionStorage.setItem('welcome_shown', 'false');
+        setShowWelcome(true);
+        setSelectedAction(null);
+      }}
     />;
   }
 

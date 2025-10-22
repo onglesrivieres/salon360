@@ -29,6 +29,7 @@ export const translations = {
       confirm: 'Confirm',
       continue: 'Continue',
       actions: 'Actions',
+      back: 'Back',
     },
     tickets: {
       title: 'Sale Tickets',
@@ -270,6 +271,7 @@ export const translations = {
       confirm: 'Confirmer',
       continue: 'Continuer',
       actions: 'Actions',
+      back: 'Retour',
     },
     tickets: {
       title: 'Billets de vente',
@@ -511,6 +513,7 @@ export const translations = {
       confirm: 'Xác nhận',
       continue: 'Tiếp tục',
       actions: 'Hành động',
+      back: 'Quay lại',
     },
     tickets: {
       title: 'Phiếu bán hàng',
