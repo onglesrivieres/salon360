@@ -35,7 +35,9 @@ function AppContent() {
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
   );
-  const [hasEnteredApp, setHasEnteredApp] = useState(false);
+  const [hasEnteredApp, setHasEnteredApp] = useState(() => {
+    return sessionStorage.getItem('has_entered_app') === 'true';
+  });
 
   if (!isAuthenticated) {
     return <LoginPage />;
@@ -49,6 +51,7 @@ function AppContent() {
         // Set page based on user role after action selection
         setCurrentPage(getDefaultPage());
       }
+      sessionStorage.setItem('has_entered_app', 'true');
       setHasEnteredApp(true);
     }} />;
   }
@@ -58,6 +61,7 @@ function AppContent() {
       currentPage={currentPage}
       onNavigate={(page) => {
         if (page === 'home') {
+          sessionStorage.removeItem('has_entered_app');
           setHasEnteredApp(false);
         } else {
           setCurrentPage(page);

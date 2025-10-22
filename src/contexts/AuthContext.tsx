@@ -98,12 +98,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     saveSession(newSession);
     setSession(newSession);
     sessionStorage.removeItem('selected_store_id');
+    sessionStorage.removeItem('has_entered_app');
     setSelectedStoreId(null);
   };
 
   const logout = () => {
     clearSession();
     sessionStorage.removeItem('selected_store_id');
+    sessionStorage.removeItem('has_entered_app');
     setSession(null);
     setSelectedStoreId(null);
   };
