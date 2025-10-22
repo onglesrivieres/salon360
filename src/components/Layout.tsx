@@ -99,7 +99,10 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         .select('*')
         .eq('active', true)
         .order('code');
-      if (data) setAllStores(data);
+      if (data) {
+        console.log('Admin - Fetched stores:', data);
+        setAllStores(data);
+      }
       return;
     }
 
@@ -109,6 +112,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       .select('store_id')
       .eq('employee_id', session.employee_id);
 
+    console.log('Employee stores:', employeeStores);
     const employeeStoreIds = employeeStores?.map(es => es.store_id) || [];
 
     if (employeeStoreIds.length > 0) {
@@ -118,7 +122,12 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         .in('id', employeeStoreIds)
         .eq('active', true)
         .order('code');
-      if (data) setAllStores(data);
+      if (data) {
+        console.log('Non-admin - Fetched stores:', data);
+        setAllStores(data);
+      }
+    } else {
+      console.log('No employee stores found');
     }
   }
 
@@ -181,7 +190,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               </button>
               <Receipt className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
               <h1 className="text-base md:text-lg font-bold text-gray-900">Salon360</h1>
-              {currentStore && allStores.length > 1 ? (
+              {currentStore && allStores.length > 0 ? (
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setIsStoreDropdownOpen(!isStoreDropdownOpen)}
