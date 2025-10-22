@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { TicketsPage } from './pages/TicketsPage';
 import { supabase } from './lib/supabase';
+import { StoreSelectionModal } from './components/StoreSelectionModal';
 
 const EndOfDayPage = lazy(() => import('./pages/EndOfDayPage').then(m => ({ default: m.EndOfDayPage })));
 const AttendancePage = lazy(() => import('./pages/AttendancePage').then(m => ({ default: m.AttendancePage })));
@@ -22,6 +23,8 @@ function AppContent() {
     return sessionStorage.getItem('welcome_shown') !== 'true';
   });
   const [selectedAction, setSelectedAction] = useState<'checkin' | 'ready' | 'report' | null>(null);
+  const [showStoreModal, setShowStoreModal] = useState(false);
+  const [availableStoreIds, setAvailableStoreIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -102,7 +105,7 @@ function AppContent() {
 
 
   if (showWelcome) {
-    return <HomePage onActionSelected={(action, session, storeId, hasMultipleStores) => {
+    return <HomePage onActionSelected={(action, session, storeId, hasMultipleStores, availableStoreIds) => {
       // Check-in and Ready actions are handled entirely within HomePage
       if (action === 'checkin' || action === 'ready') {
         return;
@@ -115,8 +118,14 @@ function AppContent() {
         setSelectedAction(action);
         setShowWelcome(false);
 
-        // HomePage already checked sessionStorage and passed the correct store
-        selectStore(storeId);
+        // If user has multiple stores, show selection modal
+        if (hasMultipleStores && availableStoreIds && availableStoreIds.length > 1) {
+          setAvailableStoreIds(availableStoreIds);
+          setShowStoreModal(true);
+        } else {
+          // Single store - select it directly
+          selectStore(storeId);
+        }
       }
     }} />;
   }
@@ -139,24 +148,35 @@ function AppContent() {
 
 
   return (
-    <Layout
-      currentPage={currentPage}
-      onNavigate={(page) => setCurrentPage(page)}
-    >
-      <Suspense fallback={
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Loading...</div>
-        </div>
-      }>
-        {currentPage === 'tickets' && <TicketsPage selectedDate={selectedDate} onDateChange={setSelectedDate} />}
-        {currentPage === 'approvals' && <PendingApprovalsPage />}
-        {currentPage === 'eod' && <EndOfDayPage selectedDate={selectedDate} onDateChange={setSelectedDate} />}
-        {currentPage === 'attendance' && <AttendancePage />}
-        {currentPage === 'technicians' && <EmployeesPage />}
-        {currentPage === 'services' && <ServicesPage />}
-        {currentPage === 'settings' && <SettingsPage />}
-      </Suspense>
-    </Layout>
+    <>
+      <Layout
+        currentPage={currentPage}
+        onNavigate={(page) => setCurrentPage(page)}
+      >
+        <Suspense fallback={
+          <div className="flex items-center justify-center h-64">
+            <div className="text-gray-500">Loading...</div>
+          </div>
+        }>
+          {currentPage === 'tickets' && <TicketsPage selectedDate={selectedDate} onDateChange={setSelectedDate} />}
+          {currentPage === 'approvals' && <PendingApprovalsPage />}
+          {currentPage === 'eod' && <EndOfDayPage selectedDate={selectedDate} onDateChange={setSelectedDate} />}
+          {currentPage === 'attendance' && <AttendancePage />}
+          {currentPage === 'technicians' && <EmployeesPage />}
+          {currentPage === 'services' && <ServicesPage />}
+          {currentPage === 'settings' && <SettingsPage />}
+        </Suspense>
+      </Layout>
+
+      <StoreSelectionModal
+        isOpen={showStoreModal}
+        storeIds={availableStoreIds}
+        onSelect={(storeId) => {
+          selectStore(storeId);
+          setShowStoreModal(false);
+        }}
+      />
+    </>
   );
 }
 

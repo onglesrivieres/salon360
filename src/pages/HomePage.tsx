@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase';
 import { authenticateWithPIN } from '../lib/auth';
 
 interface HomePageProps {
-  onActionSelected: (action: 'checkin' | 'ready' | 'report', session?: any, storeId?: string, hasMultipleStores?: boolean) => void;
+  onActionSelected: (action: 'checkin' | 'ready' | 'report', session?: any, storeId?: string, hasMultipleStores?: boolean, availableStoreIds?: string[]) => void;
 }
 
 export function HomePage({ onActionSelected }: HomePageProps) {
@@ -121,7 +121,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       } else if (selectedAction === 'ready') {
         await handleReady(session.employee_id, storeId);
       } else if (selectedAction === 'report') {
-        onActionSelected('report', session, storeId, hasMultipleStores);
+        const storeIds = employeeStores.map(s => s.id || s.store_id);
+        onActionSelected('report', session, storeId, hasMultipleStores, storeIds);
       }
     } catch (error: any) {
       console.error('Authentication failed:', error);
