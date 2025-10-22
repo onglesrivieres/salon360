@@ -25,6 +25,14 @@ function AppContent() {
   const [selectedAction, setSelectedAction] = useState<'checkin' | 'ready' | 'report' | null>(null);
   const [needsStoreSelection, setNeedsStoreSelection] = useState(false);
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setShowWelcome(sessionStorage.getItem('welcome_shown') !== 'true');
+      setSelectedAction(null);
+      setNeedsStoreSelection(false);
+    }
+  }, [isAuthenticated]);
+
   // Set default page based on user role
   const getDefaultPage = (): Page => {
     if (!session?.role_permission) return 'tickets';
@@ -44,10 +52,10 @@ function AppContent() {
   );
 
   useEffect(() => {
-    if (isAuthenticated && !selectedStoreId && session?.employee_id) {
+    if (isAuthenticated && !selectedStoreId && session?.employee_id && !showWelcome) {
       checkStoreAccess();
     }
-  }, [isAuthenticated, session?.employee_id]);
+  }, [isAuthenticated, session?.employee_id, showWelcome]);
 
   async function checkStoreAccess() {
     if (!session?.employee_id) return;
