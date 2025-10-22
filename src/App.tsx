@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { Layout } from './components/Layout';
-import { ToastProvider, useToast } from './components/ui/Toast';
+import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
@@ -18,8 +18,7 @@ const PendingApprovalsPage = lazy(() => import('./pages/PendingApprovalsPage').t
 type Page = 'tickets' | 'eod' | 'attendance' | 'technicians' | 'services' | 'settings' | 'approvals';
 
 function AppContent() {
-  const { isAuthenticated, selectedStoreId, selectStore, session, logout } = useAuth();
-  const { showToast } = useToast();
+  const { isAuthenticated, selectedStoreId, selectStore, session } = useAuth();
   const [showWelcome, setShowWelcome] = useState(() => {
     return sessionStorage.getItem('welcome_shown') !== 'true';
   });
@@ -62,8 +61,6 @@ function AppContent() {
     if (isAuthenticated && selectedStoreId && session?.employee_id) {
       if (selectedAction === 'ready') {
         joinReadyQueue();
-      } else if (selectedAction === 'checkin') {
-        handleCheckInOut();
       }
     }
   }, [isAuthenticated, selectedStoreId, selectedAction, session?.employee_id]);
@@ -115,97 +112,6 @@ function AppContent() {
       setSelectedAction(null);
     } catch (error: any) {
       console.error('Failed to join queue:', error);
-    }
-  }
-
-  async function handleCheckInOut() {
-    if (!session?.employee_id || !selectedStoreId) return;
-
-    try {
-      const { data: employee, error: empError } = await supabase
-        .from('employees')
-        .select('pay_type, display_name')
-        .eq('id', session.employee_id)
-        .maybeSingle();
-
-      if (empError) throw empError;
-
-      const payType = employee?.pay_type || 'hourly';
-      const displayName = employee?.display_name || session.display_name || 'Employee';
-
-      if (payType === 'daily') {
-        showToast(`${displayName}, you don't need to check in/out. You're paid daily!`, 'info');
-        sessionStorage.setItem('welcome_shown', 'false');
-        setShowWelcome(true);
-        setSelectedAction(null);
-        return;
-      }
-
-      const today = new Date().toISOString().split('T')[0];
-      const { data: attendance } = await supabase
-        .from('attendance_records')
-        .select('*')
-        .eq('employee_id', session.employee_id)
-        .eq('store_id', selectedStoreId)
-        .eq('work_date', today)
-        .maybeSingle();
-
-      const isCheckedIn = attendance && attendance.status === 'checked_in';
-
-      if (!isCheckedIn) {
-        const { error: checkInError } = await supabase.rpc('check_in_employee', {
-          p_employee_id: session.employee_id,
-          p_store_id: selectedStoreId,
-          p_pay_type: payType
-        });
-
-        if (checkInError) throw checkInError;
-
-        const { error: queueError } = await supabase.rpc('join_ready_queue', {
-          p_employee_id: session.employee_id,
-          p_store_id: selectedStoreId
-        });
-
-        if (queueError) console.error('Failed to join queue:', queueError);
-
-        showToast(`Welcome ${displayName}! You're checked in and in the ready queue.`, 'success');
-        console.log(`${displayName} checked in and joined queue`);
-      } else {
-        const { data: checkOutSuccess, error: checkOutError } = await supabase.rpc('check_out_employee', {
-          p_employee_id: session.employee_id,
-          p_store_id: selectedStoreId
-        });
-
-        if (checkOutError) throw checkOutError;
-
-        if (!checkOutSuccess) {
-          showToast('No active check-in found', 'error');
-          setSelectedAction(null);
-          return;
-        }
-
-        await supabase
-          .from('technician_ready_queue')
-          .delete()
-          .eq('employee_id', session.employee_id)
-          .eq('store_id', selectedStoreId);
-
-        showToast(`Goodbye ${displayName}! You've been checked out. See you soon!`, 'success');
-        console.log(`${displayName} checked out and removed from queue`);
-
-        setSelectedAction(null);
-
-        setTimeout(() => {
-          logout();
-        }, 2000);
-
-        return;
-      }
-
-      setSelectedAction(null);
-    } catch (error: any) {
-      console.error('Check-in/out failed:', error);
-      setSelectedAction(null);
     }
   }
 

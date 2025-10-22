@@ -4,6 +4,7 @@ import { authenticateWithPIN } from '../lib/auth';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { LanguageSelector } from '../components/LanguageSelector';
+import { supabase } from '../lib/supabase';
 
 interface LoginPageProps {
   selectedAction?: 'checkin' | 'ready' | 'report' | null;
@@ -33,7 +34,13 @@ export function LoginPage({ selectedAction }: LoginPageProps) {
       const session = await authenticateWithPIN(pinToSubmit);
 
       if (session) {
-        login(session);
+        if (selectedAction === 'checkin') {
+          await handleCheckInOut(session);
+        } else if (selectedAction === 'ready') {
+          login(session);
+        } else {
+          login(session);
+        }
       } else {
         showToast(t('auth.invalidPIN'), 'error');
         setPin('');
@@ -43,6 +50,87 @@ export function LoginPage({ selectedAction }: LoginPageProps) {
       setPin('');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCheckInOut = async (session: any) => {
+    const storeId = selectedStoreId || sessionStorage.getItem('selected_store_id');
+    if (!storeId) {
+      showToast('No store selected', 'error');
+      return;
+    }
+
+    try {
+      const { data: employee, error: empError } = await supabase
+        .from('employees')
+        .select('pay_type, display_name')
+        .eq('id', session.employee_id)
+        .maybeSingle();
+
+      if (empError) throw empError;
+
+      const payType = employee?.pay_type || 'hourly';
+      const displayName = employee?.display_name || session.display_name || 'Employee';
+
+      if (payType === 'daily') {
+        showToast(`${displayName}, you don't need to check in/out. You're paid daily!`, 'info');
+        return;
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      const { data: attendance } = await supabase
+        .from('attendance_records')
+        .select('*')
+        .eq('employee_id', session.employee_id)
+        .eq('store_id', storeId)
+        .eq('work_date', today)
+        .maybeSingle();
+
+      const isCheckedIn = attendance && attendance.status === 'checked_in';
+
+      if (!isCheckedIn) {
+        const { error: checkInError } = await supabase.rpc('check_in_employee', {
+          p_employee_id: session.employee_id,
+          p_store_id: storeId,
+          p_pay_type: payType
+        });
+
+        if (checkInError) throw checkInError;
+
+        const { error: queueError } = await supabase.rpc('join_ready_queue', {
+          p_employee_id: session.employee_id,
+          p_store_id: storeId
+        });
+
+        if (queueError) console.error('Failed to join queue:', queueError);
+
+        showToast(`Welcome ${displayName}! You're checked in and in the ready queue.`, 'success');
+        login(session);
+      } else {
+        const { data: checkOutSuccess, error: checkOutError } = await supabase.rpc('check_out_employee', {
+          p_employee_id: session.employee_id,
+          p_store_id: storeId
+        });
+
+        if (checkOutError) throw checkOutError;
+
+        if (!checkOutSuccess) {
+          showToast('No active check-in found', 'error');
+          return;
+        }
+
+        await supabase
+          .from('technician_ready_queue')
+          .delete()
+          .eq('employee_id', session.employee_id)
+          .eq('store_id', storeId);
+
+        showToast(`Goodbye ${displayName}! You've been checked out. See you soon!`, 'success');
+        console.log(`${displayName} checked out and removed from queue`);
+      }
+    } catch (error: any) {
+      console.error('Check-in/out failed:', error);
+      showToast('Check-in/out failed. Please try again.', 'error');
     }
   };
 
