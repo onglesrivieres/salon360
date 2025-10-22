@@ -163,7 +163,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   function handleStoreChange(storeId: string) {
     selectStore(storeId);
     setIsStoreDropdownOpen(false);
-    window.location.reload();
   }
 
   const navItems = [
