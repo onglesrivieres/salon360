@@ -12,7 +12,7 @@ interface HomePageProps {
 }
 
 export function HomePage({ onActionSelected }: HomePageProps) {
-  const { logout } = useAuth();
+  const { logout, t } = useAuth();
   const [selectedAction, setSelectedAction] = useState<'checkin' | 'ready' | 'report' | null>(null);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -135,7 +135,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   const handleCheckInOut = async (employeeId: string, storeId: string, displayName: string, payType: string) => {
     try {
       if (payType === 'daily') {
-        setSuccessMessage(`${displayName}, you don't need to check in/out. You're paid daily!`);
+        setSuccessMessage(`${displayName}, ${t('home.dailyPay')}`);
         setShowSuccessModal(true);
         return;
       }
@@ -167,7 +167,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
         if (queueError) console.error('Failed to join queue:', queueError);
 
-        setSuccessMessage(`Welcome ${displayName}! You're checked in and in the ready queue.`);
+        setSuccessMessage(`${t('home.welcome')} ${displayName}! ${t('home.checkedIn')}`);
         setShowSuccessModal(true);
       } else {
         const { data: checkOutSuccess, error: checkOutError } = await supabase.rpc('check_out_employee', {
@@ -192,7 +192,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           console.error('Failed to remove from queue:', deleteError);
         }
 
-        setSuccessMessage(`Goodbye ${displayName}! You've been checked out. See you soon!`);
+        setSuccessMessage(`${t('home.goodbye')} ${displayName}! ${t('home.checkedOut')}`);
         setShowSuccessModal(true);
       }
     } catch (error: any) {
@@ -220,7 +220,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
         if (joinError) throw joinError;
 
-        setSuccessMessage('You have successfully joined the ready queue!');
+        setSuccessMessage(t('home.joinedQueue'));
         setShowSuccessModal(true);
       }
     } catch (error: any) {
@@ -249,7 +249,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       if (error) throw error;
 
       setShowConfirmModal(false);
-      setSuccessMessage('You have left the ready queue.');
+      setSuccessMessage(t('home.leftQueue'));
       setShowSuccessModal(true);
     } catch (error: any) {
       console.error('Failed to leave queue:', error);
@@ -275,10 +275,10 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   };
 
   const getPinModalTitle = () => {
-    if (selectedAction === 'checkin') return 'Enter PIN for Check In/Out';
-    if (selectedAction === 'ready') return 'Enter PIN for Ready Queue';
-    if (selectedAction === 'report') return 'Enter PIN for Reports';
-    return 'Enter PIN';
+    if (selectedAction === 'checkin') return `${t('home.enterPinFor')} ${t('technician.checkInOut')}`;
+    if (selectedAction === 'ready') return `${t('home.enterPinFor')} ${t('technician.ready')}`;
+    if (selectedAction === 'report') return `${t('home.enterPinFor')} ${t('technician.report')}`;
+    return t('auth.enterPIN');
   };
 
   return (
@@ -292,10 +292,10 @@ export function HomePage({ onActionSelected }: HomePageProps) {
             <StoreIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
           </div>
 
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-2 sm:mb-3">Salon360</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-2 sm:mb-3">{t('home.title')}</h1>
 
           <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-lg mx-auto px-2">
-            Complete salon management system for scheduling, tracking, and reporting
+            {t('home.subtitle')}
           </p>
         </div>
 
@@ -310,10 +310,10 @@ export function HomePage({ onActionSelected }: HomePageProps) {
                 <UserCheck className="w-7 h-7 sm:w-8 sm:h-8 text-green-600" />
               </div>
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">
-                Check In/Out
+                {t('technician.checkInOut')}
               </h3>
               <p className="text-gray-600 text-xs sm:text-sm">
-                Clock in and out for your shift
+                {t('technician.checkInOutDesc')}
               </p>
             </div>
           </button>
@@ -328,10 +328,10 @@ export function HomePage({ onActionSelected }: HomePageProps) {
                 <ClipboardCheck className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600" />
               </div>
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">
-                Ready
+                {t('technician.ready')}
               </h3>
               <p className="text-gray-600 text-xs sm:text-sm">
-                Mark yourself ready for customers
+                {t('technician.readyDesc')}
               </p>
             </div>
           </button>
@@ -346,10 +346,10 @@ export function HomePage({ onActionSelected }: HomePageProps) {
                 <FileText className="w-7 h-7 sm:w-8 sm:h-8 text-orange-600" />
               </div>
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">
-                Report
+                {t('technician.report')}
               </h3>
               <p className="text-gray-600 text-xs sm:text-sm">
-                View reports and manage tickets
+                {t('technician.reportDesc')}
               </p>
             </div>
           </button>
@@ -365,7 +365,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         error={pinError}
       />
 
-      <Modal isOpen={showSuccessModal} onClose={handleSuccessClose} title="Success">
+      <Modal isOpen={showSuccessModal} onClose={handleSuccessClose} title={t('home.success')}>
         <div className="text-center py-4">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <ClipboardCheck className="w-8 h-8 text-green-600" />
@@ -375,28 +375,28 @@ export function HomePage({ onActionSelected }: HomePageProps) {
             onClick={handleSuccessClose}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            OK
+            {t('actions.close')}
           </button>
         </div>
       </Modal>
 
-      <Modal isOpen={showConfirmModal} onClose={() => setShowConfirmModal(false)} title="Queue Status">
+      <Modal isOpen={showConfirmModal} onClose={() => setShowConfirmModal(false)} title={t('queue.title')}>
         <div className="text-center py-4">
-          <p className="text-lg text-gray-900 mb-6">You are already in the ready queue. What would you like to do?</p>
+          <p className="text-lg text-gray-900 mb-6">{t('home.alreadyInQueue')}</p>
           <div className="flex gap-3 justify-center">
             <button
               onClick={handleStayInQueue}
               disabled={isLoading}
               className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
             >
-              Stay in Queue
+              {t('home.stayInQueue')}
             </button>
             <button
               onClick={handleLeaveQueue}
               disabled={isLoading}
               className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
             >
-              Leave Queue
+              {t('home.leaveQueue')}
             </button>
           </div>
         </div>
