@@ -55,9 +55,36 @@ export function LoginPage({ selectedAction, onCheckOutComplete }: LoginPageProps
   };
 
   const handleCheckInOut = async (session: any) => {
-    const storeId = selectedStoreId || sessionStorage.getItem('selected_store_id');
+    let storeId = selectedStoreId || sessionStorage.getItem('selected_store_id');
+
     if (!storeId) {
-      showToast('No store selected', 'error');
+      const today = new Date().toISOString().split('T')[0];
+      const { data: attendanceRecord } = await supabase
+        .from('attendance_records')
+        .select('store_id')
+        .eq('employee_id', session.employee_id)
+        .eq('work_date', today)
+        .eq('status', 'checked_in')
+        .maybeSingle();
+
+      if (attendanceRecord) {
+        storeId = attendanceRecord.store_id;
+      } else {
+        const { data: employeeStores } = await supabase
+          .from('employee_stores')
+          .select('store_id')
+          .eq('employee_id', session.employee_id)
+          .limit(1)
+          .maybeSingle();
+
+        if (employeeStores) {
+          storeId = employeeStores.store_id;
+        }
+      }
+    }
+
+    if (!storeId) {
+      showToast('No store found for check-in/out', 'error');
       return;
     }
 
