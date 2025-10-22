@@ -22,6 +22,7 @@ function AppContent() {
   const [showWelcome, setShowWelcome] = useState(() => {
     return sessionStorage.getItem('welcome_shown') !== 'true';
   });
+  const [selectedAction, setSelectedAction] = useState<'checkin' | 'ready' | 'report' | null>(null);
   const [needsStoreSelection, setNeedsStoreSelection] = useState(false);
 
   // Set default page based on user role
@@ -81,8 +82,9 @@ function AppContent() {
   }
 
   if (showWelcome) {
-    return <HomePage onGetStarted={() => {
+    return <HomePage onActionSelected={(action) => {
       sessionStorage.setItem('welcome_shown', 'true');
+      setSelectedAction(action);
       setShowWelcome(false);
     }} />;
   }
@@ -92,9 +94,9 @@ function AppContent() {
   }
 
   if (needsStoreSelection && !selectedStoreId) {
-    return <StoreSwitcherPage onStoreSelected={(action) => {
+    return <StoreSwitcherPage onStoreSelected={() => {
       setNeedsStoreSelection(false);
-      if (action === 'report') {
+      if (selectedAction === 'report') {
         setCurrentPage('eod');
       } else {
         setCurrentPage(getDefaultPage());

@@ -1,21 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Store as StoreIcon, Check, ClipboardCheck, UserCheck, FileText } from 'lucide-react';
+import { Store as StoreIcon, Check } from 'lucide-react';
 import { supabase, Store } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/Toast';
-import { CheckInOutModal } from '../components/CheckInOutModal';
 
 interface StoreSwitcherPageProps {
-  onStoreSelected: (action?: 'checkin' | 'ready' | 'report') => void;
+  onStoreSelected: () => void;
 }
 
 export function StoreSwitcherPage({ onStoreSelected }: StoreSwitcherPageProps) {
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [employeePayType, setEmployeePayType] = useState<'hourly' | 'daily'>('hourly');
-  const [showCheckInOutModal, setShowCheckInOutModal] = useState(false);
-  const { session, selectStore, logout, t } = useAuth();
+  const { session, selectStore, t } = useAuth();
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -27,16 +24,6 @@ export function StoreSwitcherPage({ onStoreSelected }: StoreSwitcherPageProps) {
       if (!session?.employee_id) {
         setLoading(false);
         return;
-      }
-
-      const { data: employee } = await supabase
-        .from('employees')
-        .select('pay_type')
-        .eq('id', session.employee_id)
-        .maybeSingle();
-
-      if (employee?.pay_type) {
-        setEmployeePayType(employee.pay_type as 'hourly' | 'daily');
       }
 
       const { data: employeeStores } = await supabase
@@ -154,221 +141,12 @@ export function StoreSwitcherPage({ onStoreSelected }: StoreSwitcherPageProps) {
           ))}
         </div>
 
-        <div className={`grid grid-cols-1 ${employeePayType === 'hourly' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-6 mt-8`}>
-          {employeePayType === 'hourly' && (
-            <button
-              onClick={() => {
-                if (!selectedStore) {
-                  showToast(t('forms.selectOption'), 'error');
-                  return;
-                }
-                setShowCheckInOutModal(true);
-              }}
-              className="bg-white rounded-xl p-8 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-4">
-                  <UserCheck className="w-10 h-10 text-green-600" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                  {t('technician.checkInOut')}
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  {t('technician.checkInOutDesc')}
-                </p>
-              </div>
-            </button>
-          )}
-
+        <div className="text-center">
           <button
-            onClick={async () => {
-              if (!selectedStore) {
-                showToast(t('forms.selectOption'), 'error');
-                return;
-              }
-
-              if (!session?.employee_id) {
-                showToast('Employee ID not found', 'error');
-                return;
-              }
-
-              try {
-                const today = new Date().toISOString().split('T')[0];
-
-                const { data: attendanceRecord } = await supabase
-                  .from('attendance_records')
-                  .select('*')
-                  .eq('employee_id', session.employee_id)
-                  .eq('store_id', selectedStore)
-                  .eq('work_date', today)
-                  .maybeSingle();
-
-                const isFirstReadyOfDay = !attendanceRecord || attendanceRecord.status !== 'checked_in';
-
-                if (isFirstReadyOfDay && employeePayType === 'daily') {
-                  const { data: employee } = await supabase
-                    .from('employees')
-                    .select('display_name')
-                    .eq('id', session.employee_id)
-                    .maybeSingle();
-
-                  const displayName = employee?.display_name || session.display_name || 'Employee';
-
-                  await supabase.rpc('check_in_employee', {
-                    p_employee_id: session.employee_id,
-                    p_store_id: selectedStore,
-                    p_pay_type: 'daily'
-                  });
-
-                  const checkInTime = new Date().toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
-                  });
-
-                  showToast(`Welcome to work, ${displayName}! Checked in at ${checkInTime}`, 'success');
-                }
-
-                if (attendanceRecord && attendanceRecord.status === 'checked_in') {
-                  await supabase.rpc('update_last_activity', {
-                    p_employee_id: session.employee_id,
-                    p_store_id: selectedStore
-                  });
-                }
-
-                const { data: existingQueue, error: checkError } = await supabase
-                  .from('technician_ready_queue')
-                  .select('*')
-                  .eq('employee_id', session.employee_id)
-                  .eq('store_id', selectedStore)
-                  .maybeSingle();
-
-                if (checkError) throw checkError;
-
-                if (existingQueue) {
-                  showToast(t('queue.alreadyInQueue'), 'info');
-                  selectStore(selectedStore);
-                  onStoreSelected('report');
-                  return;
-                }
-
-                const { data: openTickets, error: openTicketsError } = await supabase
-                  .from('ticket_items')
-                  .select(`
-                    sale_ticket_id,
-                    sale_tickets!inner(id, closed_at, completed_at, store_id)
-                  `)
-                  .eq('employee_id', session.employee_id)
-                  .eq('sale_tickets.store_id', selectedStore)
-                  .is('sale_tickets.closed_at', null)
-                  .is('sale_tickets.completed_at', null);
-
-                if (openTicketsError) {
-                  console.error('Error fetching open tickets:', openTicketsError);
-                  throw openTicketsError;
-                }
-
-                console.log('Open tickets found:', openTickets);
-
-                if (openTickets && openTickets.length > 0) {
-                  const ticketIds = [...new Set(openTickets.map(item => item.sale_ticket_id))];
-                  console.log('Marking tickets as completed:', ticketIds);
-
-                  const { data: updateData, error: completeError } = await supabase
-                    .from('sale_tickets')
-                    .update({
-                      completed_at: new Date().toISOString(),
-                      completed_by: session.employee_id,
-                    })
-                    .in('id', ticketIds)
-                    .select();
-
-                  if (completeError) {
-                    console.error('Error marking tickets as completed:', completeError);
-                    throw completeError;
-                  }
-
-                  console.log('Tickets marked as completed:', updateData);
-
-                  const ticketWord = ticketIds.length > 1 ? t('tickets.title') : t('tickets.ticketNo').replace('#', '');
-                  showToast(`Completed ${ticketIds.length} ${ticketWord}`, 'success');
-                } else {
-                  console.log('No open tickets to complete');
-                }
-
-                const { error: insertError } = await supabase
-                  .from('technician_ready_queue')
-                  .insert([{
-                    employee_id: session.employee_id,
-                    store_id: selectedStore,
-                    status: 'ready',
-                    ready_at: new Date().toISOString(),
-                  }]);
-
-                if (insertError) throw insertError;
-
-                const { data: positionData, error: positionError } = await supabase
-                  .rpc('get_technician_queue_position', {
-                    p_employee_id: session.employee_id,
-                    p_store_id: selectedStore
-                  });
-
-                if (positionError) throw positionError;
-
-                const position = positionData || 1;
-
-                const positionText = position === 1 ? '1st' : position === 2 ? '2nd' : position === 3 ? '3rd' : `${position}th`;
-
-                showToast(`${t('queue.youAre')} ${positionText} ${t('queue.inTheQueue')}`, 'success');
-
-                selectStore(selectedStore);
-
-                setTimeout(() => {
-                  onStoreSelected('report');
-                }, 2000);
-
-              } catch (error: any) {
-                console.error('Error adding to queue:', error);
-                showToast(error.message || t('queue.joinFailed'), 'error');
-              }
-            }}
-            className="bg-white rounded-xl p-8 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform"
+            onClick={handleContinue}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg px-12 py-4 rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform"
           >
-            <div className="flex flex-col items-center text-center">
-              <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center mb-4">
-                <ClipboardCheck className="w-10 h-10 text-blue-600" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                {t('technician.ready')}
-              </h3>
-              <p className="text-gray-600 text-sm">
-                {t('technician.readyDesc')}
-              </p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => {
-              if (!selectedStore) {
-                showToast(t('forms.selectOption'), 'error');
-                return;
-              }
-              selectStore(selectedStore);
-              onStoreSelected('report');
-            }}
-            className="bg-white rounded-xl p-8 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform"
-          >
-            <div className="flex flex-col items-center text-center">
-              <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center mb-4">
-                <FileText className="w-10 h-10 text-orange-600" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                {t('technician.report')}
-              </h3>
-              <p className="text-gray-600 text-sm">
-                {t('technician.reportDesc')}
-              </p>
-            </div>
+            Continue
           </button>
         </div>
 
@@ -381,22 +159,6 @@ export function StoreSwitcherPage({ onStoreSelected }: StoreSwitcherPageProps) {
           </div>
         )}
       </div>
-
-      {showCheckInOutModal && selectedStore && (
-        <CheckInOutModal
-          storeId={selectedStore}
-          onClose={() => setShowCheckInOutModal(false)}
-          onCheckInComplete={() => {
-            selectStore(selectedStore);
-            setShowCheckInOutModal(false);
-            onStoreSelected();
-          }}
-          onCheckOutComplete={() => {
-            setShowCheckInOutModal(false);
-            logout();
-          }}
-        />
-      )}
     </div>
   );
 }
