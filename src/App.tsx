@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Layout } from './components/Layout';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -38,6 +38,12 @@ function AppContent() {
   const [hasEnteredApp, setHasEnteredApp] = useState(() => {
     return sessionStorage.getItem('has_entered_app') === 'true';
   });
+
+  // Reset hasEnteredApp when session changes (after login)
+  useEffect(() => {
+    const storedValue = sessionStorage.getItem('has_entered_app') === 'true';
+    setHasEnteredApp(storedValue);
+  }, [session?.employee_id]);
 
   if (!isAuthenticated) {
     return <LoginPage />;
