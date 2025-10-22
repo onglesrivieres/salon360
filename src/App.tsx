@@ -52,7 +52,7 @@ function AppContent() {
     if (isAuthenticated && !selectedStoreId && session?.employee_id && !showWelcome) {
       checkStoreAccess();
     }
-  }, [isAuthenticated, session?.employee_id, showWelcome]);
+  }, [isAuthenticated, selectedStoreId, session?.employee_id, showWelcome]);
 
 
 
@@ -115,13 +115,8 @@ function AppContent() {
         setSelectedAction(action);
         setShowWelcome(false);
 
-        // Always use previous store if available, otherwise use provided storeId
-        const previouslySelectedStore = sessionStorage.getItem('selected_store_id');
-        if (previouslySelectedStore) {
-          selectStore(previouslySelectedStore);
-        } else {
-          selectStore(storeId);
-        }
+        // HomePage already checked sessionStorage and passed the correct store
+        selectStore(storeId);
       }
     }} />;
   }

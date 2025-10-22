@@ -64,7 +64,14 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
         employeeStores = allStores;
         hasMultipleStores = allStores.length > 1;
-        storeId = allStores[0].id;
+
+        // Check for previously selected store
+        const previouslySelectedStore = sessionStorage.getItem('selected_store_id');
+        if (previouslySelectedStore && allStores.some(s => s.id === previouslySelectedStore)) {
+          storeId = previouslySelectedStore;
+        } else {
+          storeId = allStores[0].id;
+        }
       } else {
         const { data: assignedStores, error: storeError } = await supabase
           .from('employee_stores')
@@ -79,7 +86,14 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
         employeeStores = assignedStores;
         hasMultipleStores = assignedStores.length > 1;
-        storeId = assignedStores[0].store_id;
+
+        // Check for previously selected store
+        const previouslySelectedStore = sessionStorage.getItem('selected_store_id');
+        if (previouslySelectedStore && assignedStores.some(s => s.store_id === previouslySelectedStore)) {
+          storeId = previouslySelectedStore;
+        } else {
+          storeId = assignedStores[0].store_id;
+        }
       }
 
       const { data: employee, error: empError } = await supabase
