@@ -7,6 +7,7 @@ export default {
         'xs': '375px',
         'iphone': '390px',
         'ipad': '810px',
+        'custom': '956px',
       },
     },
   },

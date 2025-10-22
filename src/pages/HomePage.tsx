@@ -303,7 +303,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           <button
             onClick={() => handleActionClick('checkin')}
             disabled={isLoading}
-            className="hidden lg:flex bg-white rounded-xl p-5 sm:p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="hidden custom:flex bg-white rounded-xl p-5 sm:p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="flex flex-col items-center text-center w-full">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-green-100 flex items-center justify-center mb-2 sm:mb-3">
@@ -321,7 +321,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           <button
             onClick={() => handleActionClick('ready')}
             disabled={isLoading}
-            className="hidden lg:flex bg-white rounded-xl p-5 sm:p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="hidden custom:flex bg-white rounded-xl p-5 sm:p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="flex flex-col items-center text-center w-full">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-blue-100 flex items-center justify-center mb-2 sm:mb-3">
