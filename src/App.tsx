@@ -4,7 +4,6 @@ import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
-import { StoreSwitcherPage } from './pages/StoreSwitcherPage';
 import { TicketsPage } from './pages/TicketsPage';
 import { supabase } from './lib/supabase';
 
@@ -23,13 +22,11 @@ function AppContent() {
     return sessionStorage.getItem('welcome_shown') !== 'true';
   });
   const [selectedAction, setSelectedAction] = useState<'checkin' | 'ready' | 'report' | null>(null);
-  const [needsStoreSelection, setNeedsStoreSelection] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
       setShowWelcome(sessionStorage.getItem('welcome_shown') !== 'true');
       setSelectedAction(null);
-      setNeedsStoreSelection(false);
     }
   }, [isAuthenticated]);
 
@@ -62,32 +59,44 @@ function AppContent() {
   async function checkStoreAccess() {
     if (!session?.employee_id) return;
 
-    const { data: employeeStores } = await supabase
-      .from('employee_stores')
-      .select('store_id')
-      .eq('employee_id', session.employee_id);
+    let availableStores: any[] = [];
 
-    const employeeStoreIds = employeeStores?.map(es => es.store_id) || [];
+    if (session.role_permission === 'Admin' || session.role_permission === 'Manager' || session.role_permission === 'Owner') {
+      const { data: stores } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('active', true)
+        .order('name');
 
-    const { data: stores } = await supabase
-      .from('stores')
-      .select('*')
-      .eq('active', true)
-      .order('name');
+      availableStores = stores || [];
+    } else {
+      const { data: employeeStores } = await supabase
+        .from('employee_stores')
+        .select('store_id')
+        .eq('employee_id', session.employee_id);
 
-    let availableStores = stores || [];
+      const employeeStoreIds = employeeStores?.map(es => es.store_id) || [];
 
-    if (employeeStoreIds.length > 0) {
-      availableStores = availableStores.filter(store =>
-        employeeStoreIds.includes(store.id)
-      );
+      const { data: stores } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('active', true)
+        .order('name');
+
+      if (employeeStoreIds.length > 0) {
+        availableStores = (stores || []).filter(store =>
+          employeeStoreIds.includes(store.id)
+        );
+      }
     }
 
-    if (availableStores.length === 1) {
-      selectStore(availableStores[0].id);
-      setNeedsStoreSelection(false);
-    } else if (availableStores.length > 1) {
-      setNeedsStoreSelection(true);
+    if (availableStores.length > 0) {
+      const previouslySelectedStore = sessionStorage.getItem('selected_store_id');
+      if (previouslySelectedStore && availableStores.some(s => s.id === previouslySelectedStore)) {
+        selectStore(previouslySelectedStore);
+      } else {
+        selectStore(availableStores[0].id);
+      }
     }
   }
 
@@ -100,27 +109,18 @@ function AppContent() {
       }
 
       // Report action needs to redirect to app
-      if (action === 'report' && session) {
+      if (action === 'report' && session && storeId) {
         sessionStorage.setItem('welcome_shown', 'true');
         login(session);
         setSelectedAction(action);
         setShowWelcome(false);
 
-        // If user has multiple stores, check for previously selected store
-        if (hasMultipleStores) {
-          const previouslySelectedStore = sessionStorage.getItem('selected_store_id');
-          if (previouslySelectedStore) {
-            selectStore(previouslySelectedStore);
-            setNeedsStoreSelection(false);
-          } else {
-            setNeedsStoreSelection(true);
-          }
+        // Always use previous store if available, otherwise use provided storeId
+        const previouslySelectedStore = sessionStorage.getItem('selected_store_id');
+        if (previouslySelectedStore) {
+          selectStore(previouslySelectedStore);
         } else {
-          // Single store - select it directly
-          if (storeId) {
-            selectStore(storeId);
-          }
-          setNeedsStoreSelection(false);
+          selectStore(storeId);
         }
       }
     }} />;
@@ -142,16 +142,6 @@ function AppContent() {
     />;
   }
 
-  if (needsStoreSelection && !selectedStoreId) {
-    return <StoreSwitcherPage onStoreSelected={() => {
-      setNeedsStoreSelection(false);
-      if (selectedAction === 'report') {
-        setCurrentPage('eod');
-      } else {
-        setCurrentPage(getDefaultPage());
-      }
-    }} />;
-  }
 
   return (
     <Layout
