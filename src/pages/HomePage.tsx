@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Store as StoreIcon, Check, ClipboardCheck, UserCheck, FileText } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Store as StoreIcon, Check, ClipboardCheck, UserCheck, FileText, ChevronDown } from 'lucide-react';
 import { supabase, Store } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/Toast';
@@ -14,11 +14,24 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   const [loading, setLoading] = useState(true);
   const [employeePayType, setEmployeePayType] = useState<'hourly' | 'daily'>('hourly');
   const [showCheckInOutModal, setShowCheckInOutModal] = useState(false);
-  const { session, selectedStoreId, logout, t } = useAuth();
+  const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const { session, selectedStoreId, selectStore, logout, t } = useAuth();
   const { showToast } = useToast();
 
   useEffect(() => {
     fetchStores();
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsStoreDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   async function fetchStores() {
@@ -77,6 +90,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     );
   }
 
+  const currentStore = stores.find(s => s.id === selectedStoreId);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl">
@@ -90,6 +105,42 @@ export function HomePage({ onActionSelected }: HomePageProps) {
             <p className="text-sm text-gray-500 mt-2">
               {t('auth.welcome')}, {session.display_name}
             </p>
+          )}
+
+          {stores.length > 0 && (
+            <div className="flex justify-center mt-4">
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setIsStoreDropdownOpen(!isStoreDropdownOpen)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors shadow-md border border-gray-200"
+                >
+                  <StoreIcon className="w-4 h-4" />
+                  {currentStore ? currentStore.name : t('forms.selectOption')}
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+                {isStoreDropdownOpen && (
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[250px] z-50">
+                    {stores.map((store) => (
+                      <button
+                        key={store.id}
+                        onClick={() => {
+                          selectStore(store.id);
+                          setIsStoreDropdownOpen(false);
+                          showToast(`${t('store.switched')} ${store.name}`, 'success');
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors flex items-center gap-2 ${
+                          store.id === selectedStoreId ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        <StoreIcon className="w-4 h-4" />
+                        {store.name}
+                        {store.id === selectedStoreId && <Check className="w-4 h-4 ml-auto" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
 
