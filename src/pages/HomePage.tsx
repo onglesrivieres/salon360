@@ -152,6 +152,18 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       const isCheckedIn = attendance && attendance.status === 'checked_in';
 
       if (!isCheckedIn) {
+        // Check if within check-in window (15 min before opening)
+        const { data: canCheckIn, error: windowError } = await supabase.rpc('can_checkin_now', {
+          p_store_id: storeId
+        });
+
+        if (windowError) throw windowError;
+
+        if (!canCheckIn) {
+          setPinError('Check-in is only available 15 minutes before opening time');
+          return;
+        }
+
         const { error: checkInError } = await supabase.rpc('check_in_employee', {
           p_employee_id: employeeId,
           p_store_id: storeId,
@@ -160,12 +172,14 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
         if (checkInError) throw checkInError;
 
-        const { error: queueError } = await supabase.rpc('join_ready_queue', {
+        const { data: queueResult, error: queueError } = await supabase.rpc('join_ready_queue_with_checkin', {
           p_employee_id: employeeId,
           p_store_id: storeId
         });
 
-        if (queueError) console.error('Failed to join queue:', queueError);
+        if (queueError || !queueResult?.success) {
+          console.error('Failed to join queue:', queueError || queueResult?.message);
+        }
 
         setSuccessMessage(`${t('home.welcome')} ${displayName}! ${t('home.checkedIn')}`);
         setShowSuccessModal(true);
@@ -213,12 +227,21 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       if (inQueue) {
         setShowConfirmModal(true);
       } else {
-        const { error: joinError } = await supabase.rpc('join_ready_queue', {
+        const { data: queueResult, error: joinError } = await supabase.rpc('join_ready_queue_with_checkin', {
           p_employee_id: employeeId,
           p_store_id: storeId
         });
 
         if (joinError) throw joinError;
+
+        if (!queueResult?.success) {
+          if (queueResult?.error === 'CHECK_IN_REQUIRED') {
+            setPinError('You must check in before joining the ready queue');
+          } else {
+            setPinError(queueResult?.message || 'Failed to join queue');
+          }
+          return;
+        }
 
         setSuccessMessage(t('home.joinedQueue'));
         setShowSuccessModal(true);
