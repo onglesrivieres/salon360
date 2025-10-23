@@ -340,22 +340,22 @@ export function PendingApprovalsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-3 bg-gray-50 rounded-lg mb-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-gray-50 rounded-lg mb-3">
                   <div>
                     <p className="text-xs text-gray-500">Service</p>
                     <p className="text-sm font-semibold text-gray-900">{ticket.service_name}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Total</p>
-                    <p className="text-sm font-semibold text-gray-900">${ticket.total.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500">Tips (Cash)</p>
+                    <p className="text-sm font-semibold text-green-600">
+                      ${(ticket.payment_method === 'Card' ? ticket.tip_receptionist : ticket.tip_customer + ticket.tip_receptionist).toFixed(2)}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Tip (Customer)</p>
-                    <p className="text-sm font-semibold text-gray-900">${ticket.tip_customer.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Tip (Receptionist)</p>
-                    <p className="text-sm font-semibold text-gray-900">${ticket.tip_receptionist.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500">Tips (Card)</p>
+                    <p className="text-sm font-semibold text-blue-600">
+                      ${(ticket.payment_method === 'Card' ? ticket.tip_customer : 0).toFixed(2)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Payment</p>
@@ -409,12 +409,20 @@ export function PendingApprovalsPage() {
                 <span className="font-medium">{selectedTicket.customer_name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Total:</span>
-                <span className="font-medium">${selectedTicket.total.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
                 <span className="text-gray-600">Service:</span>
                 <span className="font-medium">{selectedTicket.service_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Tips (Cash):</span>
+                <span className="font-medium text-green-600">
+                  ${(selectedTicket.payment_method === 'Card' ? selectedTicket.tip_receptionist : selectedTicket.tip_customer + selectedTicket.tip_receptionist).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Tips (Card):</span>
+                <span className="font-medium text-blue-600">
+                  ${(selectedTicket.payment_method === 'Card' ? selectedTicket.tip_customer : 0).toFixed(2)}
+                </span>
               </div>
             </div>
           </div>

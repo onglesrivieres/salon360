@@ -15,6 +15,8 @@ interface TechnicianSummary {
   tips_customer: number;
   tips_receptionist: number;
   tips_total: number;
+  tips_cash: number;
+  tips_card: number;
   items: ServiceItemDetail[];
 }
 
@@ -25,6 +27,9 @@ interface ServiceItemDetail {
   price: number;
   tip_customer: number;
   tip_receptionist: number;
+  tip_cash: number;
+  tip_card: number;
+  payment_method: string;
   opened_at: string;
   closed_at: string | null;
   duration_min: number;
@@ -46,6 +51,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     tickets: 0,
     revenue: 0,
     tips: 0,
+    tips_cash: 0,
+    tips_card: 0,
   });
 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -67,6 +74,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           `
           id,
           total,
+          payment_method,
           opened_at,
           closed_at,
           ticket_items${isTechnician ? '!inner' : ''} (
@@ -104,6 +112,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       const technicianMap = new Map<string, TechnicianSummary>();
       let totalRevenue = 0;
       let totalTips = 0;
+      let totalTipsCash = 0;
+      let totalTipsCard = 0;
 
       for (const ticket of tickets || []) {
         totalRevenue += ticket.total;
@@ -124,21 +134,31 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               tips_customer: 0,
               tips_receptionist: 0,
               tips_total: 0,
+              tips_cash: 0,
+              tips_card: 0,
               items: [],
             });
           }
 
           const summary = technicianMap.get(techId)!;
-          const tipCustomer = (item.tip_customer_cash || 0) + (item.tip_customer_card || 0);
+          const tipCustomerCash = item.tip_customer_cash || 0;
+          const tipCustomerCard = item.tip_customer_card || 0;
+          const tipCustomer = tipCustomerCash + tipCustomerCard;
           const tipReceptionist = item.tip_receptionist || 0;
+          const tipCash = tipCustomerCash + tipReceptionist;
+          const tipCard = tipCustomerCard;
 
           summary.services_count += 1;
           summary.revenue += itemRevenue;
           summary.tips_customer += tipCustomer;
           summary.tips_receptionist += tipReceptionist;
           summary.tips_total += tipCustomer + tipReceptionist;
+          summary.tips_cash += tipCash;
+          summary.tips_card += tipCard;
 
           totalTips += tipCustomer + tipReceptionist;
+          totalTipsCash += tipCash;
+          totalTipsCard += tipCard;
 
           summary.items.push({
             ticket_id: ticket.id,
@@ -147,6 +167,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             price: itemRevenue,
             tip_customer: tipCustomer,
             tip_receptionist: tipReceptionist,
+            tip_cash: tipCash,
+            tip_card: tipCard,
+            payment_method: (ticket as any).payment_method || '',
             opened_at: (ticket as any).opened_at,
             closed_at: ticket.closed_at,
             duration_min: item.service?.duration_min || 0,
@@ -165,9 +188,13 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         if (technicianTotals) {
           totalRevenue = technicianTotals.revenue;
           totalTips = technicianTotals.tips_total;
+          totalTipsCash = technicianTotals.tips_cash;
+          totalTipsCard = technicianTotals.tips_card;
         } else {
           totalRevenue = 0;
           totalTips = 0;
+          totalTipsCash = 0;
+          totalTipsCard = 0;
         }
       }
 
@@ -176,6 +203,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         tickets: tickets?.length || 0,
         revenue: totalRevenue,
         tips: totalTips,
+        tips_cash: totalTipsCash,
+        tips_card: totalTipsCard,
       });
     } catch (error) {
       showToast('Failed to load EOD data', 'error');
@@ -191,6 +220,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       'Revenue',
       'Tips (Customer)',
       'Tips (Receptionist)',
+      'Tips (Cash)',
+      'Tips (Card)',
       'Tips Total',
     ];
 
@@ -200,6 +231,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       s.revenue.toFixed(2),
       s.tips_customer.toFixed(2),
       s.tips_receptionist.toFixed(2),
+      s.tips_cash.toFixed(2),
+      s.tips_card.toFixed(2),
       s.tips_total.toFixed(2),
     ]);
 
@@ -370,15 +403,15 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200">
                   <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Tips (Customer)</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      ${summary.tips_customer.toFixed(2)}
+                    <p className="text-xs text-gray-500 mb-0.5">Tips (Cash)</p>
+                    <p className="text-sm font-semibold text-green-600">
+                      ${summary.tips_cash.toFixed(2)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Tips (Receptionist)</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      ${summary.tips_receptionist.toFixed(2)}
+                    <p className="text-xs text-gray-500 mb-0.5">Tips (Card)</p>
+                    <p className="text-sm font-semibold text-blue-600">
+                      ${summary.tips_card.toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -409,20 +442,20 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                       </p>
                       <div className="space-y-0.5">
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-gray-600">T. Given</span>
-                          <span className="text-[9px] font-semibold text-gray-900">
-                            ${summary.tips_customer.toFixed(2)}
+                          <span className="text-[9px] text-gray-600">Tips (Cash)</span>
+                          <span className="text-[9px] font-semibold text-green-600">
+                            ${summary.tips_cash.toFixed(2)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-gray-600">T. Paired</span>
-                          <span className="text-[9px] font-semibold text-gray-900">
-                            ${summary.tips_receptionist.toFixed(2)}
+                          <span className="text-[9px] text-gray-600">Tips (Card)</span>
+                          <span className="text-[9px] font-semibold text-blue-600">
+                            ${summary.tips_card.toFixed(2)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
                           <span className="text-[9px] font-medium text-gray-900">Total</span>
-                          <span className="text-[10px] font-bold text-blue-600">
+                          <span className="text-[10px] font-bold text-gray-900">
                             ${summary.tips_total.toFixed(2)}
                           </span>
                         </div>
@@ -471,21 +504,15 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                               </div>
                               <div className="space-y-0">
                                 <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-600">Bill</span>
-                                  <span className="text-[8px] font-medium text-gray-900">
-                                    ${item.price.toFixed(2)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-600">T. Given</span>
-                                  <span className="text-[8px] font-semibold text-blue-600">
-                                    ${item.tip_customer.toFixed(2)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-600">T. Paired</span>
+                                  <span className="text-[8px] text-gray-600">Cash</span>
                                   <span className="text-[8px] font-semibold text-green-600">
-                                    ${item.tip_receptionist.toFixed(2)}
+                                    ${item.tip_cash.toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[8px] text-gray-600">Card</span>
+                                  <span className="text-[8px] font-semibold text-blue-600">
+                                    ${item.tip_card.toFixed(2)}
                                   </span>
                                 </div>
                               </div>

@@ -357,6 +357,21 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     );
   }
 
+  function calculateCashTips(): number {
+    const tipReceptionist = parseFloat(formData.tip_receptionist) || 0;
+    if (formData.payment_method === 'Card') {
+      return tipReceptionist;
+    }
+    return (parseFloat(formData.tip_customer) || 0) + tipReceptionist;
+  }
+
+  function calculateCardTips(): number {
+    if (formData.payment_method === 'Card') {
+      return parseFloat(formData.tip_customer) || 0;
+    }
+    return 0;
+  }
+
   async function generateTicketNumber(): Promise<string> {
     const dateStr = selectedDate.replace(/-/g, '');
 
@@ -1210,7 +1225,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Tip Paired by Receptionist
+                    Tip Paired by Receptionist <span className="text-green-600 font-semibold">(Cash)</span>
                   </label>
                   <div className="relative">
                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
@@ -1231,14 +1246,14 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             </div>
           </div>
 
-          <div className="border-t border-gray-200 pt-2">
-            <div className="flex justify-between items-center text-base font-bold">
-              <span>Total:</span>
-              <span>${calculateTotal().toFixed(2)}</span>
+          <div className="border-t border-gray-200 pt-2 space-y-1">
+            <div className="flex justify-between items-center text-sm font-semibold text-green-600">
+              <span>Total Tips (Cash):</span>
+              <span>${calculateCashTips().toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center text-sm font-semibold text-blue-600">
-              <span>Total Tips:</span>
-              <span>${calculateTotalTips().toFixed(2)}</span>
+              <span>Total Tips (Card):</span>
+              <span>${calculateCardTips().toFixed(2)}</span>
             </div>
           </div>
 
