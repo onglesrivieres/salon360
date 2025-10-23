@@ -47,7 +47,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [viewMode, setViewMode] = useState<'detail' | 'weekly'>('detail');
   const [weeklyData, setWeeklyData] = useState<Map<string, Map<string, { tips_cash: number; tips_card: number; tips_total: number }>>>(new Map());
   const { showToast } = useToast();
-  const { session, selectedStoreId } = useAuth();
+  const { session, selectedStoreId, t } = useAuth();
 
   const [totals, setTotals] = useState({
     tickets: 0,
@@ -415,7 +415,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     a.click();
     window.URL.revokeObjectURL(url);
 
-    showToast('Report exported successfully', 'success');
+    showToast('Tip Report exported successfully', 'success');
   }
 
   function handlePrint() {
@@ -487,7 +487,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
-        <h2 className="text-base md:text-lg font-bold text-gray-900">Report</h2>
+        <h2 className="text-base md:text-lg font-bold text-gray-900">{t('eod.title')}</h2>
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
           <div className="flex items-center gap-1 flex-1 md:flex-initial">
             <Calendar className="w-4 h-4 text-gray-400" />

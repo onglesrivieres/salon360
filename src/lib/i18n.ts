@@ -4,7 +4,7 @@ export const translations = {
   en: {
     nav: {
       tickets: 'Tickets',
-      eod: 'Report',
+      eod: 'Tip Report',
       employees: 'Employees',
       services: 'Services',
       stores: 'Store',
@@ -65,7 +65,7 @@ export const translations = {
       selectEmployee: 'Select Employee',
     },
     eod: {
-      title: 'Report',
+      title: 'Tip Report',
       totals: 'Totals',
       revenue: 'Revenue',
       tipsC: 'Tips (Customer)',
@@ -262,7 +262,7 @@ export const translations = {
   fr: {
     nav: {
       tickets: 'Billets',
-      eod: 'Rapport',
+      eod: 'Rapport de pourboires',
       employees: 'Employés',
       services: 'Services',
       stores: 'Succursale',
@@ -323,7 +323,7 @@ export const translations = {
       selectEmployee: 'Sélectionner un employé',
     },
     eod: {
-      title: 'Rapport',
+      title: 'Rapport de pourboires',
       totals: 'Totaux',
       revenue: 'Revenu',
       tipsC: 'Pourboires (client)',
@@ -520,7 +520,7 @@ export const translations = {
   vi: {
     nav: {
       tickets: 'Phiếu bán',
-      eod: 'Báo cáo',
+      eod: 'Báo cáo tiền tip',
       employees: 'Nhân viên',
       services: 'Dịch vụ',
       stores: 'Chi nhánh',
@@ -581,7 +581,7 @@ export const translations = {
       selectEmployee: 'Chọn nhân viên',
     },
     eod: {
-      title: 'Báo cáo',
+      title: 'Báo cáo tiền tip',
       totals: 'Tổng hợp',
       revenue: 'Doanh thu',
       tipsC: 'Tip (khách)',
