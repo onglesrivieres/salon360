@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Download, Printer, Plus } from 'lucide-react';
+import { Calendar, Download, Printer, Plus } from 'lucide-react';
 import { supabase, Technician } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -43,7 +43,7 @@ interface EndOfDayPageProps {
 export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) {
   const [summaries, setSummaries] = useState<TechnicianSummary[]>([]);
   const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<'summary' | 'detail' | 'weekly'>('detail');
+  const [viewMode, setViewMode] = useState<'summary' | 'detail'>('detail');
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
@@ -58,21 +58,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
 
-  const [weeklyData, setWeeklyData] = useState<{
-    date: string;
-    dayName: string;
-    tips_cash: number;
-    tips_card: number;
-    total: number;
-  }[]>([]);
-
   useEffect(() => {
-    if (viewMode === 'weekly') {
-      fetchWeeklyData();
-    } else {
-      fetchEODData();
-    }
-  }, [selectedDate, selectedStoreId, viewMode]);
+    fetchEODData();
+  }, [selectedDate, selectedStoreId]);
 
   async function fetchEODData() {
     try {
@@ -225,83 +213,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     }
   }
 
-  async function fetchWeeklyData() {
-    try {
-      setLoading(true);
-
-      const selectedDateObj = new Date(selectedDate + 'T00:00:00');
-      const dayOfWeek = selectedDateObj.getDay();
-      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-
-      const monday = new Date(selectedDateObj);
-      monday.setDate(selectedDateObj.getDate() + mondayOffset);
-
-      const weekDays = [];
-      for (let i = 0; i < 7; i++) {
-        const day = new Date(monday);
-        day.setDate(monday.getDate() + i);
-        const dateStr = day.toISOString().split('T')[0];
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const dayName = dayNames[day.getDay()];
-        weekDays.push({ date: dateStr, dayName });
-      }
-
-      const weeklyResults = await Promise.all(
-        weekDays.map(async ({ date, dayName }) => {
-          let query = supabase
-            .from('sale_tickets')
-            .select(
-              `
-              id,
-              ticket_items (
-                tip_customer_cash,
-                tip_customer_card,
-                tip_receptionist
-              )
-            `
-            )
-            .eq('ticket_date', date);
-
-          if (selectedStoreId) {
-            query = query.eq('store_id', selectedStoreId);
-          }
-
-          const { data: tickets } = await query;
-
-          let tips_cash = 0;
-          let tips_card = 0;
-
-          for (const ticket of tickets || []) {
-            for (const item of (ticket as any).ticket_items || []) {
-              const tipCustomerCash = item.tip_customer_cash || 0;
-              const tipCustomerCard = item.tip_customer_card || 0;
-              const tipReceptionist = item.tip_receptionist || 0;
-
-              tips_cash += tipCustomerCash + tipReceptionist;
-              tips_card += tipCustomerCard;
-            }
-          }
-
-          const total = tips_cash + tips_card;
-
-          return {
-            date,
-            dayName,
-            tips_cash,
-            tips_card,
-            total,
-          };
-        })
-      );
-
-      setWeeklyData(weeklyResults);
-    } catch (error) {
-      showToast('Failed to load weekly data', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   function exportCSV() {
     const headers = [
       'Technician',
@@ -353,26 +264,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     return new Date().toISOString().split('T')[0];
   }
 
-  function navigatePrevious() {
-    const newDate = new Date(selectedDate + 'T00:00:00');
-    newDate.setDate(newDate.getDate() - 1);
-    onDateChange(newDate.toISOString().split('T')[0]);
-  }
-
-  function navigateNext() {
-    const newDate = new Date(selectedDate + 'T00:00:00');
-    newDate.setDate(newDate.getDate() + 1);
-    const maxDate = getMaxDate();
-    const nextDateStr = newDate.toISOString().split('T')[0];
-    if (nextDateStr <= maxDate) {
-      onDateChange(nextDateStr);
-    }
-  }
-
-  function navigateToday() {
-    onDateChange(new Date().toISOString().split('T')[0]);
-  }
-
   function openEditor(ticketId: string) {
     setEditingTicketId(ticketId);
     setIsEditorOpen(true);
@@ -408,23 +299,22 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     return tooFast || tooSlow;
   }
 
-  const parseLocalDate = (dateStr: string) => {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  };
-
-  const displayDate = parseLocalDate(selectedDate).toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
-
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
         <h2 className="text-base md:text-lg font-bold text-gray-900">Report</h2>
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
+          <div className="flex items-center gap-1 flex-1 md:flex-initial">
+            <Calendar className="w-4 h-4 text-gray-400" />
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => onDateChange(e.target.value)}
+              min={getMinDate()}
+              max={getMaxDate()}
+              className="px-2 py-2 md:py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 md:flex-initial min-h-[44px] md:min-h-0"
+            />
+          </div>
           {session && session.role && Permissions.endOfDay.canExport(session.role) && (
             <>
               <Button variant="secondary" size="sm" onClick={exportCSV} className="hidden md:flex">
@@ -446,24 +336,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       </div>
 
       <div className="bg-white rounded-lg shadow mb-3">
-        <div className="p-2 border-b border-gray-200 flex flex-col md:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
-            <Button variant="ghost" size="sm" onClick={navigatePrevious} className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0">
-              <ChevronLeft className="w-5 h-5 md:w-4 md:h-4" />
-            </Button>
-            <h3 className="text-sm md:text-base font-semibold text-gray-900 min-w-[200px] text-center">
-              {displayDate}
-            </h3>
-            <Button variant="ghost" size="sm" onClick={navigateNext} className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0">
-              <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
-            </Button>
-          </div>
-          <div className="flex gap-2 w-full md:w-auto">
-            <Button variant="secondary" size="sm" onClick={navigateToday} className="min-h-[44px] md:min-h-0 flex-1 md:flex-initial">
-              Today
-            </Button>
-          </div>
-        </div>
         <div className="p-2 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-base font-semibold text-gray-900">Technician Summary</h3>
           <div className="flex gap-2">
@@ -481,13 +353,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             >
               Detail Grid
             </Button>
-            <Button
-              size="sm"
-              variant={viewMode === 'weekly' ? 'primary' : 'ghost'}
-              onClick={() => setViewMode('weekly')}
-            >
-              Weekly
-            </Button>
           </div>
         </div>
 
@@ -495,80 +360,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           <div className="flex items-center justify-center h-32">
             <div className="text-sm text-gray-500">Loading...</div>
           </div>
-        ) : viewMode === 'weekly' ? (
-          weeklyData.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-sm text-gray-500">No data for this week</p>
-            </div>
-          ) : (
-            <div className="p-3 overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b-2 border-gray-300">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Day</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Tip (Cash)</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Tip (Card)</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {weeklyData.map((day, index) => {
-                    const isToday = day.date === selectedDate;
-                    return (
-                      <tr
-                        key={day.date}
-                        className={`border-b border-gray-200 ${
-                          isToday ? 'bg-blue-50' : index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                        }`}
-                      >
-                        <td className="py-3 px-4">
-                          <div className="flex flex-col">
-                            <span className={`text-sm font-medium ${isToday ? 'text-blue-700' : 'text-gray-900'}`}>
-                              {day.dayName}
-                            </span>
-                            <span className="text-xs text-gray-500">{day.date}</span>
-                          </div>
-                        </td>
-                        <td className="text-right py-3 px-4">
-                          <span className="text-sm font-semibold text-green-600">
-                            ${day.tips_cash.toFixed(2)}
-                          </span>
-                        </td>
-                        <td className="text-right py-3 px-4">
-                          <span className="text-sm font-semibold text-blue-600">
-                            ${day.tips_card.toFixed(2)}
-                          </span>
-                        </td>
-                        <td className="text-right py-3 px-4">
-                          <span className="text-sm font-bold text-gray-900">
-                            ${day.total.toFixed(2)}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  <tr className="bg-gray-100 border-t-2 border-gray-300">
-                    <td className="py-3 px-4 text-sm font-bold text-gray-900">Week Total</td>
-                    <td className="text-right py-3 px-4">
-                      <span className="text-sm font-bold text-green-600">
-                        ${weeklyData.reduce((sum, day) => sum + day.tips_cash, 0).toFixed(2)}
-                      </span>
-                    </td>
-                    <td className="text-right py-3 px-4">
-                      <span className="text-sm font-bold text-blue-600">
-                        ${weeklyData.reduce((sum, day) => sum + day.tips_card, 0).toFixed(2)}
-                      </span>
-                    </td>
-                    <td className="text-right py-3 px-4">
-                      <span className="text-sm font-bold text-gray-900">
-                        ${weeklyData.reduce((sum, day) => sum + day.total, 0).toFixed(2)}
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )
         ) : summaries.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-gray-500">No tickets for this date</p>
