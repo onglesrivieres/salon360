@@ -56,7 +56,8 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
         ticket_items${isTechnician ? '!inner' : ''} (
           id,
           employee_id,
-          tip_customer,
+          tip_customer_cash,
+          tip_customer_card,
           tip_receptionist,
           service:services(code, name, duration_min),
           employee:employees(display_name)
@@ -104,7 +105,8 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
   function getTipCustomer(ticket: any): number {
     if (!ticket.ticket_items || ticket.ticket_items.length === 0) return 0;
-    return ticket.ticket_items[0]?.tip_customer || 0;
+    const firstItem = ticket.ticket_items[0];
+    return (firstItem?.tip_customer_cash || 0) + (firstItem?.tip_customer_card || 0);
   }
 
   function getTipReceptionist(ticket: any): number {

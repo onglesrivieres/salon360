@@ -29,7 +29,8 @@ interface TicketItemForm {
   employee_id: string;
   qty: string;
   price_each: string;
-  tip_customer: string;
+  tip_customer_cash: string;
+  tip_customer_card: string;
   tip_receptionist: string;
   addon_details: string;
   addon_price: string;
@@ -97,7 +98,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     customer_name: '',
     customer_phone: '',
     payment_method: '' as '' | SaleTicket['payment_method'],
-    tip_customer: '0',
+    tip_customer_cash: '0',
+    tip_customer_card: '0',
     tip_receptionist: '0',
     addon_details: '',
     addon_price: '0',
@@ -229,7 +231,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_name: ticketData.customer_name,
           customer_phone: ticketData.customer_phone || '',
           payment_method: ticketData.payment_method || '',
-          tip_customer: firstItem?.tip_customer?.toString() || '0',
+          tip_customer_cash: firstItem?.tip_customer_cash?.toString() || '0',
+          tip_customer_card: firstItem?.tip_customer_card?.toString() || '0',
           tip_receptionist: firstItem?.tip_receptionist?.toString() || '0',
           addon_details: firstItem?.addon_details || '',
           addon_price: firstItem?.addon_price?.toString() || '0',
@@ -243,7 +246,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             employee_id: item.employee_id,
             qty: item.qty.toString(),
             price_each: item.price_each.toString(),
-            tip_customer: item.tip_customer.toString(),
+            tip_customer_cash: item.tip_customer_cash?.toString() || '0',
+            tip_customer_card: item.tip_customer_card?.toString() || '0',
             tip_receptionist: item.tip_receptionist.toString(),
             addon_details: item.addon_details || '',
             addon_price: item.addon_price?.toString() || '0',
@@ -308,7 +312,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         employee_id: lastUsedEmployeeId,
         qty: '1',
         price_each: defaultService?.base_price.toString() || '0',
-        tip_customer: '0',
+        tip_customer_cash: '0',
+        tip_customer_card: '0',
         tip_receptionist: '0',
         addon_details: '',
         addon_price: '0',
@@ -352,7 +357,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
   function calculateTotalTips(): number {
     return (
-      (parseFloat(formData.tip_customer) || 0) +
+      (parseFloat(formData.tip_customer_cash) || 0) +
+      (parseFloat(formData.tip_customer_card) || 0) +
       (parseFloat(formData.tip_receptionist) || 0)
     );
   }
@@ -443,7 +449,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       setSaving(true);
 
       const total = calculateTotal();
-      const tipCustomer = parseFloat(formData.tip_customer) || 0;
+      const tipCustomerCash = parseFloat(formData.tip_customer_cash) || 0;
+      const tipCustomerCard = parseFloat(formData.tip_customer_card) || 0;
       const tipReceptionist = parseFloat(formData.tip_receptionist) || 0;
 
       if (ticketId && ticket) {
@@ -484,7 +491,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             employee_id: item.employee_id,
             qty: parseFloat(item.qty),
             price_each: parseFloat(item.price_each),
-            tip_customer: tipCustomer,
+            tip_customer_cash: tipCustomerCash,
+            tip_customer_card: tipCustomerCard,
             tip_receptionist: tipReceptionist,
             addon_details: formData.addon_details || '',
             addon_price: addonPrice,
@@ -506,7 +514,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         showToast('Ticket updated successfully', 'success');
       } else {
         const ticketNo = await generateTicketNumber();
-        const tipCustomer = parseFloat(formData.tip_customer) || 0;
+        const tipCustomerCash = parseFloat(formData.tip_customer_cash) || 0;
+        const tipCustomerCard = parseFloat(formData.tip_customer_card) || 0;
         const tipReceptionist = parseFloat(formData.tip_receptionist) || 0;
 
         const { data: newTicket, error: ticketError } = await supabase
@@ -539,7 +548,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             employee_id: item.employee_id,
             qty: parseFloat(item.qty),
             price_each: parseFloat(item.price_each),
-            tip_customer: tipCustomer,
+            tip_customer_cash: tipCustomerCash,
+            tip_customer_card: tipCustomerCard,
             tip_receptionist: tipReceptionist,
             addon_details: formData.addon_details || '',
             addon_price: addonPrice,
@@ -1184,24 +1194,45 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   Card
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Tip Given by Customer
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.tip_customer}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tip_customer: e.target.value })
-                      }
-                      className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                      disabled={isTicketClosed || isReadOnly}
-                    />
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                      Tip Cash
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.tip_customer_cash}
+                        onChange={(e) =>
+                          setFormData({ ...formData, tip_customer_cash: e.target.value })
+                        }
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                      Tip Card
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.tip_customer_card}
+                        onChange={(e) =>
+                          setFormData({ ...formData, tip_customer_card: e.target.value })
+                        }
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                      />
+                    </div>
                   </div>
                 </div>
                 <div>
