@@ -13,7 +13,7 @@ interface WeeklyCalendarViewProps {
 }
 
 function getWeekStartDate(date: string): string {
-  const d = new Date(date);
+  const d = new Date(date + 'T00:00:00');
   const day = d.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
@@ -22,7 +22,7 @@ function getWeekStartDate(date: string): string {
 
 function getWeekDates(startDate: string): string[] {
   const dates: string[] = [];
-  const d = new Date(startDate);
+  const d = new Date(startDate + 'T00:00:00');
   for (let i = 0; i < 7; i++) {
     dates.push(d.toISOString().split('T')[0]);
     d.setDate(d.getDate() + 1);
@@ -41,15 +41,6 @@ function formatDateHeader(dateStr: string): { day: string; date: string } {
 export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: WeeklyCalendarViewProps) {
   const weekStart = getWeekStartDate(selectedDate);
   const weekDates = getWeekDates(weekStart);
-
-  console.log('WeeklyCalendarView render:', {
-    selectedDate,
-    weekStart,
-    weekDates,
-    weeklyDataSize: weeklyData.size,
-    summariesCount: summaries.length,
-    weeklyDataKeys: Array.from(weeklyData.keys())
-  });
 
   return (
     <div className="overflow-x-auto">

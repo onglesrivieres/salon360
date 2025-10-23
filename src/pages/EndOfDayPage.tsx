@@ -69,7 +69,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   }, [selectedDate, selectedStoreId, viewMode]);
 
   function getWeekStartDate(date: string): string {
-    const d = new Date(date);
+    const d = new Date(date + 'T00:00:00');
     const day = d.getDay();
     const diff = day === 0 ? -6 : 1 - day;
     d.setDate(d.getDate() + diff);
@@ -78,7 +78,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
   function getWeekDates(startDate: string): string[] {
     const dates: string[] = [];
-    const d = new Date(startDate);
+    const d = new Date(startDate + 'T00:00:00');
     for (let i = 0; i < 7; i++) {
       dates.push(d.toISOString().split('T')[0]);
       d.setDate(d.getDate() + 1);
@@ -130,13 +130,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       if (ticketsError) throw ticketsError;
 
-      console.log('Weekly data query results:', {
-        weekStart,
-        weekEnd,
-        ticketCount: tickets?.length,
-        tickets: tickets
-      });
-
       const dataMap = new Map<string, Map<string, { tips_cash: number; tips_card: number; tips_total: number }>>();
 
       for (const ticket of tickets || []) {
@@ -187,12 +180,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           return nameA.localeCompare(nameB);
         })
       );
-
-      console.log('Weekly data processed:', {
-        dataMapSize: dataMap.size,
-        sortedDataSize: sortedData.size,
-        techNames: Array.from(techNames.entries())
-      });
 
       setWeeklyData(sortedData);
 
