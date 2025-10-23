@@ -76,7 +76,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             qty,
             price_each,
             addon_price,
-            tip_customer,
+            tip_customer_cash,
+            tip_customer_card,
             tip_receptionist,
             service:services(code, name, duration_min),
             employee:employees(
@@ -128,21 +129,24 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           }
 
           const summary = technicianMap.get(techId)!;
+          const tipCustomer = (item.tip_customer_cash || 0) + (item.tip_customer_card || 0);
+          const tipReceptionist = item.tip_receptionist || 0;
+
           summary.services_count += 1;
           summary.revenue += itemRevenue;
-          summary.tips_customer += item.tip_customer;
-          summary.tips_receptionist += item.tip_receptionist;
-          summary.tips_total += item.tip_customer + item.tip_receptionist;
+          summary.tips_customer += tipCustomer;
+          summary.tips_receptionist += tipReceptionist;
+          summary.tips_total += tipCustomer + tipReceptionist;
 
-          totalTips += item.tip_customer + item.tip_receptionist;
+          totalTips += tipCustomer + tipReceptionist;
 
           summary.items.push({
             ticket_id: ticket.id,
             service_code: item.service?.code || '',
             service_name: item.service?.name || '',
             price: itemRevenue,
-            tip_customer: item.tip_customer,
-            tip_receptionist: item.tip_receptionist,
+            tip_customer: tipCustomer,
+            tip_receptionist: tipReceptionist,
             opened_at: (ticket as any).opened_at,
             closed_at: ticket.closed_at,
             duration_min: item.service?.duration_min || 0,

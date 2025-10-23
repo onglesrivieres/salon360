@@ -229,7 +229,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_name: ticketData.customer_name,
           customer_phone: ticketData.customer_phone || '',
           payment_method: ticketData.payment_method || '',
-          tip_customer: firstItem?.tip_customer?.toString() || '0',
+          tip_customer: ((firstItem?.tip_customer_cash || 0) + (firstItem?.tip_customer_card || 0)).toString(),
           tip_receptionist: firstItem?.tip_receptionist?.toString() || '0',
           addon_details: firstItem?.addon_details || '',
           addon_price: firstItem?.addon_price?.toString() || '0',
@@ -243,7 +243,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             employee_id: item.employee_id,
             qty: item.qty.toString(),
             price_each: item.price_each.toString(),
-            tip_customer: item.tip_customer.toString(),
+            tip_customer: ((item.tip_customer_cash || 0) + (item.tip_customer_card || 0)).toString(),
             tip_receptionist: item.tip_receptionist.toString(),
             addon_details: item.addon_details || '',
             addon_price: item.addon_price?.toString() || '0',
@@ -478,13 +478,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         for (const item of items) {
           const addonPrice = parseFloat(formData.addon_price) || 0;
 
+          const isCardPayment = formData.payment_method === 'Card';
           const itemData = {
             sale_ticket_id: ticketId,
             service_id: item.service_id,
             employee_id: item.employee_id,
             qty: parseFloat(item.qty),
             price_each: parseFloat(item.price_each),
-            tip_customer: tipCustomer,
+            tip_customer_cash: isCardPayment ? 0 : tipCustomer,
+            tip_customer_card: isCardPayment ? tipCustomer : 0,
             tip_receptionist: tipReceptionist,
             addon_details: formData.addon_details || '',
             addon_price: addonPrice,
@@ -532,6 +534,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         if (ticketError) throw ticketError;
 
         const addonPrice = parseFloat(formData.addon_price) || 0;
+        const isCardPayment = formData.payment_method === 'Card';
         const itemsData = items.map((item) => {
           return {
             sale_ticket_id: newTicket.id,
@@ -539,7 +542,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             employee_id: item.employee_id,
             qty: parseFloat(item.qty),
             price_each: parseFloat(item.price_each),
-            tip_customer: tipCustomer,
+            tip_customer_cash: isCardPayment ? 0 : tipCustomer,
+            tip_customer_card: isCardPayment ? tipCustomer : 0,
             tip_receptionist: tipReceptionist,
             addon_details: formData.addon_details || '',
             addon_price: addonPrice,

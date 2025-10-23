@@ -125,7 +125,8 @@ export interface TicketItem {
   price_each: number;
   addon_details?: string;
   addon_price?: number;
-  tip_customer: number;
+  tip_customer_cash: number;
+  tip_customer_card: number;
   tip_receptionist: number;
   notes: string;
   created_at: string;
