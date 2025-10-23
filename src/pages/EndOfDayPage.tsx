@@ -6,6 +6,7 @@ import { useToast } from '../components/ui/Toast';
 import { TicketEditor } from '../components/TicketEditor';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
+import { WeeklyCalendarView } from '../components/WeeklyCalendarView';
 
 interface TechnicianSummary {
   technician_id: string;
@@ -43,7 +44,8 @@ interface EndOfDayPageProps {
 export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) {
   const [summaries, setSummaries] = useState<TechnicianSummary[]>([]);
   const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<'summary' | 'detail'>('detail');
+  const [viewMode, setViewMode] = useState<'summary' | 'detail' | 'weekly'>('detail');
+  const [weeklyData, setWeeklyData] = useState<Map<string, Map<string, { tips_cash: number; tips_card: number; tips_total: number }>>>(new Map());
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
@@ -59,8 +61,163 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchEODData();
-  }, [selectedDate, selectedStoreId]);
+    if (viewMode === 'weekly') {
+      fetchWeeklyData();
+    } else {
+      fetchEODData();
+    }
+  }, [selectedDate, selectedStoreId, viewMode]);
+
+  function getWeekStartDate(date: string): string {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    return d.toISOString().split('T')[0];
+  }
+
+  function getWeekDates(startDate: string): string[] {
+    const dates: string[] = [];
+    const d = new Date(startDate);
+    for (let i = 0; i < 7; i++) {
+      dates.push(d.toISOString().split('T')[0]);
+      d.setDate(d.getDate() + 1);
+    }
+    return dates;
+  }
+
+  async function fetchWeeklyData() {
+    try {
+      setLoading(true);
+
+      const weekStart = getWeekStartDate(selectedDate);
+      const weekDates = getWeekDates(weekStart);
+      const weekEnd = weekDates[weekDates.length - 1];
+
+      const isTechnician = session?.role_permission === 'Technician';
+
+      let query = supabase
+        .from('sale_tickets')
+        .select(
+          `
+          id,
+          ticket_date,
+          ticket_items${isTechnician ? '!inner' : ''} (
+            id,
+            employee_id,
+            tip_customer_cash,
+            tip_customer_card,
+            tip_receptionist,
+            employee:employees(
+              id,
+              display_name
+            )
+          )
+        `
+        )
+        .gte('ticket_date', weekStart)
+        .lte('ticket_date', weekEnd);
+
+      if (selectedStoreId) {
+        query = query.eq('store_id', selectedStoreId);
+      }
+
+      if (isTechnician && session?.employee_id) {
+        query = query.eq('ticket_items.employee_id', session.employee_id);
+      }
+
+      const { data: tickets, error: ticketsError } = await query;
+
+      if (ticketsError) throw ticketsError;
+
+      const dataMap = new Map<string, Map<string, { tips_cash: number; tips_card: number; tips_total: number }>>();
+
+      for (const ticket of tickets || []) {
+        const ticketDate = (ticket as any).ticket_date;
+
+        for (const item of (ticket as any).ticket_items || []) {
+          const techId = item.employee_id;
+          const technician = item.employee;
+
+          if (!technician) continue;
+
+          if (!dataMap.has(techId)) {
+            dataMap.set(techId, new Map());
+          }
+
+          const techMap = dataMap.get(techId)!;
+          if (!techMap.has(ticketDate)) {
+            techMap.set(ticketDate, { tips_cash: 0, tips_card: 0, tips_total: 0 });
+          }
+
+          const dayData = techMap.get(ticketDate)!;
+          const tipCustomerCash = item.tip_customer_cash || 0;
+          const tipCustomerCard = item.tip_customer_card || 0;
+          const tipReceptionist = item.tip_receptionist || 0;
+          const tipCash = tipCustomerCash + tipReceptionist;
+          const tipCard = tipCustomerCard;
+          const tipTotal = tipCash + tipCard;
+
+          dayData.tips_cash += tipCash;
+          dayData.tips_card += tipCard;
+          dayData.tips_total += tipTotal;
+        }
+      }
+
+      const techNames = new Map<string, string>();
+      for (const ticket of tickets || []) {
+        for (const item of (ticket as any).ticket_items || []) {
+          if (item.employee) {
+            techNames.set(item.employee_id, item.employee.display_name);
+          }
+        }
+      }
+
+      const sortedData = new Map(
+        Array.from(dataMap.entries()).sort((a, b) => {
+          const nameA = techNames.get(a[0]) || '';
+          const nameB = techNames.get(b[0]) || '';
+          return nameA.localeCompare(nameB);
+        })
+      );
+
+      setWeeklyData(sortedData);
+
+      const technicianMap = new Map<string, TechnicianSummary>();
+      for (const [techId, dayMap] of sortedData.entries()) {
+        const techName = techNames.get(techId) || 'Unknown';
+        let totalCash = 0;
+        let totalCard = 0;
+        let totalTips = 0;
+
+        for (const dayData of dayMap.values()) {
+          totalCash += dayData.tips_cash;
+          totalCard += dayData.tips_card;
+          totalTips += dayData.tips_total;
+        }
+
+        technicianMap.set(techId, {
+          technician_id: techId,
+          technician_name: techName,
+          services_count: 0,
+          revenue: 0,
+          tips_customer: 0,
+          tips_receptionist: 0,
+          tips_total: totalTips,
+          tips_cash: totalCash,
+          tips_card: totalCard,
+          items: [],
+        });
+      }
+
+      const sortedSummaries = Array.from(technicianMap.values());
+      setSummaries(sortedSummaries);
+    } catch (error) {
+      showToast('Failed to load weekly data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function fetchEODData() {
     try {
@@ -353,6 +510,13 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             >
               Detail Grid
             </Button>
+            <Button
+              size="sm"
+              variant={viewMode === 'weekly' ? 'primary' : 'ghost'}
+              onClick={() => setViewMode('weekly')}
+            >
+              Weekly
+            </Button>
           </div>
         </div>
 
@@ -417,6 +581,14 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                 </div>
               </div>
             ))}
+          </div>
+        ) : viewMode === 'weekly' ? (
+          <div className="p-2 overflow-x-auto">
+            <WeeklyCalendarView
+              selectedDate={selectedDate}
+              weeklyData={weeklyData}
+              summaries={summaries}
+            />
           </div>
         ) : (
           <div className="p-1 md:p-2 overflow-x-auto">
