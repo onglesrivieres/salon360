@@ -28,13 +28,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('en');
   const [isLoading, setIsLoading] = useState(true);
 
+  const logout = useCallback(() => {
+    clearSession();
+    sessionStorage.removeItem('selected_store_id');
+    sessionStorage.removeItem('welcome_shown');
+    localStorage.removeItem(LOCALE_KEY);
+    const deviceLocale = getDeviceLocale();
+    setLocaleState(deviceLocale);
+    setSession(null);
+    setSelectedStoreId(null);
+  }, []);
+
   const checkSession = useCallback(() => {
     const currentSession = getSession();
-    setSession(currentSession);
     if (!currentSession && session) {
-      window.location.reload();
+      logout();
+    } else {
+      setSession(currentSession);
     }
-  }, [session]);
+  }, [session, logout]);
 
   useEffect(() => {
     const currentSession = getSession();
@@ -84,17 +96,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     saveSession(newSession);
     setSession(newSession);
     sessionStorage.removeItem('selected_store_id');
-    setSelectedStoreId(null);
-  };
-
-  const logout = () => {
-    clearSession();
-    sessionStorage.removeItem('selected_store_id');
-    sessionStorage.removeItem('welcome_shown');
-    localStorage.removeItem(LOCALE_KEY);
-    const deviceLocale = getDeviceLocale();
-    setLocaleState(deviceLocale);
-    setSession(null);
     setSelectedStoreId(null);
   };
 
