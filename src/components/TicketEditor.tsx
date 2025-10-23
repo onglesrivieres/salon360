@@ -429,11 +429,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       return;
     }
 
-    if (!formData.customer_name.trim()) {
-      showToast('Customer Name is required', 'error');
-      return;
-    }
-
     if (!selectedTechnicianId) {
       showToast('Technician is required', 'error');
       return;
@@ -884,7 +879,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               <div className="flex-1">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Name <span className="text-red-600">*</span>
+                    Name
                   </label>
                   <input
                     value={formData.customer_name}
@@ -899,7 +894,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               </div>
               <div className="flex-1">
                 <Input
-                  label="Phone Number"
+                  label="Phone Number (Optional)"
                   value={formData.customer_phone}
                   onChange={(e) =>
                     setFormData({ ...formData, customer_phone: e.target.value })
