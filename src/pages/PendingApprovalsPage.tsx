@@ -346,20 +346,20 @@ export function PendingApprovalsPage() {
                     <p className="text-sm font-semibold text-gray-900">{ticket.service_name}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Tips (Cash)</p>
+                    <p className="text-xs text-gray-500">Bill Total</p>
+                    <p className="text-sm font-semibold text-gray-900">${ticket.total.toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Tip (Customer) {ticket.payment_method === 'Card' ? 'Card' : 'Cash'}</p>
+                    <p className={`text-sm font-semibold ${ticket.payment_method === 'Card' ? 'text-blue-600' : 'text-green-600'}`}>
+                      ${ticket.tip_customer.toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Tip (Receptionist)</p>
                     <p className="text-sm font-semibold text-green-600">
-                      ${(ticket.payment_method === 'Card' ? ticket.tip_receptionist : ticket.tip_customer + ticket.tip_receptionist).toFixed(2)}
+                      ${ticket.tip_receptionist.toFixed(2)}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Tips (Card)</p>
-                    <p className="text-sm font-semibold text-blue-600">
-                      ${(ticket.payment_method === 'Card' ? ticket.tip_customer : 0).toFixed(2)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Payment</p>
-                    <p className="text-sm font-semibold text-gray-900">{ticket.payment_method}</p>
                   </div>
                 </div>
 
@@ -413,15 +413,19 @@ export function PendingApprovalsPage() {
                 <span className="font-medium">{selectedTicket.service_name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Tips (Cash):</span>
-                <span className="font-medium text-green-600">
-                  ${(selectedTicket.payment_method === 'Card' ? selectedTicket.tip_receptionist : selectedTicket.tip_customer + selectedTicket.tip_receptionist).toFixed(2)}
+                <span className="text-gray-600">Bill Total:</span>
+                <span className="font-medium">${selectedTicket.total.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Tip (Customer) {selectedTicket.payment_method === 'Card' ? 'Card' : 'Cash'}:</span>
+                <span className={`font-medium ${selectedTicket.payment_method === 'Card' ? 'text-blue-600' : 'text-green-600'}`}>
+                  ${selectedTicket.tip_customer.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Tips (Card):</span>
-                <span className="font-medium text-blue-600">
-                  ${(selectedTicket.payment_method === 'Card' ? selectedTicket.tip_customer : 0).toFixed(2)}
+                <span className="text-gray-600">Tip (Receptionist):</span>
+                <span className="font-medium text-green-600">
+                  ${selectedTicket.tip_receptionist.toFixed(2)}
                 </span>
               </div>
             </div>
