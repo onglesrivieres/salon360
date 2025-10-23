@@ -44,7 +44,7 @@ interface EndOfDayPageProps {
 export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) {
   const [summaries, setSummaries] = useState<TechnicianSummary[]>([]);
   const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<'summary' | 'detail' | 'weekly'>('detail');
+  const [viewMode, setViewMode] = useState<'detail' | 'weekly'>('detail');
   const [weeklyData, setWeeklyData] = useState<Map<string, Map<string, { tips_cash: number; tips_card: number; tips_total: number }>>>(new Map());
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
@@ -571,13 +571,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             <div className="flex gap-2">
             <Button
               size="sm"
-              variant={viewMode === 'summary' ? 'primary' : 'ghost'}
-              onClick={() => setViewMode('summary')}
-            >
-              Summary
-            </Button>
-            <Button
-              size="sm"
               variant={viewMode === 'detail' ? 'primary' : 'ghost'}
               onClick={() => setViewMode('detail')}
             >
@@ -601,60 +594,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         ) : summaries.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-gray-500">No tickets for this date</p>
-          </div>
-        ) : viewMode === 'summary' ? (
-          <div className="p-2 md:p-3 space-y-2 md:space-y-3">
-            {summaries.map((summary) => (
-              <div key={summary.technician_id} className="border border-gray-200 rounded-lg p-3 bg-white">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h4 className="text-base font-bold text-gray-900 mb-0.5">
-                      {summary.technician_name}
-                    </h4>
-                    <p className="text-xs text-gray-500">
-                      {summary.services_count} {summary.services_count === 1 ? 'service' : 'services'} completed
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500 mb-0.5">Total Tips</p>
-                    <p className="text-lg font-bold text-blue-600">
-                      ${summary.tips_total.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mb-2">
-                  <p className="text-xs font-medium text-gray-700 mb-1">Service Records:</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {summary.items.map((item, index) => (
-                      <div
-                        key={index}
-                        className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded-lg text-xs"
-                      >
-                        <span className="font-medium text-gray-900 text-xs">{item.service_code}</span>
-                        <span className="text-gray-400 text-xs">•</span>
-                        <span className="text-gray-600 text-xs">${item.price.toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Tips (Cash)</p>
-                    <p className="text-sm font-semibold text-green-600">
-                      ${summary.tips_cash.toFixed(2)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Tips (Card)</p>
-                    <p className="text-sm font-semibold text-blue-600">
-                      ${summary.tips_card.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         ) : viewMode === 'weekly' ? (
           <div className="p-2 overflow-x-auto">
