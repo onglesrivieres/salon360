@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Download, Printer, Plus } from 'lucide-react';
+import { Calendar, Download, Printer, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase, Technician } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -411,6 +411,22 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     showToast('Opening print dialog', 'success');
   }
 
+  function navigateWeek(direction: 'prev' | 'next') {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + (direction === 'prev' ? -7 : 7));
+    onDateChange(d.toISOString().split('T')[0]);
+  }
+
+  function getCurrentWeekLabel(): string {
+    const weekStart = getWeekStartDate(selectedDate);
+    const weekDates = getWeekDates(weekStart);
+    const startDate = new Date(weekDates[0]);
+    const endDate = new Date(weekDates[6]);
+
+    const formatDate = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+  }
+
   function getMinDate(): string {
     const date = new Date();
     date.setDate(date.getDate() - 7);
@@ -493,9 +509,54 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       </div>
 
       <div className="bg-white rounded-lg shadow mb-3">
-        <div className="p-2 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-gray-900">Technician Summary</h3>
-          <div className="flex gap-2">
+        <div className="p-2 border-b border-gray-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+          <div className="flex items-center justify-between w-full md:w-auto">
+            <h3 className="text-base font-semibold text-gray-900">Technician Summary</h3>
+            {viewMode === 'weekly' && (
+              <div className="flex items-center gap-2 md:hidden">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => navigateWeek('prev')}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-sm font-medium text-gray-700 min-w-[100px] text-center">
+                  {getCurrentWeekLabel()}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => navigateWeek('next')}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2 items-center w-full md:w-auto justify-between">
+            {viewMode === 'weekly' && (
+              <div className="hidden md:flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => navigateWeek('prev')}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-sm font-medium text-gray-700 min-w-[120px] text-center">
+                  {getCurrentWeekLabel()}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => navigateWeek('next')}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+            <div className="flex gap-2">
             <Button
               size="sm"
               variant={viewMode === 'summary' ? 'primary' : 'ghost'}
@@ -517,6 +578,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             >
               Weekly
             </Button>
+            </div>
           </div>
         </div>
 
