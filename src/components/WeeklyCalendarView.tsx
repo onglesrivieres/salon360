@@ -91,13 +91,13 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                         {hasTips ? (
                           <div className="space-y-0.5">
                             <div className="flex flex-col items-center">
-                              <span className="text-[9px] text-gray-500">C</span>
+                              <span className="text-[9px] text-gray-500">Cash</span>
                               <span className="font-semibold text-green-600 text-[10px]">
                                 ${dayData.tips_cash.toFixed(0)}
                               </span>
                             </div>
                             <div className="flex flex-col items-center">
-                              <span className="text-[9px] text-gray-500">D</span>
+                              <span className="text-[9px] text-gray-500">Card</span>
                               <span className="font-semibold text-blue-600 text-[10px]">
                                 ${dayData.tips_card.toFixed(0)}
                               </span>
@@ -117,13 +117,13 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                   <td className="border border-gray-300 bg-blue-50 px-1 py-0.5 text-center">
                     <div className="space-y-0.5">
                       <div className="flex flex-col items-center">
-                        <span className="text-[9px] text-gray-500">C</span>
+                        <span className="text-[9px] text-gray-500">Cash</span>
                         <span className="font-semibold text-green-600 text-[10px]">
                           ${summary.tips_cash.toFixed(0)}
                         </span>
                       </div>
                       <div className="flex flex-col items-center">
-                        <span className="text-[9px] text-gray-500">D</span>
+                        <span className="text-[9px] text-gray-500">Card</span>
                         <span className="font-semibold text-blue-600 text-[10px]">
                           ${summary.tips_card.toFixed(0)}
                         </span>
