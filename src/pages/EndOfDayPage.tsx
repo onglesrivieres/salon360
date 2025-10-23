@@ -130,6 +130,13 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       if (ticketsError) throw ticketsError;
 
+      console.log('Weekly data query results:', {
+        weekStart,
+        weekEnd,
+        ticketCount: tickets?.length,
+        tickets: tickets
+      });
+
       const dataMap = new Map<string, Map<string, { tips_cash: number; tips_card: number; tips_total: number }>>();
 
       for (const ticket of tickets || []) {
@@ -180,6 +187,12 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           return nameA.localeCompare(nameB);
         })
       );
+
+      console.log('Weekly data processed:', {
+        dataMapSize: dataMap.size,
+        sortedDataSize: sortedData.size,
+        techNames: Array.from(techNames.entries())
+      });
 
       setWeeklyData(sortedData);
 

@@ -42,6 +42,15 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
   const weekStart = getWeekStartDate(selectedDate);
   const weekDates = getWeekDates(weekStart);
 
+  console.log('WeeklyCalendarView render:', {
+    selectedDate,
+    weekStart,
+    weekDates,
+    weeklyDataSize: weeklyData.size,
+    summariesCount: summaries.length,
+    weeklyDataKeys: Array.from(weeklyData.keys())
+  });
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse min-w-[800px]">
