@@ -513,7 +513,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                                 </div>
                                 <div className="flex justify-between items-center">
                                   <span className="text-[8px] text-gray-600">T. (paired)</span>
-                                  <span className="text-[8px] font-semibold text-gray-900">
+                                  <span className="text-[8px] font-semibold text-green-600">
                                     ${item.tip_receptionist.toFixed(2)}
                                   </span>
                                 </div>
