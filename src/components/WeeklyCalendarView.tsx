@@ -43,104 +43,104 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
   const weekDates = getWeekDates(weekStart);
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse min-w-[800px]">
-        <thead>
-          <tr>
-            <th className="border border-gray-300 bg-gray-100 p-2 text-left font-semibold text-sm sticky left-0 z-10">
-              Technician
-            </th>
-            {weekDates.map((date) => {
-              const { day, date: dateStr } = formatDateHeader(date);
+    <div className="overflow-x-auto -mx-4 sm:mx-0">
+      <div className="inline-block min-w-full align-middle px-4 sm:px-0">
+        <table className="min-w-full border-collapse text-xs">
+          <thead>
+            <tr>
+              <th className="border border-gray-300 bg-gray-100 px-1.5 py-1 text-left font-semibold sticky left-0 z-10 w-20 sm:w-24">
+                <div className="truncate">Tech</div>
+              </th>
+              {weekDates.map((date) => {
+                const { day, date: dateStr } = formatDateHeader(date);
+                return (
+                  <th
+                    key={date}
+                    className="border border-gray-300 bg-gray-100 px-1 py-1 text-center font-semibold w-[72px] sm:w-20"
+                  >
+                    <div className="font-bold text-[10px] sm:text-xs">{day}</div>
+                    <div className="text-[9px] sm:text-[10px] text-gray-600">{dateStr}</div>
+                  </th>
+                );
+              })}
+              <th className="border border-gray-300 bg-blue-100 px-1 py-1 text-center font-semibold w-[72px] sm:w-20">
+                <div className="font-bold text-[10px] sm:text-xs">Total</div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {summaries.map((summary) => {
+              const techData = weeklyData.get(summary.technician_id);
+
               return (
-                <th
-                  key={date}
-                  className="border border-gray-300 bg-gray-100 p-2 text-center font-semibold text-sm min-w-[120px]"
-                >
-                  <div className="font-bold">{day}</div>
-                  <div className="text-xs text-gray-600">{dateStr}</div>
-                </th>
+                <tr key={summary.technician_id}>
+                  <td className="border border-gray-300 bg-gray-50 px-1.5 py-1 font-medium sticky left-0 z-10">
+                    <div className="truncate text-[10px] sm:text-xs">{summary.technician_name}</div>
+                  </td>
+                  {weekDates.map((date) => {
+                    const dayData = techData?.get(date);
+                    const hasTips = dayData && dayData.tips_total > 0;
+
+                    return (
+                      <td
+                        key={date}
+                        className={`border border-gray-300 px-1 py-0.5 text-center ${
+                          hasTips ? 'bg-white' : 'bg-gray-50'
+                        }`}
+                      >
+                        {hasTips ? (
+                          <div className="space-y-0.5">
+                            <div className="flex flex-col items-center">
+                              <span className="text-[9px] text-gray-500">C</span>
+                              <span className="font-semibold text-green-600 text-[10px]">
+                                ${dayData.tips_cash.toFixed(0)}
+                              </span>
+                            </div>
+                            <div className="flex flex-col items-center">
+                              <span className="text-[9px] text-gray-500">D</span>
+                              <span className="font-semibold text-blue-600 text-[10px]">
+                                ${dayData.tips_card.toFixed(0)}
+                              </span>
+                            </div>
+                            <div className="flex flex-col items-center pt-0.5 border-t border-gray-200">
+                              <span className="font-bold text-gray-900 text-[11px]">
+                                ${dayData.tips_total.toFixed(0)}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">-</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="border border-gray-300 bg-blue-50 px-1 py-0.5 text-center">
+                    <div className="space-y-0.5">
+                      <div className="flex flex-col items-center">
+                        <span className="text-[9px] text-gray-500">C</span>
+                        <span className="font-semibold text-green-600 text-[10px]">
+                          ${summary.tips_cash.toFixed(0)}
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <span className="text-[9px] text-gray-500">D</span>
+                        <span className="font-semibold text-blue-600 text-[10px]">
+                          ${summary.tips_card.toFixed(0)}
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-center pt-0.5 border-t border-gray-900">
+                        <span className="font-bold text-gray-900 text-[11px]">
+                          ${summary.tips_total.toFixed(0)}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
               );
             })}
-            <th className="border border-gray-300 bg-blue-100 p-2 text-center font-semibold text-sm min-w-[120px]">
-              <div className="font-bold">Week Total</div>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {summaries.map((summary) => {
-            const techData = weeklyData.get(summary.technician_id);
-
-            return (
-              <tr key={summary.technician_id}>
-                <td className="border border-gray-300 bg-gray-50 p-2 font-medium text-sm sticky left-0 z-10">
-                  {summary.technician_name}
-                </td>
-                {weekDates.map((date) => {
-                  const dayData = techData?.get(date);
-                  const hasTips = dayData && dayData.tips_total > 0;
-
-                  return (
-                    <td
-                      key={date}
-                      className={`border border-gray-300 p-2 text-center text-xs ${
-                        hasTips ? 'bg-white' : 'bg-gray-50'
-                      }`}
-                    >
-                      {hasTips ? (
-                        <div className="space-y-1">
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-600">Cash:</span>
-                            <span className="font-semibold text-green-600">
-                              ${dayData.tips_cash.toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-600">Card:</span>
-                            <span className="font-semibold text-blue-600">
-                              ${dayData.tips_card.toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center pt-1 border-t border-gray-200">
-                            <span className="text-gray-900 font-medium">Total:</span>
-                            <span className="font-bold text-gray-900">
-                              ${dayData.tips_total.toFixed(2)}
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                  );
-                })}
-                <td className="border border-gray-300 bg-blue-50 p-2 text-center text-xs">
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Cash:</span>
-                      <span className="font-semibold text-green-600">
-                        ${summary.tips_cash.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Card:</span>
-                      <span className="font-semibold text-blue-600">
-                        ${summary.tips_card.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center pt-1 border-t border-gray-900">
-                      <span className="text-gray-900 font-medium">Total:</span>
-                      <span className="font-bold text-gray-900">
-                        ${summary.tips_total.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
