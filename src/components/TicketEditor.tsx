@@ -1019,14 +1019,14 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               })}
 
               {isTicketClosed && items.length > 0 && Array.from(new Set(items.map(item => item.employee_id))).map((employeeId) => {
-                const tech = employees.find(e => e.id === employeeId);
-                if (!tech) return null;
+                const item = items.find(i => i.employee_id === employeeId);
+                if (!item?.employee) return null;
                 return (
                   <div
                     key={employeeId}
                     className="py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium bg-gray-100 text-gray-700 min-h-[48px] md:min-h-0 flex items-center"
                   >
-                    {tech.display_name}
+                    {item.employee.display_name}
                   </div>
                 );
               })}
