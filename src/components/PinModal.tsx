@@ -90,7 +90,7 @@ export function PinModal({ isOpen, onClose, onSubmit, title = 'Enter PIN', isLoa
             <input
               key={index}
               ref={inputRefs[index]}
-              type="tel"
+              type="password"
               inputMode="numeric"
               maxLength={1}
               value={digit}
