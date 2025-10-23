@@ -43,7 +43,7 @@ interface EndOfDayPageProps {
 export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) {
   const [summaries, setSummaries] = useState<TechnicianSummary[]>([]);
   const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<'summary' | 'detail'>('detail');
+  const [viewMode, setViewMode] = useState<'summary' | 'detail' | 'weekly'>('detail');
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
@@ -58,9 +58,21 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
 
+  const [weeklyData, setWeeklyData] = useState<{
+    date: string;
+    dayName: string;
+    tips_cash: number;
+    tips_card: number;
+    total: number;
+  }[]>([]);
+
   useEffect(() => {
-    fetchEODData();
-  }, [selectedDate, selectedStoreId]);
+    if (viewMode === 'weekly') {
+      fetchWeeklyData();
+    } else {
+      fetchEODData();
+    }
+  }, [selectedDate, selectedStoreId, viewMode]);
 
   async function fetchEODData() {
     try {
@@ -213,6 +225,83 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     }
   }
 
+  async function fetchWeeklyData() {
+    try {
+      setLoading(true);
+
+      const selectedDateObj = new Date(selectedDate + 'T00:00:00');
+      const dayOfWeek = selectedDateObj.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+      const monday = new Date(selectedDateObj);
+      monday.setDate(selectedDateObj.getDate() + mondayOffset);
+
+      const weekDays = [];
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(monday);
+        day.setDate(monday.getDate() + i);
+        const dateStr = day.toISOString().split('T')[0];
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayName = dayNames[day.getDay()];
+        weekDays.push({ date: dateStr, dayName });
+      }
+
+      const weeklyResults = await Promise.all(
+        weekDays.map(async ({ date, dayName }) => {
+          let query = supabase
+            .from('sale_tickets')
+            .select(
+              `
+              id,
+              ticket_items (
+                tip_customer_cash,
+                tip_customer_card,
+                tip_receptionist
+              )
+            `
+            )
+            .eq('ticket_date', date);
+
+          if (selectedStoreId) {
+            query = query.eq('store_id', selectedStoreId);
+          }
+
+          const { data: tickets } = await query;
+
+          let tips_cash = 0;
+          let tips_card = 0;
+
+          for (const ticket of tickets || []) {
+            for (const item of (ticket as any).ticket_items || []) {
+              const tipCustomerCash = item.tip_customer_cash || 0;
+              const tipCustomerCard = item.tip_customer_card || 0;
+              const tipReceptionist = item.tip_receptionist || 0;
+
+              tips_cash += tipCustomerCash + tipReceptionist;
+              tips_card += tipCustomerCard;
+            }
+          }
+
+          const total = tips_cash + tips_card;
+
+          return {
+            date,
+            dayName,
+            tips_cash,
+            tips_card,
+            total,
+          };
+        })
+      );
+
+      setWeeklyData(weeklyResults);
+    } catch (error) {
+      showToast('Failed to load weekly data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function exportCSV() {
     const headers = [
       'Technician',
@@ -353,6 +442,13 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             >
               Detail Grid
             </Button>
+            <Button
+              size="sm"
+              variant={viewMode === 'weekly' ? 'primary' : 'ghost'}
+              onClick={() => setViewMode('weekly')}
+            >
+              Weekly
+            </Button>
           </div>
         </div>
 
@@ -360,6 +456,80 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           <div className="flex items-center justify-center h-32">
             <div className="text-sm text-gray-500">Loading...</div>
           </div>
+        ) : viewMode === 'weekly' ? (
+          weeklyData.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-gray-500">No data for this week</p>
+            </div>
+          ) : (
+            <div className="p-3 overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-gray-300">
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Day</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Tip (Cash)</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Tip (Card)</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weeklyData.map((day, index) => {
+                    const isToday = day.date === selectedDate;
+                    return (
+                      <tr
+                        key={day.date}
+                        className={`border-b border-gray-200 ${
+                          isToday ? 'bg-blue-50' : index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        }`}
+                      >
+                        <td className="py-3 px-4">
+                          <div className="flex flex-col">
+                            <span className={`text-sm font-medium ${isToday ? 'text-blue-700' : 'text-gray-900'}`}>
+                              {day.dayName}
+                            </span>
+                            <span className="text-xs text-gray-500">{day.date}</span>
+                          </div>
+                        </td>
+                        <td className="text-right py-3 px-4">
+                          <span className="text-sm font-semibold text-green-600">
+                            ${day.tips_cash.toFixed(2)}
+                          </span>
+                        </td>
+                        <td className="text-right py-3 px-4">
+                          <span className="text-sm font-semibold text-blue-600">
+                            ${day.tips_card.toFixed(2)}
+                          </span>
+                        </td>
+                        <td className="text-right py-3 px-4">
+                          <span className="text-sm font-bold text-gray-900">
+                            ${day.total.toFixed(2)}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  <tr className="bg-gray-100 border-t-2 border-gray-300">
+                    <td className="py-3 px-4 text-sm font-bold text-gray-900">Week Total</td>
+                    <td className="text-right py-3 px-4">
+                      <span className="text-sm font-bold text-green-600">
+                        ${weeklyData.reduce((sum, day) => sum + day.tips_cash, 0).toFixed(2)}
+                      </span>
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      <span className="text-sm font-bold text-blue-600">
+                        ${weeklyData.reduce((sum, day) => sum + day.tips_card, 0).toFixed(2)}
+                      </span>
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      <span className="text-sm font-bold text-gray-900">
+                        ${weeklyData.reduce((sum, day) => sum + day.total, 0).toFixed(2)}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )
         ) : summaries.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-gray-500">No tickets for this date</p>
