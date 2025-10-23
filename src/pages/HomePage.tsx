@@ -171,12 +171,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
   const handleCheckInOut = async (employeeId: string, storeId: string, displayName: string, payType: string) => {
     try {
-      if (payType === 'daily') {
-        setSuccessMessage(`${displayName}, ${t('home.dailyPay')}`);
-        setShowSuccessModal(true);
-        return;
-      }
-
       const today = new Date().toISOString().split('T')[0];
       const { data: attendance } = await supabase
         .from('attendance_records')
