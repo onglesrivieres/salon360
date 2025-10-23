@@ -504,7 +504,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                               </div>
                               <div className="space-y-0">
                                 <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-600">T. Customer</span>
+                                  <span className="text-[8px] text-gray-600">T. (given)</span>
                                   <span className={`text-[8px] font-semibold ${
                                     item.payment_method === 'Card' ? 'text-blue-600' : 'text-green-600'
                                   }`}>
@@ -512,7 +512,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                                   </span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-600">T. Receptionist</span>
+                                  <span className="text-[8px] text-gray-600">T. (paired)</span>
                                   <span className="text-[8px] font-semibold text-gray-900">
                                     ${item.tip_receptionist.toFixed(2)}
                                   </span>
