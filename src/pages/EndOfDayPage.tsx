@@ -94,7 +94,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       const weekDates = getWeekDates(weekStart);
       const weekEnd = weekDates[weekDates.length - 1];
 
-      const isTechnician = session?.role_permission === 'Technician';
+      const canViewAll = session?.role_permission ? Permissions.endOfDay.canViewAll(session.role_permission) : false;
+      const isTechnician = !canViewAll;
 
       let query = supabase
         .from('sale_tickets')
@@ -140,6 +141,11 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           const technician = item.employee;
 
           if (!technician) continue;
+
+          // Technicians should only see their own data
+          if (isTechnician && session?.employee_id && techId !== session.employee_id) {
+            continue;
+          }
 
           if (!dataMap.has(techId)) {
             dataMap.set(techId, new Map());
@@ -223,7 +229,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     try {
       setLoading(true);
 
-      const isTechnician = session?.role_permission === 'Technician';
+      const canViewAll = session?.role_permission ? Permissions.endOfDay.canViewAll(session.role_permission) : false;
+      const isTechnician = !canViewAll;
 
       let query = supabase
         .from('sale_tickets')
@@ -281,6 +288,11 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           const technician = item.employee;
 
           if (!technician) continue;
+
+          // Technicians should only see their own data
+          if (isTechnician && session?.employee_id && techId !== session.employee_id) {
+            continue;
+          }
 
           if (!technicianMap.has(techId)) {
             technicianMap.set(techId, {
