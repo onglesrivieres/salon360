@@ -350,12 +350,8 @@ export function PendingApprovalsPage() {
                     <p className="text-sm font-semibold text-gray-900">${ticket.total.toFixed(2)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Tip Cash</p>
-                    <p className="text-sm font-semibold text-gray-900">${ticket.tip_customer_cash.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Tip Card</p>
-                    <p className="text-sm font-semibold text-gray-900">${ticket.tip_customer_card.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500">Tip (Customer)</p>
+                    <p className="text-sm font-semibold text-gray-900">${ticket.tip_customer.toFixed(2)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Tip (Receptionist)</p>

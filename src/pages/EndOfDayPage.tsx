@@ -23,8 +23,7 @@ interface ServiceItemDetail {
   service_code: string;
   service_name: string;
   price: number;
-  tip_customer_cash: number;
-  tip_customer_card: number;
+  tip_customer: number;
   tip_receptionist: number;
   opened_at: string;
   closed_at: string | null;
@@ -77,8 +76,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             qty,
             price_each,
             addon_price,
-            tip_customer_cash,
-            tip_customer_card,
+            tip_customer,
             tip_receptionist,
             service:services(code, name, duration_min),
             employee:employees(
@@ -132,20 +130,18 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           const summary = technicianMap.get(techId)!;
           summary.services_count += 1;
           summary.revenue += itemRevenue;
-          const itemTipCustomer = (item.tip_customer_cash || 0) + (item.tip_customer_card || 0);
-          summary.tips_customer += itemTipCustomer;
+          summary.tips_customer += item.tip_customer;
           summary.tips_receptionist += item.tip_receptionist;
-          summary.tips_total += itemTipCustomer + item.tip_receptionist;
+          summary.tips_total += item.tip_customer + item.tip_receptionist;
 
-          totalTips += itemTipCustomer + item.tip_receptionist;
+          totalTips += item.tip_customer + item.tip_receptionist;
 
           summary.items.push({
             ticket_id: ticket.id,
             service_code: item.service?.code || '',
             service_name: item.service?.name || '',
             price: itemRevenue,
-            tip_customer_cash: item.tip_customer_cash || 0,
-            tip_customer_card: item.tip_customer_card || 0,
+            tip_customer: item.tip_customer,
             tip_receptionist: item.tip_receptionist,
             opened_at: (ticket as any).opened_at,
             closed_at: ticket.closed_at,
@@ -477,15 +473,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                                   </span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-600">T. Cash</span>
+                                  <span className="text-[8px] text-gray-600">T. Given</span>
                                   <span className="text-[8px] font-semibold text-blue-600">
-                                    ${item.tip_customer_cash.toFixed(2)}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-600">T. Card</span>
-                                  <span className="text-[8px] font-semibold text-blue-600">
-                                    ${item.tip_customer_card.toFixed(2)}
+                                    ${item.tip_customer.toFixed(2)}
                                   </span>
                                 </div>
                                 <div className="flex justify-between items-center">

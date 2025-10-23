@@ -125,8 +125,7 @@ export interface TicketItem {
   price_each: number;
   addon_details?: string;
   addon_price?: number;
-  tip_customer_cash: number;
-  tip_customer_card: number;
+  tip_customer: number;
   tip_receptionist: number;
   notes: string;
   created_at: string;
@@ -241,8 +240,7 @@ export interface PendingApprovalTicket {
   closed_by_name: string;
   hours_remaining: number;
   service_name: string;
-  tip_customer_cash: number;
-  tip_customer_card: number;
+  tip_customer: number;
   tip_receptionist: number;
   payment_method: string;
 }
