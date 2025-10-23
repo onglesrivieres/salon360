@@ -1348,11 +1348,13 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 <p className="text-sm text-gray-700">{log.description}</p>
                 {log.changes && Object.keys(log.changes).length > 0 && (
                   <div className="mt-2 text-xs text-gray-600 bg-white px-2 py-1 rounded">
-                    {Object.entries(log.changes).map(([key, value]) => (
-                      <div key={key}>
-                        <strong>{key}:</strong> {JSON.stringify(value)}
-                      </div>
-                    ))}
+                    {Object.entries(log.changes)
+                      .filter(([key]) => !key.toLowerCase().includes('tip'))
+                      .map(([key, value]) => (
+                        <div key={key}>
+                          <strong>{key}:</strong> {JSON.stringify(value)}
+                        </div>
+                      ))}
                   </div>
                 )}
               </div>
