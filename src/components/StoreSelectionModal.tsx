@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Modal } from './ui/Modal';
-import { Button } from './ui/Button';
 import { supabase } from '../lib/supabase';
 import { Store } from 'lucide-react';
 
@@ -13,7 +12,6 @@ interface StoreSelectionModalProps {
 export function StoreSelectionModal({ isOpen, storeIds, onSelect }: StoreSelectionModalProps) {
   const [stores, setStores] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
 
   useEffect(() => {
     if (isOpen && storeIds.length > 0) {
@@ -34,9 +32,6 @@ export function StoreSelectionModal({ isOpen, storeIds, onSelect }: StoreSelecti
       if (error) throw error;
 
       setStores(data || []);
-      if (data && data.length > 0) {
-        setSelectedStoreId(data[0].id);
-      }
     } catch (error) {
       console.error('Error loading stores:', error);
     } finally {
@@ -44,10 +39,8 @@ export function StoreSelectionModal({ isOpen, storeIds, onSelect }: StoreSelecti
     }
   }
 
-  function handleConfirm() {
-    if (selectedStoreId) {
-      onSelect(selectedStoreId);
-    }
+  function handleStoreSelect(storeId: string) {
+    onSelect(storeId);
   }
 
   return (
@@ -68,38 +61,17 @@ export function StoreSelectionModal({ isOpen, storeIds, onSelect }: StoreSelecti
         ) : (
           <div className="space-y-2">
             {stores.map((store) => (
-              <label
+              <button
                 key={store.id}
-                className={`flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
-                  selectedStoreId === store.id
-                    ? 'border-blue-600 bg-blue-50'
-                    : 'border-gray-300 hover:border-blue-400'
-                }`}
+                onClick={() => handleStoreSelect(store.id)}
+                className="w-full flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer transition-colors hover:border-blue-400 hover:bg-blue-50"
               >
-                <input
-                  type="radio"
-                  name="store"
-                  value={store.id}
-                  checked={selectedStoreId === store.id}
-                  onChange={(e) => setSelectedStoreId(e.target.value)}
-                  className="mr-3"
-                />
-                <Store className="w-5 h-5 mr-2 text-gray-600" />
+                <Store className="w-5 h-5 mr-3 text-gray-600" />
                 <span className="font-medium">{store.name}</span>
-              </label>
+              </button>
             ))}
           </div>
         )}
-
-        <div className="flex justify-end gap-3 pt-4">
-          <Button
-            onClick={handleConfirm}
-            disabled={!selectedStoreId || isLoading}
-            className="px-6"
-          >
-            Continue
-          </Button>
-        </div>
       </div>
     </Modal>
   );
