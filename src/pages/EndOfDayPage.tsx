@@ -35,6 +35,22 @@ interface ServiceItemDetail {
   duration_min: number;
 }
 
+interface DailyTipSummary {
+  date: string;
+  tips_cash: number;
+  tips_card: number;
+  tips_total: number;
+}
+
+interface WeeklyData {
+  days: DailyTipSummary[];
+  weekTotal: {
+    tips_cash: number;
+    tips_card: number;
+    tips_total: number;
+  };
+}
+
 interface EndOfDayPageProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
@@ -43,7 +59,8 @@ interface EndOfDayPageProps {
 export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) {
   const [summaries, setSummaries] = useState<TechnicianSummary[]>([]);
   const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<'summary' | 'detail'>('detail');
+  const [viewMode, setViewMode] = useState<'summary' | 'detail' | 'weekly'>('detail');
+  const [weeklyData, setWeeklyData] = useState<WeeklyData | null>(null);
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
@@ -59,8 +76,109 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchEODData();
-  }, [selectedDate, selectedStoreId]);
+    if (viewMode === 'weekly') {
+      fetchWeeklyData();
+    } else {
+      fetchEODData();
+    }
+  }, [selectedDate, selectedStoreId, viewMode]);
+
+  async function fetchWeeklyData() {
+    try {
+      setLoading(true);
+
+      const mondayOfWeek = getMondayOfWeek(selectedDate);
+      const days: DailyTipSummary[] = [];
+      let totalCash = 0;
+      let totalCard = 0;
+      let totalTips = 0;
+
+      for (let i = 0; i < 7; i++) {
+        const currentDate = new Date(mondayOfWeek);
+        currentDate.setDate(currentDate.getDate() + i);
+        const dateStr = currentDate.toISOString().split('T')[0];
+
+        let query = supabase
+          .from('sale_tickets')
+          .select(
+            `
+            id,
+            ticket_items (
+              tip_customer_cash,
+              tip_customer_card,
+              tip_receptionist
+            )
+          `
+          )
+          .eq('ticket_date', dateStr);
+
+        if (selectedStoreId) {
+          query = query.eq('store_id', selectedStoreId);
+        }
+
+        const { data: tickets, error } = await query;
+
+        if (error) throw error;
+
+        let dayCash = 0;
+        let dayCard = 0;
+
+        for (const ticket of tickets || []) {
+          for (const item of (ticket as any).ticket_items || []) {
+            const tipCustomerCash = item.tip_customer_cash || 0;
+            const tipCustomerCard = item.tip_customer_card || 0;
+            const tipReceptionist = item.tip_receptionist || 0;
+
+            dayCash += tipCustomerCash + tipReceptionist;
+            dayCard += tipCustomerCard;
+          }
+        }
+
+        const dayTotal = dayCash + dayCard;
+        days.push({
+          date: dateStr,
+          tips_cash: dayCash,
+          tips_card: dayCard,
+          tips_total: dayTotal,
+        });
+
+        totalCash += dayCash;
+        totalCard += dayCard;
+        totalTips += dayTotal;
+      }
+
+      setWeeklyData({
+        days,
+        weekTotal: {
+          tips_cash: totalCash,
+          tips_card: totalCard,
+          tips_total: totalTips,
+        },
+      });
+    } catch (error) {
+      showToast('Failed to load weekly data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function getMondayOfWeek(dateStr: string): string {
+    const date = new Date(dateStr);
+    const day = date.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    date.setDate(date.getDate() + diff);
+    return date.toISOString().split('T')[0];
+  }
+
+  function formatDateForDisplay(dateStr: string): string {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  function getDayName(dateStr: string): string {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { weekday: 'short' });
+  }
 
   async function fetchEODData() {
     try {
@@ -338,7 +456,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       <div className="bg-white rounded-lg shadow mb-3">
         <div className="p-2 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-base font-semibold text-gray-900">Technician Summary</h3>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               size="sm"
               variant={viewMode === 'summary' ? 'primary' : 'ghost'}
@@ -353,12 +471,93 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             >
               Detail Grid
             </Button>
+            <Button
+              size="sm"
+              variant={viewMode === 'weekly' ? 'primary' : 'ghost'}
+              onClick={() => setViewMode('weekly')}
+            >
+              Weekly
+            </Button>
           </div>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <div className="text-sm text-gray-500">Loading...</div>
+          </div>
+        ) : viewMode === 'weekly' ? (
+          <div className="p-4 overflow-x-auto">
+            {weeklyData && (
+              <div className="min-w-max">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-900">
+                        Day
+                      </th>
+                      <th className="border border-gray-300 px-4 py-3 text-right text-sm font-semibold text-gray-900">
+                        Total Tips (Cash)
+                      </th>
+                      <th className="border border-gray-300 px-4 py-3 text-right text-sm font-semibold text-gray-900">
+                        Total Tips (Card)
+                      </th>
+                      <th className="border border-gray-300 px-4 py-3 text-right text-sm font-semibold text-gray-900">
+                        Total Tips
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {weeklyData.days.map((day, index) => (
+                      <tr key={day.date} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 px-4 py-3">
+                          <div className="text-sm font-medium text-gray-900">
+                            {getDayName(day.date)}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {formatDateForDisplay(day.date)}
+                          </div>
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3 text-right">
+                          <span className="text-sm font-semibold text-green-600">
+                            ${day.tips_cash.toFixed(2)}
+                          </span>
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3 text-right">
+                          <span className="text-sm font-semibold text-blue-600">
+                            ${day.tips_card.toFixed(2)}
+                          </span>
+                        </td>
+                        <td className="border border-gray-300 px-4 py-3 text-right">
+                          <span className="text-sm font-semibold text-gray-900">
+                            ${day.tips_total.toFixed(2)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-blue-50">
+                      <td className="border border-gray-300 px-4 py-3 text-sm font-bold text-gray-900">
+                        Week Total
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-right">
+                        <span className="text-sm font-bold text-green-700">
+                          ${weeklyData.weekTotal.tips_cash.toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-right">
+                        <span className="text-sm font-bold text-blue-700">
+                          ${weeklyData.weekTotal.tips_card.toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3 text-right">
+                        <span className="text-sm font-bold text-gray-900">
+                          ${weeklyData.weekTotal.tips_total.toFixed(2)}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         ) : summaries.length === 0 ? (
           <div className="text-center py-8">
