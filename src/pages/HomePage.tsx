@@ -17,7 +17,9 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   const [showPinModal, setShowPinModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [pinError, setPinError] = useState('');
   const [authenticatedSession, setAuthenticatedSession] = useState<{
@@ -235,11 +237,13 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         if (joinError) throw joinError;
 
         if (!queueResult?.success) {
+          setShowPinModal(false);
           if (queueResult?.error === 'CHECK_IN_REQUIRED') {
-            setPinError('You must check in before joining the ready queue');
+            setErrorMessage('You must check in before joining the ready queue. Please use the Check In/Out button first.');
           } else {
-            setPinError(queueResult?.message || 'Failed to join queue');
+            setErrorMessage(queueResult?.message || 'Failed to join queue');
           }
+          setShowErrorModal(true);
           return;
         }
 
@@ -285,6 +289,14 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   const handleSuccessClose = () => {
     setShowSuccessModal(false);
     setSuccessMessage('');
+    setAuthenticatedSession(null);
+    setSelectedAction(null);
+    logout();
+  };
+
+  const handleErrorClose = () => {
+    setShowErrorModal(false);
+    setErrorMessage('');
     setAuthenticatedSession(null);
     setSelectedAction(null);
     logout();
@@ -422,6 +434,21 @@ export function HomePage({ onActionSelected }: HomePageProps) {
               {t('home.leaveQueue')}
             </button>
           </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={showErrorModal} onClose={handleErrorClose} title="Check-In Required">
+        <div className="text-center py-4">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <UserCheck className="w-8 h-8 text-red-600" />
+          </div>
+          <p className="text-lg text-gray-900 mb-6">{errorMessage}</p>
+          <button
+            onClick={handleErrorClose}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            {t('actions.close')}
+          </button>
         </div>
       </Modal>
     </div>
