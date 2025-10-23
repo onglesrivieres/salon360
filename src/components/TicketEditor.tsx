@@ -744,7 +744,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   {isTicketClosed && !ticket?.approval_status && (
                     <p className="text-xs text-green-600 font-medium">Closed</p>
                   )}
-                  {getApprovalStatusBadge()}
                 </div>
               </div>
               {ticketId && activityLogs.length > 0 && (
@@ -764,12 +763,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 </div>
               )}
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors p-2 -mr-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
-            >
-              <X className="w-6 h-6 md:w-5 md:h-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              {getApprovalStatusBadge()}
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-2 -mr-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              >
+                <X className="w-6 h-6 md:w-5 md:h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -914,28 +916,30 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               Technician <span className="text-red-600">*</span>
             </label>
 
-            <div className="flex items-start gap-3 mb-2">
-              {sortedTechnicians.filter(t => t.queue_status === 'ready').length > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <Award className="w-3.5 h-3.5 text-green-600" />
-                  <span className="text-xs font-semibold text-green-700 uppercase whitespace-nowrap">Available</span>
-                </div>
-              )}
-              {sortedTechnicians.filter(t => t.queue_status === 'neutral').length > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Not Ready</span>
-                </div>
-              )}
-              {sortedTechnicians.filter(t => t.queue_status === 'busy').length > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-red-600" />
-                  <span className="text-xs font-semibold text-red-700 uppercase whitespace-nowrap">Busy</span>
-                </div>
-              )}
-            </div>
+            {!isTicketClosed && (
+              <div className="flex items-start gap-3 mb-2">
+                {sortedTechnicians.filter(t => t.queue_status === 'ready').length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <Award className="w-3.5 h-3.5 text-green-600" />
+                    <span className="text-xs font-semibold text-green-700 uppercase whitespace-nowrap">Available</span>
+                  </div>
+                )}
+                {sortedTechnicians.filter(t => t.queue_status === 'neutral').length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Not Ready</span>
+                  </div>
+                )}
+                {sortedTechnicians.filter(t => t.queue_status === 'busy').length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-red-600" />
+                    <span className="text-xs font-semibold text-red-700 uppercase whitespace-nowrap">Busy</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-2">
-              {sortedTechnicians.filter(t => t.queue_status === 'ready').map((tech) => (
+              {!isTicketClosed && sortedTechnicians.filter(t => t.queue_status === 'ready').map((tech) => (
                 <button
                   key={tech.employee_id}
                   type="button"
@@ -964,7 +968,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 </button>
               ))}
 
-              {sortedTechnicians.filter(t => t.queue_status === 'neutral').map((tech) => (
+              {!isTicketClosed && sortedTechnicians.filter(t => t.queue_status === 'neutral').map((tech) => (
                 <button
                   key={tech.employee_id}
                   type="button"
@@ -986,7 +990,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 </button>
               ))}
 
-              {sortedTechnicians.filter(t => t.queue_status === 'busy').map((tech) => {
+              {!isTicketClosed && sortedTechnicians.filter(t => t.queue_status === 'busy').map((tech) => {
                 const timeRemaining = calculateTimeRemaining(tech);
                 return (
                   <button
@@ -1013,9 +1017,22 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   </button>
                 );
               })}
+
+              {isTicketClosed && items.length > 0 && Array.from(new Set(items.map(item => item.employee_id))).map((employeeId) => {
+                const tech = employees.find(e => e.id === employeeId);
+                if (!tech) return null;
+                return (
+                  <div
+                    key={employeeId}
+                    className="py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium bg-gray-100 text-gray-700 min-h-[48px] md:min-h-0 flex items-center"
+                  >
+                    {tech.display_name}
+                  </div>
+                );
+              })}
             </div>
 
-            {sortedTechnicians.length === 0 && (
+            {!isTicketClosed && sortedTechnicians.length === 0 && (
               <div className="text-center py-3 text-sm text-gray-500">
                 No technicians available
               </div>
