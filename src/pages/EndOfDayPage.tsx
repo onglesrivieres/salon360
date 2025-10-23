@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Download, Printer, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Printer, Plus } from 'lucide-react';
 import { supabase, Technician } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -353,6 +353,26 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     return new Date().toISOString().split('T')[0];
   }
 
+  function navigatePrevious() {
+    const newDate = new Date(selectedDate + 'T00:00:00');
+    newDate.setDate(newDate.getDate() - 1);
+    onDateChange(newDate.toISOString().split('T')[0]);
+  }
+
+  function navigateNext() {
+    const newDate = new Date(selectedDate + 'T00:00:00');
+    newDate.setDate(newDate.getDate() + 1);
+    const maxDate = getMaxDate();
+    const nextDateStr = newDate.toISOString().split('T')[0];
+    if (nextDateStr <= maxDate) {
+      onDateChange(nextDateStr);
+    }
+  }
+
+  function navigateToday() {
+    onDateChange(new Date().toISOString().split('T')[0]);
+  }
+
   function openEditor(ticketId: string) {
     setEditingTicketId(ticketId);
     setIsEditorOpen(true);
@@ -388,22 +408,23 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     return tooFast || tooSlow;
   }
 
+  const parseLocalDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const displayDate = parseLocalDate(selectedDate).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
         <h2 className="text-base md:text-lg font-bold text-gray-900">Report</h2>
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
-          <div className="flex items-center gap-1 flex-1 md:flex-initial">
-            <Calendar className="w-4 h-4 text-gray-400" />
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => onDateChange(e.target.value)}
-              min={getMinDate()}
-              max={getMaxDate()}
-              className="px-2 py-2 md:py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 md:flex-initial min-h-[44px] md:min-h-0"
-            />
-          </div>
           {session && session.role && Permissions.endOfDay.canExport(session.role) && (
             <>
               <Button variant="secondary" size="sm" onClick={exportCSV} className="hidden md:flex">
@@ -425,6 +446,24 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       </div>
 
       <div className="bg-white rounded-lg shadow mb-3">
+        <div className="p-2 border-b border-gray-200 flex flex-col md:flex-row items-center justify-between gap-2">
+          <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+            <Button variant="ghost" size="sm" onClick={navigatePrevious} className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0">
+              <ChevronLeft className="w-5 h-5 md:w-4 md:h-4" />
+            </Button>
+            <h3 className="text-sm md:text-base font-semibold text-gray-900 min-w-[200px] text-center">
+              {displayDate}
+            </h3>
+            <Button variant="ghost" size="sm" onClick={navigateNext} className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0">
+              <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
+            </Button>
+          </div>
+          <div className="flex gap-2 w-full md:w-auto">
+            <Button variant="secondary" size="sm" onClick={navigateToday} className="min-h-[44px] md:min-h-0 flex-1 md:flex-initial">
+              Today
+            </Button>
+          </div>
+        </div>
         <div className="p-2 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-base font-semibold text-gray-900">Technician Summary</h3>
           <div className="flex gap-2">
