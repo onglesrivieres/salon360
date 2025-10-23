@@ -314,12 +314,6 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                   Total
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tip (C)
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tip (R)
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -369,12 +363,6 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
                       ${ticket.total.toFixed(2)}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                      ${tipCustomer.toFixed(2)}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                      ${tipReceptionist.toFixed(2)}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       {ticket.closed_at ? (
@@ -484,18 +472,10 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                   {getApprovalStatusBadge(ticket)}
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-100">
+              <div className="pt-2 border-t border-gray-100">
                 <div>
                   <div className="text-xs text-gray-500">Total</div>
                   <div className="text-sm font-semibold text-gray-900">${ticket.total.toFixed(2)}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Tip (C)</div>
-                  <div className="text-sm font-semibold text-gray-900">${tipCustomer.toFixed(2)}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Tip (R)</div>
-                  <div className="text-sm font-semibold text-gray-900">${tipReceptionist.toFixed(2)}</div>
                 </div>
               </div>
             </div>
