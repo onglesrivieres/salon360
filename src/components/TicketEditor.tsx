@@ -35,6 +35,8 @@ interface TicketItemForm {
   addon_price: string;
   service?: Service;
   employee?: Technician;
+  is_custom?: boolean;
+  custom_service_name?: string;
 }
 
 export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorProps) {
@@ -67,6 +69,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const canClose = session && session.role_permission && Permissions.tickets.canClose(session.role_permission);
 
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>('');
+  const [showCustomService, setShowCustomService] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const calculateTimeRemaining = (tech: TechnicianWithQueue): string => {
@@ -274,7 +277,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         setItems(
           ticketItems.map((item: any) => ({
             id: item.id,
-            service_id: item.service_id,
+            service_id: item.service_id || '',
             employee_id: item.employee_id,
             qty: item.qty.toString(),
             price_each: item.price_each.toString(),
@@ -284,8 +287,14 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             addon_price: item.addon_price?.toString() || '0',
             service: item.service,
             employee: item.employee,
+            is_custom: !item.service_id,
+            custom_service_name: item.custom_service_name || '',
           }))
         );
+
+        if (ticketItems.length > 0 && ticketItems[0].custom_service_name) {
+          setShowCustomService(true);
+        }
 
         if (firstItem?.employee_id) {
           setSelectedTechnicianId(firstItem.employee_id);
@@ -490,11 +499,26 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     }
 
     for (const item of items) {
-      if (!canEmployeePerformService(item.employee_id, item.service_id)) {
-        const employee = employees.find(e => e.id === item.employee_id);
-        const service = services.find(s => s.id === item.service_id);
-        showToast(`${employee?.display_name || 'This employee'} cannot perform ${service?.name || 'this service'}. Spa Experts cannot perform Extensions des Ongles services.`, 'error');
-        return;
+      if (item.is_custom) {
+        if (!item.custom_service_name || item.custom_service_name.trim() === '') {
+          showToast('Custom service name is required', 'error');
+          return;
+        }
+        if (parseFloat(item.price_each) <= 0) {
+          showToast('Custom service price must be greater than 0', 'error');
+          return;
+        }
+      } else {
+        if (!item.service_id) {
+          showToast('Service is required', 'error');
+          return;
+        }
+        if (!canEmployeePerformService(item.employee_id, item.service_id)) {
+          const employee = employees.find(e => e.id === item.employee_id);
+          const service = services.find(s => s.id === item.service_id);
+          showToast(`${employee?.display_name || 'This employee'} cannot perform ${service?.name || 'this service'}. Spa Experts cannot perform Extensions des Ongles services.`, 'error');
+          return;
+        }
       }
     }
 
@@ -540,7 +564,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           const isCardPayment = formData.payment_method === 'Card';
           const itemData = {
             sale_ticket_id: ticketId,
-            service_id: item.service_id,
+            service_id: item.is_custom ? null : item.service_id,
+            custom_service_name: item.is_custom ? item.custom_service_name : null,
             employee_id: item.employee_id,
             qty: parseFloat(item.qty),
             price_each: parseFloat(item.price_each),
@@ -597,7 +622,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         const itemsData = items.map((item) => {
           return {
             sale_ticket_id: newTicket.id,
-            service_id: item.service_id,
+            service_id: item.is_custom ? null : item.service_id,
+            custom_service_name: item.is_custom ? item.custom_service_name : null,
             employee_id: item.employee_id,
             qty: parseFloat(item.qty),
             price_each: parseFloat(item.price_each),
@@ -1185,6 +1211,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                             addon_details: '',
                             addon_price: '0',
                             service: service,
+                            is_custom: false,
                           }]);
                         }}
                         className={`py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${getServiceColor(service.category)}`}
@@ -1192,6 +1219,27 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                         {service.code}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCustomService(true);
+                        setItems([{
+                          service_id: '',
+                          employee_id: selectedTechnicianId || lastUsedEmployeeId,
+                          qty: '1',
+                          price_each: '0',
+                          tip_customer: '0',
+                          tip_receptionist: '0',
+                          addon_details: '',
+                          addon_price: '0',
+                          is_custom: true,
+                          custom_service_name: '',
+                        }]);
+                      }}
+                      className="py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 bg-gray-100 text-gray-800 hover:bg-gray-200 border-2 border-gray-300"
+                    >
+                      CUSTOM
+                    </button>
                   </div>
                 )}
               </div>
@@ -1199,18 +1247,38 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               <div className="border border-gray-200 rounded-lg p-3 space-y-3">
                 <div className="flex items-start gap-2">
                   <div className="flex-1">
-                    <Select
-                      label="Service"
-                      value={items[0].service_id}
-                      onChange={(e) => updateItem(0, 'service_id', e.target.value)}
-                      options={services
-                        .filter(s => canEmployeePerformService(items[0]?.employee_id || selectedTechnicianId || lastUsedEmployeeId, s.id))
-                        .map((s) => ({
-                          value: s.id,
-                          label: `${s.code} - ${s.name}`,
-                        }))}
-                      disabled={isTicketClosed || isReadOnly}
-                    />
+                    {items[0].is_custom ? (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                          Service Name
+                        </label>
+                        <input
+                          type="text"
+                          value={items[0].custom_service_name || ''}
+                          onChange={(e) => {
+                            const updatedItems = [...items];
+                            updatedItems[0].custom_service_name = e.target.value;
+                            setItems(updatedItems);
+                          }}
+                          className="w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                          placeholder="Enter custom service name"
+                          disabled={isTicketClosed || isReadOnly}
+                        />
+                      </div>
+                    ) : (
+                      <Select
+                        label="Service"
+                        value={items[0].service_id}
+                        onChange={(e) => updateItem(0, 'service_id', e.target.value)}
+                        options={services
+                          .filter(s => canEmployeePerformService(items[0]?.employee_id || selectedTechnicianId || lastUsedEmployeeId, s.id))
+                          .map((s) => ({
+                            value: s.id,
+                            label: `${s.code} - ${s.name}`,
+                          }))}
+                        disabled={isTicketClosed || isReadOnly}
+                      />
+                    )}
                   </div>
                   <div className="w-24">
                     <label className="block text-xs font-medium text-gray-700 mb-0.5">
@@ -1234,7 +1302,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   {!isTicketClosed && (
                     <div className="flex items-end">
                       <button
-                        onClick={() => setItems([])}
+                        onClick={() => {
+                          setItems([]);
+                          setShowCustomService(false);
+                        }}
                         className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
                       >
                         <Trash2 className="w-4 h-4" />
