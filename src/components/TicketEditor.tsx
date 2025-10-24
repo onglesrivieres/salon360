@@ -1291,6 +1291,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                         step="0.01"
                         min="0"
                         value={items[0].price_each}
+                        onFocus={(e) => {
+                          if (e.target.value === '0' || e.target.value === '0.00') {
+                            e.target.select();
+                          }
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value === '' || e.target.value === '.') {
+                            updateItem(0, 'price_each', '0');
+                          }
+                        }}
                         onChange={(e) =>
                           updateItem(0, 'price_each', e.target.value)
                         }
@@ -1339,6 +1349,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                         step="0.01"
                         min="0"
                         value={formData.addon_price}
+                        onFocus={(e) => {
+                          if (e.target.value === '0' || e.target.value === '0.00') {
+                            e.target.select();
+                          }
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value === '' || e.target.value === '.') {
+                            setFormData({ ...formData, addon_price: '0' });
+                          }
+                        }}
                         onChange={(e) =>
                           setFormData({ ...formData, addon_price: e.target.value })
                         }
@@ -1397,6 +1417,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       step="0.01"
                       min="0"
                       value={formData.tip_customer}
+                      onFocus={(e) => {
+                        if (e.target.value === '0' || e.target.value === '0.00') {
+                          e.target.select();
+                        }
+                      }}
+                      onBlur={(e) => {
+                        if (e.target.value === '' || e.target.value === '.') {
+                          setFormData({ ...formData, tip_customer: '0' });
+                        }
+                      }}
                       onChange={(e) =>
                         setFormData({ ...formData, tip_customer: e.target.value })
                       }
@@ -1416,6 +1446,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       step="0.01"
                       min="0"
                       value={formData.tip_receptionist}
+                      onFocus={(e) => {
+                        if (e.target.value === '0' || e.target.value === '0.00') {
+                          e.target.select();
+                        }
+                      }}
+                      onBlur={(e) => {
+                        if (e.target.value === '' || e.target.value === '.') {
+                          setFormData({ ...formData, tip_receptionist: '0' });
+                        }
+                      }}
                       onChange={(e) =>
                         setFormData({ ...formData, tip_receptionist: e.target.value })
                       }
