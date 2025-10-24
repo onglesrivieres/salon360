@@ -109,7 +109,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             tip_customer_cash,
             tip_customer_card,
             tip_receptionist,
-            employee:employees!ticket_items_employee_id_fkey(
+            employee:employees(
               id,
               display_name
             )
@@ -252,7 +252,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             tip_customer_card,
             tip_receptionist,
             service:services(code, name, duration_min),
-            employee:employees!ticket_items_employee_id_fkey(
+            employee:employees(
               id,
               display_name
             )
