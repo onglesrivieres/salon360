@@ -478,13 +478,8 @@ export function EmployeesPage() {
               value: store.id,
               label: `${store.name} (${store.code})`
             }))}
-            placeholder="No stores (Access all stores)"
+            placeholder="Select stores (No stores = No access)"
           />
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-xs text-blue-800">
-              <strong>Note:</strong> If no stores are selected, this employee will have access to all stores.
-            </p>
-          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {t('tickets.notes')}
