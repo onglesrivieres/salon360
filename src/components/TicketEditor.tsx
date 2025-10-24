@@ -1407,7 +1407,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Tip Paired by Receptionist <span className="text-green-600 font-semibold">(Cash)</span>
+                    Tip Paired by Receptionist
                   </label>
                   <div className="relative">
                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
