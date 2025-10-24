@@ -332,11 +332,6 @@ export function EmployeesPage() {
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('emp.assignedStores')}
                 </th>
-                {session && session.role && Permissions.employees.canResetPIN(session.role) && (
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                )}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -377,20 +372,6 @@ export function EmployeesPage() {
                         <span>{storeNames}</span>
                       )}
                     </td>
-                    {session && session.role && Permissions.employees.canResetPIN(session.role) && (
-                      <td className="px-3 py-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleResetPIN(employee);
-                          }}
-                          className="text-orange-600 hover:text-orange-800 p-1"
-                          title={t('emp.resetPIN')}
-                        >
-                          <RefreshCw className="w-3 h-3" />
-                        </button>
-                      </td>
-                    )}
                   </tr>
                 );
               })}
