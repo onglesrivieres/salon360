@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Store as StoreIcon, ClipboardCheck, UserCheck, FileText } from 'lucide-react';
+import { ClipboardCheck, UserCheck, FileText } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { PinModal } from '../components/PinModal';
 import { LanguageSelector } from '../components/LanguageSelector';
@@ -348,8 +348,12 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       </div>
       <div className="w-full max-w-3xl">
         <div className="text-center mb-6 sm:mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-blue-600 rounded-full mb-3 sm:mb-4 shadow-lg">
-            <StoreIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+          <div className="inline-flex items-center justify-center mb-3 sm:mb-4">
+            <img
+              src="/frame (3) copy.png"
+              alt="QR Code"
+              className="w-32 h-32 sm:w-40 sm:h-40"
+            />
           </div>
 
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-2 sm:mb-3">{t('home.title')}</h1>
