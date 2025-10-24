@@ -108,6 +108,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     return true;
   };
 
+  const getServiceColor = (category: string): string => {
+    const colorMap: Record<string, string> = {
+      'Soins de Pédicure': 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-2 border-blue-300',
+      'Soins de Manucure': 'bg-pink-100 text-pink-800 hover:bg-pink-200 border-2 border-pink-300',
+      'Extensions des Ongles': 'bg-purple-100 text-purple-800 hover:bg-purple-200 border-2 border-purple-300',
+      'Autres Services': 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-2 border-amber-300',
+    };
+    return colorMap[category] || 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-300';
+  };
+
   const [formData, setFormData] = useState({
     customer_type: '' as '' | 'Appointment' | 'Requested' | 'Assigned',
     customer_name: '',
@@ -1178,7 +1188,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                             service: service,
                           }]);
                         }}
-                        className="py-3 md:py-1.5 px-4 md:px-3 text-sm bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors min-h-[48px] md:min-h-0"
+                        className={`py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${getServiceColor(service.category)}`}
                       >
                         {service.code}
                       </button>
