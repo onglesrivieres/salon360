@@ -324,6 +324,7 @@ export function ServicesPage() {
               { value: "Faux d'Ongles", label: "Faux d'Ongles" },
               { value: 'Soins des Mains', label: 'Soins des Mains' },
               { value: 'Soins des Pieds', label: 'Soins des Pieds' },
+              { value: 'Others', label: 'Others' },
             ]}
           />
           <div className="flex items-center gap-2">
