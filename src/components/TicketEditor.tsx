@@ -129,6 +129,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     tip_receptionist: '',
     addon_details: '',
     addon_price: '',
+    discount_percentage: '',
+    discount_amount: '',
     notes: '',
   });
 
@@ -271,6 +273,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           tip_receptionist: '',
           addon_details: firstItem?.addon_details || '',
           addon_price: '',
+          discount_percentage: '',
+          discount_amount: '',
           notes: ticketData.notes,
         });
 
@@ -391,7 +395,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       return sum + (qty * price);
     }, 0);
     const addonPrice = parseFloat(formData.addon_price) || 0;
-    return itemsTotal + addonPrice;
+    const subtotal = itemsTotal + addonPrice;
+
+    // Apply discounts
+    const discountPercentage = parseFloat(formData.discount_percentage) || 0;
+    const discountAmount = parseFloat(formData.discount_amount) || 0;
+
+    const percentageDiscount = (subtotal * discountPercentage) / 100;
+    const totalDiscount = percentageDiscount + discountAmount;
+
+    return Math.max(0, subtotal - totalDiscount);
   }
 
   function calculateTotalTips(): number {
@@ -560,6 +573,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
         for (const item of items) {
           const addonPrice = parseFloat(formData.addon_price) || 0;
+          const discountPercentage = parseFloat(formData.discount_percentage) || 0;
+          const discountAmount = parseFloat(formData.discount_amount) || 0;
 
           const isCardPayment = formData.payment_method === 'Card';
           const itemData = {
@@ -574,6 +589,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             tip_receptionist: tipReceptionist,
             addon_details: formData.addon_details || '',
             addon_price: addonPrice,
+            discount_percentage: discountPercentage,
+            discount_amount: discountAmount,
             updated_at: new Date().toISOString(),
           };
 
@@ -618,6 +635,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         if (ticketError) throw ticketError;
 
         const addonPrice = parseFloat(formData.addon_price) || 0;
+        const discountPercentage = parseFloat(formData.discount_percentage) || 0;
+        const discountAmount = parseFloat(formData.discount_amount) || 0;
         const isCardPayment = formData.payment_method === 'Card';
         const itemsData = items.map((item) => {
           return {
@@ -632,6 +651,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             tip_receptionist: tipReceptionist,
             addon_details: formData.addon_details || '',
             addon_price: addonPrice,
+            discount_percentage: discountPercentage,
+            discount_amount: discountAmount,
           };
         });
 
@@ -1385,7 +1406,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   Card
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 mb-2">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-0.5">
                     Tip Given by Customer
@@ -1421,6 +1442,49 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       }
                       className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
                       disabled={isTicketClosed || isReadOnly}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                    Discount Percentage
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={formData.discount_percentage}
+                      onChange={(e) =>
+                        setFormData({ ...formData, discount_percentage: e.target.value })
+                      }
+                      className="w-full pl-2 pr-8 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                      disabled={isTicketClosed || isReadOnly}
+                      placeholder="0"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">%</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                    Discount Amount
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.discount_amount}
+                      onChange={(e) =>
+                        setFormData({ ...formData, discount_amount: e.target.value })
+                      }
+                      className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                      disabled={isTicketClosed || isReadOnly}
+                      placeholder="0.00"
                     />
                   </div>
                 </div>
