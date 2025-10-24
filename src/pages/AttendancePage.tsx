@@ -428,21 +428,21 @@ export function AttendancePage() {
         <h3 className="text-sm font-semibold text-gray-900 mb-3">Legend</h3>
         <div className="flex flex-wrap gap-4">
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-green-100 text-green-700">
+            <div className="flex items-center gap-2 px-2 py-1 rounded text-xs bg-green-100 text-green-700">
               <Clock className="w-3 h-3" />
               Active
             </div>
             <span className="text-xs text-gray-600">Currently checked in</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-100 text-gray-700">
+            <div className="flex items-center gap-2 px-2 py-1 rounded text-xs bg-gray-100 text-gray-700">
               <CheckCircle className="w-3 h-3" />
               Done
             </div>
             <span className="text-xs text-gray-600">Checked out</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-orange-100 text-orange-700">
+            <div className="flex items-center gap-2 px-2 py-1 rounded text-xs bg-orange-100 text-orange-700">
               <XCircle className="w-3 h-3" />
               Done
             </div>

@@ -205,7 +205,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setIsStoreDropdownOpen(!isStoreDropdownOpen)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
                   >
                     <StoreIcon className="w-4 h-4" />
                     {currentStore.name}
@@ -229,7 +229,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   )}
                 </div>
               ) : currentStore ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
+                <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
                   <StoreIcon className="w-4 h-4" />
                   {currentStore.name}
                 </span>
@@ -237,7 +237,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             </div>
             <div className="flex items-center gap-2 md:gap-3">
               {googleRating && (
-                <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg shadow-sm">
+                <div className="hidden md:flex items-center gap-2 px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg shadow-sm">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -251,7 +251,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               {session && session.role && Permissions.employees.canView(session.role) && (
                 <button
                   onClick={() => onNavigate('settings')}
-                  className="hidden md:flex items-center gap-1 px-2 py-1 text-xs text-gray-700 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
+                  className="hidden md:flex items-center gap-2 px-2 py-1 text-xs text-gray-700 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
                   title={t('nav.settings')}
                 >
                   <Settings className="w-3 h-3" />
@@ -260,7 +260,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               )}
               <button
                 onClick={logout}
-                className="flex items-center gap-1 px-2 py-1 text-xs text-red-700 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                className="flex items-center gap-2 px-2 py-1 text-xs text-red-700 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
                 title={t('actions.logout')}
               >
                 <LogOut className="w-3 h-3" />
@@ -298,11 +298,9 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                       <Icon className="w-4 h-4" />
                       <span className="flex-1 text-left">{item.label}</span>
                       {item.badge !== undefined && item.badge > 0 && (
-                        <NotificationBadge
-                          count={item.badge}
-                          variant={item.badge > 0 && item.id === 'approvals' ? 'urgent' : 'default'}
-                          pulse={item.badge > 0 && item.id === 'approvals'}
-                        />
+                        <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-600 rounded-full">
+                          {item.badge > 9 ? '9+' : item.badge}
+                        </span>
                       )}
                     </button>
                   </li>

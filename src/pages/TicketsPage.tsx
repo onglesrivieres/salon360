@@ -273,7 +273,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
             <option value="auto_approved">Auto-Approved</option>
             <option value="rejected">Rejected</option>
           </select>
-          <div className="flex items-center gap-1 flex-1 md:flex-initial">
+          <div className="flex items-center gap-2 flex-1 md:flex-initial">
             <Calendar className="w-4 h-4 text-gray-400" />
             <input
               type="date"

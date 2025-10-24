@@ -249,28 +249,28 @@ export function PendingApprovalsPage() {
               <p className="text-xl font-bold text-gray-900">{approvalStats.total_closed}</p>
             </div>
             <div className="bg-orange-50 rounded-lg p-3">
-              <div className="flex items-center gap-1 mb-1">
+              <div className="flex items-center gap-2 mb-1">
                 <Clock className="w-3 h-3 text-orange-600" />
                 <p className="text-xs text-orange-700 font-medium">Pending</p>
               </div>
               <p className="text-xl font-bold text-orange-900">{approvalStats.pending_approval}</p>
             </div>
             <div className="bg-green-50 rounded-lg p-3">
-              <div className="flex items-center gap-1 mb-1">
+              <div className="flex items-center gap-2 mb-1">
                 <CheckCircle className="w-3 h-3 text-green-600" />
                 <p className="text-xs text-green-700 font-medium">Approved</p>
               </div>
               <p className="text-xl font-bold text-green-900">{approvalStats.approved}</p>
             </div>
             <div className="bg-blue-50 rounded-lg p-3">
-              <div className="flex items-center gap-1 mb-1">
+              <div className="flex items-center gap-2 mb-1">
                 <Clock className="w-3 h-3 text-blue-600" />
                 <p className="text-xs text-blue-700 font-medium">Auto-Approved</p>
               </div>
               <p className="text-xl font-bold text-blue-900">{approvalStats.auto_approved}</p>
             </div>
             <div className="bg-red-50 rounded-lg p-3">
-              <div className="flex items-center gap-1 mb-1">
+              <div className="flex items-center gap-2 mb-1">
                 <AlertCircle className="w-3 h-3 text-red-600" />
                 <p className="text-xs text-red-700 font-medium">Rejected</p>
               </div>
@@ -278,7 +278,7 @@ export function PendingApprovalsPage() {
             </div>
             {approvalStats.requires_review > 0 && (
               <div className="bg-yellow-50 rounded-lg p-3">
-                <div className="flex items-center gap-1 mb-1">
+                <div className="flex items-center gap-2 mb-1">
                   <AlertCircle className="w-3 h-3 text-yellow-600" />
                   <p className="text-xs text-yellow-700 font-medium">Needs Review</p>
                 </div>

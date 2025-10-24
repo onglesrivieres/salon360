@@ -967,18 +967,18 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             {!isTicketClosed && (
               <div className="flex items-start gap-3 mb-2">
                 {sortedTechnicians.filter(t => t.queue_status === 'ready').length > 0 && (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <Award className="w-3.5 h-3.5 text-green-600" />
                     <span className="text-xs font-semibold text-green-700 uppercase whitespace-nowrap">Available</span>
                   </div>
                 )}
                 {sortedTechnicians.filter(t => t.queue_status === 'neutral').length > 0 && (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Not Ready</span>
                   </div>
                 )}
                 {sortedTechnicians.filter(t => t.queue_status === 'busy').length > 0 && (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <Lock className="w-3.5 h-3.5 text-red-600" />
                     <span className="text-xs font-semibold text-red-700 uppercase whitespace-nowrap">Busy</span>
                   </div>
@@ -1005,7 +1005,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   }`}
                   disabled={isTicketClosed || isReadOnly}
                 >
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     {tech.queue_position > 0 && (
                       <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-white text-green-600 rounded-full">
                         {tech.queue_position}
@@ -1048,7 +1048,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     className="py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium bg-red-100 text-red-800 cursor-not-allowed opacity-60 min-h-[48px] md:min-h-0"
                     title={`${tech.display_name} is currently working on ${tech.open_ticket_count} ticket(s)${timeRemaining ? ` - ${timeRemaining} remaining` : ''}`}
                   >
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       <Lock className="w-3 h-3" />
                       <span>{tech.display_name}</span>
                       {timeRemaining && (
