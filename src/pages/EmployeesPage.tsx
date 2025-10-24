@@ -253,7 +253,7 @@ export function EmployeesPage() {
         setResetModalOpen(true);
         showToast(t('emp.pinReset'), 'success');
       } else {
-        showToast('Failed to reset PIN', 'error');
+        showToast(result.error || 'Failed to reset PIN', 'error');
       }
     } catch (error) {
       showToast('Failed to reset PIN', 'error');

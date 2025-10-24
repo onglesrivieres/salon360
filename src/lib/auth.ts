@@ -115,7 +115,7 @@ export async function resetPIN(employeeId: string): Promise<{ success: boolean; 
   });
 
   if (error) {
-    return { success: false, error: 'Failed to reset PIN' };
+    return { success: false, error: error.message || 'Failed to reset PIN' };
   }
 
   const result = data as { success: boolean; temp_pin?: string; error?: string };
