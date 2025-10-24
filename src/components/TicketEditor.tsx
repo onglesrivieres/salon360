@@ -99,10 +99,13 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     if (!employee || !service) return true;
 
     const isSpaExpert = employee.role.includes('Spa Expert');
-    if (isSpaExpert && service.category === 'Extensions des Ongles') {
-      return false;
+    if (isSpaExpert) {
+      // Spa Experts can ONLY perform Soins de Pedicure and Soins de Manucure
+      const allowedCategories = ['Soins de Pedicure', 'Soins de Manucure'];
+      return allowedCategories.includes(service.category);
     }
 
+    // Technicians and other roles can perform all services
     return true;
   };
 
