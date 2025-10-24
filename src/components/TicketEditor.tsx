@@ -68,6 +68,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
   const canClose = session && session.role_permission && Permissions.tickets.canClose(session.role_permission);
 
+  const canReopen = session && session.role_permission && Permissions.tickets.canReopen(session.role_permission);
+
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>('');
   const [showCustomService, setShowCustomService] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -817,6 +819,51 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     }
   }
 
+  async function handleReopenTicket() {
+    if (!canReopen) {
+      showToast('You do not have permission to reopen tickets', 'error');
+      return;
+    }
+
+    if (!ticketId || !ticket) return;
+
+    try {
+      setSaving(true);
+
+      const { error } = await supabase
+        .from('sale_tickets')
+        .update({
+          closed_at: null,
+          closed_by: null,
+          closed_by_roles: null,
+          requires_higher_approval: false,
+          approval_status: null,
+          approval_deadline: null,
+          approved_at: null,
+          approved_by: null,
+          rejected_at: null,
+          rejected_by: null,
+          rejection_reason: null,
+          requires_admin_review: false,
+        })
+        .eq('id', ticketId);
+
+      if (error) throw error;
+
+      await logActivity(ticketId, 'updated', `${session?.display_name} reopened ticket`, {
+        reopened: true,
+      });
+
+      showToast('Ticket reopened successfully', 'success');
+      onClose();
+    } catch (error) {
+      console.error('Error reopening ticket:', error);
+      showToast('Failed to reopen ticket', 'error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
@@ -1561,7 +1608,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 )}
               </>
             )}
-            {isReadOnly && canEditNotes && ticketId && (
+            {isTicketClosed && canReopen && ticketId && (
+              <Button
+                variant="primary"
+                onClick={handleReopenTicket}
+                disabled={saving}
+              >
+                {saving ? 'Reopening...' : 'Reopen Ticket'}
+              </Button>
+            )}
+            {isReadOnly && canEditNotes && ticketId && !canReopen && (
               <Button onClick={handleSaveComment} disabled={saving}>
                 {saving ? 'Saving...' : 'Save Comment'}
               </Button>
