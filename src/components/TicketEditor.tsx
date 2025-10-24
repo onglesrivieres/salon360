@@ -1648,10 +1648,52 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             />
           </div>
 
-          <div className="flex gap-2 pt-2 fixed md:static bottom-0 left-0 right-0 bg-white p-3 md:p-0 shadow-lg md:shadow-none z-10">
-            <Button variant="ghost" onClick={onClose}>
-              Close
-            </Button>
+          <div className="flex justify-between items-center gap-2 pt-2 fixed md:static bottom-0 left-0 right-0 bg-white p-3 md:p-0 shadow-lg md:shadow-none z-10">
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={onClose}>
+                Close
+              </Button>
+              {!isTicketClosed && !isReadOnly && canDelete && ticketId && (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={saving}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-sm font-medium"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              )}
+              {!isTicketClosed && !isReadOnly && (
+                <>
+                  <Button onClick={handleSave} disabled={saving}>
+                    {saving ? 'Saving...' : 'Save'}
+                  </Button>
+                  {ticketId && (
+                    <Button
+                      variant="primary"
+                      onClick={handleCloseTicket}
+                      disabled={saving}
+                    >
+                      Close Ticket
+                    </Button>
+                  )}
+                </>
+              )}
+              {isTicketClosed && canReopen && ticketId && (
+                <Button
+                  variant="primary"
+                  onClick={handleReopenTicket}
+                  disabled={saving}
+                >
+                  {saving ? 'Reopening...' : 'Reopen Ticket'}
+                </Button>
+              )}
+              {isReadOnly && canEditNotes && ticketId && !canReopen && (
+                <Button onClick={handleSaveComment} disabled={saving}>
+                  {saving ? 'Saving...' : 'Save Comment'}
+                </Button>
+              )}
+            </div>
             {ticketId && activityLogs.length > 0 && (
               <button
                 onClick={() => setShowActivityModal(true)}
@@ -1660,46 +1702,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 <Clock className="w-4 h-4" />
                 Activity Log
               </button>
-            )}
-            {!isTicketClosed && !isReadOnly && canDelete && ticketId && (
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                disabled={saving}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-sm font-medium"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </button>
-            )}
-            {!isTicketClosed && !isReadOnly && (
-              <>
-                <Button onClick={handleSave} disabled={saving}>
-                  {saving ? 'Saving...' : 'Save'}
-                </Button>
-                {ticketId && (
-                  <Button
-                    variant="primary"
-                    onClick={handleCloseTicket}
-                    disabled={saving}
-                  >
-                    Close Ticket
-                  </Button>
-                )}
-              </>
-            )}
-            {isTicketClosed && canReopen && ticketId && (
-              <Button
-                variant="primary"
-                onClick={handleReopenTicket}
-                disabled={saving}
-              >
-                {saving ? 'Reopening...' : 'Reopen Ticket'}
-              </Button>
-            )}
-            {isReadOnly && canEditNotes && ticketId && !canReopen && (
-              <Button onClick={handleSaveComment} disabled={saving}>
-                {saving ? 'Saving...' : 'Save Comment'}
-              </Button>
             )}
           </div>
         </div>
