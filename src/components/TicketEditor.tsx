@@ -269,12 +269,12 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_name: ticketData.customer_name,
           customer_phone: ticketData.customer_phone || '',
           payment_method: ticketData.payment_method || '',
-          tip_customer: '',
-          tip_receptionist: '',
+          tip_customer: firstItem ? ((firstItem.tip_customer_cash || 0) + (firstItem.tip_customer_card || 0)).toString() : '0',
+          tip_receptionist: firstItem?.tip_receptionist?.toString() || '0',
           addon_details: firstItem?.addon_details || '',
-          addon_price: '',
-          discount_percentage: '',
-          discount_amount: '',
+          addon_price: firstItem?.addon_price?.toString() || '0',
+          discount_percentage: firstItem?.discount_percentage?.toString() || '0',
+          discount_amount: firstItem?.discount_amount?.toString() || '0',
           notes: ticketData.notes,
         });
 
