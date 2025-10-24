@@ -1463,6 +1463,26 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                    Discount Amount
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.discount_amount}
+                      onChange={(e) =>
+                        setFormData({ ...formData, discount_amount: e.target.value })
+                      }
+                      className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                      disabled={isTicketClosed || isReadOnly}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
                     Discount Percentage
                   </label>
                   <div className="relative">
@@ -1480,26 +1500,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       placeholder="0"
                     />
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">%</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Discount Amount
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.discount_amount}
-                      onChange={(e) =>
-                        setFormData({ ...formData, discount_amount: e.target.value })
-                      }
-                      className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                      disabled={isTicketClosed || isReadOnly}
-                      placeholder="0.00"
-                    />
                   </div>
                 </div>
               </div>
