@@ -125,10 +125,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     customer_name: '',
     customer_phone: '',
     payment_method: '' as '' | SaleTicket['payment_method'],
-    tip_customer: '0',
-    tip_receptionist: '0',
+    tip_customer: '',
+    tip_receptionist: '',
     addon_details: '',
-    addon_price: '0',
+    addon_price: '',
     notes: '',
   });
 
