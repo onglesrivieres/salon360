@@ -267,10 +267,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_name: ticketData.customer_name,
           customer_phone: ticketData.customer_phone || '',
           payment_method: ticketData.payment_method || '',
-          tip_customer: ((firstItem?.tip_customer_cash || 0) + (firstItem?.tip_customer_card || 0)).toString(),
-          tip_receptionist: firstItem?.tip_receptionist?.toString() || '0',
+          tip_customer: '',
+          tip_receptionist: '',
           addon_details: firstItem?.addon_details || '',
-          addon_price: firstItem?.addon_price?.toString() || '0',
+          addon_price: '',
           notes: ticketData.notes,
         });
 
