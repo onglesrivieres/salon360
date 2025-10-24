@@ -334,9 +334,6 @@ export function PendingApprovalsPage() {
                       Customer: <span className="font-medium">{ticket.customer_name}</span>
                       {ticket.customer_phone && <span className="text-gray-400"> • {ticket.customer_phone}</span>}
                     </p>
-                    <p className="text-sm text-gray-600">
-                      Closed by: <span className="font-medium">{ticket.closed_by_name}</span>
-                    </p>
                   </div>
                 </div>
 
@@ -369,25 +366,30 @@ export function PendingApprovalsPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    onClick={() => handleApproveClick(ticket)}
-                    className="flex-1"
-                  >
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    Approve
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleRejectClick(ticket)}
-                    className="flex-1 text-red-600 hover:bg-red-50"
-                  >
-                    <XCircle className="w-4 h-4 mr-1" />
-                    Reject
-                  </Button>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm text-gray-600">
+                    Closed by: <span className="font-medium">{ticket.closed_by_name}</span>
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => handleApproveClick(ticket)}
+                      className="flex-1"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleRejectClick(ticket)}
+                      className="flex-1 text-red-600 hover:bg-red-50"
+                    >
+                      <XCircle className="w-4 h-4 mr-1" />
+                      Reject
+                    </Button>
+                  </div>
                 </div>
               </div>
             );
