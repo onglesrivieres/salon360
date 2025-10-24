@@ -332,9 +332,6 @@ export function EmployeesPage() {
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('emp.assignedStores')}
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('actions.actions')}
-                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -346,7 +343,11 @@ export function EmployeesPage() {
                   .join(', ');
 
                 return (
-                  <tr key={employee.id} className="hover:bg-gray-50">
+                  <tr
+                    key={employee.id}
+                    onClick={() => openDrawer(employee)}
+                    className="hover:bg-gray-50 cursor-pointer"
+                  >
                     <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                       {employee.display_name}
                     </td>
@@ -365,29 +366,27 @@ export function EmployeesPage() {
                       </Badge>
                     </td>
                     <td className="px-3 py-2 text-xs text-gray-600">
-                      {assignedStores.length === 0 ? (
-                        <span className="text-gray-400 italic">All stores</span>
-                      ) : (
-                        <span>{storeNames}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-xs flex items-center gap-2">
-                      <button
-                        onClick={() => openDrawer(employee)}
-                        className="text-blue-600 hover:text-blue-800"
-                        title={t('actions.edit')}
-                      >
-                        <Edit2 className="w-3 h-3" />
-                      </button>
-                      {session && session.role && Permissions.employees.canResetPIN(session.role) && (
-                        <button
-                          onClick={() => handleResetPIN(employee)}
-                          className="text-orange-600 hover:text-orange-800"
-                          title={t('emp.resetPIN')}
-                        >
-                          <RefreshCw className="w-3 h-3" />
-                        </button>
-                      )}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          {assignedStores.length === 0 ? (
+                            <span className="text-gray-400 italic">All stores</span>
+                          ) : (
+                            <span>{storeNames}</span>
+                          )}
+                        </div>
+                        {session && session.role && Permissions.employees.canResetPIN(session.role) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleResetPIN(employee);
+                            }}
+                            className="text-orange-600 hover:text-orange-800 p-1"
+                            title={t('emp.resetPIN')}
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
