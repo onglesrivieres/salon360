@@ -45,7 +45,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const [sortedTechnicians, setSortedTechnicians] = useState<TechnicianWithQueue[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showCloseModal, setShowCloseModal] = useState(false);
   const [lastUsedEmployeeId, setLastUsedEmployeeId] = useState<string>('');
   const [activityLogs, setActivityLogs] = useState<TicketActivityLog[]>([]);
   const [showActivityModal, setShowActivityModal] = useState(false);
@@ -1321,7 +1320,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 {ticketId && (
                   <Button
                     variant="primary"
-                    onClick={() => setShowCloseModal(true)}
+                    onClick={handleCloseTicket}
                     disabled={saving}
                   >
                     Close Ticket
@@ -1337,20 +1336,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           </div>
         </div>
       </div>
-
-      <Modal
-        isOpen={showCloseModal}
-        onClose={() => setShowCloseModal(false)}
-        title="Close Ticket"
-        onConfirm={handleCloseTicket}
-        confirmText="Close Ticket"
-        confirmVariant="primary"
-      >
-        <p className="text-gray-700">
-          Are you sure you want to close this ticket? You will not be able to edit it
-          after closing.
-        </p>
-      </Modal>
 
       <Modal
         isOpen={showActivityModal}
