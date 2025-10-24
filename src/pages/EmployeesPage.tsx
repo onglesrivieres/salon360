@@ -240,7 +240,7 @@ export function EmployeesPage() {
   }
 
   async function handleResetPIN(employee: Employee) {
-    if (!session?.can_reset_pin) {
+    if (!session || !Permissions.employees.canResetPIN(session.role)) {
       showToast('You do not have permission to reset PINs', 'error');
       return;
     }
@@ -480,7 +480,7 @@ export function EmployeesPage() {
             }))}
             placeholder="Select stores (No stores = No access)"
           />
-          {editingEmployee && session?.can_reset_pin && (
+          {editingEmployee && session && Permissions.employees.canResetPIN(session.role) && (
             <div>
               <button
                 type="button"
