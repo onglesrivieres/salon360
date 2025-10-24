@@ -959,7 +959,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               </div>
             </div>
           )}
-          <div className="border border-gray-200 rounded-lg p-3">
+          <div className="border border-gray-200 rounded-lg p-3 bg-purple-50">
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Customer Type <span className="text-red-600">*</span>
             </label>
@@ -1033,7 +1033,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             </div>
           </div>
 
-          <div className="border border-gray-200 rounded-lg p-3">
+          <div className="border border-gray-200 rounded-lg p-3 bg-blue-50">
             <label className="block text-xs font-medium text-gray-700 mb-2">
               Technician <span className="text-red-600">*</span>
             </label>
@@ -1286,7 +1286,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             <h3 className="text-sm font-semibold text-gray-900 mb-2">
               Payment Method <span className="text-red-600">*</span>
             </h3>
-            <div className="border border-gray-200 rounded-lg p-3">
+            <div className="border border-gray-200 rounded-lg p-3 bg-green-50">
               <div className="flex gap-2 mb-2">
                 <button
                   type="button"
