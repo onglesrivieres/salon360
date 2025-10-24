@@ -1541,40 +1541,31 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             />
           </div>
 
-          <div className="flex items-center justify-between gap-2 pt-2 fixed md:static bottom-0 left-0 right-0 bg-white p-3 md:p-0 shadow-lg md:shadow-none z-10">
-            <div className="flex items-center gap-2">
-              {isTicketClosed && activityLogs.length > 0 && activityLogs.find(log => log.action === 'closed') && (
-                <p className="text-sm text-gray-600">
-                  Closed by: <span className="font-medium">{activityLogs.find(log => log.action === 'closed')?.employee?.display_name || 'Unknown'}</span>
-                </p>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="ghost" onClick={onClose}>
-                Close
-              </Button>
-              {!isTicketClosed && !isReadOnly && (
-                <>
-                  <Button onClick={handleSave} disabled={saving}>
-                    {saving ? 'Saving...' : 'Save'}
-                  </Button>
-                  {ticketId && (
-                    <Button
-                      variant="primary"
-                      onClick={handleCloseTicket}
-                      disabled={saving}
-                    >
-                      Close Ticket
-                    </Button>
-                  )}
-                </>
-              )}
-              {isReadOnly && canEditNotes && ticketId && (
-                <Button onClick={handleSaveComment} disabled={saving}>
-                  {saving ? 'Saving...' : 'Save Comment'}
+          <div className="flex gap-2 pt-2 fixed md:static bottom-0 left-0 right-0 bg-white p-3 md:p-0 shadow-lg md:shadow-none z-10">
+            <Button variant="ghost" onClick={onClose}>
+              Close
+            </Button>
+            {!isTicketClosed && !isReadOnly && (
+              <>
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving ? 'Saving...' : 'Save'}
                 </Button>
-              )}
-            </div>
+                {ticketId && (
+                  <Button
+                    variant="primary"
+                    onClick={handleCloseTicket}
+                    disabled={saving}
+                  >
+                    Close Ticket
+                  </Button>
+                )}
+              </>
+            )}
+            {isReadOnly && canEditNotes && ticketId && (
+              <Button onClick={handleSaveComment} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Comment'}
+              </Button>
+            )}
           </div>
         </div>
       </div>
