@@ -633,19 +633,41 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       return;
     }
 
+    if (!session?.employee_id) {
+      console.error('No employee_id in session');
+      showToast('Unable to complete ticket: session error', 'error');
+      return;
+    }
+
     try {
-      // Mark the technician's current ticket as completed
-      const { error } = await supabase
+      console.log('Completing ticket:', currentTicketId, 'for employee:', session.employee_id);
+
+      // Mark the technician's current ticket as completed (stops the timer)
+      const { error, data } = await supabase
         .from('sale_tickets')
         .update({
           completed_at: new Date().toISOString(),
-          completed_by: session?.employee_id,
+          completed_by: session.employee_id,
         })
-        .eq('id', currentTicketId);
+        .eq('id', currentTicketId)
+        .select()
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error completing ticket:', error);
+        showToast(`Failed to complete ticket: ${error.message}`, 'error');
+        return;
+      }
 
-      await logActivity(currentTicketId, 'updated', `${session?.display_name} marked service as completed (technician assigned to new ticket)`, {});
+      if (!data) {
+        console.error('No ticket found with ID:', currentTicketId);
+        showToast('Ticket not found', 'error');
+        return;
+      }
+
+      console.log('Ticket completed successfully:', data);
+
+      await logActivity(currentTicketId, 'updated', `${session.display_name} marked service as completed (technician assigned to new ticket)`, {});
 
       setSelectedTechnicianId(technicianId);
       setLastUsedEmployeeId(technicianId);
@@ -653,10 +675,13 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         updateItem(0, 'employee_id', technicianId);
       }
 
+      showToast('Previous ticket marked as completed', 'success');
+
       // Refresh technician list to update statuses
       await fetchTechnicians();
-    } catch (error) {
-      showToast('Failed to complete previous ticket', 'error');
+    } catch (error: any) {
+      console.error('Failed to complete previous ticket:', error);
+      showToast(error?.message || 'Failed to complete previous ticket', 'error');
     }
   }
 
