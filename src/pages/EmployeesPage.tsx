@@ -480,6 +480,17 @@ export function EmployeesPage() {
             }))}
             placeholder="Select stores (No stores = No access)"
           />
+          {editingEmployee && session?.can_reset_pin && (
+            <div>
+              <button
+                type="button"
+                onClick={() => handleResetPIN(editingEmployee)}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+              >
+                Change PIN
+              </button>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {t('tickets.notes')}
