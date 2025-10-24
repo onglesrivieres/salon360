@@ -26,7 +26,7 @@ export function ServicesPage() {
     name: '',
     base_price: '',
     duration_min: '30',
-    category: "Faux d'Ongles",
+    category: 'Extensions des Ongles',
     active: true,
   });
 
@@ -92,7 +92,7 @@ export function ServicesPage() {
         name: '',
         base_price: '',
         duration_min: '30',
-        category: "Faux d'Ongles",
+        category: 'Extensions des Ongles',
         active: true,
       });
     }
@@ -310,9 +310,9 @@ export function ServicesPage() {
             value={formData.category}
             onChange={(e) => setFormData({ ...formData, category: e.target.value })}
             options={[
-              { value: "Faux d'Ongles", label: "Faux d'Ongles" },
-              { value: 'Soins des Mains', label: 'Soins des Mains' },
-              { value: 'Soins des Pieds', label: 'Soins des Pieds' },
+              { value: 'Extensions des Ongles', label: 'Extensions des Ongles' },
+              { value: 'Soins de Manucure', label: 'Soins de Manucure' },
+              { value: 'Soins de Pédicure', label: 'Soins de Pédicure' },
               { value: 'Others', label: 'Others' },
             ]}
           />
