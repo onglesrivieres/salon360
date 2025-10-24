@@ -92,6 +92,20 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     return mins > 0 ? `~${hours}h ${mins}min` : `~${hours}h`;
   };
 
+  const canEmployeePerformService = (employeeId: string, serviceId: string): boolean => {
+    const employee = employees.find(e => e.id === employeeId);
+    const service = services.find(s => s.id === serviceId);
+
+    if (!employee || !service) return true;
+
+    const isSpaExpert = employee.role.includes('Spa Expert');
+    if (isSpaExpert && service.category === 'Extensions des Ongles') {
+      return false;
+    }
+
+    return true;
+  };
+
   const [formData, setFormData] = useState({
     customer_type: '' as '' | 'Appointment' | 'Requested' | 'Assigned',
     customer_name: '',
@@ -197,7 +211,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       setServices(servicesRes.data || []);
 
       const allEmployees = (employeesRes.data || []).filter(emp =>
-        emp.role.includes('Technician')
+        emp.role.includes('Technician') || emp.role.includes('Spa Expert')
       );
       const filteredEmployees = selectedStoreId
         ? allEmployees.filter(emp => !emp.store_id || emp.store_id === selectedStoreId)
@@ -462,6 +476,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     if (items.length === 0) {
       showToast('Service is required', 'error');
       return;
+    }
+
+    for (const item of items) {
+      if (!canEmployeePerformService(item.employee_id, item.service_id)) {
+        const employee = employees.find(e => e.id === item.employee_id);
+        const service = services.find(s => s.id === item.service_id);
+        showToast(`${employee?.display_name || 'This employee'} cannot perform ${service?.name || 'this service'}. Spa Experts cannot perform Extensions des Ongles services.`, 'error');
+        return;
+      }
     }
 
     try {
@@ -1071,7 +1094,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               <div className="border border-gray-200 rounded-lg p-3">
                 {!isTicketClosed && services.length > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    {services.map((service) => (
+                    {services
+                      .filter(service => canEmployeePerformService(selectedTechnicianId || lastUsedEmployeeId, service.id))
+                      .map((service) => (
                       <button
                         key={service.id}
                         type="button"
@@ -1104,10 +1129,12 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       label="Service"
                       value={items[0].service_id}
                       onChange={(e) => updateItem(0, 'service_id', e.target.value)}
-                      options={services.map((s) => ({
-                        value: s.id,
-                        label: `${s.code} - ${s.name}`,
-                      }))}
+                      options={services
+                        .filter(s => canEmployeePerformService(items[0]?.employee_id || selectedTechnicianId || lastUsedEmployeeId, s.id))
+                        .map((s) => ({
+                          value: s.id,
+                          label: `${s.code} - ${s.name}`,
+                        }))}
                       disabled={isTicketClosed || isReadOnly}
                     />
                   </div>

@@ -1,5 +1,5 @@
 export type RolePermission = 'Admin' | 'Receptionist' | 'Technician' | 'Supervisor';
-export type Role = 'Technician' | 'Receptionist' | 'Supervisor' | 'Manager' | 'Owner';
+export type Role = 'Technician' | 'Receptionist' | 'Supervisor' | 'Manager' | 'Owner' | 'Spa Expert';
 
 export interface PermissionCheck {
   canView: boolean;
@@ -19,7 +19,7 @@ function hasAnyRole(roles: Role[] | RolePermission, allowedRoles: string[]): boo
 export const Permissions = {
   tickets: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
     },
     canCreate: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
@@ -32,7 +32,7 @@ export const Permissions = {
     canEditNotes: (roles: Role[] | RolePermission, isClosed: boolean): boolean => {
       if (hasAnyRole(roles, ['Admin', 'Owner'])) return true;
       if (hasAnyRole(roles, ['Receptionist', 'Supervisor', 'Manager'])) return !isClosed;
-      if (hasAnyRole(roles, ['Technician'])) return !isClosed;
+      if (hasAnyRole(roles, ['Technician', 'Spa Expert'])) return !isClosed;
       return false;
     },
     canDelete: (roles: Role[] | RolePermission): boolean => {
@@ -48,10 +48,10 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Owner']);
     },
     canApprove: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Technician', 'Supervisor', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Technician', 'Spa Expert', 'Supervisor', 'Owner']);
     },
     canViewPendingApprovals: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Technician', 'Supervisor', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Technician', 'Spa Expert', 'Supervisor', 'Owner']);
     },
     canReviewRejected: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Owner']);
@@ -60,7 +60,7 @@ export const Permissions = {
 
   endOfDay: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
     },
     canViewAll: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
@@ -114,10 +114,10 @@ export const Permissions = {
 
   attendance: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
     },
     canComment: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
     },
     canExport: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
