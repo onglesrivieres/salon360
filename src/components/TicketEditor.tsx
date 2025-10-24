@@ -779,7 +779,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         className="fixed inset-0 bg-black bg-opacity-50 z-40"
         onClick={onClose}
       />
-      <div className="fixed inset-0 md:right-0 md:left-auto md:top-0 h-full w-full md:max-w-4xl bg-white shadow-xl z-50 overflow-y-auto">
+      <div className="fixed inset-0 md:right-0 md:left-auto md:top-0 h-full w-full md:max-w-2xl bg-white shadow-xl z-50 overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-3 md:px-4 py-3 md:py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -929,30 +929,31 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             </div>
             <div className="flex gap-2">
               <div className="flex-1">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Name
-                  </label>
-                  <input
-                    value={formData.customer_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, customer_name: e.target.value })
-                    }
-                    placeholder="e.g. John"
-                    disabled={isTicketClosed}
-                    className="w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                  />
-                </div>
+                <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                  Name
+                </label>
+                <input
+                  value={formData.customer_name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, customer_name: e.target.value })
+                  }
+                  placeholder="e.g. John"
+                  disabled={isTicketClosed}
+                  className="w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                />
               </div>
               <div className="flex-1">
-                <Input
-                  label="Phone Number (Optional)"
+                <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                  Phone Number (Optional)
+                </label>
+                <input
                   value={formData.customer_phone}
                   onChange={(e) =>
                     setFormData({ ...formData, customer_phone: e.target.value })
                   }
                   placeholder="e.g. 1234"
                   disabled={isTicketClosed}
+                  className="w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
                 />
               </div>
             </div>
@@ -1053,11 +1054,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       {timeRemaining && (
                         <span className="inline-flex items-center text-xs font-medium text-red-700">
                           {timeRemaining}
-                        </span>
-                      )}
-                      {tech.open_ticket_count > 0 && (
-                        <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-red-600 text-white rounded-full">
-                          {tech.open_ticket_count}
                         </span>
                       )}
                     </div>
@@ -1303,7 +1299,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               onChange={(e) =>
                 setFormData({ ...formData, notes: e.target.value })
               }
-              rows={3}
+              rows={1}
               className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={!canEditNotes}
               placeholder={canEditNotes ? "Add notes or comments..." : ""}
