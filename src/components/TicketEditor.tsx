@@ -448,6 +448,25 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     return Math.max(0, subtotal + totalTips - totalDiscount);
   }
 
+  function handleNumericFieldFocus(event: React.FocusEvent<HTMLInputElement>) {
+    const value = event.target.value;
+    const numericValue = parseFloat(value);
+
+    // Auto-select text if the field contains 0, 0.00, or is empty
+    if (!value || value === '' || numericValue === 0 || value === '0' || value === '0.00' || value === '0.0') {
+      event.target.select();
+    }
+  }
+
+  function handleNumericFieldBlur(event: React.FocusEvent<HTMLInputElement>, fieldName: string) {
+    const value = event.target.value;
+
+    // If field is empty or invalid, reset to '0'
+    if (!value || value.trim() === '' || isNaN(parseFloat(value))) {
+      setFormData({ ...formData, [fieldName]: '0' });
+    }
+  }
+
   async function generateTicketNumber(): Promise<string> {
     const dateStr = selectedDate.replace(/-/g, '');
 
@@ -1471,6 +1490,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                         onChange={(e) =>
                           setFormData({ ...formData, addon_price: e.target.value })
                         }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'addon_price')}
                         className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
                         disabled={isTicketClosed || isReadOnly}
                       />
@@ -1529,6 +1550,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       onChange={(e) =>
                         setFormData({ ...formData, tip_customer: e.target.value })
                       }
+                      onFocus={handleNumericFieldFocus}
+                      onBlur={(e) => handleNumericFieldBlur(e, 'tip_customer')}
                       className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
                       disabled={isTicketClosed || isReadOnly}
                     />
@@ -1548,6 +1571,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       onChange={(e) =>
                         setFormData({ ...formData, tip_receptionist: e.target.value })
                       }
+                      onFocus={handleNumericFieldFocus}
+                      onBlur={(e) => handleNumericFieldBlur(e, 'tip_receptionist')}
                       className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
                       disabled={isTicketClosed || isReadOnly}
                     />
@@ -1569,6 +1594,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       onChange={(e) =>
                         setFormData({ ...formData, discount_amount: e.target.value })
                       }
+                      onFocus={handleNumericFieldFocus}
+                      onBlur={(e) => handleNumericFieldBlur(e, 'discount_amount')}
                       className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
                       disabled={isTicketClosed || isReadOnly}
                       placeholder="0.00"
@@ -1589,6 +1616,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       onChange={(e) =>
                         setFormData({ ...formData, discount_percentage: e.target.value })
                       }
+                      onFocus={handleNumericFieldFocus}
+                      onBlur={(e) => handleNumericFieldBlur(e, 'discount_percentage')}
                       className="w-full pl-2 pr-8 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
                       disabled={isTicketClosed || isReadOnly}
                       placeholder="0"
