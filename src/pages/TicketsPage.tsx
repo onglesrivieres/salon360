@@ -202,9 +202,10 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     return service?.duration_min || 0;
   }
 
-  function getElapsedMinutes(openedAt: string, closedAt?: string): number {
+  function getElapsedMinutes(openedAt: string, closedAt?: string, completedAt?: string): number {
     const opened = new Date(openedAt);
-    const end = closedAt ? new Date(closedAt) : currentTime;
+    // Timer stops at whichever comes first: completed_at or closed_at
+    const end = closedAt ? new Date(closedAt) : (completedAt ? new Date(completedAt) : currentTime);
     const diff = Math.floor((end.getTime() - opened.getTime()) / 1000 / 60);
     return Math.max(0, diff);
   }
@@ -213,14 +214,14 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     const serviceDuration = getServiceDuration(ticket);
     if (serviceDuration === 0) return false;
 
-    const elapsedMinutes = getElapsedMinutes(ticket.opened_at, ticket.closed_at);
+    const elapsedMinutes = getElapsedMinutes(ticket.opened_at, ticket.closed_at, ticket.completed_at);
 
-    // For open tickets: check if running 30% longer
-    if (!ticket.closed_at) {
+    // For open tickets (not closed AND not completed): check if running 30% longer
+    if (!ticket.closed_at && !ticket.completed_at) {
       return elapsedMinutes >= serviceDuration * 1.3;
     }
 
-    // For closed tickets: check if 30% shorter OR 30% longer
+    // For completed/closed tickets: check if 30% shorter OR 30% longer
     const tooFast = elapsedMinutes <= serviceDuration * 0.7;
     const tooSlow = elapsedMinutes >= serviceDuration * 1.3;
 
