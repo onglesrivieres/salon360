@@ -429,6 +429,30 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     return 0;
   }
 
+  function calculateTotalDiscount(): number {
+    const itemsTotal = items.reduce((sum, item) => {
+      const qty = parseFloat(item.qty) || 0;
+      const price = parseFloat(item.price_each) || 0;
+      return sum + (qty * price);
+    }, 0);
+    const addonPrice = parseFloat(formData.addon_price) || 0;
+    const subtotal = itemsTotal + addonPrice;
+
+    const discountPercentage = parseFloat(formData.discount_percentage) || 0;
+    const discountAmount = parseFloat(formData.discount_amount) || 0;
+
+    const percentageDiscount = (subtotal * discountPercentage) / 100;
+    return percentageDiscount + discountAmount;
+  }
+
+  function calculateTotalCollected(): number {
+    const servicePrice = calculateTotal();
+    const totalTips = calculateTotalTips();
+    const totalDiscount = calculateTotalDiscount();
+
+    return servicePrice + totalTips;
+  }
+
   async function generateTicketNumber(): Promise<string> {
     const dateStr = selectedDate.replace(/-/g, '');
 
@@ -1504,6 +1528,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             <div className="flex justify-between items-center text-sm font-semibold text-blue-600">
               <span>Total Tips (Card):</span>
               <span>${calculateCardTips().toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center text-base font-bold text-purple-600 pt-1 border-t border-gray-200">
+              <span>Total Collected:</span>
+              <span>${calculateTotalCollected().toFixed(2)}</span>
             </div>
           </div>
 
