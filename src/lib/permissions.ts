@@ -84,7 +84,7 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Owner']);
     },
     canResetPIN: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
     },
     canAssignRoles: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Owner']);
