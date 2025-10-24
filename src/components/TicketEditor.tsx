@@ -388,22 +388,19 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     setItems(newItems);
   }
 
-  function calculateTotal(): number {
+  function calculateSubtotal(): number {
     const itemsTotal = items.reduce((sum, item) => {
       const qty = parseFloat(item.qty) || 0;
       const price = parseFloat(item.price_each) || 0;
       return sum + (qty * price);
     }, 0);
     const addonPrice = parseFloat(formData.addon_price) || 0;
-    const subtotal = itemsTotal + addonPrice;
+    return itemsTotal + addonPrice;
+  }
 
-    // Apply discounts
-    const discountPercentage = parseFloat(formData.discount_percentage) || 0;
-    const discountAmount = parseFloat(formData.discount_amount) || 0;
-
-    const percentageDiscount = (subtotal * discountPercentage) / 100;
-    const totalDiscount = percentageDiscount + discountAmount;
-
+  function calculateTotal(): number {
+    const subtotal = calculateSubtotal();
+    const totalDiscount = calculateTotalDiscount();
     return Math.max(0, subtotal - totalDiscount);
   }
 
@@ -430,14 +427,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   }
 
   function calculateTotalDiscount(): number {
-    const itemsTotal = items.reduce((sum, item) => {
-      const qty = parseFloat(item.qty) || 0;
-      const price = parseFloat(item.price_each) || 0;
-      return sum + (qty * price);
-    }, 0);
-    const addonPrice = parseFloat(formData.addon_price) || 0;
-    const subtotal = itemsTotal + addonPrice;
-
+    const subtotal = calculateSubtotal();
     const discountPercentage = parseFloat(formData.discount_percentage) || 0;
     const discountAmount = parseFloat(formData.discount_amount) || 0;
 
@@ -446,11 +436,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   }
 
   function calculateTotalCollected(): number {
-    const servicePrice = calculateTotal();
+    const subtotal = calculateSubtotal();
     const totalTips = calculateTotalTips();
     const totalDiscount = calculateTotalDiscount();
 
-    return servicePrice + totalTips;
+    return Math.max(0, subtotal + totalTips - totalDiscount);
   }
 
   async function generateTicketNumber(): Promise<string> {
@@ -1519,7 +1509,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           <div className="border-t border-gray-200 pt-2 space-y-1">
             <div className="flex justify-between items-center text-base font-bold text-gray-900">
               <span>Total Service Price:</span>
-              <span>${calculateTotal().toFixed(2)}</span>
+              <span>${calculateSubtotal().toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center text-sm font-semibold text-green-600">
               <span>Total Tips (Cash):</span>
