@@ -1429,6 +1429,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           </div>
 
           <div className="border-t border-gray-200 pt-2 space-y-1">
+            <div className="flex justify-between items-center text-base font-bold text-gray-900">
+              <span>Total Service Price:</span>
+              <span>${calculateTotal().toFixed(2)}</span>
+            </div>
             <div className="flex justify-between items-center text-sm font-semibold text-green-600">
               <span>Total Tips (Cash):</span>
               <span>${calculateCashTips().toFixed(2)}</span>
