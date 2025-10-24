@@ -623,6 +623,43 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     }
   }
 
+  async function handleSelectBusyTechnician(technicianId: string, currentTicketId?: string) {
+    if (!currentTicketId) {
+      setSelectedTechnicianId(technicianId);
+      setLastUsedEmployeeId(technicianId);
+      if (items.length > 0) {
+        updateItem(0, 'employee_id', technicianId);
+      }
+      return;
+    }
+
+    try {
+      // Mark the technician's current ticket as completed
+      const { error } = await supabase
+        .from('sale_tickets')
+        .update({
+          completed_at: new Date().toISOString(),
+          completed_by: session?.employee_id,
+        })
+        .eq('id', currentTicketId);
+
+      if (error) throw error;
+
+      await logActivity(currentTicketId, 'updated', `${session?.display_name} marked service as completed (technician assigned to new ticket)`, {});
+
+      setSelectedTechnicianId(technicianId);
+      setLastUsedEmployeeId(technicianId);
+      if (items.length > 0) {
+        updateItem(0, 'employee_id', technicianId);
+      }
+
+      // Refresh technician list to update statuses
+      await fetchTechnicians();
+    } catch (error) {
+      showToast('Failed to complete previous ticket', 'error');
+    }
+  }
+
   async function handleCloseTicket() {
     if (!canClose) {
       showToast('You do not have permission to close tickets', 'error');
@@ -1046,15 +1083,20 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   <button
                     key={tech.employee_id}
                     type="button"
-                    disabled
-                    className="py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium bg-red-100 text-red-800 cursor-not-allowed opacity-60 min-h-[48px] md:min-h-0"
-                    title={`${tech.display_name} is currently working on ${tech.open_ticket_count} ticket(s)${timeRemaining ? ` - ${timeRemaining} remaining` : ''}`}
+                    onClick={() => handleSelectBusyTechnician(tech.employee_id, tech.current_open_ticket_id)}
+                    className={`py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
+                      selectedTechnicianId === tech.employee_id
+                        ? 'bg-red-600 text-white ring-2 ring-red-400'
+                        : 'bg-red-100 text-red-800 hover:bg-red-200'
+                    }`}
+                    title={`${tech.display_name} is currently working on ${tech.open_ticket_count} ticket(s)${timeRemaining ? ` - ${timeRemaining} remaining` : ''}. Click to complete their current ticket and assign to new ticket.`}
+                    disabled={isReadOnly}
                   >
                     <div className="flex items-center gap-2">
                       <Lock className="w-3 h-3" />
                       <span>{tech.display_name}</span>
                       {timeRemaining && (
-                        <span className="inline-flex items-center text-xs font-medium text-red-700">
+                        <span className="inline-flex items-center text-xs font-medium">
                           {timeRemaining}
                         </span>
                       )}
