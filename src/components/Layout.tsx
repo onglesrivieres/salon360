@@ -248,7 +248,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   <span className="text-xs font-medium text-gray-700">{googleRating.rating} ({googleRating.reviews})</span>
                 </div>
               )}
-              {session && session.role && Permissions.employees.canView(session.role) && (
+              {session && (
                 <button
                   onClick={() => onNavigate('settings')}
                   className="hidden md:flex items-center gap-2 px-2 py-1 text-xs text-gray-700 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
@@ -308,7 +308,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               })}
             </ul>
             <div className="md:hidden mt-4 pt-4 border-t border-gray-200 px-2">
-              {session && session.role && Permissions.employees.canView(session.role) && (
+              {session && (
                 <button
                   onClick={() => {
                     onNavigate('settings');
