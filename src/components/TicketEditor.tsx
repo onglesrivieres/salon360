@@ -970,7 +970,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
                   formData.customer_type === 'Appointment'
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-600'
                 }`}
                 disabled={isTicketClosed || isReadOnly}
               >
@@ -982,7 +982,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
                   formData.customer_type === 'Requested'
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-600'
                 }`}
                 disabled={isTicketClosed || isReadOnly}
               >
@@ -994,7 +994,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
                   formData.customer_type === 'Assigned'
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-600'
                 }`}
                 disabled={isTicketClosed || isReadOnly}
               >
@@ -1104,7 +1104,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   className={`py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
                     selectedTechnicianId === tech.employee_id
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-600'
                   }`}
                   disabled={isTicketClosed || isReadOnly}
                 >
@@ -1294,7 +1294,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors flex items-center justify-center gap-1.5 min-h-[48px] md:min-h-0 ${
                     formData.payment_method === 'Cash'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-600'
                   }`}
                   disabled={isTicketClosed || isReadOnly}
                 >
@@ -1307,7 +1307,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors flex items-center justify-center gap-1.5 min-h-[48px] md:min-h-0 ${
                     formData.payment_method === 'Card'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-600'
                   }`}
                   disabled={isTicketClosed || isReadOnly}
                 >
