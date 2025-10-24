@@ -68,6 +68,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const canClose = session && session.role && Permissions.tickets.canClose(session.role);
 
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>('');
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const calculateTimeRemaining = (tech: TechnicianWithQueue): string => {
     if (!tech.ticket_start_time || !tech.estimated_duration_min) {
@@ -75,8 +76,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     }
 
     const startTime = new Date(tech.ticket_start_time);
-    const now = new Date();
-    const elapsedMinutes = Math.floor((now.getTime() - startTime.getTime()) / (1000 * 60));
+    const elapsedMinutes = Math.floor((currentTime.getTime() - startTime.getTime()) / (1000 * 60));
     const remainingMinutes = Math.max(0, tech.estimated_duration_min - elapsedMinutes);
 
     if (remainingMinutes === 0) {
@@ -145,6 +145,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       };
     }
   }, [selectedStoreId]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, []);
 
   async function fetchSortedTechnicians() {
     if (!selectedStoreId) return;
