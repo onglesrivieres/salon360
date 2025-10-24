@@ -841,10 +841,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           approval_deadline: null,
           approved_at: null,
           approved_by: null,
-          rejected_at: null,
-          rejected_by: null,
           rejection_reason: null,
           requires_admin_review: false,
+          completed_at: null,
+          completed_by: null,
         })
         .eq('id', ticketId);
 
