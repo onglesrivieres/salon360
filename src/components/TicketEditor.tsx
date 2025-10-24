@@ -1040,22 +1040,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   )}
                 </div>
               </div>
-              {ticketId && activityLogs.length > 0 && (
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>
-                    <strong>{activityLogs[0].action === 'created' ? 'Created' : activityLogs[0].action === 'updated' ? 'Updated' : activityLogs[0].action === 'closed' ? 'Closed' : 'Modified'}</strong> by{' '}
-                    {activityLogs[0].employee?.display_name || 'Unknown'}{' '}
-                    {new Date(activityLogs[0].created_at).toLocaleString()}
-                  </span>
-                  <button
-                    onClick={() => setShowActivityModal(true)}
-                    className="text-blue-600 hover:text-blue-800 font-medium ml-2"
-                  >
-                    More
-                  </button>
-                </div>
-              )}
             </div>
             <div className="flex items-center gap-2">
               {getApprovalStatusBadge()}
@@ -1668,6 +1652,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             <Button variant="ghost" onClick={onClose}>
               Close
             </Button>
+            {ticketId && activityLogs.length > 0 && (
+              <button
+                onClick={() => setShowActivityModal(true)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm font-medium min-h-[44px] md:min-h-0"
+              >
+                <Clock className="w-4 h-4" />
+                Activity Log
+              </button>
+            )}
             {!isTicketClosed && !isReadOnly && canDelete && ticketId && (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
