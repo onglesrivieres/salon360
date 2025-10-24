@@ -70,8 +70,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
   const canReopen = session && session.role_permission && Permissions.tickets.canReopen(session.role_permission);
 
+  const canDelete = session && session.role_permission && Permissions.tickets.canDelete(session.role_permission);
+
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>('');
   const [showCustomService, setShowCustomService] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const calculateTimeRemaining = (tech: TechnicianWithQueue): string => {
@@ -864,6 +867,50 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     }
   }
 
+  async function handleDeleteTicket() {
+    if (!canDelete) {
+      showToast('You do not have permission to delete tickets', 'error');
+      return;
+    }
+
+    if (!ticketId || !ticket) {
+      showToast('No ticket to delete', 'error');
+      return;
+    }
+
+    if (ticket.closed_at) {
+      showToast('Cannot delete closed tickets', 'error');
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      await logActivity(ticketId, 'deleted', `${session?.display_name} deleted ticket`, {
+        ticket_no: ticket.ticket_no,
+        customer_name: formData.customer_name,
+        total: calculateTotal(),
+        items_count: items.length,
+      });
+
+      const { error } = await supabase
+        .from('sale_tickets')
+        .delete()
+        .eq('id', ticketId);
+
+      if (error) throw error;
+
+      showToast('Ticket deleted successfully', 'success');
+      onClose();
+    } catch (error) {
+      console.error('Error deleting ticket:', error);
+      showToast('Failed to delete ticket', 'error');
+    } finally {
+      setSaving(false);
+      setShowDeleteConfirm(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
@@ -1592,6 +1639,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             <Button variant="ghost" onClick={onClose}>
               Close
             </Button>
+            {!isTicketClosed && !isReadOnly && canDelete && ticketId && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={saving}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-sm font-medium"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            )}
             {!isTicketClosed && !isReadOnly && (
               <>
                 <Button onClick={handleSave} disabled={saving}>
@@ -1668,6 +1725,67 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               </div>
             ))
           )}
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Delete Ticket"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-900 mb-1">
+                Warning: This action cannot be undone
+              </p>
+              <p className="text-sm text-red-700">
+                You are about to permanently delete this open ticket. All ticket information and associated items will be removed.
+              </p>
+            </div>
+          </div>
+
+          {ticket && (
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Ticket Number:</span>
+                <span className="font-medium text-gray-900">{ticket.ticket_no}</span>
+              </div>
+              {formData.customer_name && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Customer:</span>
+                  <span className="font-medium text-gray-900">{formData.customer_name}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Total Amount:</span>
+                <span className="font-medium text-gray-900">${calculateTotal().toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Services:</span>
+                <span className="font-medium text-gray-900">{items.length} item{items.length !== 1 ? 's' : ''}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="ghost"
+              onClick={() => setShowDeleteConfirm(false)}
+              disabled={saving}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <button
+              onClick={handleDeleteTicket}
+              disabled={saving}
+              className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm"
+            >
+              {saving ? 'Deleting...' : 'Delete Ticket'}
+            </button>
+          </div>
         </div>
       </Modal>
     </>
