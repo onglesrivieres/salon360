@@ -210,7 +210,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             ticket_items (
               *,
               service:services(*),
-              employee:employees(*)
+              employee:employees!ticket_items_employee_id_fkey(*)
             )
           `
           )

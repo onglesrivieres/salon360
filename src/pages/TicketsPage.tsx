@@ -60,7 +60,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
           tip_customer_card,
           tip_receptionist,
           service:services(code, name, duration_min),
-          employee:employees(display_name)
+          employee:employees!ticket_items_employee_id_fkey(display_name)
         )
       `;
 
