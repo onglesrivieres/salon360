@@ -99,8 +99,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
     const isSpaExpert = employee.role.includes('Spa Expert');
     if (isSpaExpert) {
-      // Spa Experts can ONLY perform Soins de Pédicure and Soins de Manucure
-      const allowedCategories = ['Soins de Pédicure', 'Soins de Manucure'];
+      const allowedCategories = ['Soins de Pédicure', 'Soins de Manucure', 'Soins des Pieds', 'Soins des Mains', 'Others'];
       return allowedCategories.includes(service.category);
     }
 
@@ -112,8 +111,12 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     const colorMap: Record<string, string> = {
       'Soins de Pédicure': 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-2 border-blue-300',
       'Soins de Manucure': 'bg-pink-100 text-pink-800 hover:bg-pink-200 border-2 border-pink-300',
+      'Soins des Pieds': 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-2 border-blue-300',
+      'Soins des Mains': 'bg-pink-100 text-pink-800 hover:bg-pink-200 border-2 border-pink-300',
       'Extensions des Ongles': 'bg-purple-100 text-purple-800 hover:bg-purple-200 border-2 border-purple-300',
+      "Faux d'Ongles": 'bg-purple-100 text-purple-800 hover:bg-purple-200 border-2 border-purple-300',
       'Autres Services': 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-2 border-amber-300',
+      'Others': 'bg-teal-100 text-teal-800 hover:bg-teal-200 border-2 border-teal-300',
     };
     return colorMap[category] || 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-300';
   };
