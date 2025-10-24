@@ -100,8 +100,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
     const isSpaExpert = employee.role.includes('Spa Expert');
     if (isSpaExpert) {
-      // Spa Experts can ONLY perform Soins de Pedicure and Soins de Manucure
-      const allowedCategories = ['Soins de Pedicure', 'Soins de Manucure'];
+      // Spa Experts can ONLY perform Soins de Pédicure and Soins de Manucure
+      const allowedCategories = ['Soins de Pédicure', 'Soins de Manucure'];
       return allowedCategories.includes(service.category);
     }
 
