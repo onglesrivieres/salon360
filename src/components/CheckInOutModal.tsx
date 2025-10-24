@@ -4,6 +4,7 @@ import { supabase, AttendanceRecord } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/Button';
 import { useToast } from './ui/Toast';
+import { formatTimeEST, formatDateEST } from '../lib/timezone';
 
 interface CheckInOutModalProps {
   onClose: () => void;
@@ -72,11 +73,7 @@ export function CheckInOutModal({ onClose, storeId, onCheckInComplete, onCheckOu
 
       if (error) throw error;
 
-      const checkInTime = new Date().toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
+      const checkInTime = formatTimeEST(new Date());
 
       showToast(`Welcome to work, ${displayName}! Checked in at ${checkInTime}`, 'success');
 
@@ -120,11 +117,7 @@ export function CheckInOutModal({ onClose, storeId, onCheckInComplete, onCheckOu
         return;
       }
 
-      const checkOutTime = new Date().toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
+      const checkOutTime = formatTimeEST(new Date());
 
       showToast(`Goodbye, ${displayName}! Checked out at ${checkOutTime}. See you soon!`, 'success');
 
@@ -179,11 +172,7 @@ export function CheckInOutModal({ onClose, storeId, onCheckInComplete, onCheckOu
               <div className="text-center">
                 <p className="text-gray-600 mb-2">You are currently checked in</p>
                 <p className="text-sm text-gray-500">
-                  Since: {new Date(currentAttendance.check_in_time).toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
-                  })}
+                  Since: {formatTimeEST(currentAttendance.check_in_time)}
                 </p>
               </div>
 
@@ -220,10 +209,9 @@ export function CheckInOutModal({ onClose, storeId, onCheckInComplete, onCheckOu
               <div className="text-center">
                 <p className="text-gray-600 mb-2">Ready to start your shift?</p>
                 <p className="text-sm text-gray-500">
-                  {new Date().toLocaleDateString('en-US', {
+                  {formatDateEST(new Date(), {
                     weekday: 'long',
-                    month: 'long',
-                    day: 'numeric'
+                    month: 'long'
                   })}
                 </p>
               </div>

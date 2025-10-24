@@ -7,6 +7,7 @@ import { useToast } from '../components/ui/Toast';
 import { TicketEditor } from '../components/TicketEditor';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
+import { formatTimeEST } from '../lib/timezone';
 
 interface TicketsPageProps {
   selectedDate: string;
@@ -329,11 +330,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                 const serviceName = getServiceName(ticket);
                 const technicianName = getTechnicianName(ticket);
                 const customerType = getCustomerType(ticket);
-                const time = new Date(ticket.opened_at).toLocaleTimeString('en-US', {
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  hour12: true,
-                });
+                const time = formatTimeEST(ticket.opened_at);
 
                 const isApproved = ticket.approval_status === 'approved' || ticket.approval_status === 'auto_approved';
                 const canEdit = session && session.role_permission && Permissions.tickets.canEdit(
@@ -418,11 +415,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
           const serviceName = getServiceName(ticket);
           const technicianName = getTechnicianName(ticket);
           const customerType = getCustomerType(ticket);
-          const time = new Date(ticket.opened_at).toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true,
-          });
+          const time = formatTimeEST(ticket.opened_at);
 
           const isApproved = ticket.approval_status === 'approved' || ticket.approval_status === 'auto_approved';
           const canEdit = session && Permissions.tickets.canEdit(
