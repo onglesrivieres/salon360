@@ -54,18 +54,18 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
   const isApproved = ticket?.approval_status === 'approved' || ticket?.approval_status === 'auto_approved';
 
-  const isReadOnly = ticket && session && session.role && !Permissions.tickets.canEdit(
-    session.role,
+  const isReadOnly = ticket && session && session.role_permission && !Permissions.tickets.canEdit(
+    session.role_permission,
     !!ticket.closed_at,
     isApproved
   );
 
-  const canEditNotes = session && session.role && ticket && Permissions.tickets.canEditNotes(
-    session.role,
+  const canEditNotes = session && session.role_permission && ticket && Permissions.tickets.canEditNotes(
+    session.role_permission,
     !!ticket.closed_at
   );
 
-  const canClose = session && session.role && Permissions.tickets.canClose(session.role);
+  const canClose = session && session.role_permission && Permissions.tickets.canClose(session.role_permission);
 
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>('');
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -456,7 +456,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       return;
     }
 
-    if (!ticketId && session && session.role && !Permissions.tickets.canCreate(session.role)) {
+    if (!ticketId && session && session.role_permission && !Permissions.tickets.canCreate(session.role_permission)) {
       showToast('You do not have permission to create tickets', 'error');
       return;
     }
