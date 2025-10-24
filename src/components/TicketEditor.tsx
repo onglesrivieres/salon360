@@ -1455,7 +1455,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             />
           </div>
 
-          <div className="flex gap-2 pt-2 border-t border-gray-200 fixed md:static bottom-0 left-0 right-0 bg-white p-3 md:p-0 shadow-lg md:shadow-none z-10">
+          <div className="flex gap-2 pt-2 fixed md:static bottom-0 left-0 right-0 bg-white p-3 md:p-0 shadow-lg md:shadow-none z-10">
             <Button variant="ghost" onClick={onClose}>
               Close
             </Button>
