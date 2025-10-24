@@ -45,37 +45,30 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
   async function fetchTickets(silent = false) {
     try {
-      // Only show loading state on initial load, not on background refreshes
       if (!silent) {
         setLoading(true);
       }
 
       const isTechnician = session?.role_permission === 'Technician';
 
-      let selectQuery = `
-        *,
-        ticket_items${isTechnician ? '!inner' : ''} (
-          id,
-          employee_id,
-          tip_customer_cash,
-          tip_customer_card,
-          tip_receptionist,
-          service:services(code, name, duration_min),
-          employee:employees!ticket_items_employee_id_fkey(display_name)
-        )
-      `;
-
       let query = supabase
         .from('sale_tickets')
-        .select(selectQuery)
+        .select(`
+          *,
+          ticket_items (
+            id,
+            employee_id,
+            tip_customer_cash,
+            tip_customer_card,
+            tip_receptionist,
+            service:services(code, name, duration_min),
+            employee:employees!ticket_items_employee_id_fkey(display_name)
+          )
+        `)
         .eq('ticket_date', selectedDate);
 
       if (selectedStoreId) {
         query = query.eq('store_id', selectedStoreId);
-      }
-
-      if (isTechnician && session?.employee_id) {
-        query = query.eq('ticket_items.employee_id', session.employee_id);
       }
 
       query = query.order('opened_at', { ascending: false });
@@ -83,8 +76,18 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
       const { data, error } = await query;
 
       if (error) throw error;
-      setTickets(data || []);
+
+      let filteredData = data || [];
+
+      if (isTechnician && session?.employee_id) {
+        filteredData = filteredData.filter(ticket =>
+          ticket.ticket_items && ticket.ticket_items.some((item: any) => item.employee_id === session.employee_id)
+        );
+      }
+
+      setTickets(filteredData);
     } catch (error) {
+      console.error('Error fetching tickets:', error);
       showToast('Failed to load tickets', 'error');
     } finally {
       if (!silent) {
