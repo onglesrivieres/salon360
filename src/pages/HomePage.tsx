@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { ClipboardCheck, UserCheck, FileText } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ClipboardCheck, UserCheck, FileText, RefreshCw } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { PinModal } from '../components/PinModal';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { authenticateWithPIN } from '../lib/auth';
+import { initializeVersionCheck, startVersionCheck } from '../lib/version';
 
 interface HomePageProps {
   onActionSelected: (action: 'checkin' | 'ready' | 'report', session?: any, storeId?: string, hasMultipleStores?: boolean, availableStoreIds?: string[]) => void;
@@ -28,6 +29,19 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     display_name: string;
     pay_type: string;
   } | null>(null);
+  const [hasNewVersion, setHasNewVersion] = useState(false);
+
+  useEffect(() => {
+    initializeVersionCheck();
+
+    const stopVersionCheck = startVersionCheck(() => {
+      setHasNewVersion(true);
+    });
+
+    return () => {
+      stopVersionCheck();
+    };
+  }, []);
 
   const handleActionClick = (action: 'checkin' | 'ready' | 'report') => {
     setSelectedAction(action);
@@ -341,8 +355,29 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     return t('auth.enterPIN');
   };
 
+  const handleRefresh = () => {
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-3 sm:p-4">
+      {hasNewVersion && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-blue-600 text-white shadow-lg">
+          <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <RefreshCw className="w-5 h-5" />
+              <span className="font-medium">A new version is available!</span>
+            </div>
+            <button
+              onClick={handleRefresh}
+              className="px-4 py-2 bg-white text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-colors flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh Now
+            </button>
+          </div>
+        </div>
+      )}
       <div className="absolute top-4 right-4">
         <LanguageSelector />
       </div>
