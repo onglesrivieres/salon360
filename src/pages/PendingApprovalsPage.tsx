@@ -11,7 +11,6 @@ export function PendingApprovalsPage() {
   const [tickets, setTickets] = useState<PendingApprovalTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<PendingApprovalTicket | null>(null);
-  const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -126,24 +125,11 @@ export function PendingApprovalsPage() {
     return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
   }
 
-  function handleApproveClick(ticket: PendingApprovalTicket) {
-    setSelectedTicket(ticket);
-    setShowApproveModal(true);
-  }
-
-  function handleRejectClick(ticket: PendingApprovalTicket) {
-    setSelectedTicket(ticket);
-    setRejectionReason('');
-    setShowRejectModal(true);
-  }
-
-  async function handleApprove() {
-    if (!selectedTicket) return;
-
+  async function handleApproveClick(ticket: PendingApprovalTicket) {
     try {
       setProcessing(true);
       const { data, error } = await supabase.rpc('approve_ticket', {
-        p_ticket_id: selectedTicket.ticket_id,
+        p_ticket_id: ticket.ticket_id,
         p_employee_id: session?.employee_id,
       });
 
@@ -156,25 +142,29 @@ export function PendingApprovalsPage() {
       }
 
       await supabase.from('ticket_activity_log').insert([{
-        ticket_id: selectedTicket.ticket_id,
+        ticket_id: ticket.ticket_id,
         employee_id: session?.employee_id,
         action: 'approved',
         description: `${session?.display_name} approved ticket`,
         changes: {
           approval_status: 'approved',
-          ticket_no: selectedTicket.ticket_no,
+          ticket_no: ticket.ticket_no,
         },
       }]);
 
       showToast('Ticket approved successfully', 'success');
-      setShowApproveModal(false);
-      setSelectedTicket(null);
       fetchPendingApprovals();
     } catch (error: any) {
       showToast(error.message || 'Failed to approve ticket', 'error');
     } finally {
       setProcessing(false);
     }
+  }
+
+  function handleRejectClick(ticket: PendingApprovalTicket) {
+    setSelectedTicket(ticket);
+    setRejectionReason('');
+    setShowRejectModal(true);
   }
 
   async function handleReject() {
@@ -394,56 +384,6 @@ export function PendingApprovalsPage() {
           })}
         </div>
       )}
-
-      <Modal
-        isOpen={showApproveModal}
-        onClose={() => !processing && setShowApproveModal(false)}
-        title="Approve Ticket"
-        onConfirm={handleApprove}
-        confirmText={processing ? 'Approving...' : 'Approve'}
-        confirmVariant="primary"
-        cancelText="Cancel"
-      >
-        {selectedTicket && (
-          <div>
-            <p className="text-gray-700 mb-4">
-              Are you sure you want to approve ticket <strong>{selectedTicket.ticket_no}</strong>?
-            </p>
-            <div className="bg-gray-50 p-3 rounded-lg space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Customer:</span>
-                <span className="font-medium">{selectedTicket.customer_name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Service:</span>
-                <span className="font-medium">{selectedTicket.service_name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Bill Total:</span>
-                <span className="font-medium">${selectedTicket.total.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Tip (Customer) Card:</span>
-                <span className="font-medium text-blue-600">
-                  ${(selectedTicket.payment_method === 'Card' ? selectedTicket.tip_customer : 0).toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Tip (Customer) Cash:</span>
-                <span className="font-medium text-green-600">
-                  ${(selectedTicket.payment_method === 'Cash' ? selectedTicket.tip_customer : 0).toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Tip (Receptionist):</span>
-                <span className="font-medium text-green-600">
-                  ${selectedTicket.tip_receptionist.toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-      </Modal>
 
       <Modal
         isOpen={showRejectModal}
