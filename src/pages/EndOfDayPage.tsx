@@ -348,6 +348,13 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       let filteredSummaries = Array.from(technicianMap.values());
 
+      // Sort items within each technician by opened_at (oldest first, recent at bottom)
+      filteredSummaries.forEach(summary => {
+        summary.items.sort((a, b) => {
+          return new Date(a.opened_at).getTime() - new Date(b.opened_at).getTime();
+        });
+      });
+
       if (session?.role_permission === 'Technician') {
         filteredSummaries = filteredSummaries.filter(
           summary => summary.technician_id === session.employee_id
