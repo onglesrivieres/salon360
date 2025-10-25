@@ -396,8 +396,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       'Revenue',
       'Tips (Customer)',
       'Tips (Receptionist)',
-      'Tips (Cash)',
-      'Tips (Card)',
+      'T. (Cash)',
+      'T. (Card)',
       'Tips Total',
     ];
 
@@ -634,13 +634,13 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                       </p>
                       <div className="space-y-0.5">
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-gray-600">Tips (Cash)</span>
+                          <span className="text-[9px] text-gray-600">T. (Cash)</span>
                           <span className="text-[9px] font-semibold text-green-600">
                             ${summary.tips_cash.toFixed(2)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-gray-600">Tips (Card)</span>
+                          <span className="text-[9px] text-gray-600">T. (Card)</span>
                           <span className="text-[9px] font-semibold text-blue-600">
                             ${summary.tips_card.toFixed(2)}
                           </span>
