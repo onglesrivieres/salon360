@@ -1708,7 +1708,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       disabled={saving}
                     >
                       <CheckCircle className="w-4 h-4 mr-1" />
-                      Mark Completed
+                      Complete
                     </Button>
                   )}
                   {ticketId && (
