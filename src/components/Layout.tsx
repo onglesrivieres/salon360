@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
 import { supabase, Store } from '../lib/supabase';
 import { NotificationBadge } from './ui/NotificationBadge';
+import { VersionNotification } from './VersionNotification';
+import { initializeVersionCheck, startVersionCheck } from '../lib/version';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,6 +20,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
+  const [hasNewVersion, setHasNewVersion] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -75,6 +78,18 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    initializeVersionCheck();
+
+    const stopVersionCheck = startVersionCheck(() => {
+      setHasNewVersion(true);
+    });
+
+    return () => {
+      stopVersionCheck();
+    };
   }, []);
 
   async function fetchStore() {
@@ -163,6 +178,10 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     setIsStoreDropdownOpen(false);
   }
 
+  const handleRefresh = () => {
+    window.location.reload();
+  };
+
   const getGoogleRating = () => {
     if (!currentStore) return null;
 
@@ -191,6 +210,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {hasNewVersion && <VersionNotification onRefresh={handleRefresh} />}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="px-3 py-2 md:px-4">
           <div className="flex items-center justify-between">
