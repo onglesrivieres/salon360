@@ -837,12 +837,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       return;
     }
 
-    if (!ticketId || !ticket) return;
+    if (!ticketId || !ticket) {
+      showToast('Invalid ticket', 'error');
+      return;
+    }
 
     try {
       setSaving(true);
 
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('sale_tickets')
         .update({
           closed_at: null,
@@ -861,9 +864,13 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           approval_reason: null,
           performed_and_closed_by_same_person: false,
         })
-        .eq('id', ticketId);
+        .eq('id', ticketId)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error reopening ticket:', error);
+        throw error;
+      }
 
       await logActivity(ticketId, 'updated', `${session?.display_name} reopened ticket`, {
         reopened: true,
@@ -871,9 +878,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
       showToast('Ticket reopened successfully', 'success');
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error reopening ticket:', error);
-      showToast('Failed to reopen ticket', 'error');
+      showToast(error?.message || 'Failed to reopen ticket', 'error');
     } finally {
       setSaving(false);
     }
