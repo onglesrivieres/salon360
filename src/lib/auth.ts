@@ -103,7 +103,8 @@ export async function changePIN(employeeId: string, oldPIN: string, newPIN: stri
   });
 
   if (error) {
-    return { success: false, error: 'Failed to change PIN' };
+    console.error('Change PIN error:', error);
+    return { success: false, error: error.message || 'Failed to change PIN' };
   }
 
   return data as { success: boolean; error?: string };
