@@ -21,6 +21,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [approvalFilter, setApprovalFilter] = useState<string>('all');
+  const [technicianFilter, setTechnicianFilter] = useState<string>('all');
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
@@ -176,19 +177,47 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     }
   }
 
-  const filteredTickets = useMemo(() => {
-    if (approvalFilter === 'all') return tickets;
-
-    return tickets.filter(ticket => {
-      if (approvalFilter === 'open') return !ticket.closed_at;
-      if (approvalFilter === 'closed') return ticket.closed_at && !ticket.approval_status;
-      if (approvalFilter === 'pending_approval') return ticket.approval_status === 'pending_approval';
-      if (approvalFilter === 'approved') return ticket.approval_status === 'approved';
-      if (approvalFilter === 'auto_approved') return ticket.approval_status === 'auto_approved';
-      if (approvalFilter === 'rejected') return ticket.approval_status === 'rejected';
-      return true;
+  // Get unique technicians from tickets
+  const technicians = useMemo(() => {
+    const techSet = new Map<string, string>();
+    tickets.forEach(ticket => {
+      if (ticket.ticket_items && ticket.ticket_items.length > 0) {
+        ticket.ticket_items.forEach((item: any) => {
+          if (item.employee_id && item.employee?.display_name) {
+            techSet.set(item.employee_id, item.employee.display_name);
+          }
+        });
+      }
     });
-  }, [tickets, approvalFilter]);
+    return Array.from(techSet.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [tickets]);
+
+  const filteredTickets = useMemo(() => {
+    let filtered = tickets;
+
+    // Apply approval status filter
+    if (approvalFilter !== 'all') {
+      filtered = filtered.filter(ticket => {
+        if (approvalFilter === 'open') return !ticket.closed_at;
+        if (approvalFilter === 'closed') return ticket.closed_at && !ticket.approval_status;
+        if (approvalFilter === 'pending_approval') return ticket.approval_status === 'pending_approval';
+        if (approvalFilter === 'approved') return ticket.approval_status === 'approved';
+        if (approvalFilter === 'auto_approved') return ticket.approval_status === 'auto_approved';
+        if (approvalFilter === 'rejected') return ticket.approval_status === 'rejected';
+        return true;
+      });
+    }
+
+    // Apply technician filter
+    if (technicianFilter !== 'all') {
+      filtered = filtered.filter(ticket => {
+        if (!ticket.ticket_items || ticket.ticket_items.length === 0) return false;
+        return ticket.ticket_items.some((item: any) => item.employee_id === technicianFilter);
+      });
+    }
+
+    return filtered;
+  }, [tickets, approvalFilter, technicianFilter]);
 
   function getMinDate(): string {
     const date = new Date();
@@ -276,6 +305,16 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
             <option value="approved">Approved</option>
             <option value="auto_approved">Auto-Approved</option>
             <option value="rejected">Rejected</option>
+          </select>
+          <select
+            value={technicianFilter}
+            onChange={(e) => setTechnicianFilter(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] md:min-h-0"
+          >
+            <option value="all">All Technicians</option>
+            {technicians.map(tech => (
+              <option key={tech.id} value={tech.id}>{tech.name}</option>
+            ))}
           </select>
           <div className="flex items-center gap-2 flex-1 md:flex-initial">
             <Calendar className="w-4 h-4 text-gray-400" />
