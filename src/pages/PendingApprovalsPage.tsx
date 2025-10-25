@@ -68,35 +68,43 @@ export function PendingApprovalsPage() {
 
       const userRoles = session?.role || [];
       const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
+      const isSupervisor = userRoles.includes('Supervisor');
+      const isTechnician = userRoles.some(role => ['Technician', 'Spa Expert'].includes(role));
 
-      let data, error;
+      let allTickets: any[] = [];
 
-      if (isManagement) {
-        const regularResult = await supabase.rpc('get_pending_approvals_for_technician', {
+      if (isTechnician) {
+        const techResult = await supabase.rpc('get_pending_approvals_for_technician', {
           p_employee_id: session?.employee_id,
           p_store_id: selectedStoreId,
         });
+        if (techResult.error) throw techResult.error;
+        allTickets.push(...(techResult.data || []));
+      }
 
+      if (isSupervisor) {
+        const supervisorResult = await supabase.rpc('get_pending_approvals_for_supervisor', {
+          p_employee_id: session?.employee_id,
+          p_store_id: selectedStoreId,
+        });
+        if (supervisorResult.error) throw supervisorResult.error;
+        allTickets.push(...(supervisorResult.data || []));
+      }
+
+      if (isManagement) {
         const managementResult = await supabase.rpc('get_pending_approvals_for_management', {
           p_store_id: selectedStoreId,
         });
-
-        if (regularResult.error) throw regularResult.error;
         if (managementResult.error) throw managementResult.error;
-
-        const regularTickets = regularResult.data || [];
-        const managementTickets = managementResult.data || [];
-
-        data = [...regularTickets, ...managementTickets];
-        error = null;
-      } else {
-        const result = await supabase.rpc('get_pending_approvals_for_technician', {
-          p_employee_id: session?.employee_id,
-          p_store_id: selectedStoreId,
-        });
-        data = result.data;
-        error = result.error;
+        allTickets.push(...(managementResult.data || []));
       }
+
+      const uniqueTickets = Array.from(
+        new Map(allTickets.map(ticket => [ticket.ticket_id, ticket])).values()
+      );
+
+      const data = uniqueTickets;
+      const error = null;
 
       if (error) throw error;
       setTickets(data || []);
@@ -327,6 +335,12 @@ export function PendingApprovalsPage() {
                     <p className="text-sm text-gray-600">
                       Closed by: <span className="font-medium">{ticket.closed_by_name}</span>
                     </p>
+                    {ticket.approval_reason && (
+                      <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {ticket.approval_reason}
+                      </p>
+                    )}
                   </div>
                 </div>
 

@@ -807,10 +807,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       await handleSave();
 
       const closerRoles = session?.role || [];
-      const hasTechnicianRole = closerRoles.includes('Technician');
-      const hasReceptionistRole = closerRoles.includes('Receptionist');
-      const hasSupervisorRole = closerRoles.includes('Supervisor');
-      const requiresHigherApproval = hasSupervisorRole || (hasTechnicianRole && hasReceptionistRole);
 
       const { error } = await supabase
         .from('sale_tickets')
@@ -818,23 +814,17 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           closed_at: new Date().toISOString(),
           closed_by: session?.employee_id,
           closed_by_roles: closerRoles,
-          requires_higher_approval: requiresHigherApproval,
         })
         .eq('id', ticketId);
 
       if (error) throw error;
 
-      await logActivity(ticketId, 'closed', `${session?.display_name} closed ticket${requiresHigherApproval ? ' (requires management approval)' : ''}`, {
+      await logActivity(ticketId, 'closed', `${session?.display_name} closed ticket`, {
         total: calculateTotal(),
-        requires_higher_approval: requiresHigherApproval,
+        closed_by_roles: closerRoles,
       });
 
-      if (requiresHigherApproval) {
-        const reason = hasSupervisorRole ? 'Supervisor role' : 'dual role';
-        showToast(`Ticket closed. Requires management approval due to ${reason}.`, 'success');
-      } else {
-        showToast('Ticket closed successfully', 'success');
-      }
+      showToast('Ticket closed successfully. Approval workflow initiated.', 'success');
       onClose();
     } catch (error) {
       showToast('Failed to close ticket', 'error');
@@ -867,6 +857,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           requires_admin_review: false,
           completed_at: null,
           completed_by: null,
+          approval_required_level: null,
+          approval_reason: null,
+          performed_and_closed_by_same_person: false,
         })
         .eq('id', ticketId);
 
