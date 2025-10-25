@@ -1681,16 +1681,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             />
           </div>
 
-          <div className="flex justify-between items-center gap-2 pt-2 fixed md:static bottom-0 left-0 right-0 bg-white p-3 md:p-0 shadow-lg md:shadow-none z-10">
-            <div className="flex gap-2">
-              <Button variant="ghost" onClick={onClose}>
+          <div className="flex justify-between items-center gap-1.5 pt-2 fixed md:static bottom-0 left-0 right-0 bg-white p-3 md:p-0 shadow-lg md:shadow-none z-10">
+            <div className="flex gap-1.5">
+              <Button variant="ghost" size="sm" onClick={onClose}>
                 Close
               </Button>
               {!isTicketClosed && !isReadOnly && canDelete && ticketId && (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={saving}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-sm font-medium"
+                  className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5 text-sm font-medium"
                 >
                   <Trash2 className="w-4 h-4" />
                   Delete
@@ -1698,22 +1698,24 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               )}
               {!isTicketClosed && !isReadOnly && (
                 <>
-                  <Button onClick={handleSave} disabled={saving}>
+                  <Button size="sm" onClick={handleSave} disabled={saving}>
                     {saving ? 'Saving...' : 'Save'}
                   </Button>
                   {ticketId && !ticket?.completed_at && (
                     <Button
                       variant="secondary"
+                      size="sm"
                       onClick={handleMarkCompleted}
                       disabled={saving}
                     >
-                      <CheckCircle className="w-4 h-4 mr-1" />
+                      <CheckCircle className="w-3.5 h-3.5 mr-1" />
                       Complete
                     </Button>
                   )}
                   {ticketId && (
                     <Button
                       variant="primary"
+                      size="sm"
                       onClick={handleCloseTicket}
                       disabled={saving}
                     >
@@ -1725,6 +1727,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               {isTicketClosed && canReopen && ticketId && (
                 <Button
                   variant="primary"
+                  size="sm"
                   onClick={handleReopenTicket}
                   disabled={saving}
                 >
@@ -1732,7 +1735,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 </Button>
               )}
               {isReadOnly && canEditNotes && ticketId && !canReopen && (
-                <Button onClick={handleSaveComment} disabled={saving}>
+                <Button size="sm" onClick={handleSaveComment} disabled={saving}>
                   {saving ? 'Saving...' : 'Save Comment'}
                 </Button>
               )}
@@ -1740,9 +1743,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             {ticketId && activityLogs.length > 0 && (
               <button
                 onClick={() => setShowActivityModal(true)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm font-medium min-h-[44px] md:min-h-0"
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1.5 text-sm font-medium min-h-[44px] md:min-h-0"
               >
-                <Clock className="w-4 h-4" />
+                <Clock className="w-3.5 h-3.5" />
                 Activity Log
               </button>
             )}
