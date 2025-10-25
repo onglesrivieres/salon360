@@ -879,6 +879,46 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     }
   }
 
+  async function handleMarkCompleted() {
+    if (!ticketId || !ticket) return;
+
+    if (ticket.closed_at) {
+      showToast('Cannot mark closed ticket as completed', 'error');
+      return;
+    }
+
+    if (ticket.completed_at) {
+      showToast('Ticket is already marked as completed', 'error');
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const { error } = await supabase
+        .from('sale_tickets')
+        .update({
+          completed_at: new Date().toISOString(),
+          completed_by: session?.employee_id,
+        })
+        .eq('id', ticketId);
+
+      if (error) throw error;
+
+      await logActivity(ticketId, 'updated', `${session?.display_name} marked ticket as completed`, {
+        completed_at: new Date().toISOString(),
+      });
+
+      showToast('Ticket marked as completed (timer stopped)', 'success');
+      onClose();
+    } catch (error) {
+      console.error('Error marking ticket as completed:', error);
+      showToast('Failed to mark ticket as completed', 'error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleDeleteTicket() {
     if (!canDelete) {
       showToast('You do not have permission to delete tickets', 'error');
@@ -1661,6 +1701,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   <Button onClick={handleSave} disabled={saving}>
                     {saving ? 'Saving...' : 'Save'}
                   </Button>
+                  {ticketId && !ticket?.completed_at && (
+                    <Button
+                      variant="secondary"
+                      onClick={handleMarkCompleted}
+                      disabled={saving}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      Mark Completed
+                    </Button>
+                  )}
                   {ticketId && (
                     <Button
                       variant="primary"
