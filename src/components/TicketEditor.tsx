@@ -1681,69 +1681,80 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             />
           </div>
 
-          <div className="flex justify-between items-center gap-2 pt-2 fixed md:static bottom-0 left-0 right-0 bg-white p-3 md:p-0 shadow-lg md:shadow-none z-10">
-            <div className="flex gap-2">
-              <Button variant="ghost" onClick={onClose}>
+          <div className="flex justify-between items-center gap-1.5 pt-2 fixed md:static bottom-0 left-0 right-0 bg-white p-2 md:p-0 shadow-lg md:shadow-none z-10">
+            <div className="flex gap-1.5">
+              <button
+                onClick={onClose}
+                className="px-2 py-1 text-xs bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[36px] md:min-h-0"
+              >
                 Close
-              </Button>
+              </button>
               {!isTicketClosed && !isReadOnly && canDelete && ticketId && (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={saving}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 text-sm font-medium"
+                  className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-medium min-h-[36px] md:min-h-0"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3 h-3" />
                   Delete
                 </button>
               )}
               {!isTicketClosed && !isReadOnly && (
                 <>
-                  <Button onClick={handleSave} disabled={saving}>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[36px] md:min-h-0"
+                  >
                     {saving ? 'Saving...' : 'Save'}
-                  </Button>
+                  </button>
                   {ticketId && !ticket?.completed_at && (
-                    <Button
-                      variant="secondary"
+                    <button
                       onClick={handleMarkCompleted}
                       disabled={saving}
+                      className="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-medium min-h-[36px] md:min-h-0"
                     >
-                      <CheckCircle className="w-4 h-4 mr-1" />
+                      <CheckCircle className="w-3 h-3" />
                       Complete
-                    </Button>
+                    </button>
                   )}
                   {ticketId && (
-                    <Button
-                      variant="primary"
+                    <button
                       onClick={handleCloseTicket}
                       disabled={saving}
+                      className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[36px] md:min-h-0"
                     >
                       Close Ticket
-                    </Button>
+                    </button>
                   )}
                 </>
               )}
               {isTicketClosed && canReopen && ticketId && (
-                <Button
-                  variant="primary"
+                <button
                   onClick={handleReopenTicket}
                   disabled={saving}
+                  className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[36px] md:min-h-0"
                 >
                   {saving ? 'Reopening...' : 'Reopen Ticket'}
-                </Button>
+                </button>
               )}
               {isReadOnly && canEditNotes && ticketId && !canReopen && (
-                <Button onClick={handleSaveComment} disabled={saving}>
+                <button
+                  onClick={handleSaveComment}
+                  disabled={saving}
+                  className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[36px] md:min-h-0"
+                >
                   {saving ? 'Saving...' : 'Save Comment'}
-                </Button>
+                </button>
               )}
             </div>
             {ticketId && activityLogs.length > 0 && (
               <button
                 onClick={() => setShowActivityModal(true)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm font-medium min-h-[44px] md:min-h-0"
+                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors flex items-center gap-1 font-medium min-h-[36px] md:min-h-0"
               >
-                <Clock className="w-4 h-4" />
-                Activity Log
+                <Clock className="w-3 h-3" />
+                Activity
               </button>
             )}
           </div>
