@@ -119,6 +119,12 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     return ticket.ticket_items[0]?.tip_receptionist || 0;
   }
 
+  function hasEmptyTips(ticket: any): boolean {
+    const tipCustomer = getTipCustomer(ticket);
+    const tipReceptionist = getTipReceptionist(ticket);
+    return tipCustomer === 0 && tipReceptionist === 0;
+  }
+
   function getServiceName(ticket: any): string {
     if (!ticket.ticket_items || ticket.ticket_items.length === 0) return '-';
     const service = ticket.ticket_items[0]?.service;
@@ -382,10 +388,12 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                 );
                 const canView = session && session.role_permission && Permissions.tickets.canView(session.role_permission);
 
+                const emptyTips = hasEmptyTips(ticket);
+
                 return (
                   <tr
                     key={ticket.id}
-                    className={`hover:bg-gray-50 ${canView ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
+                    className={`${emptyTips ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'} ${canView ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
                     onClick={() => canView && openEditor(ticket.id)}
                     title={!canView ? 'You do not have permission to view this ticket' : ''}
                   >
@@ -466,12 +474,13 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
             isApproved
           );
           const canView = session && Permissions.tickets.canView(session.role_permission);
+          const emptyTips = hasEmptyTips(ticket);
 
           return (
             <div
               key={ticket.id}
               onClick={() => canView && openEditor(ticket.id)}
-              className={`bg-white rounded-lg shadow p-3 ${
+              className={`${emptyTips ? 'bg-red-50' : 'bg-white'} rounded-lg shadow p-3 ${
                 canView ? 'cursor-pointer active:bg-gray-50' : 'cursor-not-allowed opacity-60'
               }`}
             >
