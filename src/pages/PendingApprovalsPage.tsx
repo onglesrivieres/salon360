@@ -335,10 +335,10 @@ export function PendingApprovalsPage() {
                     <p className="text-sm text-gray-600">
                       Closed by: <span className="font-medium">{ticket.closed_by_name}</span>
                     </p>
-                    {ticket.approval_reason && (
+                    {ticket.reason && (
                       <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3" />
-                        {ticket.approval_reason}
+                        {ticket.reason}
                       </p>
                     )}
                   </div>

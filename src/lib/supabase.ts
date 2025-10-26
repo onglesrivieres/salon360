@@ -244,6 +244,10 @@ export interface PendingApprovalTicket {
   tip_customer: number;
   tip_receptionist: number;
   payment_method: string;
+  reason?: string;
+  closed_by_roles?: any;
+  requires_higher_approval?: boolean;
+  technician_names?: string;
 }
 
 export interface ApprovalStatistics {
