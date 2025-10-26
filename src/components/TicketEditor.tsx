@@ -5,6 +5,7 @@ import {
   SaleTicket,
   TicketItemWithDetails,
   Service,
+  StoreServiceWithDetails,
   Technician,
   TicketActivityLog,
   TechnicianWithQueue,
@@ -42,7 +43,7 @@ interface TicketItemForm {
 export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorProps) {
   const [ticket, setTicket] = useState<SaleTicket | null>(null);
   const [items, setItems] = useState<TicketItemForm[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
+  const [services, setServices] = useState<StoreServiceWithDetails[]>([]);
   const [employees, setEmployees] = useState<Technician[]>([]);
   const [sortedTechnicians, setSortedTechnicians] = useState<TechnicianWithQueue[]>([]);
   const [loading, setLoading] = useState(true);
@@ -217,7 +218,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
       const [servicesRes, employeesRes] = await Promise.all([
         supabase.rpc('get_services_by_popularity', {
-          p_store_id: selectedStoreId || null
+          p_store_id: selectedStoreId
         }),
         supabase
           .from('employees')
@@ -360,7 +361,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         service_id: defaultService?.id || '',
         employee_id: lastUsedEmployeeId,
         qty: '1',
-        price_each: defaultService?.base_price.toString() || '0',
+        price_each: defaultService?.price.toString() || '0',
         tip_customer: '0',
         tip_receptionist: '0',
         addon_details: '',
@@ -379,9 +380,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     newItems[index] = { ...newItems[index], [field]: value };
 
     if (field === 'service_id') {
-      const service = services.find((s) => s.id === value);
-      newItems[index].price_each = service?.base_price.toString() || '0';
-      newItems[index].service = service;
+      const service = services.find((s) => s.service_id === value);
+      newItems[index].price_each = service?.price.toString() || '0';
+      newItems[index].service = service as any;
     }
 
     if (field === 'employee_id') {
@@ -1364,22 +1365,22 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 {!isTicketClosed && services.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {services
-                      .filter(service => canEmployeePerformService(selectedTechnicianId || lastUsedEmployeeId, service.id))
+                      .filter(service => canEmployeePerformService(selectedTechnicianId || lastUsedEmployeeId, service.service_id))
                       .map((service) => (
                       <button
-                        key={service.id}
+                        key={service.store_service_id}
                         type="button"
                         onClick={() => {
                           setItems([{
-                            service_id: service.id,
+                            service_id: service.service_id,
                             employee_id: selectedTechnicianId || lastUsedEmployeeId,
                             qty: '1',
-                            price_each: service.base_price.toString(),
+                            price_each: service.price.toString(),
                             tip_customer: '0',
                             tip_receptionist: '0',
                             addon_details: '',
                             addon_price: '0',
-                            service: service,
+                            service: service as any,
                             is_custom: false,
                           }]);
                         }}

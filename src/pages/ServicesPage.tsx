@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Search } from 'lucide-react';
-import { supabase, Service } from '../lib/supabase';
+import { Plus, Edit2, Search, Store as StoreIcon } from 'lucide-react';
+import { supabase, StoreServiceWithDetails } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
@@ -11,28 +11,30 @@ import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 
 export function ServicesPage() {
-  const [services, setServices] = useState<Service[]>([]);
-  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
+  const [services, setServices] = useState<StoreServiceWithDetails[]>([]);
+  const [filteredServices, setFilteredServices] = useState<StoreServiceWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterActive, setFilterActive] = useState('all');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [editingService, setEditingService] = useState<StoreServiceWithDetails | null>(null);
   const { showToast } = useToast();
-  const { session } = useAuth();
+  const { session, selectedStoreId } = useAuth();
 
   const [formData, setFormData] = useState({
     code: '',
     name: '',
-    base_price: '',
+    price: '',
     duration_min: '30',
     category: 'Extensions des Ongles',
     active: true,
   });
 
   useEffect(() => {
-    fetchServices();
-  }, []);
+    if (selectedStoreId) {
+      fetchServices();
+    }
+  }, [selectedStoreId]);
 
   useEffect(() => {
     let filtered = services;
@@ -53,24 +55,29 @@ export function ServicesPage() {
   }, [services, searchTerm, filterActive]);
 
   async function fetchServices() {
+    if (!selectedStoreId) {
+      showToast('Please select a store first', 'error');
+      return;
+    }
+
     try {
-      const { data, error } = await supabase
-        .from('services')
-        .select('*')
-        .order('code');
+      const { data, error } = await supabase.rpc('get_services_by_popularity', {
+        p_store_id: selectedStoreId,
+      });
 
       if (error) throw error;
       const fetchedServices = data || [];
       setServices(fetchedServices);
       setFilteredServices(fetchedServices);
     } catch (error) {
+      console.error('Error fetching services:', error);
       showToast('Failed to load services', 'error');
     } finally {
       setLoading(false);
     }
   }
 
-  function openDrawer(service?: Service) {
+  function openDrawer(service?: StoreServiceWithDetails) {
     if (!session || !session.role || !Permissions.services.canEdit(session.role)) {
       showToast('You do not have permission to edit services', 'error');
       return;
@@ -80,7 +87,7 @@ export function ServicesPage() {
       setFormData({
         code: service.code,
         name: service.name,
-        base_price: service.base_price.toString(),
+        price: service.price.toString(),
         duration_min: service.duration_min.toString(),
         category: service.category,
         active: service.active,
@@ -90,7 +97,7 @@ export function ServicesPage() {
       setFormData({
         code: '',
         name: '',
-        base_price: '',
+        price: '',
         duration_min: '30',
         category: 'Extensions des Ongles',
         active: true,
@@ -112,45 +119,37 @@ export function ServicesPage() {
       return;
     }
 
-    if (!formData.code || !formData.name || !formData.base_price) {
+    if (!selectedStoreId) {
+      showToast('No store selected', 'error');
+      return;
+    }
+
+    if (!formData.price || !formData.duration_min) {
       showToast('Please fill in all required fields', 'error');
       return;
     }
 
     try {
-      const serviceData = {
-        code: formData.code.toUpperCase(),
-        name: formData.name,
-        base_price: parseFloat(formData.base_price),
-        duration_min: parseInt(formData.duration_min),
-        category: formData.category,
-        active: formData.active,
-        updated_at: new Date().toISOString(),
-      };
-
       if (editingService) {
         const { error } = await supabase
-          .from('services')
-          .update(serviceData)
-          .eq('id', editingService.id);
+          .from('store_services')
+          .update({
+            price_override: parseFloat(formData.price),
+            duration_override: parseInt(formData.duration_min),
+            active: formData.active,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', editingService.store_service_id);
 
         if (error) throw error;
         showToast('Service updated successfully', 'success');
-      } else {
-        const { error } = await supabase.from('services').insert([serviceData]);
-
-        if (error) throw error;
-        showToast('Service created successfully', 'success');
       }
 
       await fetchServices();
       closeDrawer();
     } catch (error: any) {
-      if (error.code === '23505') {
-        showToast('Service code already exists', 'error');
-      } else {
-        showToast('Failed to save service', 'error');
-      }
+      console.error('Error saving service:', error);
+      showToast('Failed to save service', 'error');
     }
   }
 
@@ -162,16 +161,24 @@ export function ServicesPage() {
     );
   }
 
+  if (!selectedStoreId) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <StoreIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+          <p className="text-gray-500">Please select a store to manage services</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-900">Services</h2>
-        {session && session.role && Permissions.services.canCreate(session.role) && (
-          <Button size="sm" onClick={() => openDrawer()}>
-            <Plus className="w-3 h-3 mr-1" />
-            Add Service
-          </Button>
-        )}
+      <div className="mb-3">
+        <h2 className="text-lg font-bold text-gray-900">Store Services</h2>
+        <p className="text-xs text-gray-600 mt-1">
+          Manage pricing and availability for this store's services
+        </p>
       </div>
 
       <div className="bg-white rounded-lg shadow">
@@ -226,7 +233,7 @@ export function ServicesPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredServices.map((service) => (
                 <tr
-                  key={service.id}
+                  key={service.store_service_id}
                   onClick={() => openDrawer(service)}
                   className="hover:bg-gray-50 cursor-pointer"
                 >
@@ -240,7 +247,7 @@ export function ServicesPage() {
                     {service.category}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    ${service.base_price.toFixed(2)}
+                    ${service.price.toFixed(2)}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600">
                     {service.duration_min} min
@@ -266,55 +273,53 @@ export function ServicesPage() {
       <Drawer
         isOpen={isDrawerOpen}
         onClose={closeDrawer}
-        title={editingService ? 'Edit Service' : 'Add Service'}
+        title={editingService ? 'Edit Store Service' : 'Service Details'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <p className="text-xs text-blue-800">
+              You are editing the pricing and availability for this service at your store.
+              Service details (code, name, category) cannot be changed here.
+            </p>
+          </div>
+
           <Input
-            label="Service Code *"
+            label="Service Code"
             value={formData.code}
-            onChange={(e) =>
-              setFormData({ ...formData, code: e.target.value.toUpperCase() })
-            }
-            placeholder="e.g., MANIC"
-            disabled={!!editingService}
-            required
+            disabled
+            readOnly
           />
           <Input
-            label="Service Name *"
+            label="Service Name"
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="e.g., Classic Manicure"
-            required
+            disabled
+            readOnly
           />
           <Input
-            label="Base Price *"
+            label="Category"
+            value={formData.category}
+            disabled
+            readOnly
+          />
+          <Input
+            label="Store Price *"
             type="number"
             step="0.01"
             min="0"
-            value={formData.base_price}
-            onChange={(e) => setFormData({ ...formData, base_price: e.target.value })}
+            value={formData.price}
+            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
             placeholder="0.00"
             required
           />
           <Input
-            label="Duration (minutes)"
+            label="Duration (minutes) *"
             type="number"
             min="1"
             value={formData.duration_min}
             onChange={(e) =>
               setFormData({ ...formData, duration_min: e.target.value })
             }
-          />
-          <Select
-            label="Category"
-            value={formData.category}
-            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-            options={[
-              { value: 'Extensions des Ongles', label: 'Extensions des Ongles' },
-              { value: 'Soins de Manucure', label: 'Soins de Manucure' },
-              { value: 'Soins de Pédicure', label: 'Soins de Pédicure' },
-              { value: 'Others', label: 'Others' },
-            ]}
+            required
           />
           <div className="flex items-center gap-2">
             <input
@@ -325,7 +330,7 @@ export function ServicesPage() {
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
             <label htmlFor="active" className="text-sm text-gray-700">
-              Active
+              Active (available for this store)
             </label>
           </div>
           <div className="flex gap-3 pt-4">
@@ -333,7 +338,7 @@ export function ServicesPage() {
               Cancel
             </Button>
             <Button type="submit">
-              {editingService ? 'Update Service' : 'Create Service'}
+              Update Service
             </Button>
           </div>
         </form>

@@ -83,6 +83,21 @@ export interface StoreService {
   updated_at: string;
 }
 
+export interface StoreServiceWithDetails {
+  id: string;
+  store_service_id: string;
+  service_id: string;
+  code: string;
+  name: string;
+  price: number;
+  duration_min: number;
+  category: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+  usage_count?: number;
+}
+
 export type ApprovalStatus = 'pending_approval' | 'approved' | 'rejected' | 'auto_approved';
 
 export interface SaleTicket {
