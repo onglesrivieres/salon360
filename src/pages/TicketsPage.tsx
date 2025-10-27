@@ -297,7 +297,10 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
-        <h2 className="text-base md:text-lg font-bold text-gray-900">Sale Tickets</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-base md:text-lg font-bold text-gray-900">Sale Tickets</h2>
+          <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">EST</span>
+        </div>
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
           <select
             value={approvalFilter}

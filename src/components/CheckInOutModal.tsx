@@ -172,7 +172,7 @@ export function CheckInOutModal({ onClose, storeId, onCheckInComplete, onCheckOu
               <div className="text-center">
                 <p className="text-gray-600 mb-2">You are currently checked in</p>
                 <p className="text-sm text-gray-500">
-                  Since: {formatTimeEST(currentAttendance.check_in_time)}
+                  Since: {formatTimeEST(currentAttendance.check_in_time)} <span className="text-xs text-gray-400">EST</span>
                 </p>
               </div>
 

@@ -54,6 +54,42 @@ export function getCurrentDateEST(): string {
   return `${year}-${month}-${day}`;
 }
 
+export function formatDateTimeFullEST(date: Date | string, includeTimezone: boolean = true): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: EST_TIMEZONE,
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  };
+
+  const formatted = dateObj.toLocaleString('en-US', options);
+  return includeTimezone ? `${formatted} EST` : formatted;
+}
+
+export function toESTDate(date: Date | string): Date {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const estString = dateObj.toLocaleString('en-US', { timeZone: EST_TIMEZONE });
+  return new Date(estString);
+}
+
+export function formatTime24EST(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: EST_TIMEZONE,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: false
+  };
+
+  return dateObj.toLocaleTimeString('en-US', options);
+}
+
 export function getESTTimezone(): string {
   return EST_TIMEZONE;
 }

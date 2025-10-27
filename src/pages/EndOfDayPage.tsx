@@ -7,6 +7,7 @@ import { TicketEditor } from '../components/TicketEditor';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { WeeklyCalendarView } from '../components/WeeklyCalendarView';
+import { formatTimeEST } from '../lib/timezone';
 
 interface TechnicianSummary {
   technician_id: string;
@@ -494,7 +495,10 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
-        <h2 className="text-base md:text-lg font-bold text-gray-900">{t('eod.title')}</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-base md:text-lg font-bold text-gray-900">{t('eod.title')}</h2>
+          <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">EST</span>
+        </div>
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
           <div className="flex items-center gap-2 flex-1 md:flex-initial">
             <Calendar className="w-4 h-4 text-gray-400" />
@@ -660,11 +664,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                       </p>
                       <div className="space-y-1 max-h-72 overflow-y-auto">
                         {summary.items.map((item, index) => {
-                          const openTime = new Date(item.opened_at).toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true,
-                          });
+                          const openTime = formatTimeEST(item.opened_at);
                           const openedMs = new Date(item.opened_at).getTime();
                           const closedMs = item.closed_at ? new Date(item.closed_at).getTime() : Date.now();
                           const durationMinutes = Math.round((closedMs - openedMs) / 60000);

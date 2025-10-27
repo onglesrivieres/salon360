@@ -6,6 +6,7 @@ import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { AttendanceCommentModal } from '../components/AttendanceCommentModal';
+import { formatTimeEST, formatDateEST, formatTime24EST } from '../lib/timezone';
 
 interface AttendanceSession {
   attendanceRecordId: string;
@@ -185,24 +186,14 @@ export function AttendancePage() {
     const summary = processAttendanceData();
     const { startDate, endDate } = getDateRange();
 
-    const headers = ['Employee', 'Date', 'Check In', 'Check Out', 'Hours', 'Status'];
+    const headers = ['Employee', 'Date', 'Check In (EST)', 'Check Out (EST)', 'Hours', 'Status'];
     const rows: string[][] = [];
 
     Object.values(summary).forEach((employee) => {
       Object.entries(employee.dates).forEach(([date, sessions]) => {
         sessions.forEach((record) => {
-          const checkIn = new Date(record.checkInTime).toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-          });
-          const checkOut = record.checkOutTime
-            ? new Date(record.checkOutTime).toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-              })
-            : '';
+          const checkIn = formatTimeEST(record.checkInTime);
+          const checkOut = record.checkOutTime ? formatTimeEST(record.checkOutTime) : '';
           const hours = record.totalHours ? record.totalHours.toFixed(2) : '';
 
           rows.push([
@@ -240,7 +231,7 @@ export function AttendancePage() {
     return new Date(year, month - 1, day);
   };
 
-  const periodRange = `${parseLocalDate(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${parseLocalDate(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  const periodRange = `${formatDateEST(parseLocalDate(startDate), { month: 'short', day: 'numeric' })} - ${formatDateEST(parseLocalDate(endDate), { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
   if (session && session.role && !Permissions.endOfDay.canView(session.role)) {
     return (
@@ -255,7 +246,10 @@ export function AttendancePage() {
   return (
     <div className="w-full max-w-full mx-auto px-2">
       <div className="mb-2 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
-        <h2 className="text-sm md:text-base font-bold text-gray-900">Attendance Tracking</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm md:text-base font-bold text-gray-900">Attendance Tracking</h2>
+          <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">EST</span>
+        </div>
         {session && session.role && Permissions.endOfDay.canExport(session.role) && (
           <Button variant="secondary" size="sm" onClick={exportCSV}>
             <Download className="w-3 h-3 mr-1" />
@@ -310,7 +304,7 @@ export function AttendancePage() {
                             : 'text-gray-900'
                         }`}
                       >
-                        <div className="text-xs">{day.toLocaleDateString('en-US', { weekday: 'narrow' })}</div>
+                        <div className="text-xs">{formatDateEST(day, { weekday: 'narrow' })}</div>
                         <div className="text-sm font-bold">{day.getDate()}</div>
                       </th>
                     );
@@ -365,19 +359,11 @@ export function AttendancePage() {
                                       <span className="hidden sm:inline">{record.status === 'checked_in' ? 'In' : 'Out'}</span>
                                     </div>
                                     <div className="text-[10px] text-gray-600">
-                                      {new Date(record.checkInTime).toLocaleTimeString('en-US', {
-                                        hour: 'numeric',
-                                        minute: '2-digit',
-                                        hour12: false
-                                      })}
+                                      {formatTime24EST(record.checkInTime)}
                                     </div>
                                     {record.checkOutTime && (
                                       <div className="text-[10px] text-gray-600">
-                                        {new Date(record.checkOutTime).toLocaleTimeString('en-US', {
-                                          hour: 'numeric',
-                                          minute: '2-digit',
-                                          hour12: false
-                                        })}
+                                        {formatTime24EST(record.checkOutTime)}
                                       </div>
                                     )}
                                     {record.totalHours && (
