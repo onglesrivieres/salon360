@@ -4,7 +4,6 @@ import { Modal } from '../components/ui/Modal';
 import { PinModal } from '../components/PinModal';
 import { QueueStoreSelectionModal } from '../components/QueueStoreSelectionModal';
 import { CheckInOutStoreSelectionModal } from '../components/CheckInOutStoreSelectionModal';
-import { ReportStoreSelectionModal } from '../components/ReportStoreSelectionModal';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { VersionNotification } from '../components/VersionNotification';
 import { useAuth } from '../contexts/AuthContext';
@@ -36,7 +35,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   const [hasNewVersion, setHasNewVersion] = useState(false);
   const [showQueueStoreModal, setShowQueueStoreModal] = useState(false);
   const [showCheckInOutStoreModal, setShowCheckInOutStoreModal] = useState(false);
-  const [showReportStoreModal, setShowReportStoreModal] = useState(false);
   const [availableStoreIds, setAvailableStoreIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -192,14 +190,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           await handleReady(session.employee_id, storeId);
         }
       } else if (selectedAction === 'report') {
-        if (hasMultipleStores && employeeStores.length > 1) {
-          const storeIds = employeeStores.map(s => s.id || s.store_id);
-          setAvailableStoreIds(storeIds);
-          setShowReportStoreModal(true);
-        } else {
-          const storeIds = employeeStores.map(s => s.id || s.store_id);
-          onActionSelected('report', session, storeId, hasMultipleStores, storeIds);
-        }
+        const storeIds = employeeStores.map(s => s.id || s.store_id);
+        onActionSelected('report', session, storeId, hasMultipleStores, storeIds);
       }
     } catch (error: any) {
       console.error('Authentication failed:', error);
@@ -422,26 +414,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     logout();
   };
 
-  const handleReportStoreSelect = (storeId: string, storeName: string) => {
-    setShowReportStoreModal(false);
-    if (authenticatedSession) {
-      const storeIds = availableStoreIds;
-      onActionSelected('report', {
-        employee_id: authenticatedSession.employee_id,
-        store_id: storeId,
-        display_name: authenticatedSession.display_name,
-        role: [],
-        role_permission: 'Technician'
-      }, storeId, true, storeIds);
-    }
-  };
-
-  const handleReportStoreModalClose = () => {
-    setShowReportStoreModal(false);
-    setAuthenticatedSession(null);
-    setSelectedAction(null);
-    logout();
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-3 sm:p-4">
@@ -600,13 +572,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         onClose={handleCheckInOutStoreModalClose}
       />
 
-      <ReportStoreSelectionModal
-        isOpen={showReportStoreModal}
-        storeIds={availableStoreIds}
-        employeeId={authenticatedSession?.employee_id || ''}
-        onSelect={handleReportStoreSelect}
-        onClose={handleReportStoreModalClose}
-      />
     </div>
   );
 }
