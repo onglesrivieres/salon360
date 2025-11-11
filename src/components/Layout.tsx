@@ -148,26 +148,59 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     if (!session?.employee_id || !selectedStoreId) return;
 
     try {
-      // Determine which function to call based on role
-      const isTechnicianOrSupervisor = session.role_permission === 'Technician' || session.role_permission === 'Supervisor';
+      const userRoles = session?.role || [];
+      const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
+      const isSupervisor = userRoles.includes('Supervisor');
+      const isTechnician = userRoles.some(role => ['Technician', 'Spa Expert'].includes(role));
 
-      if (isTechnicianOrSupervisor) {
+      let totalCount = 0;
+      const seenTicketIds = new Set();
+
+      // Fetch technician approvals if user is a technician/spa expert
+      if (isTechnician) {
         const { data, error } = await supabase.rpc('get_pending_approvals_for_technician', {
           p_employee_id: session.employee_id,
           p_store_id: selectedStoreId,
         });
-
         if (error) throw error;
-        setPendingApprovalsCount(data?.length || 0);
-      } else {
-        // For Receptionist, Manager, Owner - use management function
+        (data || []).forEach((ticket: any) => {
+          if (!seenTicketIds.has(ticket.ticket_id)) {
+            seenTicketIds.add(ticket.ticket_id);
+            totalCount++;
+          }
+        });
+      }
+
+      // Fetch supervisor approvals if user is a supervisor
+      if (isSupervisor) {
+        const { data, error } = await supabase.rpc('get_pending_approvals_for_supervisor', {
+          p_employee_id: session.employee_id,
+          p_store_id: selectedStoreId,
+        });
+        if (error) throw error;
+        (data || []).forEach((ticket: any) => {
+          if (!seenTicketIds.has(ticket.ticket_id)) {
+            seenTicketIds.add(ticket.ticket_id);
+            totalCount++;
+          }
+        });
+      }
+
+      // Fetch management approvals if user is management
+      if (isManagement) {
         const { data, error } = await supabase.rpc('get_pending_approvals_for_management', {
           p_store_id: selectedStoreId,
         });
-
         if (error) throw error;
-        setPendingApprovalsCount(data?.length || 0);
+        (data || []).forEach((ticket: any) => {
+          if (!seenTicketIds.has(ticket.ticket_id)) {
+            seenTicketIds.add(ticket.ticket_id);
+            totalCount++;
+          }
+        });
       }
+
+      setPendingApprovalsCount(totalCount);
     } catch (error) {
       console.error('Error fetching pending approvals count:', error);
     }
