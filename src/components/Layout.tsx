@@ -1,22 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
-import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Receipt, Star } from 'lucide-react';
+import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
 import { supabase, Store } from '../lib/supabase';
 import { NotificationBadge } from './ui/NotificationBadge';
 import { VersionNotification } from './VersionNotification';
 import { initializeVersionCheck, startVersionCheck } from '../lib/version';
-import { useToast } from './ui/Toast';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentPage: 'tickets' | 'eod' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals';
-  onNavigate: (page: 'tickets' | 'eod' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals') => void;
+  currentPage: 'home' | 'tickets' | 'eod' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals';
+  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals') => void;
 }
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const { session, selectedStoreId, selectStore, logout, t } = useAuth();
-  const { showToast } = useToast();
   const [currentStore, setCurrentStore] = useState<Store | null>(null);
   const [allStores, setAllStores] = useState<Store[]>([]);
   const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
@@ -96,111 +94,75 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
   async function fetchStore() {
     if (!selectedStoreId) return;
-    console.log('Layout: Fetching store with ID:', selectedStoreId);
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('stores')
       .select('*')
       .eq('id', selectedStoreId)
       .maybeSingle();
-    if (error) {
-      console.error('Layout: Error fetching store:', error);
-    } else {
-      console.log('Layout: Store data fetched:', data);
-      if (data) {
-        setCurrentStore(data);
-        document.title = `${data.name} - Salon360`;
-      }
-    }
+    if (data) setCurrentStore(data);
   }
 
   async function fetchAllStores() {
-    if (!session?.employee_id) {
-      console.log('Layout: No employee_id in session, cannot fetch stores');
-      return;
-    }
+    if (!session?.employee_id) return;
 
-    console.log('Layout: Fetching all stores for employee:', session.employee_id, 'with role:', session.role_permission);
-
-    // Admin, Manager, and Owner can see all stores
-    if (session?.role_permission === 'Admin' || session?.role_permission === 'Manager' || session?.role_permission === 'Owner') {
-      const { data, error } = await supabase
+    // Admin can see all stores
+    if (session?.role_permission === 'Admin') {
+      const { data } = await supabase
         .from('stores')
         .select('*')
         .eq('active', true)
         .order('code');
-      if (error) {
-        console.error('Layout: Error fetching stores for admin/manager/owner:', error);
-      } else {
-        console.log('Layout: Admin/Manager/Owner - Fetched stores:', data);
-        if (data) setAllStores(data);
+      if (data) {
+        console.log('Admin - Fetched stores:', data);
+        setAllStores(data);
       }
       return;
     }
 
     // Other users see only their assigned stores
-    const { data: employeeStores, error: empStoresError } = await supabase
+    const { data: employeeStores } = await supabase
       .from('employee_stores')
       .select('store_id')
       .eq('employee_id', session.employee_id);
 
-    if (empStoresError) {
-      console.error('Layout: Error fetching employee_stores:', empStoresError);
-      return;
-    }
-
-    console.log('Layout: Employee stores raw data:', employeeStores);
+    console.log('Employee stores:', employeeStores);
     const employeeStoreIds = employeeStores?.map(es => es.store_id) || [];
-    console.log('Layout: Employee store IDs:', employeeStoreIds);
 
     if (employeeStoreIds.length > 0) {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('stores')
         .select('*')
         .in('id', employeeStoreIds)
         .eq('active', true)
         .order('code');
-      if (error) {
-        console.error('Layout: Error fetching stores for employee:', error);
-      } else {
-        console.log('Layout: Non-admin - Fetched stores:', data);
-        if (data) setAllStores(data);
+      if (data) {
+        console.log('Non-admin - Fetched stores:', data);
+        setAllStores(data);
       }
     } else {
-      console.log('Layout: No employee stores found for this employee');
-      setAllStores([]);
+      console.log('No employee stores found');
     }
   }
 
   async function fetchPendingApprovalsCount() {
-    if (!session?.employee_id || !selectedStoreId) {
-      console.log('Layout: Cannot fetch pending approvals - missing employee_id or store_id');
-      return;
-    }
+    if (!session?.employee_id || !selectedStoreId) return;
 
     try {
-      console.log('Layout: Fetching pending approvals count for employee:', session.employee_id, 'store:', selectedStoreId);
       const userRoles = session?.role || [];
       const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
       const isSupervisor = userRoles.includes('Supervisor');
       const isTechnician = userRoles.some(role => ['Technician', 'Spa Expert'].includes(role));
-
-      console.log('Layout: User roles - Management:', isManagement, 'Supervisor:', isSupervisor, 'Technician:', isTechnician);
 
       let totalCount = 0;
       const seenTicketIds = new Set();
 
       // Fetch technician approvals if user is a technician/spa expert
       if (isTechnician) {
-        console.log('Layout: Fetching technician approvals...');
         const { data, error } = await supabase.rpc('get_pending_approvals_for_technician', {
           p_employee_id: session.employee_id,
           p_store_id: selectedStoreId,
         });
-        if (error) {
-          console.error('Layout: Error fetching technician approvals:', error);
-          throw error;
-        }
-        console.log('Layout: Technician approvals data:', data);
+        if (error) throw error;
         (data || []).forEach((ticket: any) => {
           if (!seenTicketIds.has(ticket.ticket_id)) {
             seenTicketIds.add(ticket.ticket_id);
@@ -211,16 +173,11 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
       // Fetch supervisor approvals if user is a supervisor
       if (isSupervisor) {
-        console.log('Layout: Fetching supervisor approvals...');
         const { data, error } = await supabase.rpc('get_pending_approvals_for_supervisor', {
           p_employee_id: session.employee_id,
           p_store_id: selectedStoreId,
         });
-        if (error) {
-          console.error('Layout: Error fetching supervisor approvals:', error);
-          throw error;
-        }
-        console.log('Layout: Supervisor approvals data:', data);
+        if (error) throw error;
         (data || []).forEach((ticket: any) => {
           if (!seenTicketIds.has(ticket.ticket_id)) {
             seenTicketIds.add(ticket.ticket_id);
@@ -231,15 +188,10 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
       // Fetch management approvals if user is management
       if (isManagement) {
-        console.log('Layout: Fetching management approvals...');
         const { data, error } = await supabase.rpc('get_pending_approvals_for_management', {
           p_store_id: selectedStoreId,
         });
-        if (error) {
-          console.error('Layout: Error fetching management approvals:', error);
-          throw error;
-        }
-        console.log('Layout: Management approvals data:', data);
+        if (error) throw error;
         (data || []).forEach((ticket: any) => {
           if (!seenTicketIds.has(ticket.ticket_id)) {
             seenTicketIds.add(ticket.ticket_id);
@@ -248,20 +200,15 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         });
       }
 
-      console.log('Layout: Total pending approvals count:', totalCount);
       setPendingApprovalsCount(totalCount);
     } catch (error) {
-      console.error('Layout: Error fetching pending approvals count:', error);
+      console.error('Error fetching pending approvals count:', error);
     }
   }
 
   function handleStoreChange(storeId: string) {
-    const selectedStore = allStores.find(s => s.id === storeId);
-    if (selectedStore) {
-      selectStore(storeId);
-      setIsStoreDropdownOpen(false);
-      showToast(`Switched to ${selectedStore.name}`, 'success');
-    }
+    selectStore(storeId);
+    setIsStoreDropdownOpen(false);
   }
 
   const handleRefresh = () => {
@@ -285,6 +232,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const googleRating = getGoogleRating();
 
   const navItems = [
+    { id: 'home' as const, label: 'Home', icon: Home },
     { id: 'tickets' as const, label: t('nav.tickets'), icon: Receipt },
     { id: 'approvals' as const, label: 'Approvals', icon: CheckCircle, badge: pendingApprovalsCount },
     { id: 'eod' as const, label: t('nav.eod'), icon: DollarSign },
@@ -306,7 +254,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               >
                 {isMobileMenuOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
               </button>
-              {currentStore && allStores.length > 1 ? (
+              {currentStore && allStores.length > 0 ? (
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setIsStoreDropdownOpen(!isStoreDropdownOpen)}

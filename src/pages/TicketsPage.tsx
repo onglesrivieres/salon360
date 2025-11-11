@@ -46,13 +46,11 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
   async function fetchTickets(silent = false) {
     try {
-      console.log('TicketsPage: Fetching tickets for date:', selectedDate, 'store:', selectedStoreId);
       if (!silent) {
         setLoading(true);
       }
 
       const isTechnician = session?.role_permission === 'Technician';
-      console.log('TicketsPage: Is technician:', isTechnician, 'Session:', session);
 
       let query = supabase
         .from('sale_tickets')
@@ -71,35 +69,26 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
         .eq('ticket_date', selectedDate);
 
       if (selectedStoreId) {
-        console.log('TicketsPage: Filtering by store_id:', selectedStoreId);
         query = query.eq('store_id', selectedStoreId);
       }
 
       query = query.order('opened_at', { ascending: false });
 
-      console.log('TicketsPage: Executing query...');
       const { data, error } = await query;
 
-      if (error) {
-        console.error('TicketsPage: Error fetching tickets:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('TicketsPage: Raw tickets data:', data);
       let filteredData = data || [];
 
       if (isTechnician && session?.employee_id) {
-        console.log('TicketsPage: Filtering tickets for technician:', session.employee_id);
         filteredData = filteredData.filter(ticket =>
           ticket.ticket_items && ticket.ticket_items.some((item: any) => item.employee_id === session.employee_id)
         );
-        console.log('TicketsPage: Filtered tickets count:', filteredData.length);
       }
 
-      console.log('TicketsPage: Setting tickets:', filteredData.length, 'tickets');
       setTickets(filteredData);
     } catch (error) {
-      console.error('TicketsPage: Error fetching tickets:', error);
+      console.error('Error fetching tickets:', error);
       showToast('Failed to load tickets', 'error');
     } finally {
       if (!silent) {

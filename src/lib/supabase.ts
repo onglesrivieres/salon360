@@ -27,8 +27,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-console.log('Supabase client initialized with URL:', supabaseUrl);
-
 export interface Store {
   id: string;
   name: string;

@@ -414,7 +414,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     logout();
   };
 
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-3 sm:p-4">
       {hasNewVersion && <VersionNotification onRefresh={handleRefresh} />}
@@ -571,7 +570,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         onSelect={handleCheckInOutStoreSelect}
         onClose={handleCheckInOutStoreModalClose}
       />
-
     </div>
   );
 }

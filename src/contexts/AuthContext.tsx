@@ -49,13 +49,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session, logout]);
 
   useEffect(() => {
-    console.log('AuthContext: Initializing...');
     const currentSession = getSession();
-    console.log('AuthContext: Current session from localStorage:', currentSession);
     setSession(currentSession);
 
     const savedStoreId = sessionStorage.getItem('selected_store_id');
-    console.log('AuthContext: Saved store ID from sessionStorage:', savedStoreId);
     if (savedStoreId) {
       setSelectedStoreId(savedStoreId);
     }
@@ -69,7 +66,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(LOCALE_KEY, deviceLocale);
     }
 
-    console.log('AuthContext: Initialization complete. Is authenticated:', !!currentSession);
     setIsLoading(false);
   }, []);
 
@@ -97,12 +93,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session, checkSession]);
 
   const login = (newSession: AuthSession) => {
-    console.log('AuthContext: Logging in with session:', newSession);
     saveSession(newSession);
     setSession(newSession);
     sessionStorage.removeItem('selected_store_id');
     setSelectedStoreId(null);
-    console.log('AuthContext: Login complete');
   };
 
   const setLocale = (newLocale: Locale) => {
@@ -126,7 +120,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const selectStore = (storeId: string) => {
-    console.log('AuthContext: Selecting store:', storeId);
     sessionStorage.setItem('selected_store_id', storeId);
     setSelectedStoreId(storeId);
   };
