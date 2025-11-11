@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ClipboardCheck, UserCheck, FileText } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { PinModal } from '../components/PinModal';
+import { QueueStoreSelectionModal } from '../components/QueueStoreSelectionModal';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { VersionNotification } from '../components/VersionNotification';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,6 +32,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     pay_type: string;
   } | null>(null);
   const [hasNewVersion, setHasNewVersion] = useState(false);
+  const [showQueueStoreModal, setShowQueueStoreModal] = useState(false);
+  const [availableStoreIds, setAvailableStoreIds] = useState<string[]>([]);
 
   useEffect(() => {
     initializeVersionCheck();
@@ -171,7 +174,13 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       if (selectedAction === 'checkin') {
         await handleCheckInOut(session.employee_id, storeId, displayName, payType);
       } else if (selectedAction === 'ready') {
-        await handleReady(session.employee_id, storeId);
+        if (hasMultipleStores && employeeStores.length > 1) {
+          const storeIds = employeeStores.map(s => s.id || s.store_id);
+          setAvailableStoreIds(storeIds);
+          setShowQueueStoreModal(true);
+        } else {
+          await handleReady(session.employee_id, storeId);
+        }
       } else if (selectedAction === 'report') {
         const storeIds = employeeStores.map(s => s.id || s.store_id);
         onActionSelected('report', session, storeId, hasMultipleStores, storeIds);
@@ -261,7 +270,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     }
   };
 
-  const handleReady = async (employeeId: string, storeId: string) => {
+  const handleReady = async (employeeId: string, storeId: string, storeName?: string) => {
     try {
       const { data: inQueue, error: checkError } = await supabase.rpc('check_queue_status', {
         p_employee_id: employeeId,
@@ -287,7 +296,11 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           return;
         }
 
-        setSuccessMessage(t('home.joinedQueue'));
+        if (storeName) {
+          setSuccessMessage(`${t('queue.joinedQueueAt')} ${storeName}!`);
+        } else {
+          setSuccessMessage(t('home.joinedQueue'));
+        }
         setShowSuccessModal(true);
       }
     } catch (error: any) {
@@ -358,6 +371,20 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
   const handleRefresh = () => {
     window.location.reload();
+  };
+
+  const handleQueueStoreSelect = async (storeId: string, storeName: string) => {
+    setShowQueueStoreModal(false);
+    if (authenticatedSession) {
+      await handleReady(authenticatedSession.employee_id, storeId, storeName);
+    }
+  };
+
+  const handleQueueStoreModalClose = () => {
+    setShowQueueStoreModal(false);
+    setAuthenticatedSession(null);
+    setSelectedAction(null);
+    logout();
   };
 
   return (
@@ -500,6 +527,14 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           </button>
         </div>
       </Modal>
+
+      <QueueStoreSelectionModal
+        isOpen={showQueueStoreModal}
+        storeIds={availableStoreIds}
+        employeeId={authenticatedSession?.employee_id || ''}
+        onSelect={handleQueueStoreSelect}
+        onClose={handleQueueStoreModalClose}
+      />
     </div>
   );
 }

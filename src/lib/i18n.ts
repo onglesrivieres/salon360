@@ -244,6 +244,9 @@ export const translations = {
       youAre: 'You are',
       inTheQueue: 'in the queue!',
       joinFailed: 'Failed to join ready queue',
+      selectStoreToJoin: 'Select Store to Join Queue',
+      selectStoreDesc: 'You have access to multiple stores. Please select which store queue you want to join.',
+      joinedQueueAt: 'You have successfully joined the ready queue at',
     },
     paymentMethods: {
       cash: 'Cash',
@@ -503,6 +506,9 @@ export const translations = {
       youAre: 'Vous êtes',
       inTheQueue: 'dans la file!',
       joinFailed: 'Échec de rejoindre la file d\'attente',
+      selectStoreToJoin: 'Sélectionner la succursale pour rejoindre la file',
+      selectStoreDesc: 'Vous avez accès à plusieurs succursales. Veuillez sélectionner quelle file d\'attente vous voulez rejoindre.',
+      joinedQueueAt: 'Vous avez rejoint la file d\'attente avec succès à',
     },
     paymentMethods: {
       cash: 'Comptant',
@@ -762,6 +768,9 @@ export const translations = {
       youAre: 'Bạn là',
       inTheQueue: 'trong hàng!',
       joinFailed: 'Không thể tham gia hàng đợi',
+      selectStoreToJoin: 'Chọn chi nhánh để vào hàng đợi',
+      selectStoreDesc: 'Bạn có quyền truy cập nhiều chi nhánh. Vui lòng chọn hàng đợi của chi nhánh nào bạn muốn tham gia.',
+      joinedQueueAt: 'Bạn đã tham gia hàng đợi thành công tại',
     },
     paymentMethods: {
       cash: 'Tiền mặt',
