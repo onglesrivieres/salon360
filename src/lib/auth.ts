@@ -63,21 +63,31 @@ export function updateLastActivity(): void {
 }
 
 export async function authenticateWithPIN(pin: string): Promise<AuthSession | null> {
+  console.log('Auth: Attempting to authenticate with PIN');
   if (!/^\d{4}$/.test(pin)) {
+    console.log('Auth: Invalid PIN format');
     return null;
   }
 
+  console.log('Auth: Calling verify_employee_pin RPC function');
   const { data, error } = await supabase.rpc('verify_employee_pin', {
     pin_input: pin
   });
 
-  if (error || !data || data.length === 0) {
+  if (error) {
+    console.error('Auth: Error from verify_employee_pin:', error);
     return null;
   }
 
+  if (!data || data.length === 0) {
+    console.log('Auth: No employee found with this PIN');
+    return null;
+  }
+
+  console.log('Auth: Employee data received:', data[0]);
   const employee = data[0];
 
-  return {
+  const session = {
     employee_id: employee.employee_id,
     display_name: employee.display_name,
     role: employee.role,
@@ -85,6 +95,9 @@ export async function authenticateWithPIN(pin: string): Promise<AuthSession | nu
     can_reset_pin: employee.can_reset_pin || false,
     store_id: employee.store_id,
   };
+
+  console.log('Auth: Created session:', session);
+  return session;
 }
 
 export async function changePIN(employeeId: string, oldPIN: string, newPIN: string): Promise<{ success: boolean; error?: string }> {

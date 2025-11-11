@@ -94,75 +94,107 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
   async function fetchStore() {
     if (!selectedStoreId) return;
-    const { data } = await supabase
+    console.log('Layout: Fetching store with ID:', selectedStoreId);
+    const { data, error } = await supabase
       .from('stores')
       .select('*')
       .eq('id', selectedStoreId)
       .maybeSingle();
-    if (data) setCurrentStore(data);
+    if (error) {
+      console.error('Layout: Error fetching store:', error);
+    } else {
+      console.log('Layout: Store data fetched:', data);
+      if (data) setCurrentStore(data);
+    }
   }
 
   async function fetchAllStores() {
-    if (!session?.employee_id) return;
+    if (!session?.employee_id) {
+      console.log('Layout: No employee_id in session, cannot fetch stores');
+      return;
+    }
+
+    console.log('Layout: Fetching all stores for employee:', session.employee_id, 'with role:', session.role_permission);
 
     // Admin can see all stores
     if (session?.role_permission === 'Admin') {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('stores')
         .select('*')
         .eq('active', true)
         .order('code');
-      if (data) {
-        console.log('Admin - Fetched stores:', data);
-        setAllStores(data);
+      if (error) {
+        console.error('Layout: Error fetching stores for admin:', error);
+      } else {
+        console.log('Layout: Admin - Fetched stores:', data);
+        if (data) setAllStores(data);
       }
       return;
     }
 
     // Other users see only their assigned stores
-    const { data: employeeStores } = await supabase
+    const { data: employeeStores, error: empStoresError } = await supabase
       .from('employee_stores')
       .select('store_id')
       .eq('employee_id', session.employee_id);
 
-    console.log('Employee stores:', employeeStores);
+    if (empStoresError) {
+      console.error('Layout: Error fetching employee_stores:', empStoresError);
+      return;
+    }
+
+    console.log('Layout: Employee stores raw data:', employeeStores);
     const employeeStoreIds = employeeStores?.map(es => es.store_id) || [];
+    console.log('Layout: Employee store IDs:', employeeStoreIds);
 
     if (employeeStoreIds.length > 0) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('stores')
         .select('*')
         .in('id', employeeStoreIds)
         .eq('active', true)
         .order('code');
-      if (data) {
-        console.log('Non-admin - Fetched stores:', data);
-        setAllStores(data);
+      if (error) {
+        console.error('Layout: Error fetching stores for employee:', error);
+      } else {
+        console.log('Layout: Non-admin - Fetched stores:', data);
+        if (data) setAllStores(data);
       }
     } else {
-      console.log('No employee stores found');
+      console.log('Layout: No employee stores found for this employee');
     }
   }
 
   async function fetchPendingApprovalsCount() {
-    if (!session?.employee_id || !selectedStoreId) return;
+    if (!session?.employee_id || !selectedStoreId) {
+      console.log('Layout: Cannot fetch pending approvals - missing employee_id or store_id');
+      return;
+    }
 
     try {
+      console.log('Layout: Fetching pending approvals count for employee:', session.employee_id, 'store:', selectedStoreId);
       const userRoles = session?.role || [];
       const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
       const isSupervisor = userRoles.includes('Supervisor');
       const isTechnician = userRoles.some(role => ['Technician', 'Spa Expert'].includes(role));
+
+      console.log('Layout: User roles - Management:', isManagement, 'Supervisor:', isSupervisor, 'Technician:', isTechnician);
 
       let totalCount = 0;
       const seenTicketIds = new Set();
 
       // Fetch technician approvals if user is a technician/spa expert
       if (isTechnician) {
+        console.log('Layout: Fetching technician approvals...');
         const { data, error } = await supabase.rpc('get_pending_approvals_for_technician', {
           p_employee_id: session.employee_id,
           p_store_id: selectedStoreId,
         });
-        if (error) throw error;
+        if (error) {
+          console.error('Layout: Error fetching technician approvals:', error);
+          throw error;
+        }
+        console.log('Layout: Technician approvals data:', data);
         (data || []).forEach((ticket: any) => {
           if (!seenTicketIds.has(ticket.ticket_id)) {
             seenTicketIds.add(ticket.ticket_id);
@@ -173,11 +205,16 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
       // Fetch supervisor approvals if user is a supervisor
       if (isSupervisor) {
+        console.log('Layout: Fetching supervisor approvals...');
         const { data, error } = await supabase.rpc('get_pending_approvals_for_supervisor', {
           p_employee_id: session.employee_id,
           p_store_id: selectedStoreId,
         });
-        if (error) throw error;
+        if (error) {
+          console.error('Layout: Error fetching supervisor approvals:', error);
+          throw error;
+        }
+        console.log('Layout: Supervisor approvals data:', data);
         (data || []).forEach((ticket: any) => {
           if (!seenTicketIds.has(ticket.ticket_id)) {
             seenTicketIds.add(ticket.ticket_id);
@@ -188,10 +225,15 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
       // Fetch management approvals if user is management
       if (isManagement) {
+        console.log('Layout: Fetching management approvals...');
         const { data, error } = await supabase.rpc('get_pending_approvals_for_management', {
           p_store_id: selectedStoreId,
         });
-        if (error) throw error;
+        if (error) {
+          console.error('Layout: Error fetching management approvals:', error);
+          throw error;
+        }
+        console.log('Layout: Management approvals data:', data);
         (data || []).forEach((ticket: any) => {
           if (!seenTicketIds.has(ticket.ticket_id)) {
             seenTicketIds.add(ticket.ticket_id);
@@ -200,9 +242,10 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         });
       }
 
+      console.log('Layout: Total pending approvals count:', totalCount);
       setPendingApprovalsCount(totalCount);
     } catch (error) {
-      console.error('Error fetching pending approvals count:', error);
+      console.error('Layout: Error fetching pending approvals count:', error);
     }
   }
 
