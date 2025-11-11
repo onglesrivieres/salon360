@@ -70,41 +70,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         return;
       }
 
-      // Check if employee requires check-in for Ready button
-      if (selectedAction === 'ready') {
-        const requiresCheckIn = session.role.some(r =>
-          ['Technician', 'Receptionist', 'Supervisor'].includes(r)
-        );
-
-        if (requiresCheckIn) {
-          const { data: employee } = await supabase
-            .from('employees')
-            .select('pay_type')
-            .eq('id', session.employee_id)
-            .maybeSingle();
-
-          const payType = employee?.pay_type || 'hourly';
-
-          if (payType === 'hourly' || payType === 'daily') {
-            // Check if they're checked in today
-            const today = new Date().toISOString().split('T')[0];
-            const { data: attendance } = await supabase
-              .from('attendance_records')
-              .select('status')
-              .eq('employee_id', session.employee_id)
-              .eq('work_date', today)
-              .eq('status', 'checked_in')
-              .maybeSingle();
-
-            if (!attendance) {
-              setPinError('You must check in before joining the ready queue. Please use the Check In/Out button first.');
-              setIsLoading(false);
-              return;
-            }
-          }
-        }
-      }
-
       let employeeStores: any[] = [];
       let hasMultipleStores = false;
       let storeId: string | undefined;
@@ -172,6 +137,32 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         display_name: displayName,
         pay_type: payType
       });
+
+      // Check if employee requires check-in for Ready button (after store is determined)
+      if (selectedAction === 'ready') {
+        const requiresCheckIn = session.role.some(r =>
+          ['Technician', 'Receptionist', 'Supervisor'].includes(r)
+        );
+
+        if (requiresCheckIn && (payType === 'hourly' || payType === 'daily')) {
+          // Check if they're checked in today at the specific store
+          const today = new Date().toISOString().split('T')[0];
+          const { data: attendance } = await supabase
+            .from('attendance_records')
+            .select('status')
+            .eq('employee_id', session.employee_id)
+            .eq('store_id', storeId)
+            .eq('work_date', today)
+            .eq('status', 'checked_in')
+            .maybeSingle();
+
+          if (!attendance) {
+            setPinError('You must check in before joining the ready queue. Please use the Check In/Out button first.');
+            setIsLoading(false);
+            return;
+          }
+        }
+      }
 
       setShowPinModal(false);
 
