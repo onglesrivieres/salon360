@@ -3,6 +3,7 @@ import { ClipboardCheck, UserCheck, FileText } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { PinModal } from '../components/PinModal';
 import { QueueStoreSelectionModal } from '../components/QueueStoreSelectionModal';
+import { CheckInOutStoreSelectionModal } from '../components/CheckInOutStoreSelectionModal';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { VersionNotification } from '../components/VersionNotification';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,6 +34,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   } | null>(null);
   const [hasNewVersion, setHasNewVersion] = useState(false);
   const [showQueueStoreModal, setShowQueueStoreModal] = useState(false);
+  const [showCheckInOutStoreModal, setShowCheckInOutStoreModal] = useState(false);
   const [availableStoreIds, setAvailableStoreIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -172,7 +174,13 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       setShowPinModal(false);
 
       if (selectedAction === 'checkin') {
-        await handleCheckInOut(session.employee_id, storeId, displayName, payType);
+        if (hasMultipleStores && employeeStores.length > 1) {
+          const storeIds = employeeStores.map(s => s.id || s.store_id);
+          setAvailableStoreIds(storeIds);
+          setShowCheckInOutStoreModal(true);
+        } else {
+          await handleCheckInOut(session.employee_id, storeId, displayName, payType);
+        }
       } else if (selectedAction === 'ready') {
         if (hasMultipleStores && employeeStores.length > 1) {
           const storeIds = employeeStores.map(s => s.id || s.store_id);
@@ -387,6 +395,25 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     logout();
   };
 
+  const handleCheckInOutStoreSelect = async (storeId: string, storeName: string) => {
+    setShowCheckInOutStoreModal(false);
+    if (authenticatedSession) {
+      await handleCheckInOut(
+        authenticatedSession.employee_id,
+        storeId,
+        authenticatedSession.display_name,
+        authenticatedSession.pay_type
+      );
+    }
+  };
+
+  const handleCheckInOutStoreModalClose = () => {
+    setShowCheckInOutStoreModal(false);
+    setAuthenticatedSession(null);
+    setSelectedAction(null);
+    logout();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-3 sm:p-4">
       {hasNewVersion && <VersionNotification onRefresh={handleRefresh} />}
@@ -534,6 +561,14 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         employeeId={authenticatedSession?.employee_id || ''}
         onSelect={handleQueueStoreSelect}
         onClose={handleQueueStoreModalClose}
+      />
+
+      <CheckInOutStoreSelectionModal
+        isOpen={showCheckInOutStoreModal}
+        storeIds={availableStoreIds}
+        employeeId={authenticatedSession?.employee_id || ''}
+        onSelect={handleCheckInOutStoreSelect}
+        onClose={handleCheckInOutStoreModalClose}
       />
     </div>
   );
