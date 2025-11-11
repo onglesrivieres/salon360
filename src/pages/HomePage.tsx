@@ -36,6 +36,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   const [showQueueStoreModal, setShowQueueStoreModal] = useState(false);
   const [showCheckInOutStoreModal, setShowCheckInOutStoreModal] = useState(false);
   const [availableStoreIds, setAvailableStoreIds] = useState<string[]>([]);
+  const [queuePosition, setQueuePosition] = useState<number>(0);
+  const [queueTotal, setQueueTotal] = useState<number>(0);
 
   useEffect(() => {
     initializeVersionCheck();
@@ -282,7 +284,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     try {
       console.log('handleReady called:', { employeeId, storeId, storeName });
 
-      const { data: inQueue, error: checkError } = await supabase.rpc('check_queue_status', {
+      const { data: queueStatus, error: checkError } = await supabase.rpc('check_queue_status', {
         p_employee_id: employeeId,
         p_store_id: storeId
       });
@@ -292,10 +294,12 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         throw checkError;
       }
 
-      console.log('Queue status check result:', inQueue);
+      console.log('Queue status check result:', queueStatus);
 
-      if (inQueue) {
+      if (queueStatus?.in_queue) {
         console.log('User already in queue, showing confirm modal');
+        setQueuePosition(queueStatus.position || 0);
+        setQueueTotal(queueStatus.total || 0);
         setShowConfirmModal(true);
         return;
       }
@@ -322,10 +326,22 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       }
 
       console.log('Successfully joined queue, showing success modal');
+      const position = queueResult.position || 0;
+      const total = queueResult.total || 0;
+
       if (storeName) {
-        setSuccessMessage(`${t('queue.joinedQueueAt')} ${storeName}!`);
+        setSuccessMessage(
+          t('queue.joinedAtStoreWithPosition')
+            .replace('{store}', storeName)
+            .replace('{position}', position.toString())
+            .replace('{total}', total.toString())
+        );
       } else {
-        setSuccessMessage(t('home.joinedQueue'));
+        setSuccessMessage(
+          t('queue.joinedWithPosition')
+            .replace('{position}', position.toString())
+            .replace('{total}', total.toString())
+        );
       }
       setShowSuccessModal(true);
     } catch (error: any) {
@@ -338,6 +354,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
   const handleStayInQueue = () => {
     setShowConfirmModal(false);
+    setQueuePosition(0);
+    setQueueTotal(0);
     setAuthenticatedSession(null);
     setSelectedAction(null);
     logout();
@@ -369,6 +387,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   const handleSuccessClose = () => {
     setShowSuccessModal(false);
     setSuccessMessage('');
+    setQueuePosition(0);
+    setQueueTotal(0);
     setAuthenticatedSession(null);
     setSelectedAction(null);
     logout();
@@ -551,7 +571,11 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
       <Modal isOpen={showConfirmModal} onClose={() => setShowConfirmModal(false)} title={t('queue.title')}>
         <div className="text-center py-4">
-          <p className="text-lg text-gray-900 mb-6">{t('home.alreadyInQueue')}</p>
+          <p className="text-lg text-gray-900 mb-6">
+            {t('queue.alreadyInQueueWithPosition')
+              .replace('{position}', queuePosition.toString())
+              .replace('{total}', queueTotal.toString())}
+          </p>
           <div className="flex gap-3 justify-center">
             <button
               onClick={handleStayInQueue}
