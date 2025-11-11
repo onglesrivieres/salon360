@@ -6,6 +6,7 @@ import { supabase, Store } from '../lib/supabase';
 import { NotificationBadge } from './ui/NotificationBadge';
 import { VersionNotification } from './VersionNotification';
 import { initializeVersionCheck, startVersionCheck } from '../lib/version';
+import { useToast } from './ui/Toast';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,6 +16,7 @@ interface LayoutProps {
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const { session, selectedStoreId, selectStore, logout, t } = useAuth();
+  const { showToast } = useToast();
   const [currentStore, setCurrentStore] = useState<Store | null>(null);
   const [allStores, setAllStores] = useState<Store[]>([]);
   const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
@@ -104,7 +106,10 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       console.error('Layout: Error fetching store:', error);
     } else {
       console.log('Layout: Store data fetched:', data);
-      if (data) setCurrentStore(data);
+      if (data) {
+        setCurrentStore(data);
+        document.title = `${data.name} - Salon360`;
+      }
     }
   }
 
@@ -116,17 +121,17 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
     console.log('Layout: Fetching all stores for employee:', session.employee_id, 'with role:', session.role_permission);
 
-    // Admin can see all stores
-    if (session?.role_permission === 'Admin') {
+    // Admin, Manager, and Owner can see all stores
+    if (session?.role_permission === 'Admin' || session?.role_permission === 'Manager' || session?.role_permission === 'Owner') {
       const { data, error } = await supabase
         .from('stores')
         .select('*')
         .eq('active', true)
         .order('code');
       if (error) {
-        console.error('Layout: Error fetching stores for admin:', error);
+        console.error('Layout: Error fetching stores for admin/manager/owner:', error);
       } else {
-        console.log('Layout: Admin - Fetched stores:', data);
+        console.log('Layout: Admin/Manager/Owner - Fetched stores:', data);
         if (data) setAllStores(data);
       }
       return;
@@ -162,6 +167,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       }
     } else {
       console.log('Layout: No employee stores found for this employee');
+      setAllStores([]);
     }
   }
 
@@ -250,8 +256,12 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   }
 
   function handleStoreChange(storeId: string) {
-    selectStore(storeId);
-    setIsStoreDropdownOpen(false);
+    const selectedStore = allStores.find(s => s.id === storeId);
+    if (selectedStore) {
+      selectStore(storeId);
+      setIsStoreDropdownOpen(false);
+      showToast(`Switched to ${selectedStore.name}`, 'success');
+    }
   }
 
   const handleRefresh = () => {
@@ -296,7 +306,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               >
                 {isMobileMenuOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
               </button>
-              {currentStore && allStores.length > 0 ? (
+              {currentStore && allStores.length > 1 ? (
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setIsStoreDropdownOpen(!isStoreDropdownOpen)}
