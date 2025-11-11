@@ -248,10 +248,6 @@ export const translations = {
       selectStoreDesc: 'You have access to multiple stores. Please select which store queue you want to join.',
       joinedQueueAt: 'You have successfully joined the ready queue at',
     },
-    report: {
-      selectStoreTitle: 'Select Store for Reports',
-      selectStoreDesc: 'You have access to multiple stores. Please select which store you want to view reports for.',
-    },
     paymentMethods: {
       cash: 'Cash',
       card: 'Card',
@@ -514,10 +510,6 @@ export const translations = {
       selectStoreDesc: 'Vous avez accès à plusieurs succursales. Veuillez sélectionner quelle file d\'attente vous voulez rejoindre.',
       joinedQueueAt: 'Vous avez rejoint la file d\'attente avec succès à',
     },
-    report: {
-      selectStoreTitle: 'Sélectionner la succursale pour les rapports',
-      selectStoreDesc: 'Vous avez accès à plusieurs succursales. Veuillez sélectionner la succursale pour laquelle vous souhaitez voir les rapports.',
-    },
     paymentMethods: {
       cash: 'Comptant',
       card: 'Carte',
@@ -779,10 +771,6 @@ export const translations = {
       selectStoreToJoin: 'Chọn chi nhánh để vào hàng đợi',
       selectStoreDesc: 'Bạn có quyền truy cập nhiều chi nhánh. Vui lòng chọn hàng đợi của chi nhánh nào bạn muốn tham gia.',
       joinedQueueAt: 'Bạn đã tham gia hàng đợi thành công tại',
-    },
-    report: {
-      selectStoreTitle: 'Chọn chi nhánh cho báo cáo',
-      selectStoreDesc: 'Bạn có quyền truy cập nhiều chi nhánh. Vui lòng chọn chi nhánh bạn muốn xem báo cáo.',
     },
     paymentMethods: {
       cash: 'Tiền mặt',

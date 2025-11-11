@@ -100,14 +100,20 @@ function AppContent() {
       }
 
       // Report action needs to redirect to app
-      // Store selection is now handled in HomePage via ReportStoreSelectionModal
       if (action === 'report' && session && storeId) {
         sessionStorage.setItem('welcome_shown', 'true');
         login(session);
         setSelectedAction(action);
         setShowWelcome(false);
-        // Store has already been selected in HomePage, so select it directly
-        selectStore(storeId);
+
+        // If user has multiple stores, show selection modal
+        if (hasMultipleStores && availableStoreIds && availableStoreIds.length > 1) {
+          setAvailableStoreIds(availableStoreIds);
+          setShowStoreModal(true);
+        } else {
+          // Single store - select it directly
+          selectStore(storeId);
+        }
       }
     }} />;
   }
