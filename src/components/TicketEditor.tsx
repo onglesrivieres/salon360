@@ -146,6 +146,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
   useEffect(() => {
     if (selectedStoreId) {
+      console.log('[TicketEditor] Setting up technician queue subscription for store:', selectedStoreId);
       fetchSortedTechnicians();
 
       const queueChannel = supabase
@@ -158,7 +159,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             table: 'technician_ready_queue',
             filter: `store_id=eq.${selectedStoreId}`,
           },
-          () => {
+          (payload) => {
+            console.log('[TicketEditor] Queue change detected:', payload);
             fetchSortedTechnicians();
           }
         )
@@ -170,13 +172,22 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             table: 'sale_tickets',
             filter: `store_id=eq.${selectedStoreId}`,
           },
-          () => {
+          (payload) => {
+            console.log('[TicketEditor] Ticket update detected:', payload);
             fetchSortedTechnicians();
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('[TicketEditor] Subscription status:', status);
+        });
+
+      const pollInterval = setInterval(() => {
+        fetchSortedTechnicians();
+      }, 5000);
 
       return () => {
+        console.log('[TicketEditor] Cleaning up subscription');
+        clearInterval(pollInterval);
         supabase.removeChannel(queueChannel);
       };
     }
@@ -196,11 +207,18 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     if (!selectedStoreId) return;
 
     try {
+      console.log('[TicketEditor] Fetching sorted technicians for store:', selectedStoreId);
       const { data, error } = await supabase.rpc('get_sorted_technicians_for_store', {
         p_store_id: selectedStoreId
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[TicketEditor] Error fetching technicians:', error);
+        throw error;
+      }
+
+      console.log('[TicketEditor] Fetched technicians:', data);
+      console.log('[TicketEditor] Ready technicians:', data?.filter(t => t.queue_status === 'ready'));
 
       setSortedTechnicians(data || []);
 
@@ -208,7 +226,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         setLastUsedEmployeeId(data[0].employee_id);
       }
     } catch (error) {
-      console.error('Error fetching sorted technicians:', error);
+      console.error('[TicketEditor] Error fetching sorted technicians:', error);
     }
   }
 

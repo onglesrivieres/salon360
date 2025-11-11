@@ -280,40 +280,59 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
   const handleReady = async (employeeId: string, storeId: string, storeName?: string) => {
     try {
+      console.log('handleReady called:', { employeeId, storeId, storeName });
+
       const { data: inQueue, error: checkError } = await supabase.rpc('check_queue_status', {
         p_employee_id: employeeId,
         p_store_id: storeId
       });
 
-      if (checkError) throw checkError;
+      if (checkError) {
+        console.error('Error checking queue status:', checkError);
+        throw checkError;
+      }
+
+      console.log('Queue status check result:', inQueue);
 
       if (inQueue) {
+        console.log('User already in queue, showing confirm modal');
         setShowConfirmModal(true);
-      } else {
-        const { data: queueResult, error: joinError } = await supabase.rpc('join_ready_queue_with_checkin', {
-          p_employee_id: employeeId,
-          p_store_id: storeId
-        });
-
-        if (joinError) throw joinError;
-
-        if (!queueResult?.success) {
-          setShowPinModal(false);
-          setErrorMessage('Unable to join the ready queue. Please ensure you are checked in.');
-          setShowErrorModal(true);
-          return;
-        }
-
-        if (storeName) {
-          setSuccessMessage(`${t('queue.joinedQueueAt')} ${storeName}!`);
-        } else {
-          setSuccessMessage(t('home.joinedQueue'));
-        }
-        setShowSuccessModal(true);
+        return;
       }
+
+      console.log('Joining ready queue...');
+      const { data: queueResult, error: joinError } = await supabase.rpc('join_ready_queue_with_checkin', {
+        p_employee_id: employeeId,
+        p_store_id: storeId
+      });
+
+      console.log('Queue join result:', queueResult, 'Error:', joinError);
+
+      if (joinError) {
+        console.error('Error joining queue:', joinError);
+        throw joinError;
+      }
+
+      if (!queueResult?.success) {
+        console.error('Queue join failed with message:', queueResult?.message);
+        setShowPinModal(false);
+        setErrorMessage(queueResult?.message || 'Unable to join the ready queue. Please ensure you are checked in.');
+        setShowErrorModal(true);
+        return;
+      }
+
+      console.log('Successfully joined queue, showing success modal');
+      if (storeName) {
+        setSuccessMessage(`${t('queue.joinedQueueAt')} ${storeName}!`);
+      } else {
+        setSuccessMessage(t('home.joinedQueue'));
+      }
+      setShowSuccessModal(true);
     } catch (error: any) {
       console.error('Queue operation failed:', error);
-      setPinError('Failed to process request. Please try again.');
+      setShowPinModal(false);
+      setErrorMessage(error?.message || 'Failed to process request. Please try again.');
+      setShowErrorModal(true);
     }
   };
 
@@ -382,9 +401,21 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   };
 
   const handleQueueStoreSelect = async (storeId: string, storeName: string) => {
-    setShowQueueStoreModal(false);
-    if (authenticatedSession) {
+    console.log('handleQueueStoreSelect called:', { storeId, storeName });
+
+    if (!authenticatedSession) {
+      console.error('No authenticated session found');
+      setShowQueueStoreModal(false);
+      return;
+    }
+
+    try {
+      setShowQueueStoreModal(false);
       await handleReady(authenticatedSession.employee_id, storeId, storeName);
+    } catch (error: any) {
+      console.error('Error in handleQueueStoreSelect:', error);
+      setErrorMessage('Failed to join queue. Please try again.');
+      setShowErrorModal(true);
     }
   };
 
