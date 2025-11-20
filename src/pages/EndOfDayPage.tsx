@@ -328,44 +328,42 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-green-600" />
-                  <h3 className="text-base font-semibold text-gray-900">Opening Cash Count</h3>
-                </div>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <DollarSign className="w-4 h-4 text-green-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Opening Cash</h3>
               </div>
-              <div className="text-center py-6">
-                <p className="text-sm text-gray-600 mb-2">Total Amount</p>
-                <p className="text-4xl font-bold text-green-600 mb-6">${openingCashTotal.toFixed(2)}</p>
+              <div className="text-center py-3">
+                <p className="text-xs text-gray-600 mb-1">Total Amount</p>
+                <p className="text-2xl font-bold text-green-600 mb-3">${openingCashTotal.toFixed(2)}</p>
                 <Button
                   variant="secondary"
+                  size="sm"
                   onClick={() => setIsOpeningModalOpen(true)}
                   className="w-full"
                 >
-                  <Edit className="w-4 h-4 mr-2" />
+                  <Edit className="w-3 h-3 mr-1" />
                   Count Bills
                 </Button>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-blue-600" />
-                  <h3 className="text-base font-semibold text-gray-900">Closing Cash Count</h3>
-                </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <DollarSign className="w-4 h-4 text-blue-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Closing Cash</h3>
               </div>
-              <div className="text-center py-6">
-                <p className="text-sm text-gray-600 mb-2">Total Amount</p>
-                <p className="text-4xl font-bold text-blue-600 mb-6">${closingCashTotal.toFixed(2)}</p>
+              <div className="text-center py-3">
+                <p className="text-xs text-gray-600 mb-1">Total Amount</p>
+                <p className="text-2xl font-bold text-blue-600 mb-3">${closingCashTotal.toFixed(2)}</p>
                 <Button
                   variant="secondary"
+                  size="sm"
                   onClick={() => setIsClosingModalOpen(true)}
                   className="w-full"
                 >
-                  <Edit className="w-4 h-4 mr-2" />
+                  <Edit className="w-3 h-3 mr-1" />
                   Count Bills
                 </Button>
               </div>
