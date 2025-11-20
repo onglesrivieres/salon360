@@ -491,10 +491,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   }
 
   function calculateCashTips(): number {
-    return (
-      (parseFloat(formData.tip_customer_cash) || 0) +
-      (parseFloat(formData.tip_receptionist) || 0)
-    );
+    return parseFloat(formData.tip_customer_cash) || 0;
   }
 
   function calculateCardTips(): number {
