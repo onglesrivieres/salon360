@@ -1917,33 +1917,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               <span>${calculateSubtotal().toFixed(2)}</span>
             </div>
 
-            <div className="border-t border-gray-100 pt-2 space-y-1">
-              <div className="text-xs font-semibold text-gray-600 mb-1">Payment Breakdown:</div>
-              <div className="flex justify-between items-center text-sm text-green-700">
-                <span className="flex items-center gap-1">
-                  <Banknote className="w-3 h-3" />
-                  Cash Payment:
-                </span>
-                <span className="font-semibold">${(parseFloat(formData.payment_cash) || 0).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm text-blue-700">
-                <span className="flex items-center gap-1">
-                  <CreditCard className="w-3 h-3" />
-                  Card Payment:
-                </span>
-                <span className="font-semibold">${(parseFloat(formData.payment_card) || 0).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm text-purple-700">
-                <span className="flex items-center gap-1">
-                  <Gift className="w-3 h-3" />
-                  Gift Card Payment:
-                </span>
-                <span className="font-semibold">${(parseFloat(formData.payment_gift_card) || 0).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm font-bold text-gray-800 pt-1 border-t border-gray-200">
-                <span>Total Payments:</span>
-                <span>${calculateTotalPayments().toFixed(2)}</span>
-              </div>
+            <div className="flex justify-between items-center text-base font-semibold text-red-600">
+              <span>Total Discount:</span>
+              <span>-${calculateTotalDiscount().toFixed(2)}</span>
             </div>
 
             <div className="border-t border-gray-100 pt-2 space-y-1">
@@ -1955,10 +1931,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               <div className="flex justify-between items-center text-sm text-blue-700">
                 <span>Tips (Card):</span>
                 <span className="font-semibold">${calculateCardTips().toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm font-bold text-gray-800 pt-1 border-t border-gray-200">
-                <span>Total Tips:</span>
-                <span>${calculateTotalTips().toFixed(2)}</span>
               </div>
             </div>
 
