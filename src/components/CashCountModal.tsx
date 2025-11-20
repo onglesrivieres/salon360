@@ -92,7 +92,7 @@ export function CashCountModal({
           type="number"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-14 text-center text-sm py-1"
+          className="w-10 text-center text-sm py-1"
           min="0"
         />
         <span className="text-xs text-gray-500">x ${denomination.toFixed(2)}</span>
