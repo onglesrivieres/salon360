@@ -490,6 +490,13 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     );
   }
 
+  function calculateTipsExcludingReceptionist(): number {
+    return (
+      (parseFloat(formData.tip_customer_cash) || 0) +
+      (parseFloat(formData.tip_customer_card) || 0)
+    );
+  }
+
   function calculateCashTips(): number {
     return parseFloat(formData.tip_customer_cash) || 0;
   }
@@ -526,7 +533,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   }
 
   function calculateTotalCollected(): number {
-    return calculateTotalPayments() + calculateTotalTips();
+    const servicePrice = calculateTotal();
+    const tipsExcludingReceptionist = calculateTipsExcludingReceptionist();
+    return servicePrice + tipsExcludingReceptionist;
   }
 
   function handleNumericFieldFocus(event: React.FocusEvent<HTMLInputElement>) {
