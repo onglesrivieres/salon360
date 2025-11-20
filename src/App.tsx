@@ -9,13 +9,14 @@ import { supabase } from './lib/supabase';
 import { StoreSelectionModal } from './components/StoreSelectionModal';
 
 const EndOfDayPage = lazy(() => import('./pages/EndOfDayPage').then(m => ({ default: m.EndOfDayPage })));
+const TipReportPage = lazy(() => import('./pages/TipReportPage').then(m => ({ default: m.TipReportPage })));
 const AttendancePage = lazy(() => import('./pages/AttendancePage').then(m => ({ default: m.AttendancePage })));
 const EmployeesPage = lazy(() => import('./pages/EmployeesPage').then(m => ({ default: m.EmployeesPage })));
 const ServicesPage = lazy(() => import('./pages/ServicesPage').then(m => ({ default: m.ServicesPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const PendingApprovalsPage = lazy(() => import('./pages/PendingApprovalsPage').then(m => ({ default: m.PendingApprovalsPage })));
 
-type Page = 'tickets' | 'eod' | 'attendance' | 'technicians' | 'services' | 'settings' | 'approvals';
+type Page = 'tickets' | 'eod' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'approvals';
 
 function AppContent() {
   const { isAuthenticated, selectedStoreId, selectStore, session, login } = useAuth();
@@ -148,6 +149,7 @@ function AppContent() {
         }>
           {currentPage === 'tickets' && <TicketsPage selectedDate={selectedDate} onDateChange={setSelectedDate} />}
           {currentPage === 'approvals' && <PendingApprovalsPage />}
+          {currentPage === 'tipreport' && <TipReportPage selectedDate={selectedDate} onDateChange={setSelectedDate} />}
           {currentPage === 'eod' && <EndOfDayPage selectedDate={selectedDate} onDateChange={setSelectedDate} />}
           {currentPage === 'attendance' && <AttendancePage />}
           {currentPage === 'technicians' && <EmployeesPage />}

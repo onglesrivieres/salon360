@@ -70,6 +70,18 @@ export const Permissions = {
     },
   },
 
+  tipReport: {
+    canView: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
+    },
+    canViewAll: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+    },
+    canExport: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+    },
+  },
+
   employees: {
     canView: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
@@ -133,7 +145,7 @@ export function getPermissionMessage(
 }
 
 export function canAccessPage(
-  page: 'tickets' | 'eod' | 'technicians' | 'services' | 'profile' | 'attendance' | 'approvals',
+  page: 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'attendance' | 'approvals',
   roles: Role[] | RolePermission
 ): boolean {
   switch (page) {
@@ -141,6 +153,8 @@ export function canAccessPage(
       return Permissions.tickets.canView(roles);
     case 'eod':
       return Permissions.endOfDay.canView(roles);
+    case 'tipreport':
+      return Permissions.tipReport.canView(roles);
     case 'technicians':
       return Permissions.employees.canView(roles);
     case 'services':
@@ -161,6 +175,10 @@ export function getAccessiblePages(roles: Role[] | RolePermission): string[] {
 
   if (Permissions.tickets.canViewPendingApprovals(roles)) {
     pages.push('approvals');
+  }
+
+  if (Permissions.tipReport.canView(roles)) {
+    pages.push('tipreport');
   }
 
   if (Permissions.endOfDay.canView(roles)) {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star } from 'lucide-react';
+import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
 import { supabase, Store } from '../lib/supabase';
@@ -9,8 +9,8 @@ import { initializeVersionCheck, startVersionCheck } from '../lib/version';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentPage: 'home' | 'tickets' | 'eod' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals';
-  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals') => void;
+  currentPage: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals';
+  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals') => void;
 }
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
@@ -202,6 +202,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     { id: 'home' as const, label: 'Home', icon: Home },
     { id: 'tickets' as const, label: t('nav.tickets'), icon: Receipt },
     { id: 'approvals' as const, label: 'Approvals', icon: CheckCircle, badge: pendingApprovalsCount },
+    { id: 'tipreport' as const, label: 'Tip Report', icon: Coins },
     { id: 'eod' as const, label: t('nav.eod'), icon: DollarSign },
     { id: 'attendance' as const, label: 'Attendance', icon: Calendar },
     { id: 'technicians' as const, label: t('nav.employees'), icon: Users },
