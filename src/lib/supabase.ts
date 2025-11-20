@@ -140,6 +140,9 @@ export interface TicketItem {
   price_each: number;
   addon_details?: string;
   addon_price?: number;
+  payment_cash: number;
+  payment_card: number;
+  payment_gift_card: number;
   tip_customer_cash: number;
   tip_customer_card: number;
   tip_receptionist: number;
