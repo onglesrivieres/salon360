@@ -203,7 +203,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     { id: 'tickets' as const, label: t('nav.tickets'), icon: Receipt },
     { id: 'approvals' as const, label: 'Approvals', icon: CheckCircle, badge: pendingApprovalsCount },
     { id: 'tipreport' as const, label: 'Tip Report', icon: Coins },
-    { id: 'eod' as const, label: t('nav.eod'), icon: DollarSign },
+    { id: 'eod' as const, label: 'End of Day', icon: DollarSign },
     { id: 'attendance' as const, label: 'Attendance', icon: Calendar },
     { id: 'technicians' as const, label: t('nav.employees'), icon: Users },
     { id: 'services' as const, label: t('nav.services'), icon: Briefcase },
