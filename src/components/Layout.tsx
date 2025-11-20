@@ -89,10 +89,17 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       setHasNewVersion(true);
     });
 
+    const handleOpeningCashUpdate = () => {
+      checkOpeningCash();
+    };
+
+    window.addEventListener('openingCashUpdated', handleOpeningCashUpdate);
+
     return () => {
       stopVersionCheck();
+      window.removeEventListener('openingCashUpdated', handleOpeningCashUpdate);
     };
-  }, []);
+  }, [selectedStoreId]);
 
   async function fetchStore() {
     if (!selectedStoreId) return;

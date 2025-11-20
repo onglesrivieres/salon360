@@ -20,7 +20,7 @@ interface CashCountModalProps {
   onClose: () => void;
   title: string;
   initialDenominations: CashDenominations;
-  onSubmit: (denominations: CashDenominations) => void;
+  onSubmit: (denominations: CashDenominations) => void | Promise<void>;
   colorScheme?: 'green' | 'blue';
 }
 
@@ -33,6 +33,7 @@ export function CashCountModal({
   colorScheme = 'green',
 }: CashCountModalProps) {
   const [denominations, setDenominations] = useState<CashDenominations>(initialDenominations);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -58,9 +59,16 @@ export function CashCountModal({
     );
   }
 
-  function handleSubmit() {
-    onSubmit(denominations);
-    onClose();
+  async function handleSubmit() {
+    setIsSubmitting(true);
+    try {
+      await onSubmit(denominations);
+      onClose();
+    } catch (error) {
+      console.error('Error submitting cash count:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function handleCancel() {
@@ -170,11 +178,11 @@ export function CashCountModal({
         </div>
 
         <div className="flex gap-3 pt-2">
-          <Button variant="secondary" onClick={handleCancel} className="flex-1">
+          <Button variant="secondary" onClick={handleCancel} className="flex-1" disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSubmit} className="flex-1">
-            Submit
+          <Button variant="primary" onClick={handleSubmit} className="flex-1" disabled={isSubmitting}>
+            {isSubmitting ? 'Saving...' : 'Submit'}
           </Button>
         </div>
       </div>

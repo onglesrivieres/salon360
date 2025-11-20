@@ -154,8 +154,81 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     eodRecord.coin_5 > 0
   );
 
-  function handleOpeningSubmit(denominations: CashDenominations) {
-    setOpeningDenominations(denominations);
+  async function handleOpeningSubmit(denominations: CashDenominations) {
+    if (!selectedStoreId || !session?.employee_id) {
+      showToast('Missing required information', 'error');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setOpeningDenominations(denominations);
+
+      const openingTotal = (
+        denominations.bill_20 * 20 +
+        denominations.bill_10 * 10 +
+        denominations.bill_5 * 5 +
+        denominations.bill_2 * 2 +
+        denominations.bill_1 * 1 +
+        denominations.coin_25 * 0.25 +
+        denominations.coin_10 * 0.10 +
+        denominations.coin_5 * 0.05
+      );
+
+      const recordData = {
+        store_id: selectedStoreId,
+        date: selectedDate,
+        opening_cash_amount: openingTotal,
+        bill_20: denominations.bill_20,
+        bill_10: denominations.bill_10,
+        bill_5: denominations.bill_5,
+        bill_2: denominations.bill_2,
+        bill_1: denominations.bill_1,
+        coin_25: denominations.coin_25,
+        coin_10: denominations.coin_10,
+        coin_5: denominations.coin_5,
+        closing_cash_amount: closingCashTotal,
+        closing_bill_20: closingDenominations.bill_20,
+        closing_bill_10: closingDenominations.bill_10,
+        closing_bill_5: closingDenominations.bill_5,
+        closing_bill_2: closingDenominations.bill_2,
+        closing_bill_1: closingDenominations.bill_1,
+        closing_coin_25: closingDenominations.coin_25,
+        closing_coin_10: closingDenominations.coin_10,
+        closing_coin_5: closingDenominations.coin_5,
+        notes: notes,
+        updated_by: session.employee_id,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (eodRecord) {
+        const { error } = await supabase
+          .from('end_of_day_records')
+          .update(recordData)
+          .eq('id', eodRecord.id);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('end_of_day_records')
+          .insert({
+            ...recordData,
+            created_by: session.employee_id,
+          });
+
+        if (error) throw error;
+      }
+
+      showToast('Opening cash saved successfully', 'success');
+      await loadEODData();
+
+      window.dispatchEvent(new CustomEvent('openingCashUpdated'));
+    } catch (error) {
+      showToast('Failed to save opening cash', 'error');
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleClosingSubmit(denominations: CashDenominations) {
