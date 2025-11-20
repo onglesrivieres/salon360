@@ -107,14 +107,19 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       const { data: tickets, error: ticketsError } = await supabase
         .from('sale_tickets')
-        .select('payment_cash')
+        .select('id, ticket_items(payment_cash)')
         .eq('ticket_date', selectedDate)
         .eq('store_id', selectedStoreId)
         .not('closed_at', 'is', null);
 
       if (ticketsError) throw ticketsError;
 
-      const totalCash = tickets?.reduce((sum, ticket) => sum + (parseFloat(ticket.payment_cash as any) || 0), 0) || 0;
+      const totalCash = tickets?.reduce((sum, ticket) => {
+        const ticketItems = (ticket.ticket_items as any) || [];
+        const itemsTotal = ticketItems.reduce((itemSum: number, item: any) =>
+          itemSum + (parseFloat(item.payment_cash) || 0), 0);
+        return sum + itemsTotal;
+      }, 0) || 0;
       setExpectedCash(totalCash);
     } catch (error) {
       showToast('Failed to load EOD data', 'error');
