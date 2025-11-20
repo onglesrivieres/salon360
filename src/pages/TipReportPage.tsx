@@ -6,6 +6,7 @@ import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { WeeklyCalendarView } from '../components/WeeklyCalendarView';
+import { TicketEditor } from '../components/TicketEditor';
 
 interface TechnicianSummary {
   technician_id: string;
@@ -45,6 +46,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'detail' | 'weekly'>('detail');
   const [weeklyData, setWeeklyData] = useState<Map<string, Map<string, { tips_cash: number; tips_card: number; tips_total: number }>>>(new Map());
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   const { showToast } = useToast();
   const { session, selectedStoreId, t } = useAuth();
 
@@ -438,6 +441,21 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     return new Date().toISOString().split('T')[0];
   }
 
+  function openTicketEditor(ticketId: string) {
+    setEditingTicketId(ticketId);
+    setIsEditorOpen(true);
+  }
+
+  function closeTicketEditor() {
+    setIsEditorOpen(false);
+    setEditingTicketId(null);
+    if (viewMode === 'weekly') {
+      fetchWeeklyData();
+    } else {
+      fetchTipData();
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
@@ -611,7 +629,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                           return (
                             <div
                               key={index}
-                              className="border border-gray-200 bg-gray-50 rounded p-1"
+                              onClick={() => openTicketEditor(item.ticket_id)}
+                              className="border border-gray-200 bg-gray-50 rounded p-1 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
                             >
                               <div className="mb-0.5">
                                 <div className="text-[8px] text-gray-500 truncate mb-0.5">
@@ -649,6 +668,14 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           </div>
         )}
       </div>
+
+      {isEditorOpen && (
+        <TicketEditor
+          ticketId={editingTicketId}
+          onClose={closeTicketEditor}
+          selectedDate={selectedDate}
+        />
+      )}
     </div>
   );
 }
