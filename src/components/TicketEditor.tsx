@@ -1922,18 +1922,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               <span>-${calculateTotalDiscount().toFixed(2)}</span>
             </div>
 
-            <div className="border-t border-gray-100 pt-2 space-y-1">
-              <div className="text-xs font-semibold text-gray-600 mb-1">Tip Breakdown:</div>
-              <div className="flex justify-between items-center text-sm text-green-700">
-                <span>Tips (Cash):</span>
-                <span className="font-semibold">${calculateCashTips().toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm text-blue-700">
-                <span>Tips (Card):</span>
-                <span className="font-semibold">${calculateCardTips().toFixed(2)}</span>
-              </div>
-            </div>
-
             <div className="border-t border-gray-300 pt-2 space-y-1">
               <div className="text-xs font-semibold text-gray-600 mb-1">Collection Summary:</div>
               <div className="flex justify-between items-center text-sm text-green-700">
