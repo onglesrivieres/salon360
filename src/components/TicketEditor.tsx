@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Banknote, CreditCard, Clock, Award, Lock, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Plus, Trash2, Banknote, CreditCard, Clock, Award, Lock, CheckCircle, AlertCircle, Edit2 } from 'lucide-react';
 import {
   supabase,
   SaleTicket,
@@ -138,7 +138,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     discount_percentage: '',
     discount_amount: '',
     notes: '',
+    opening_time: '',
   });
+
+  const [isEditingOpeningTime, setIsEditingOpeningTime] = useState(false);
+  const [tempOpeningTime, setTempOpeningTime] = useState('');
 
   useEffect(() => {
     loadData();
@@ -300,6 +304,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           discount_percentage: firstItem ? parseFloat(firstItem.discount_percentage || 0).toString() : '0',
           discount_amount: firstItem ? parseFloat(firstItem.discount_amount || 0).toString() : '0',
           notes: ticketData.notes,
+          opening_time: ticketData.opened_at || '',
         });
 
         setItems(
@@ -329,6 +334,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         }
 
         await fetchActivityLogs(ticketId);
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          opening_time: new Date().toISOString(),
+        }));
       }
     } catch (error) {
       showToast('Failed to load data', 'error');
@@ -353,6 +363,54 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     } catch (error) {
       console.error('Failed to fetch activity logs:', error);
     }
+  }
+
+  function convertToLocalDatetimeString(utcDateString: string): string {
+    if (!utcDateString) return '';
+    const date = new Date(utcDateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  function handleEditOpeningTime() {
+    setTempOpeningTime(convertToLocalDatetimeString(formData.opening_time));
+    setIsEditingOpeningTime(true);
+  }
+
+  function handleCancelEditOpeningTime() {
+    setIsEditingOpeningTime(false);
+    setTempOpeningTime('');
+  }
+
+  function handleSaveOpeningTime() {
+    if (!tempOpeningTime) {
+      showToast('Opening time is required', 'error');
+      return;
+    }
+
+    const newDate = new Date(tempOpeningTime);
+    const now = new Date();
+
+    if (newDate > now) {
+      showToast('Opening time cannot be in the future', 'error');
+      return;
+    }
+
+    if (ticket?.closed_at) {
+      const closedDate = new Date(ticket.closed_at);
+      if (newDate > closedDate) {
+        showToast('Opening time cannot be after closing time', 'error');
+        return;
+      }
+    }
+
+    setFormData({ ...formData, opening_time: newDate.toISOString() });
+    setIsEditingOpeningTime(false);
+    setTempOpeningTime('');
   }
 
   async function logActivity(ticketId: string, action: TicketActivityLog['action'], description: string, changes?: Record<string, any>) {
@@ -600,18 +658,30 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       const tipReceptionist = parseFloat(formData.tip_receptionist) || 0;
 
       if (ticketId && ticket) {
+        const updateData: any = {
+          customer_type: formData.customer_type || null,
+          customer_name: formData.customer_name,
+          customer_phone: formData.customer_phone,
+          payment_method: formData.payment_method,
+          total,
+          notes: formData.notes,
+          saved_by: session?.employee_id,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (formData.opening_time && formData.opening_time !== ticket.opened_at) {
+          updateData.opened_at = formData.opening_time;
+          await logActivity(ticketId, 'updated', `${session?.display_name} updated ticket opening time`, {
+            opening_time: {
+              old: ticket.opened_at,
+              new: formData.opening_time,
+            },
+          });
+        }
+
         const { error: updateError } = await supabase
           .from('sale_tickets')
-          .update({
-            customer_type: formData.customer_type || null,
-            customer_name: formData.customer_name,
-            customer_phone: formData.customer_phone,
-            payment_method: formData.payment_method,
-            total,
-            notes: formData.notes,
-            saved_by: session?.employee_id,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq('id', ticketId);
 
         if (updateError) throw updateError;
@@ -669,23 +739,27 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         const tipCustomer = parseFloat(formData.tip_customer) || 0;
         const tipReceptionist = parseFloat(formData.tip_receptionist) || 0;
 
+        const newTicketData: any = {
+          ticket_no: ticketNo,
+          ticket_date: selectedDate,
+          customer_type: formData.customer_type || null,
+          customer_name: formData.customer_name,
+          customer_phone: formData.customer_phone,
+          payment_method: formData.payment_method,
+          total,
+          notes: formData.notes,
+          store_id: selectedStoreId || null,
+          created_by: session?.employee_id,
+          saved_by: session?.employee_id,
+        };
+
+        if (formData.opening_time) {
+          newTicketData.opened_at = formData.opening_time;
+        }
+
         const { data: newTicket, error: ticketError } = await supabase
           .from('sale_tickets')
-          .insert([
-            {
-              ticket_no: ticketNo,
-              ticket_date: selectedDate,
-              customer_type: formData.customer_type || null,
-              customer_name: formData.customer_name,
-              customer_phone: formData.customer_phone,
-              payment_method: formData.payment_method,
-              total,
-              notes: formData.notes,
-              store_id: selectedStoreId || null,
-              created_by: session?.employee_id,
-              saved_by: session?.employee_id,
-            },
-          ])
+          .insert([newTicketData])
           .select()
           .single();
 
@@ -1172,6 +1246,86 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               </div>
             </div>
           )}
+
+          <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-gray-600" />
+                <label className="text-xs font-medium text-gray-700">
+                  Opening Time
+                </label>
+              </div>
+              {!isReadOnly && session && session.role_permission && (
+                Permissions.tickets.canEdit(session.role_permission, false, false) && !isEditingOpeningTime && ticketId && (
+                  <button
+                    type="button"
+                    onClick={handleEditOpeningTime}
+                    className="text-blue-600 hover:text-blue-700 p-1 rounded transition-colors"
+                    title="Edit opening time"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                )
+              )}
+            </div>
+
+            {isEditingOpeningTime ? (
+              <div className="space-y-2">
+                <input
+                  type="datetime-local"
+                  value={tempOpeningTime}
+                  onChange={(e) => setTempOpeningTime(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleSaveOpeningTime}
+                    className="flex-1"
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={handleCancelEditOpeningTime}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500">Time shown in your local timezone</p>
+              </div>
+            ) : !ticketId ? (
+              <div className="space-y-2">
+                <input
+                  type="datetime-local"
+                  value={convertToLocalDatetimeString(formData.opening_time || new Date().toISOString())}
+                  onChange={(e) => {
+                    const newDate = new Date(e.target.value);
+                    setFormData({ ...formData, opening_time: newDate.toISOString() });
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isReadOnly}
+                />
+                <p className="text-xs text-gray-500">Time shown in your local timezone</p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm text-gray-900 font-medium">
+                  {formData.opening_time ? new Date(formData.opening_time).toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                  }) : 'Not set'}
+                </p>
+              </div>
+            )}
+          </div>
+
           <div className="border border-gray-200 rounded-lg p-3 bg-purple-50">
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Customer Type <span className="text-red-600">*</span>
