@@ -276,3 +276,32 @@ export interface ApprovalStatistics {
   rejected: number;
   requires_review: number;
 }
+
+export interface EndOfDayRecord {
+  id: string;
+  store_id: string;
+  date: string;
+  opening_cash_amount: number;
+  bill_20: number;
+  bill_10: number;
+  bill_5: number;
+  bill_2: number;
+  bill_1: number;
+  coin_25: number;
+  coin_10: number;
+  coin_5: number;
+  closing_cash_amount: number;
+  closing_bill_20: number;
+  closing_bill_10: number;
+  closing_bill_5: number;
+  closing_bill_2: number;
+  closing_bill_1: number;
+  closing_coin_25: number;
+  closing_coin_10: number;
+  closing_coin_5: number;
+  notes: string;
+  created_by?: string;
+  updated_by?: string;
+  created_at: string;
+  updated_at: string;
+}

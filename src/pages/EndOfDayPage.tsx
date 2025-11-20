@@ -1,150 +1,258 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Download, Printer, Plus } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { Calendar, Download, Printer, Plus, Save, DollarSign, AlertCircle, CheckCircle } from 'lucide-react';
+import { supabase, EndOfDayRecord } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
+import { Input } from '../components/ui/Input';
 import { TicketEditor } from '../components/TicketEditor';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
-
-interface PaymentSummary {
-  payment_method: string;
-  total_amount: number;
-  ticket_count: number;
-}
 
 interface EndOfDayPageProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
 }
 
-export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) {
-  const [paymentSummaries, setPaymentSummaries] = useState<PaymentSummary[]>([]);
-  const [loading, setLoading] = useState(false);
-  const { showToast } = useToast();
-  const { session, selectedStoreId, t } = useAuth();
+interface CashDenominations {
+  bill_20: number;
+  bill_10: number;
+  bill_5: number;
+  bill_2: number;
+  bill_1: number;
+  coin_25: number;
+  coin_10: number;
+  coin_5: number;
+}
 
-  const [totals, setTotals] = useState({
-    total_collected: 0,
-    cash_collected: 0,
-    card_collected: 0,
-    gift_card_collected: 0,
-    total_tickets: 0,
+export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) {
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const { showToast } = useToast();
+  const { session, selectedStoreId } = useAuth();
+
+  const [eodRecord, setEodRecord] = useState<EndOfDayRecord | null>(null);
+  const [expectedCash, setExpectedCash] = useState(0);
+
+  const [openingDenominations, setOpeningDenominations] = useState<CashDenominations>({
+    bill_20: 0,
+    bill_10: 10,
+    bill_5: 10,
+    bill_2: 10,
+    bill_1: 20,
+    coin_25: 8,
+    coin_10: 0,
+    coin_5: 0,
   });
 
+  const [closingDenominations, setClosingDenominations] = useState<CashDenominations>({
+    bill_20: 0,
+    bill_10: 0,
+    bill_5: 0,
+    bill_2: 0,
+    bill_1: 0,
+    coin_25: 0,
+    coin_10: 0,
+    coin_5: 0,
+  });
+
+  const [notes, setNotes] = useState('');
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchEODData();
+    loadEODData();
   }, [selectedDate, selectedStoreId]);
 
-  async function fetchEODData() {
+  async function loadEODData() {
+    if (!selectedStoreId) return;
+
     try {
       setLoading(true);
 
-      let query = supabase
-        .from('sale_tickets')
-        .select('id, total, payment_method, payment_cash, payment_card, payment_gift_card')
-        .eq('ticket_date', selectedDate)
-        .not('closed_at', 'is', null);
+      const { data: existingRecord, error: recordError } = await supabase
+        .from('end_of_day_records')
+        .select('*')
+        .eq('store_id', selectedStoreId)
+        .eq('date', selectedDate)
+        .maybeSingle();
 
-      if (selectedStoreId) {
-        query = query.eq('store_id', selectedStoreId);
+      if (recordError && recordError.code !== 'PGRST116') throw recordError;
+
+      if (existingRecord) {
+        setEodRecord(existingRecord);
+        setOpeningDenominations({
+          bill_20: existingRecord.bill_20,
+          bill_10: existingRecord.bill_10,
+          bill_5: existingRecord.bill_5,
+          bill_2: existingRecord.bill_2,
+          bill_1: existingRecord.bill_1,
+          coin_25: existingRecord.coin_25,
+          coin_10: existingRecord.coin_10,
+          coin_5: existingRecord.coin_5,
+        });
+        setClosingDenominations({
+          bill_20: existingRecord.closing_bill_20,
+          bill_10: existingRecord.closing_bill_10,
+          bill_5: existingRecord.closing_bill_5,
+          bill_2: existingRecord.closing_bill_2,
+          bill_1: existingRecord.closing_bill_1,
+          coin_25: existingRecord.closing_coin_25,
+          coin_10: existingRecord.closing_coin_10,
+          coin_5: existingRecord.closing_coin_5,
+        });
+        setNotes(existingRecord.notes || '');
       }
 
-      const { data: tickets, error: ticketsError } = await query;
+      const { data: tickets, error: ticketsError } = await supabase
+        .from('sale_tickets')
+        .select('payment_cash')
+        .eq('ticket_date', selectedDate)
+        .eq('store_id', selectedStoreId)
+        .not('closed_at', 'is', null);
 
       if (ticketsError) throw ticketsError;
 
-      const paymentMap = new Map<string, PaymentSummary>();
-      let totalCollected = 0;
-      let cashCollected = 0;
-      let cardCollected = 0;
-      let giftCardCollected = 0;
-
-      for (const ticket of tickets || []) {
-        const paymentMethod = ticket.payment_method || 'Unknown';
-        const ticketTotal = parseFloat(ticket.total) || 0;
-        const ticketCash = parseFloat(ticket.payment_cash) || 0;
-        const ticketCard = parseFloat(ticket.payment_card) || 0;
-        const ticketGiftCard = parseFloat(ticket.payment_gift_card) || 0;
-
-        totalCollected += ticketTotal;
-        cashCollected += ticketCash;
-        cardCollected += ticketCard;
-        giftCardCollected += ticketGiftCard;
-
-        if (!paymentMap.has(paymentMethod)) {
-          paymentMap.set(paymentMethod, {
-            payment_method: paymentMethod,
-            total_amount: 0,
-            ticket_count: 0,
-          });
-        }
-
-        const summary = paymentMap.get(paymentMethod)!;
-        summary.total_amount += ticketTotal;
-        summary.ticket_count += 1;
-      }
-
-      const sortedSummaries = Array.from(paymentMap.values()).sort((a, b) =>
-        a.payment_method.localeCompare(b.payment_method)
-      );
-
-      setPaymentSummaries(sortedSummaries);
-      setTotals({
-        total_collected: totalCollected,
-        cash_collected: cashCollected,
-        card_collected: cardCollected,
-        gift_card_collected: giftCardCollected,
-        total_tickets: tickets?.length || 0,
-      });
+      const totalCash = tickets?.reduce((sum, ticket) => sum + (parseFloat(ticket.payment_cash as any) || 0), 0) || 0;
+      setExpectedCash(totalCash);
     } catch (error) {
       showToast('Failed to load EOD data', 'error');
+      console.error(error);
     } finally {
       setLoading(false);
     }
   }
 
+  function calculateTotal(denominations: CashDenominations): number {
+    return (
+      denominations.bill_20 * 20 +
+      denominations.bill_10 * 10 +
+      denominations.bill_5 * 5 +
+      denominations.bill_2 * 2 +
+      denominations.bill_1 * 1 +
+      denominations.coin_25 * 0.25 +
+      denominations.coin_10 * 0.10 +
+      denominations.coin_5 * 0.05
+    );
+  }
+
+  const openingCashTotal = calculateTotal(openingDenominations);
+  const closingCashTotal = calculateTotal(closingDenominations);
+  const netCashCollected = closingCashTotal - openingCashTotal;
+  const cashVariance = netCashCollected - expectedCash;
+  const isBalanced = Math.abs(cashVariance) < 0.01;
+
+  function updateOpeningDenomination(key: keyof CashDenominations, value: string) {
+    const numValue = parseInt(value) || 0;
+    setOpeningDenominations(prev => ({ ...prev, [key]: Math.max(0, numValue) }));
+  }
+
+  function updateClosingDenomination(key: keyof CashDenominations, value: string) {
+    const numValue = parseInt(value) || 0;
+    setClosingDenominations(prev => ({ ...prev, [key]: Math.max(0, numValue) }));
+  }
+
+  async function saveEODRecord() {
+    if (!selectedStoreId || !session?.employee_id) {
+      showToast('Missing required information', 'error');
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const recordData = {
+        store_id: selectedStoreId,
+        date: selectedDate,
+        opening_cash_amount: openingCashTotal,
+        bill_20: openingDenominations.bill_20,
+        bill_10: openingDenominations.bill_10,
+        bill_5: openingDenominations.bill_5,
+        bill_2: openingDenominations.bill_2,
+        bill_1: openingDenominations.bill_1,
+        coin_25: openingDenominations.coin_25,
+        coin_10: openingDenominations.coin_10,
+        coin_5: openingDenominations.coin_5,
+        closing_cash_amount: closingCashTotal,
+        closing_bill_20: closingDenominations.bill_20,
+        closing_bill_10: closingDenominations.bill_10,
+        closing_bill_5: closingDenominations.bill_5,
+        closing_bill_2: closingDenominations.bill_2,
+        closing_bill_1: closingDenominations.bill_1,
+        closing_coin_25: closingDenominations.coin_25,
+        closing_coin_10: closingDenominations.coin_10,
+        closing_coin_5: closingDenominations.coin_5,
+        notes: notes,
+        updated_by: session.employee_id,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (eodRecord) {
+        const { error } = await supabase
+          .from('end_of_day_records')
+          .update(recordData)
+          .eq('id', eodRecord.id);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('end_of_day_records')
+          .insert({
+            ...recordData,
+            created_by: session.employee_id,
+          });
+
+        if (error) throw error;
+      }
+
+      showToast('EOD record saved successfully', 'success');
+      loadEODData();
+    } catch (error) {
+      showToast('Failed to save EOD record', 'error');
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function exportCSV() {
-    const headers = [
-      'Payment Method',
-      'Tickets',
-      'Amount Collected',
+    const headers = ['Description', 'Amount'];
+    const rows = [
+      ['Opening Cash', openingCashTotal.toFixed(2)],
+      ['  $20 Bills', `${openingDenominations.bill_20} x $20`],
+      ['  $10 Bills', `${openingDenominations.bill_10} x $10`],
+      ['  $5 Bills', `${openingDenominations.bill_5} x $5`],
+      ['  $2 Bills', `${openingDenominations.bill_2} x $2`],
+      ['  $1 Bills', `${openingDenominations.bill_1} x $1`],
+      ['  25¢ Coins', `${openingDenominations.coin_25} x $0.25`],
+      ['  10¢ Coins', `${openingDenominations.coin_10} x $0.10`],
+      ['  5¢ Coins', `${openingDenominations.coin_5} x $0.05`],
+      ['', ''],
+      ['Closing Cash', closingCashTotal.toFixed(2)],
+      ['  $20 Bills', `${closingDenominations.bill_20} x $20`],
+      ['  $10 Bills', `${closingDenominations.bill_10} x $10`],
+      ['  $5 Bills', `${closingDenominations.bill_5} x $5`],
+      ['  $2 Bills', `${closingDenominations.bill_2} x $2`],
+      ['  $1 Bills', `${closingDenominations.bill_1} x $1`],
+      ['  25¢ Coins', `${closingDenominations.coin_25} x $0.25`],
+      ['  10¢ Coins', `${closingDenominations.coin_10} x $0.10`],
+      ['  5¢ Coins', `${closingDenominations.coin_5} x $0.05`],
+      ['', ''],
+      ['Net Cash Collected', netCashCollected.toFixed(2)],
+      ['Expected Cash from Tickets', expectedCash.toFixed(2)],
+      ['Cash Variance', cashVariance.toFixed(2)],
+      ['Status', isBalanced ? 'BALANCED' : 'UNBALANCED'],
     ];
 
-    const rows = paymentSummaries.map((s) => [
-      s.payment_method,
-      s.ticket_count.toString(),
-      s.total_amount.toFixed(2),
-    ]);
-
-    const totalRow = [
-      'TOTAL',
-      totals.total_tickets.toString(),
-      totals.total_collected.toFixed(2),
-    ];
-
-    const detailRows = [
-      ['', '', ''],
-      ['Payment Breakdown', '', ''],
-      ['Cash', '', totals.cash_collected.toFixed(2)],
-      ['Card', '', totals.card_collected.toFixed(2)],
-      ['Gift Card', '', totals.gift_card_collected.toFixed(2)],
-    ];
-
-    const csv = [headers, ...rows, totalRow, ...detailRows].map((row) => row.join(',')).join('\n');
-
+    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `eod-report-${selectedDate}.csv`;
+    a.download = `eod-cash-reconciliation-${selectedDate}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
 
-    showToast('End of Day Report exported successfully', 'success');
+    showToast('Cash reconciliation exported successfully', 'success');
   }
 
   function handlePrint() {
@@ -154,7 +262,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
   function getMinDate(): string {
     const date = new Date();
-    date.setDate(date.getDate() - 7);
+    date.setDate(date.getDate() - 30);
     return date.toISOString().split('T')[0];
   }
 
@@ -170,7 +278,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   function closeEditor() {
     setIsEditorOpen(false);
     setEditingTicketId(null);
-    fetchEODData();
+    loadEODData();
   }
 
   function openNewTicket() {
@@ -178,10 +286,40 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     setIsEditorOpen(true);
   }
 
+  const DenominationInput = ({
+    label,
+    value,
+    onChange,
+    denomination
+  }: {
+    label: string;
+    value: number;
+    onChange: (value: string) => void;
+    denomination: number;
+  }) => {
+    const total = value * denomination;
+    return (
+      <div className="flex items-center gap-2">
+        <label className="text-sm text-gray-700 w-20">{label}</label>
+        <Input
+          type="number"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-20 text-center"
+          min="0"
+        />
+        <span className="text-xs text-gray-500">x ${denomination.toFixed(2)}</span>
+        <span className="text-sm font-semibold text-gray-900 w-24 text-right">
+          = ${total.toFixed(2)}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
-        <h2 className="text-base md:text-lg font-bold text-gray-900">End of Day</h2>
+        <h2 className="text-base md:text-lg font-bold text-gray-900">End of Day - Cash Reconciliation</h2>
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
           <div className="flex items-center gap-2 flex-1 md:flex-initial">
             <Calendar className="w-4 h-4 text-gray-400" />
@@ -214,79 +352,236 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow mb-3">
-        <div className="p-4 border-b border-gray-200">
-          <h3 className="text-base font-semibold text-gray-900 mb-3">Collection Summary</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-600 mb-1">Total Tickets</p>
-              <p className="text-lg font-bold text-gray-900">{totals.total_tickets}</p>
-            </div>
-            <div className="bg-green-50 rounded-lg p-3">
-              <p className="text-xs text-green-700 mb-1">Cash Collected</p>
-              <p className="text-lg font-bold text-green-700">${totals.cash_collected.toFixed(2)}</p>
-            </div>
-            <div className="bg-blue-50 rounded-lg p-3">
-              <p className="text-xs text-blue-700 mb-1">Card Collected</p>
-              <p className="text-lg font-bold text-blue-700">${totals.card_collected.toFixed(2)}</p>
-            </div>
-            <div className="bg-purple-50 rounded-lg p-3">
-              <p className="text-xs text-purple-700 mb-1">Gift Card</p>
-              <p className="text-lg font-bold text-purple-700">${totals.gift_card_collected.toFixed(2)}</p>
-            </div>
-          </div>
-          <div className="mt-4 bg-gray-900 rounded-lg p-4">
-            <p className="text-xs text-gray-300 mb-1">Total Collected</p>
-            <p className="text-2xl font-bold text-white">${totals.total_collected.toFixed(2)}</p>
-          </div>
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-sm text-gray-500">Loading...</div>
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <DollarSign className="w-5 h-5 text-green-600" />
+                <h3 className="text-base font-semibold text-gray-900">Opening Cash Count</h3>
+              </div>
+              <div className="space-y-2 mb-4">
+                <DenominationInput
+                  label="$20 Bills"
+                  value={openingDenominations.bill_20}
+                  onChange={(v) => updateOpeningDenomination('bill_20', v)}
+                  denomination={20}
+                />
+                <DenominationInput
+                  label="$10 Bills"
+                  value={openingDenominations.bill_10}
+                  onChange={(v) => updateOpeningDenomination('bill_10', v)}
+                  denomination={10}
+                />
+                <DenominationInput
+                  label="$5 Bills"
+                  value={openingDenominations.bill_5}
+                  onChange={(v) => updateOpeningDenomination('bill_5', v)}
+                  denomination={5}
+                />
+                <DenominationInput
+                  label="$2 Bills"
+                  value={openingDenominations.bill_2}
+                  onChange={(v) => updateOpeningDenomination('bill_2', v)}
+                  denomination={2}
+                />
+                <DenominationInput
+                  label="$1 Bills"
+                  value={openingDenominations.bill_1}
+                  onChange={(v) => updateOpeningDenomination('bill_1', v)}
+                  denomination={1}
+                />
+                <DenominationInput
+                  label="25¢ Coins"
+                  value={openingDenominations.coin_25}
+                  onChange={(v) => updateOpeningDenomination('coin_25', v)}
+                  denomination={0.25}
+                />
+                <DenominationInput
+                  label="10¢ Coins"
+                  value={openingDenominations.coin_10}
+                  onChange={(v) => updateOpeningDenomination('coin_10', v)}
+                  denomination={0.10}
+                />
+                <DenominationInput
+                  label="5¢ Coins"
+                  value={openingDenominations.coin_5}
+                  onChange={(v) => updateOpeningDenomination('coin_5', v)}
+                  denomination={0.05}
+                />
+              </div>
+              <div className="pt-3 border-t border-gray-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold text-gray-900">Opening Total:</span>
+                  <span className="text-lg font-bold text-green-600">${openingCashTotal.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center h-32">
-            <div className="text-sm text-gray-500">Loading...</div>
-          </div>
-        ) : paymentSummaries.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-sm text-gray-500">No tickets for this date</p>
-          </div>
-        ) : (
-          <div className="p-4">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Payment Method Breakdown</h4>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Payment Method
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tickets
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount Collected
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {paymentSummaries.map((summary, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {summary.payment_method}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                        {summary.ticket_count}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">
-                        ${summary.total_amount.toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <DollarSign className="w-5 h-5 text-blue-600" />
+                <h3 className="text-base font-semibold text-gray-900">Closing Cash Count</h3>
+              </div>
+              <div className="space-y-2 mb-4">
+                <DenominationInput
+                  label="$20 Bills"
+                  value={closingDenominations.bill_20}
+                  onChange={(v) => updateClosingDenomination('bill_20', v)}
+                  denomination={20}
+                />
+                <DenominationInput
+                  label="$10 Bills"
+                  value={closingDenominations.bill_10}
+                  onChange={(v) => updateClosingDenomination('bill_10', v)}
+                  denomination={10}
+                />
+                <DenominationInput
+                  label="$5 Bills"
+                  value={closingDenominations.bill_5}
+                  onChange={(v) => updateClosingDenomination('bill_5', v)}
+                  denomination={5}
+                />
+                <DenominationInput
+                  label="$2 Bills"
+                  value={closingDenominations.bill_2}
+                  onChange={(v) => updateClosingDenomination('bill_2', v)}
+                  denomination={2}
+                />
+                <DenominationInput
+                  label="$1 Bills"
+                  value={closingDenominations.bill_1}
+                  onChange={(v) => updateClosingDenomination('bill_1', v)}
+                  denomination={1}
+                />
+                <DenominationInput
+                  label="25¢ Coins"
+                  value={closingDenominations.coin_25}
+                  onChange={(v) => updateClosingDenomination('coin_25', v)}
+                  denomination={0.25}
+                />
+                <DenominationInput
+                  label="10¢ Coins"
+                  value={closingDenominations.coin_10}
+                  onChange={(v) => updateClosingDenomination('coin_10', v)}
+                  denomination={0.10}
+                />
+                <DenominationInput
+                  label="5¢ Coins"
+                  value={closingDenominations.coin_5}
+                  onChange={(v) => updateClosingDenomination('coin_5', v)}
+                  denomination={0.05}
+                />
+              </div>
+              <div className="pt-3 border-t border-gray-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold text-gray-900">Closing Total:</span>
+                  <span className="text-lg font-bold text-blue-600">${closingCashTotal.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
           </div>
-        )}
-      </div>
+
+          <div className="bg-white rounded-lg shadow mb-4">
+            <div className="p-4">
+              <h3 className="text-base font-semibold text-gray-900 mb-4">Cash Reconciliation Summary</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-green-50 rounded-lg p-3">
+                  <p className="text-xs text-green-700 mb-1">Opening Cash</p>
+                  <p className="text-lg font-bold text-green-700">${openingCashTotal.toFixed(2)}</p>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <p className="text-xs text-blue-700 mb-1">Total Cash in Till</p>
+                  <p className="text-lg font-bold text-blue-700">${closingCashTotal.toFixed(2)}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-700 mb-1">Net Cash Collected</p>
+                  <p className="text-lg font-bold text-gray-900">${netCashCollected.toFixed(2)}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-700 mb-1">Expected from Tickets</p>
+                  <p className="text-lg font-bold text-gray-900">${expectedCash.toFixed(2)}</p>
+                </div>
+              </div>
+
+              <div className={`mt-4 p-4 rounded-lg border-2 ${
+                isBalanced
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-red-50 border-red-200'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {isBalanced ? (
+                      <CheckCircle className="w-6 h-6 text-green-600" />
+                    ) : (
+                      <AlertCircle className="w-6 h-6 text-red-600" />
+                    )}
+                    <div>
+                      <p className={`text-sm font-semibold ${
+                        isBalanced ? 'text-green-900' : 'text-red-900'
+                      }`}>
+                        {isBalanced ? 'Cash Balanced' : 'Cash Discrepancy Detected'}
+                      </p>
+                      <p className={`text-xs ${
+                        isBalanced ? 'text-green-700' : 'text-red-700'
+                      }`}>
+                        Variance: ${cashVariance.toFixed(2)}
+                        {!isBalanced && (cashVariance > 0 ? ' (Over)' : ' (Short)')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-2xl font-bold ${
+                      isBalanced ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      ${Math.abs(cashVariance).toFixed(2)}
+                    </p>
+                    <p className={`text-xs ${
+                      isBalanced ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                      {isBalanced ? 'Perfect!' : cashVariance > 0 ? 'Overage' : 'Shortage'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Notes (optional)
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Add any notes about cash discrepancies or other observations..."
+                />
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <Button
+                  variant="primary"
+                  onClick={saveEODRecord}
+                  disabled={saving}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {saving ? 'Saving...' : 'Save EOD Record'}
+                </Button>
+              </div>
+
+              {eodRecord && (
+                <div className="mt-3 text-xs text-gray-500">
+                  Last updated: {new Date(eodRecord.updated_at).toLocaleString()}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {isEditorOpen && (
         <TicketEditor
