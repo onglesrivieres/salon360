@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins } from 'lucide-react';
+import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
 import { supabase, Store } from '../lib/supabase';
@@ -21,11 +21,13 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
   const [hasNewVersion, setHasNewVersion] = useState(false);
+  const [isOpeningCashMissing, setIsOpeningCashMissing] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (selectedStoreId) {
       fetchStore();
+      checkOpeningCash();
     }
     if (session?.employee_id) {
       fetchAllStores();
@@ -141,6 +143,46 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       }
     } else {
       console.log('No employee stores found');
+    }
+  }
+
+  async function checkOpeningCash() {
+    if (!selectedStoreId) return;
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('end_of_day_records')
+        .select('opening_cash_amount, bill_20, bill_10, bill_5, bill_2, bill_1, coin_25, coin_10, coin_5')
+        .eq('store_id', selectedStoreId)
+        .eq('date', today)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking opening cash:', error);
+        return;
+      }
+
+      if (!data) {
+        setIsOpeningCashMissing(true);
+        return;
+      }
+
+      const hasOpeningCash = (
+        (data.opening_cash_amount || 0) > 0 ||
+        (data.bill_20 || 0) > 0 ||
+        (data.bill_10 || 0) > 0 ||
+        (data.bill_5 || 0) > 0 ||
+        (data.bill_2 || 0) > 0 ||
+        (data.bill_1 || 0) > 0 ||
+        (data.coin_25 || 0) > 0 ||
+        (data.coin_10 || 0) > 0 ||
+        (data.coin_5 || 0) > 0
+      );
+
+      setIsOpeningCashMissing(!hasOpeningCash);
+    } catch (error) {
+      console.error('Error checking opening cash:', error);
     }
   }
 
@@ -291,6 +333,25 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           </div>
         </div>
       </header>
+
+      {isOpeningCashMissing && (
+        <div className="bg-amber-500 text-white px-3 py-2 md:px-4 md:py-3 border-b border-amber-600">
+          <div className="flex items-center justify-between gap-2 max-w-7xl mx-auto">
+            <div className="flex items-center gap-2 flex-1">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <p className="text-sm font-medium">
+                Opening cash count required! Record opening cash before creating any sale tickets today.
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate('eod')}
+              className="flex-shrink-0 bg-white text-amber-700 px-3 py-1.5 rounded text-xs font-semibold hover:bg-amber-50 transition-colors whitespace-nowrap"
+            >
+              Count Now
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex">
         <aside className={`fixed md:sticky md:block w-64 md:w-44 bg-white border-r border-gray-200 min-h-[calc(100vh-49px)] top-[49px] left-0 z-20 transform transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>

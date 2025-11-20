@@ -142,6 +142,17 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const netCashCollected = closingCashTotal - openingCashTotal;
   const cashVariance = netCashCollected - expectedCash;
   const isBalanced = Math.abs(cashVariance) < 0.01;
+  const isOpeningCashRecorded = eodRecord && (
+    eodRecord.opening_cash_amount > 0 ||
+    eodRecord.bill_20 > 0 ||
+    eodRecord.bill_10 > 0 ||
+    eodRecord.bill_5 > 0 ||
+    eodRecord.bill_2 > 0 ||
+    eodRecord.bill_1 > 0 ||
+    eodRecord.coin_25 > 0 ||
+    eodRecord.coin_10 > 0 ||
+    eodRecord.coin_5 > 0
+  );
 
   function handleOpeningSubmit(denominations: CashDenominations) {
     setOpeningDenominations(denominations);
@@ -288,6 +299,29 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
   return (
     <div className="max-w-7xl mx-auto">
+      {!isOpeningCashRecorded && (
+        <div className="mb-4 bg-amber-50 border-2 border-amber-400 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-sm font-bold text-amber-900 mb-1">Opening Cash Count Required</h3>
+              <p className="text-sm text-amber-800 mb-2">
+                You must count and record the opening cash before creating any sale tickets for today.
+              </p>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsOpeningModalOpen(true)}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                <DollarSign className="w-4 h-4 mr-1" />
+                Count Opening Cash Now
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
         <h2 className="text-base md:text-lg font-bold text-gray-900">End of Day - Cash Reconciliation</h2>
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
@@ -329,22 +363,35 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <DollarSign className="w-4 h-4 text-green-600" />
-                <h3 className="text-sm font-semibold text-gray-900">Opening Cash</h3>
+            <div className={`bg-white rounded-lg shadow p-4 ${!isOpeningCashRecorded ? 'ring-2 ring-amber-400' : ''}`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-green-600" />
+                  <h3 className="text-sm font-semibold text-gray-900">Opening Cash</h3>
+                </div>
+                {isOpeningCashRecorded ? (
+                  <span className="flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded">
+                    <CheckCircle className="w-3 h-3" />
+                    Recorded
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded">
+                    <AlertCircle className="w-3 h-3" />
+                    Required
+                  </span>
+                )}
               </div>
               <div className="text-center py-3">
                 <p className="text-xs text-gray-600 mb-1">Total Amount</p>
                 <p className="text-2xl font-bold text-green-600 mb-3">${openingCashTotal.toFixed(2)}</p>
                 <Button
-                  variant="secondary"
+                  variant={!isOpeningCashRecorded ? "primary" : "secondary"}
                   size="sm"
                   onClick={() => setIsOpeningModalOpen(true)}
-                  className="w-full"
+                  className={`w-full ${!isOpeningCashRecorded ? 'bg-amber-600 hover:bg-amber-700 animate-pulse' : ''}`}
                 >
                   <Edit className="w-3 h-3 mr-1" />
-                  Count Bills
+                  {isOpeningCashRecorded ? 'Edit Count' : 'Count Bills'}
                 </Button>
               </div>
             </div>

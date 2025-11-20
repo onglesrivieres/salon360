@@ -557,6 +557,36 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     }
   }
 
+  async function checkOpeningCashRecorded(storeId: string, ticketDate: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('end_of_day_records')
+      .select('opening_cash_amount, bill_20, bill_10, bill_5, bill_2, bill_1, coin_25, coin_10, coin_5')
+      .eq('store_id', storeId)
+      .eq('date', ticketDate)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error checking opening cash:', error);
+      return false;
+    }
+
+    if (!data) {
+      return false;
+    }
+
+    return (
+      (data.opening_cash_amount || 0) > 0 ||
+      (data.bill_20 || 0) > 0 ||
+      (data.bill_10 || 0) > 0 ||
+      (data.bill_5 || 0) > 0 ||
+      (data.bill_2 || 0) > 0 ||
+      (data.bill_1 || 0) > 0 ||
+      (data.coin_25 || 0) > 0 ||
+      (data.coin_10 || 0) > 0 ||
+      (data.coin_5 || 0) > 0
+    );
+  }
+
   async function generateTicketNumber(): Promise<string> {
     const dateStr = selectedDate.replace(/-/g, '');
 
@@ -675,6 +705,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
     try {
       setSaving(true);
+
+      if (!ticketId && selectedStoreId) {
+        const openingCashRecorded = await checkOpeningCashRecorded(selectedStoreId, selectedDate);
+        if (!openingCashRecorded) {
+          showToast('Opening cash count must be recorded before creating tickets. Please go to End of Day and count the opening cash first.', 'error');
+          setSaving(false);
+          return;
+        }
+      }
 
       const total = calculateTotal();
       const paymentCash = parseFloat(formData.payment_cash) || 0;
