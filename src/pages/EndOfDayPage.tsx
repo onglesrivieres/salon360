@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Download, Printer, Plus, Save, DollarSign, AlertCircle, CheckCircle } from 'lucide-react';
+import { Calendar, Download, Printer, Plus, Save, DollarSign, AlertCircle, CheckCircle, Edit } from 'lucide-react';
 import { supabase, EndOfDayRecord } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
-import { Input } from '../components/ui/Input';
 import { TicketEditor } from '../components/TicketEditor';
+import { CashCountModal } from '../components/CashCountModal';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 
@@ -58,6 +58,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [notes, setNotes] = useState('');
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
+  const [isOpeningModalOpen, setIsOpeningModalOpen] = useState(false);
+  const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
 
   useEffect(() => {
     loadEODData();
@@ -141,14 +143,12 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const cashVariance = netCashCollected - expectedCash;
   const isBalanced = Math.abs(cashVariance) < 0.01;
 
-  function updateOpeningDenomination(key: keyof CashDenominations, value: string) {
-    const numValue = parseInt(value) || 0;
-    setOpeningDenominations(prev => ({ ...prev, [key]: Math.max(0, numValue) }));
+  function handleOpeningSubmit(denominations: CashDenominations) {
+    setOpeningDenominations(denominations);
   }
 
-  function updateClosingDenomination(key: keyof CashDenominations, value: string) {
-    const numValue = parseInt(value) || 0;
-    setClosingDenominations(prev => ({ ...prev, [key]: Math.max(0, numValue) }));
+  function handleClosingSubmit(denominations: CashDenominations) {
+    setClosingDenominations(denominations);
   }
 
   async function saveEODRecord() {
@@ -286,36 +286,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     setIsEditorOpen(true);
   }
 
-  const DenominationInput = ({
-    label,
-    value,
-    onChange,
-    denomination
-  }: {
-    label: string;
-    value: number;
-    onChange: (value: string) => void;
-    denomination: number;
-  }) => {
-    const total = value * denomination;
-    return (
-      <div className="flex items-center gap-2">
-        <label className="text-sm text-gray-700 w-20">{label}</label>
-        <Input
-          type="number"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-20 text-center"
-          min="0"
-        />
-        <span className="text-xs text-gray-500">x ${denomination.toFixed(2)}</span>
-        <span className="text-sm font-semibold text-gray-900 w-24 text-right">
-          = ${total.toFixed(2)}
-        </span>
-      </div>
-    );
-  };
-
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
@@ -359,129 +329,45 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       ) : (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <DollarSign className="w-5 h-5 text-green-600" />
-                <h3 className="text-base font-semibold text-gray-900">Opening Cash Count</h3>
-              </div>
-              <div className="space-y-2 mb-4">
-                <DenominationInput
-                  label="$20 Bills"
-                  value={openingDenominations.bill_20}
-                  onChange={(v) => updateOpeningDenomination('bill_20', v)}
-                  denomination={20}
-                />
-                <DenominationInput
-                  label="$10 Bills"
-                  value={openingDenominations.bill_10}
-                  onChange={(v) => updateOpeningDenomination('bill_10', v)}
-                  denomination={10}
-                />
-                <DenominationInput
-                  label="$5 Bills"
-                  value={openingDenominations.bill_5}
-                  onChange={(v) => updateOpeningDenomination('bill_5', v)}
-                  denomination={5}
-                />
-                <DenominationInput
-                  label="$2 Bills"
-                  value={openingDenominations.bill_2}
-                  onChange={(v) => updateOpeningDenomination('bill_2', v)}
-                  denomination={2}
-                />
-                <DenominationInput
-                  label="$1 Bills"
-                  value={openingDenominations.bill_1}
-                  onChange={(v) => updateOpeningDenomination('bill_1', v)}
-                  denomination={1}
-                />
-                <DenominationInput
-                  label="25¢ Coins"
-                  value={openingDenominations.coin_25}
-                  onChange={(v) => updateOpeningDenomination('coin_25', v)}
-                  denomination={0.25}
-                />
-                <DenominationInput
-                  label="10¢ Coins"
-                  value={openingDenominations.coin_10}
-                  onChange={(v) => updateOpeningDenomination('coin_10', v)}
-                  denomination={0.10}
-                />
-                <DenominationInput
-                  label="5¢ Coins"
-                  value={openingDenominations.coin_5}
-                  onChange={(v) => updateOpeningDenomination('coin_5', v)}
-                  denomination={0.05}
-                />
-              </div>
-              <div className="pt-3 border-t border-gray-200">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-gray-900">Opening Total:</span>
-                  <span className="text-lg font-bold text-green-600">${openingCashTotal.toFixed(2)}</span>
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-green-600" />
+                  <h3 className="text-base font-semibold text-gray-900">Opening Cash Count</h3>
                 </div>
+              </div>
+              <div className="text-center py-6">
+                <p className="text-sm text-gray-600 mb-2">Total Amount</p>
+                <p className="text-4xl font-bold text-green-600 mb-6">${openingCashTotal.toFixed(2)}</p>
+                <Button
+                  variant="secondary"
+                  onClick={() => setIsOpeningModalOpen(true)}
+                  className="w-full"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Count Bills
+                </Button>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <DollarSign className="w-5 h-5 text-blue-600" />
-                <h3 className="text-base font-semibold text-gray-900">Closing Cash Count</h3>
-              </div>
-              <div className="space-y-2 mb-4">
-                <DenominationInput
-                  label="$20 Bills"
-                  value={closingDenominations.bill_20}
-                  onChange={(v) => updateClosingDenomination('bill_20', v)}
-                  denomination={20}
-                />
-                <DenominationInput
-                  label="$10 Bills"
-                  value={closingDenominations.bill_10}
-                  onChange={(v) => updateClosingDenomination('bill_10', v)}
-                  denomination={10}
-                />
-                <DenominationInput
-                  label="$5 Bills"
-                  value={closingDenominations.bill_5}
-                  onChange={(v) => updateClosingDenomination('bill_5', v)}
-                  denomination={5}
-                />
-                <DenominationInput
-                  label="$2 Bills"
-                  value={closingDenominations.bill_2}
-                  onChange={(v) => updateClosingDenomination('bill_2', v)}
-                  denomination={2}
-                />
-                <DenominationInput
-                  label="$1 Bills"
-                  value={closingDenominations.bill_1}
-                  onChange={(v) => updateClosingDenomination('bill_1', v)}
-                  denomination={1}
-                />
-                <DenominationInput
-                  label="25¢ Coins"
-                  value={closingDenominations.coin_25}
-                  onChange={(v) => updateClosingDenomination('coin_25', v)}
-                  denomination={0.25}
-                />
-                <DenominationInput
-                  label="10¢ Coins"
-                  value={closingDenominations.coin_10}
-                  onChange={(v) => updateClosingDenomination('coin_10', v)}
-                  denomination={0.10}
-                />
-                <DenominationInput
-                  label="5¢ Coins"
-                  value={closingDenominations.coin_5}
-                  onChange={(v) => updateClosingDenomination('coin_5', v)}
-                  denomination={0.05}
-                />
-              </div>
-              <div className="pt-3 border-t border-gray-200">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-gray-900">Closing Total:</span>
-                  <span className="text-lg font-bold text-blue-600">${closingCashTotal.toFixed(2)}</span>
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-base font-semibold text-gray-900">Closing Cash Count</h3>
                 </div>
+              </div>
+              <div className="text-center py-6">
+                <p className="text-sm text-gray-600 mb-2">Total Amount</p>
+                <p className="text-4xl font-bold text-blue-600 mb-6">${closingCashTotal.toFixed(2)}</p>
+                <Button
+                  variant="secondary"
+                  onClick={() => setIsClosingModalOpen(true)}
+                  className="w-full"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Count Bills
+                </Button>
               </div>
             </div>
           </div>
@@ -590,6 +476,24 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           selectedDate={selectedDate}
         />
       )}
+
+      <CashCountModal
+        isOpen={isOpeningModalOpen}
+        onClose={() => setIsOpeningModalOpen(false)}
+        title="Opening Cash Count"
+        initialDenominations={openingDenominations}
+        onSubmit={handleOpeningSubmit}
+        colorScheme="green"
+      />
+
+      <CashCountModal
+        isOpen={isClosingModalOpen}
+        onClose={() => setIsClosingModalOpen(false)}
+        title="Closing Cash Count"
+        initialDenominations={closingDenominations}
+        onSubmit={handleClosingSubmit}
+        colorScheme="blue"
+      />
     </div>
   );
 }
