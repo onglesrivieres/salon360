@@ -1762,199 +1762,201 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             )}
           </div>
 
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">
-              Payment Details <span className="text-red-600">*</span>
-            </h3>
-            <div className="border border-gray-200 rounded-lg p-3 bg-green-50">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5 flex items-center gap-1">
-                    <Banknote className="w-3 h-3" />
-                    Cash Payment
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.payment_cash}
-                      onChange={(e) =>
-                        setFormData({ ...formData, payment_cash: e.target.value })
-                      }
-                      onFocus={handleNumericFieldFocus}
-                      onBlur={(e) => handleNumericFieldBlur(e, 'payment_cash')}
-                      className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                      disabled={isTicketClosed || isReadOnly}
-                      placeholder="0.00"
-                    />
+          {ticketId && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                Payment Details <span className="text-red-600">*</span>
+              </h3>
+              <div className="border border-gray-200 rounded-lg p-3 bg-green-50">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5 flex items-center gap-1">
+                      <Banknote className="w-3 h-3" />
+                      Cash Payment
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.payment_cash}
+                        onChange={(e) =>
+                          setFormData({ ...formData, payment_cash: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'payment_cash')}
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5 flex items-center gap-1">
+                      <CreditCard className="w-3 h-3" />
+                      Card Payment
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.payment_card}
+                        onChange={(e) =>
+                          setFormData({ ...formData, payment_card: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'payment_card')}
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5 flex items-center gap-1">
+                      <Gift className="w-3 h-3" />
+                      Gift Card Payment
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.payment_gift_card}
+                        onChange={(e) =>
+                          setFormData({ ...formData, payment_gift_card: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'payment_gift_card')}
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0.00"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5 flex items-center gap-1">
-                    <CreditCard className="w-3 h-3" />
-                    Card Payment
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.payment_card}
-                      onChange={(e) =>
-                        setFormData({ ...formData, payment_card: e.target.value })
-                      }
-                      onFocus={handleNumericFieldFocus}
-                      onBlur={(e) => handleNumericFieldBlur(e, 'payment_card')}
-                      className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                      disabled={isTicketClosed || isReadOnly}
-                      placeholder="0.00"
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                      Tip (Cash) by Customer
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.tip_customer_cash}
+                        onChange={(e) =>
+                          setFormData({ ...formData, tip_customer_cash: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'tip_customer_cash')}
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                      Tip (Card) by Customer
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.tip_customer_card}
+                        onChange={(e) =>
+                          setFormData({ ...formData, tip_customer_card: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'tip_customer_card')}
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                      Tip Paired by Receptionist
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.tip_receptionist}
+                        onChange={(e) =>
+                          setFormData({ ...formData, tip_receptionist: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'tip_receptionist')}
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0.00"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5 flex items-center gap-1">
-                    <Gift className="w-3 h-3" />
-                    Gift Card Payment
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.payment_gift_card}
-                      onChange={(e) =>
-                        setFormData({ ...formData, payment_gift_card: e.target.value })
-                      }
-                      onFocus={handleNumericFieldFocus}
-                      onBlur={(e) => handleNumericFieldBlur(e, 'payment_gift_card')}
-                      className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                      disabled={isTicketClosed || isReadOnly}
-                      placeholder="0.00"
-                    />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                      Discount Amount
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.discount_amount}
+                        onChange={(e) =>
+                          setFormData({ ...formData, discount_amount: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'discount_amount')}
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0.00"
+                      />
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Tip (Cash) by Customer
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.tip_customer_cash}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tip_customer_cash: e.target.value })
-                      }
-                      onFocus={handleNumericFieldFocus}
-                      onBlur={(e) => handleNumericFieldBlur(e, 'tip_customer_cash')}
-                      className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                      disabled={isTicketClosed || isReadOnly}
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Tip (Card) by Customer
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.tip_customer_card}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tip_customer_card: e.target.value })
-                      }
-                      onFocus={handleNumericFieldFocus}
-                      onBlur={(e) => handleNumericFieldBlur(e, 'tip_customer_card')}
-                      className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                      disabled={isTicketClosed || isReadOnly}
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Tip Paired by Receptionist
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.tip_receptionist}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tip_receptionist: e.target.value })
-                      }
-                      onFocus={handleNumericFieldFocus}
-                      onBlur={(e) => handleNumericFieldBlur(e, 'tip_receptionist')}
-                      className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                      disabled={isTicketClosed || isReadOnly}
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Discount Amount
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.discount_amount}
-                      onChange={(e) =>
-                        setFormData({ ...formData, discount_amount: e.target.value })
-                      }
-                      onFocus={handleNumericFieldFocus}
-                      onBlur={(e) => handleNumericFieldBlur(e, 'discount_amount')}
-                      className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                      disabled={isTicketClosed || isReadOnly}
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Discount Percentage
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      value={formData.discount_percentage}
-                      onChange={(e) =>
-                        setFormData({ ...formData, discount_percentage: e.target.value })
-                      }
-                      onFocus={handleNumericFieldFocus}
-                      onBlur={(e) => handleNumericFieldBlur(e, 'discount_percentage')}
-                      className="w-full pl-2 pr-8 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                      disabled={isTicketClosed || isReadOnly}
-                      placeholder="0"
-                    />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">%</span>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                      Discount Percentage
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={formData.discount_percentage}
+                        onChange={(e) =>
+                          setFormData({ ...formData, discount_percentage: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'discount_percentage')}
+                        className="w-full pl-2 pr-8 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0"
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">%</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="border-t border-gray-200 pt-3 space-y-2">
             <div className="flex justify-between items-center text-base font-bold text-gray-900">
@@ -1967,25 +1969,27 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               <span>-${calculateTotalDiscount().toFixed(2)}</span>
             </div>
 
-            <div className="border-t border-gray-300 pt-2 space-y-1">
-              <div className="text-xs font-semibold text-gray-600 mb-1">Collection Summary:</div>
-              <div className="flex justify-between items-center text-sm text-green-700">
-                <span>Total Cash Collected:</span>
-                <span className="font-semibold">${calculateTotalCashCollected().toFixed(2)}</span>
+            {ticketId && (
+              <div className="border-t border-gray-300 pt-2 space-y-1">
+                <div className="text-xs font-semibold text-gray-600 mb-1">Collection Summary:</div>
+                <div className="flex justify-between items-center text-sm text-green-700">
+                  <span>Total Cash Collected:</span>
+                  <span className="font-semibold">${calculateTotalCashCollected().toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm text-blue-700">
+                  <span>Total Card Collected:</span>
+                  <span className="font-semibold">${calculateTotalCardCollected().toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm text-purple-700">
+                  <span>Gift Card Redeemed:</span>
+                  <span className="font-semibold">${calculateTotalGiftCardCollected().toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-base font-bold text-purple-600 pt-2 border-t border-gray-300">
+                  <span>Grand Total Collected:</span>
+                  <span>${calculateTotalCollected().toFixed(2)}</span>
+                </div>
               </div>
-              <div className="flex justify-between items-center text-sm text-blue-700">
-                <span>Total Card Collected:</span>
-                <span className="font-semibold">${calculateTotalCardCollected().toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm text-purple-700">
-                <span>Gift Card Redeemed:</span>
-                <span className="font-semibold">${calculateTotalGiftCardCollected().toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center text-base font-bold text-purple-600 pt-2 border-t border-gray-300">
-                <span>Grand Total Collected:</span>
-                <span>${calculateTotalCollected().toFixed(2)}</span>
-              </div>
-            </div>
+            )}
           </div>
 
           <div>
