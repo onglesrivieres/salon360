@@ -1392,35 +1392,20 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           )}
 
           <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-gray-600" />
-                <label className="text-xs font-medium text-gray-700">
-                  Opening Time
-                </label>
-              </div>
-              {!isReadOnly && session && session.role_permission && (
-                Permissions.tickets.canEdit(session.role_permission, false, false) && !isEditingOpeningTime && ticketId && (
-                  <button
-                    type="button"
-                    onClick={handleEditOpeningTime}
-                    className="text-blue-600 hover:text-blue-700 p-1 rounded transition-colors"
-                    title="Edit opening time"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                )
-              )}
-            </div>
-
             {isEditingOpeningTime ? (
               <div className="space-y-2">
-                <input
-                  type="datetime-local"
-                  value={tempOpeningTime}
-                  onChange={(e) => setTempOpeningTime(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                  <label className="text-xs font-medium text-gray-700 flex-shrink-0">
+                    Opening Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={tempOpeningTime}
+                    onChange={(e) => setTempOpeningTime(e.target.value)}
+                    className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -1442,23 +1427,47 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               </div>
             ) : !ticketId ? (
               <div className="space-y-2">
-                <input
-                  type="datetime-local"
-                  value={convertToLocalDatetimeString(formData.opening_time || new Date().toISOString())}
-                  onChange={(e) => {
-                    const newDate = new Date(e.target.value);
-                    setFormData({ ...formData, opening_time: newDate.toISOString() });
-                  }}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={isReadOnly}
-                />
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                  <label className="text-xs font-medium text-gray-700 flex-shrink-0">
+                    Opening Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={convertToLocalDatetimeString(formData.opening_time || new Date().toISOString())}
+                    onChange={(e) => {
+                      const newDate = new Date(e.target.value);
+                      setFormData({ ...formData, opening_time: newDate.toISOString() });
+                    }}
+                    className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={isReadOnly}
+                  />
+                </div>
                 <p className="text-xs text-gray-500">Time shown in your local timezone</p>
               </div>
             ) : (
-              <div>
-                <p className="text-sm text-gray-900 font-medium">
-                  {formData.opening_time ? formatDateTimeEST(formData.opening_time) : 'Not set'}
-                </p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                  <label className="text-xs font-medium text-gray-700 flex-shrink-0">
+                    Opening Time
+                  </label>
+                  <p className="text-sm text-gray-900 font-medium">
+                    {formData.opening_time ? formatDateTimeEST(formData.opening_time) : 'Not set'}
+                  </p>
+                </div>
+                {!isReadOnly && session && session.role_permission && (
+                  Permissions.tickets.canEdit(session.role_permission, false, false) && !isEditingOpeningTime && (
+                    <button
+                      type="button"
+                      onClick={handleEditOpeningTime}
+                      className="text-blue-600 hover:text-blue-700 p-1 rounded transition-colors"
+                      title="Edit opening time"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  )
+                )}
               </div>
             )}
           </div>
