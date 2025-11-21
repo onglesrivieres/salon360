@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star } from 'lucide-react';
+import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
 import { supabase, Store } from '../lib/supabase';
@@ -9,8 +9,8 @@ import { initializeVersionCheck, startVersionCheck } from '../lib/version';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentPage: 'home' | 'tickets' | 'eod' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals';
-  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals') => void;
+  currentPage: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals';
+  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals') => void;
 }
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
@@ -21,11 +21,13 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
   const [hasNewVersion, setHasNewVersion] = useState(false);
+  const [isOpeningCashMissing, setIsOpeningCashMissing] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (selectedStoreId) {
       fetchStore();
+      checkOpeningCash();
     }
     if (session?.employee_id) {
       fetchAllStores();
@@ -87,10 +89,17 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       setHasNewVersion(true);
     });
 
+    const handleOpeningCashUpdate = () => {
+      checkOpeningCash();
+    };
+
+    window.addEventListener('openingCashUpdated', handleOpeningCashUpdate);
+
     return () => {
       stopVersionCheck();
+      window.removeEventListener('openingCashUpdated', handleOpeningCashUpdate);
     };
-  }, []);
+  }, [selectedStoreId]);
 
   async function fetchStore() {
     if (!selectedStoreId) return;
@@ -144,63 +153,70 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     }
   }
 
+  async function checkOpeningCash() {
+    if (!selectedStoreId) return;
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('end_of_day_records')
+        .select('opening_cash_amount, bill_20, bill_10, bill_5, bill_2, bill_1, coin_25, coin_10, coin_5')
+        .eq('store_id', selectedStoreId)
+        .eq('date', today)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking opening cash:', error);
+        return;
+      }
+
+      if (!data) {
+        setIsOpeningCashMissing(true);
+        return;
+      }
+
+      const hasOpeningCash = (
+        (data.opening_cash_amount || 0) > 0 ||
+        (data.bill_20 || 0) > 0 ||
+        (data.bill_10 || 0) > 0 ||
+        (data.bill_5 || 0) > 0 ||
+        (data.bill_2 || 0) > 0 ||
+        (data.bill_1 || 0) > 0 ||
+        (data.coin_25 || 0) > 0 ||
+        (data.coin_10 || 0) > 0 ||
+        (data.coin_5 || 0) > 0
+      );
+
+      setIsOpeningCashMissing(!hasOpeningCash);
+    } catch (error) {
+      console.error('Error checking opening cash:', error);
+    }
+  }
+
   async function fetchPendingApprovalsCount() {
     if (!session?.employee_id || !selectedStoreId) return;
 
     try {
-      const userRoles = session?.role || [];
-      const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
-      const isSupervisor = userRoles.includes('Supervisor');
-      const isTechnician = userRoles.some(role => ['Technician', 'Spa Expert'].includes(role));
+      // Determine which function to call based on role
+      const isTechnicianOrSupervisor = session.role_permission === 'Technician' || session.role_permission === 'Supervisor';
 
-      let totalCount = 0;
-      const seenTicketIds = new Set();
-
-      // Fetch technician approvals if user is a technician/spa expert
-      if (isTechnician) {
+      if (isTechnicianOrSupervisor) {
         const { data, error } = await supabase.rpc('get_pending_approvals_for_technician', {
           p_employee_id: session.employee_id,
           p_store_id: selectedStoreId,
         });
-        if (error) throw error;
-        (data || []).forEach((ticket: any) => {
-          if (!seenTicketIds.has(ticket.ticket_id)) {
-            seenTicketIds.add(ticket.ticket_id);
-            totalCount++;
-          }
-        });
-      }
 
-      // Fetch supervisor approvals if user is a supervisor
-      if (isSupervisor) {
-        const { data, error } = await supabase.rpc('get_pending_approvals_for_supervisor', {
-          p_employee_id: session.employee_id,
-          p_store_id: selectedStoreId,
-        });
         if (error) throw error;
-        (data || []).forEach((ticket: any) => {
-          if (!seenTicketIds.has(ticket.ticket_id)) {
-            seenTicketIds.add(ticket.ticket_id);
-            totalCount++;
-          }
-        });
-      }
-
-      // Fetch management approvals if user is management
-      if (isManagement) {
+        setPendingApprovalsCount(data?.length || 0);
+      } else {
+        // For Receptionist, Manager, Owner - use management function
         const { data, error } = await supabase.rpc('get_pending_approvals_for_management', {
           p_store_id: selectedStoreId,
         });
-        if (error) throw error;
-        (data || []).forEach((ticket: any) => {
-          if (!seenTicketIds.has(ticket.ticket_id)) {
-            seenTicketIds.add(ticket.ticket_id);
-            totalCount++;
-          }
-        });
-      }
 
-      setPendingApprovalsCount(totalCount);
+        if (error) throw error;
+        setPendingApprovalsCount(data?.length || 0);
+      }
     } catch (error) {
       console.error('Error fetching pending approvals count:', error);
     }
@@ -235,7 +251,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     { id: 'home' as const, label: 'Home', icon: Home },
     { id: 'tickets' as const, label: t('nav.tickets'), icon: Receipt },
     { id: 'approvals' as const, label: 'Approvals', icon: CheckCircle, badge: pendingApprovalsCount },
-    { id: 'eod' as const, label: t('nav.eod'), icon: DollarSign },
+    { id: 'tipreport' as const, label: 'Tip Report', icon: Coins },
+    { id: 'eod' as const, label: 'End of Day', icon: DollarSign },
     { id: 'attendance' as const, label: 'Attendance', icon: Calendar },
     { id: 'technicians' as const, label: t('nav.employees'), icon: Users },
     { id: 'services' as const, label: t('nav.services'), icon: Briefcase },
@@ -323,6 +340,25 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           </div>
         </div>
       </header>
+
+      {isOpeningCashMissing && (
+        <div className="bg-amber-500 text-white px-3 py-2 md:px-4 md:py-3 border-b border-amber-600">
+          <div className="flex items-center justify-between gap-2 max-w-7xl mx-auto">
+            <div className="flex items-center gap-2 flex-1">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <p className="text-sm font-medium">
+                Opening cash count required! Record opening cash before creating any sale tickets today.
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate('eod')}
+              className="flex-shrink-0 bg-white text-amber-700 px-3 py-1.5 rounded text-xs font-semibold hover:bg-amber-50 transition-colors whitespace-nowrap"
+            >
+              Count Now
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex">
         <aside className={`fixed md:sticky md:block w-64 md:w-44 bg-white border-r border-gray-200 min-h-[calc(100vh-49px)] top-[49px] left-0 z-20 transform transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>

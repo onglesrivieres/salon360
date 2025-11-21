@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Banknote, CreditCard, Clock, Award, Lock, CheckCircle, AlertCircle, Edit2 } from 'lucide-react';
+import { X, Plus, Trash2, Banknote, CreditCard, Clock, Award, Lock, CheckCircle, AlertCircle, Edit2, Gift } from 'lucide-react';
 import {
   supabase,
   SaleTicket,
@@ -130,8 +130,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     customer_type: '' as '' | 'Appointment' | 'Requested' | 'Assigned',
     customer_name: '',
     customer_phone: '',
-    payment_method: '' as '' | SaleTicket['payment_method'],
-    tip_customer: '',
+    payment_cash: '',
+    payment_card: '',
+    payment_gift_card: '',
+    tip_customer_cash: '',
+    tip_customer_card: '',
     tip_receptionist: '',
     addon_details: '',
     addon_price: '',
@@ -150,7 +153,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
   useEffect(() => {
     if (selectedStoreId) {
-      console.log('[TicketEditor] Setting up technician queue subscription for store:', selectedStoreId);
       fetchSortedTechnicians();
 
       const queueChannel = supabase
@@ -163,8 +165,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             table: 'technician_ready_queue',
             filter: `store_id=eq.${selectedStoreId}`,
           },
-          (payload) => {
-            console.log('[TicketEditor] Queue change detected:', payload);
+          () => {
             fetchSortedTechnicians();
           }
         )
@@ -176,22 +177,13 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             table: 'sale_tickets',
             filter: `store_id=eq.${selectedStoreId}`,
           },
-          (payload) => {
-            console.log('[TicketEditor] Ticket update detected:', payload);
+          () => {
             fetchSortedTechnicians();
           }
         )
-        .subscribe((status) => {
-          console.log('[TicketEditor] Subscription status:', status);
-        });
-
-      const pollInterval = setInterval(() => {
-        fetchSortedTechnicians();
-      }, 5000);
+        .subscribe();
 
       return () => {
-        console.log('[TicketEditor] Cleaning up subscription');
-        clearInterval(pollInterval);
         supabase.removeChannel(queueChannel);
       };
     }
@@ -211,18 +203,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     if (!selectedStoreId) return;
 
     try {
-      console.log('[TicketEditor] Fetching sorted technicians for store:', selectedStoreId);
       const { data, error } = await supabase.rpc('get_sorted_technicians_for_store', {
         p_store_id: selectedStoreId
       });
 
-      if (error) {
-        console.error('[TicketEditor] Error fetching technicians:', error);
-        throw error;
-      }
-
-      console.log('[TicketEditor] Fetched technicians:', data);
-      console.log('[TicketEditor] Ready technicians:', data?.filter(t => t.queue_status === 'ready'));
+      if (error) throw error;
 
       setSortedTechnicians(data || []);
 
@@ -230,7 +215,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         setLastUsedEmployeeId(data[0].employee_id);
       }
     } catch (error) {
-      console.error('[TicketEditor] Error fetching sorted technicians:', error);
+      console.error('Error fetching sorted technicians:', error);
     }
   }
 
@@ -296,8 +281,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_type: ticketData.customer_type || '',
           customer_name: ticketData.customer_name,
           customer_phone: ticketData.customer_phone || '',
-          payment_method: ticketData.payment_method || '',
-          tip_customer: firstItem ? (parseFloat(firstItem.tip_customer_cash || 0) + parseFloat(firstItem.tip_customer_card || 0)).toString() : '0',
+          payment_cash: firstItem ? parseFloat(firstItem.payment_cash || 0).toString() : '0',
+          payment_card: firstItem ? parseFloat(firstItem.payment_card || 0).toString() : '0',
+          payment_gift_card: firstItem ? parseFloat(firstItem.payment_gift_card || 0).toString() : '0',
+          tip_customer_cash: firstItem ? parseFloat(firstItem.tip_customer_cash || 0).toString() : '0',
+          tip_customer_card: firstItem ? parseFloat(firstItem.tip_customer_card || 0).toString() : '0',
           tip_receptionist: firstItem ? parseFloat(firstItem.tip_receptionist || 0).toString() : '0',
           addon_details: firstItem?.addon_details || '',
           addon_price: firstItem ? parseFloat(firstItem.addon_price || 0).toString() : '0',
@@ -486,26 +474,53 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     return Math.max(0, subtotal - totalDiscount);
   }
 
+  function calculateTotalPayments(): number {
+    return (
+      (parseFloat(formData.payment_cash) || 0) +
+      (parseFloat(formData.payment_card) || 0) +
+      (parseFloat(formData.payment_gift_card) || 0)
+    );
+  }
+
   function calculateTotalTips(): number {
     return (
-      (parseFloat(formData.tip_customer) || 0) +
+      (parseFloat(formData.tip_customer_cash) || 0) +
+      (parseFloat(formData.tip_customer_card) || 0) +
       (parseFloat(formData.tip_receptionist) || 0)
     );
   }
 
+  function calculateTipsExcludingReceptionist(): number {
+    return (
+      (parseFloat(formData.tip_customer_cash) || 0) +
+      (parseFloat(formData.tip_customer_card) || 0)
+    );
+  }
+
   function calculateCashTips(): number {
-    const tipReceptionist = parseFloat(formData.tip_receptionist) || 0;
-    if (formData.payment_method === 'Card') {
-      return tipReceptionist;
-    }
-    return (parseFloat(formData.tip_customer) || 0) + tipReceptionist;
+    return parseFloat(formData.tip_customer_cash) || 0;
   }
 
   function calculateCardTips(): number {
-    if (formData.payment_method === 'Card') {
-      return parseFloat(formData.tip_customer) || 0;
-    }
-    return 0;
+    return parseFloat(formData.tip_customer_card) || 0;
+  }
+
+  function calculateTotalCashCollected(): number {
+    return (
+      (parseFloat(formData.payment_cash) || 0) +
+      calculateCashTips()
+    );
+  }
+
+  function calculateTotalCardCollected(): number {
+    return (
+      (parseFloat(formData.payment_card) || 0) +
+      calculateCardTips()
+    );
+  }
+
+  function calculateTotalGiftCardCollected(): number {
+    return parseFloat(formData.payment_gift_card) || 0;
   }
 
   function calculateTotalDiscount(): number {
@@ -518,11 +533,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   }
 
   function calculateTotalCollected(): number {
-    const subtotal = calculateSubtotal();
-    const totalTips = calculateTotalTips();
-    const totalDiscount = calculateTotalDiscount();
-
-    return Math.max(0, subtotal + totalTips - totalDiscount);
+    const servicePrice = calculateTotal();
+    const tipsExcludingReceptionist = calculateTipsExcludingReceptionist();
+    return servicePrice + tipsExcludingReceptionist;
   }
 
   function handleNumericFieldFocus(event: React.FocusEvent<HTMLInputElement>) {
@@ -542,6 +555,36 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     if (!value || value.trim() === '' || isNaN(parseFloat(value))) {
       setFormData({ ...formData, [fieldName]: '0' });
     }
+  }
+
+  async function checkOpeningCashRecorded(storeId: string, ticketDate: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('end_of_day_records')
+      .select('opening_cash_amount, bill_20, bill_10, bill_5, bill_2, bill_1, coin_25, coin_10, coin_5')
+      .eq('store_id', storeId)
+      .eq('date', ticketDate)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error checking opening cash:', error);
+      return false;
+    }
+
+    if (!data) {
+      return false;
+    }
+
+    return (
+      (data.opening_cash_amount || 0) > 0 ||
+      (data.bill_20 || 0) > 0 ||
+      (data.bill_10 || 0) > 0 ||
+      (data.bill_5 || 0) > 0 ||
+      (data.bill_2 || 0) > 0 ||
+      (data.bill_1 || 0) > 0 ||
+      (data.coin_25 || 0) > 0 ||
+      (data.coin_10 || 0) > 0 ||
+      (data.coin_5 || 0) > 0
+    );
   }
 
   async function generateTicketNumber(): Promise<string> {
@@ -626,6 +669,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       return;
     }
 
+    const totalPayments = calculateTotalPayments();
+    const subtotalAfterDiscount = calculateTotal();
+
+    if (totalPayments > 0 && Math.abs(totalPayments - subtotalAfterDiscount) > 0.01) {
+      const difference = subtotalAfterDiscount - totalPayments;
+      if (difference > 0) {
+        showToast(`Payment amount ($${totalPayments.toFixed(2)}) is less than service total ($${subtotalAfterDiscount.toFixed(2)}). Please adjust payment amounts.`, 'error');
+      }
+    }
+
     for (const item of items) {
       if (item.is_custom) {
         if (!item.custom_service_name || item.custom_service_name.trim() === '') {
@@ -653,8 +706,21 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     try {
       setSaving(true);
 
+      if (!ticketId && selectedStoreId) {
+        const openingCashRecorded = await checkOpeningCashRecorded(selectedStoreId, selectedDate);
+        if (!openingCashRecorded) {
+          showToast('Opening cash count must be recorded before creating tickets. Please go to End of Day and count the opening cash first.', 'error');
+          setSaving(false);
+          return;
+        }
+      }
+
       const total = calculateTotal();
-      const tipCustomer = parseFloat(formData.tip_customer) || 0;
+      const paymentCash = parseFloat(formData.payment_cash) || 0;
+      const paymentCard = parseFloat(formData.payment_card) || 0;
+      const paymentGiftCard = parseFloat(formData.payment_gift_card) || 0;
+      const tipCustomerCash = parseFloat(formData.tip_customer_cash) || 0;
+      const tipCustomerCard = parseFloat(formData.tip_customer_card) || 0;
       const tipReceptionist = parseFloat(formData.tip_receptionist) || 0;
 
       if (ticketId && ticket) {
@@ -662,7 +728,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_type: formData.customer_type || null,
           customer_name: formData.customer_name,
           customer_phone: formData.customer_phone,
-          payment_method: formData.payment_method,
           total,
           notes: formData.notes,
           saved_by: session?.employee_id,
@@ -703,7 +768,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           const discountPercentage = parseFloat(formData.discount_percentage) || 0;
           const discountAmount = parseFloat(formData.discount_amount) || 0;
 
-          const isCardPayment = formData.payment_method === 'Card';
           const itemData = {
             sale_ticket_id: ticketId,
             service_id: item.is_custom ? null : item.service_id,
@@ -711,8 +775,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             employee_id: item.employee_id,
             qty: parseFloat(item.qty),
             price_each: parseFloat(item.price_each),
-            tip_customer_cash: isCardPayment ? 0 : tipCustomer,
-            tip_customer_card: isCardPayment ? tipCustomer : 0,
+            payment_cash: paymentCash,
+            payment_card: paymentCard,
+            payment_gift_card: paymentGiftCard,
+            tip_customer_cash: tipCustomerCash,
+            tip_customer_card: tipCustomerCard,
             tip_receptionist: tipReceptionist,
             addon_details: formData.addon_details || '',
             addon_price: addonPrice,
@@ -736,8 +803,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         showToast('Ticket updated successfully', 'success');
       } else {
         const ticketNo = await generateTicketNumber();
-        const tipCustomer = parseFloat(formData.tip_customer) || 0;
-        const tipReceptionist = parseFloat(formData.tip_receptionist) || 0;
 
         const newTicketData: any = {
           ticket_no: ticketNo,
@@ -745,7 +810,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_type: formData.customer_type || null,
           customer_name: formData.customer_name,
           customer_phone: formData.customer_phone,
-          payment_method: formData.payment_method,
           total,
           notes: formData.notes,
           store_id: selectedStoreId || null,
@@ -768,7 +832,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         const addonPrice = parseFloat(formData.addon_price) || 0;
         const discountPercentage = parseFloat(formData.discount_percentage) || 0;
         const discountAmount = parseFloat(formData.discount_amount) || 0;
-        const isCardPayment = formData.payment_method === 'Card';
         const itemsData = items.map((item) => {
           return {
             sale_ticket_id: newTicket.id,
@@ -777,8 +840,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             employee_id: item.employee_id,
             qty: parseFloat(item.qty),
             price_each: parseFloat(item.price_each),
-            tip_customer_cash: isCardPayment ? 0 : tipCustomer,
-            tip_customer_card: isCardPayment ? tipCustomer : 0,
+            payment_cash: paymentCash,
+            payment_card: paymentCard,
+            payment_gift_card: paymentGiftCard,
+            tip_customer_cash: tipCustomerCash,
+            tip_customer_card: tipCustomerCard,
             tip_receptionist: tipReceptionist,
             addon_details: formData.addon_details || '',
             addon_price: addonPrice,
@@ -1696,151 +1762,235 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             )}
           </div>
 
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">
-              Payment Method <span className="text-red-600">*</span>
-            </h3>
-            <div className="border border-gray-200 rounded-lg p-3 bg-green-50">
-              <div className="flex gap-2 mb-2">
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, payment_method: 'Cash' })}
-                  className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors flex items-center justify-center gap-1.5 min-h-[48px] md:min-h-0 ${
-                    formData.payment_method === 'Cash'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
-                  }`}
-                  disabled={isTicketClosed || isReadOnly}
-                >
-                  <Banknote className="w-4 h-4" />
-                  Cash
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, payment_method: 'Card' })}
-                  className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors flex items-center justify-center gap-1.5 min-h-[48px] md:min-h-0 ${
-                    formData.payment_method === 'Card'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
-                  }`}
-                  disabled={isTicketClosed || isReadOnly}
-                >
-                  <CreditCard className="w-4 h-4" />
-                  Card
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Tip Given by Customer
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.tip_customer}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tip_customer: e.target.value })
-                      }
-                      onFocus={handleNumericFieldFocus}
-                      onBlur={(e) => handleNumericFieldBlur(e, 'tip_customer')}
-                      className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                      disabled={isTicketClosed || isReadOnly}
-                    />
+          {ticketId && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                Payment Details <span className="text-red-600">*</span>
+              </h3>
+              <div className="border border-gray-200 rounded-lg p-3 bg-green-50">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5 flex items-center gap-1">
+                      <Banknote className="w-3 h-3" />
+                      Cash Payment
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.payment_cash}
+                        onChange={(e) =>
+                          setFormData({ ...formData, payment_cash: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'payment_cash')}
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5 flex items-center gap-1">
+                      <CreditCard className="w-3 h-3" />
+                      Card Payment
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.payment_card}
+                        onChange={(e) =>
+                          setFormData({ ...formData, payment_card: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'payment_card')}
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5 flex items-center gap-1">
+                      <Gift className="w-3 h-3" />
+                      Gift Card Payment
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.payment_gift_card}
+                        onChange={(e) =>
+                          setFormData({ ...formData, payment_gift_card: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'payment_gift_card')}
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0.00"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Tip Paired by Receptionist
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.tip_receptionist}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tip_receptionist: e.target.value })
-                      }
-                      onFocus={handleNumericFieldFocus}
-                      onBlur={(e) => handleNumericFieldBlur(e, 'tip_receptionist')}
-                      className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                      disabled={isTicketClosed || isReadOnly}
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                      Tip (Cash) by Customer
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.tip_customer_cash}
+                        onChange={(e) =>
+                          setFormData({ ...formData, tip_customer_cash: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'tip_customer_cash')}
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                      Tip (Card) by Customer
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.tip_customer_card}
+                        onChange={(e) =>
+                          setFormData({ ...formData, tip_customer_card: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'tip_customer_card')}
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                      Tip Paired by Receptionist
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.tip_receptionist}
+                        onChange={(e) =>
+                          setFormData({ ...formData, tip_receptionist: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'tip_receptionist')}
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0.00"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Discount Amount
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.discount_amount}
-                      onChange={(e) =>
-                        setFormData({ ...formData, discount_amount: e.target.value })
-                      }
-                      onFocus={handleNumericFieldFocus}
-                      onBlur={(e) => handleNumericFieldBlur(e, 'discount_amount')}
-                      className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                      disabled={isTicketClosed || isReadOnly}
-                      placeholder="0.00"
-                    />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                      Discount Amount
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.discount_amount}
+                        onChange={(e) =>
+                          setFormData({ ...formData, discount_amount: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'discount_amount')}
+                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0.00"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Discount Percentage
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      value={formData.discount_percentage}
-                      onChange={(e) =>
-                        setFormData({ ...formData, discount_percentage: e.target.value })
-                      }
-                      onFocus={handleNumericFieldFocus}
-                      onBlur={(e) => handleNumericFieldBlur(e, 'discount_percentage')}
-                      className="w-full pl-2 pr-8 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                      disabled={isTicketClosed || isReadOnly}
-                      placeholder="0"
-                    />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">%</span>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                      Discount Percentage
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={formData.discount_percentage}
+                        onChange={(e) =>
+                          setFormData({ ...formData, discount_percentage: e.target.value })
+                        }
+                        onFocus={handleNumericFieldFocus}
+                        onBlur={(e) => handleNumericFieldBlur(e, 'discount_percentage')}
+                        className="w-full pl-2 pr-8 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="0"
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">%</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="border-t border-gray-200 pt-2 space-y-1">
-            <div className="flex justify-between items-center text-base font-bold text-gray-900">
-              <span>Total Service Price:</span>
-              <span>${calculateSubtotal().toFixed(2)}</span>
+          {ticketId && (
+            <div className="border-t border-gray-200 pt-3 space-y-2">
+              <div className="flex justify-between items-center text-base font-bold text-gray-900">
+                <span>Total Service Price:</span>
+                <span>${calculateSubtotal().toFixed(2)}</span>
+              </div>
+
+              <div className="flex justify-between items-center text-base font-semibold text-red-600">
+                <span>Total Discount:</span>
+                <span>-${calculateTotalDiscount().toFixed(2)}</span>
+              </div>
+
+              <div className="border-t border-gray-300 pt-2 space-y-1">
+                <div className="text-xs font-semibold text-gray-600 mb-1">Collection Summary:</div>
+                <div className="flex justify-between items-center text-sm text-green-700">
+                  <span>Total Cash Collected:</span>
+                  <span className="font-semibold">${calculateTotalCashCollected().toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm text-blue-700">
+                  <span>Total Card Collected:</span>
+                  <span className="font-semibold">${calculateTotalCardCollected().toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm text-purple-700">
+                  <span>Gift Card Redeemed:</span>
+                  <span className="font-semibold">${calculateTotalGiftCardCollected().toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-base font-bold text-purple-600 pt-2 border-t border-gray-300">
+                  <span>Grand Total Collected:</span>
+                  <span>${calculateTotalCollected().toFixed(2)}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between items-center text-sm font-semibold text-green-600">
-              <span>Total Tips (Cash):</span>
-              <span>${calculateCashTips().toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm font-semibold text-blue-600">
-              <span>Total Tips (Card):</span>
-              <span>${calculateCardTips().toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center text-base font-bold text-purple-600 pt-1 border-t border-gray-200">
-              <span>Total Collected:</span>
-              <span>${calculateTotalCollected().toFixed(2)}</span>
-            </div>
-          </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">

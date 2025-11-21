@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { ClipboardCheck, UserCheck, FileText } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { PinModal } from '../components/PinModal';
-import { QueueStoreSelectionModal } from '../components/QueueStoreSelectionModal';
-import { CheckInOutStoreSelectionModal } from '../components/CheckInOutStoreSelectionModal';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { VersionNotification } from '../components/VersionNotification';
 import { useAuth } from '../contexts/AuthContext';
@@ -33,11 +31,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     pay_type: string;
   } | null>(null);
   const [hasNewVersion, setHasNewVersion] = useState(false);
-  const [showQueueStoreModal, setShowQueueStoreModal] = useState(false);
-  const [showCheckInOutStoreModal, setShowCheckInOutStoreModal] = useState(false);
-  const [availableStoreIds, setAvailableStoreIds] = useState<string[]>([]);
-  const [queuePosition, setQueuePosition] = useState<number>(0);
-  const [queueTotal, setQueueTotal] = useState<number>(0);
 
   useEffect(() => {
     initializeVersionCheck();
@@ -68,6 +61,41 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         setPinError('Invalid PIN. Please try again.');
         setIsLoading(false);
         return;
+      }
+
+      // Check if employee requires check-in for Ready button
+      if (selectedAction === 'ready') {
+        const requiresCheckIn = session.role.some(r =>
+          ['Technician', 'Receptionist', 'Supervisor'].includes(r)
+        );
+
+        if (requiresCheckIn) {
+          const { data: employee } = await supabase
+            .from('employees')
+            .select('pay_type')
+            .eq('id', session.employee_id)
+            .maybeSingle();
+
+          const payType = employee?.pay_type || 'hourly';
+
+          if (payType === 'hourly' || payType === 'daily') {
+            // Check if they're checked in today
+            const today = new Date().toISOString().split('T')[0];
+            const { data: attendance } = await supabase
+              .from('attendance_records')
+              .select('status')
+              .eq('employee_id', session.employee_id)
+              .eq('work_date', today)
+              .eq('status', 'checked_in')
+              .maybeSingle();
+
+            if (!attendance) {
+              setPinError('You must check in before joining the ready queue. Please use the Check In/Out button first.');
+              setIsLoading(false);
+              return;
+            }
+          }
+        }
       }
 
       let employeeStores: any[] = [];
@@ -138,50 +166,12 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         pay_type: payType
       });
 
-      // Check if employee requires check-in for Ready button (after store is determined)
-      if (selectedAction === 'ready') {
-        const requiresCheckIn = session.role.some(r =>
-          ['Technician', 'Receptionist', 'Supervisor'].includes(r)
-        );
-
-        if (requiresCheckIn && (payType === 'hourly' || payType === 'daily')) {
-          // Check if they're checked in today at the specific store
-          const today = new Date().toISOString().split('T')[0];
-          const { data: attendance } = await supabase
-            .from('attendance_records')
-            .select('status')
-            .eq('employee_id', session.employee_id)
-            .eq('store_id', storeId)
-            .eq('work_date', today)
-            .eq('status', 'checked_in')
-            .maybeSingle();
-
-          if (!attendance) {
-            setPinError('You must check in before joining the ready queue. Please use the Check In/Out button first.');
-            setIsLoading(false);
-            return;
-          }
-        }
-      }
-
       setShowPinModal(false);
 
       if (selectedAction === 'checkin') {
-        if (hasMultipleStores && employeeStores.length > 1) {
-          const storeIds = employeeStores.map(s => s.id || s.store_id);
-          setAvailableStoreIds(storeIds);
-          setShowCheckInOutStoreModal(true);
-        } else {
-          await handleCheckInOut(session.employee_id, storeId, displayName, payType);
-        }
+        await handleCheckInOut(session.employee_id, storeId, displayName, payType);
       } else if (selectedAction === 'ready') {
-        if (hasMultipleStores && employeeStores.length > 1) {
-          const storeIds = employeeStores.map(s => s.id || s.store_id);
-          setAvailableStoreIds(storeIds);
-          setShowQueueStoreModal(true);
-        } else {
-          await handleReady(session.employee_id, storeId);
-        }
+        await handleReady(session.employee_id, storeId);
       } else if (selectedAction === 'report') {
         const storeIds = employeeStores.map(s => s.id || s.store_id);
         onActionSelected('report', session, storeId, hasMultipleStores, storeIds);
@@ -271,82 +261,43 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     }
   };
 
-  const handleReady = async (employeeId: string, storeId: string, storeName?: string) => {
+  const handleReady = async (employeeId: string, storeId: string) => {
     try {
-      console.log('handleReady called:', { employeeId, storeId, storeName });
-
-      const { data: queueStatus, error: checkError } = await supabase.rpc('check_queue_status', {
+      const { data: inQueue, error: checkError } = await supabase.rpc('check_queue_status', {
         p_employee_id: employeeId,
         p_store_id: storeId
       });
 
-      if (checkError) {
-        console.error('Error checking queue status:', checkError);
-        throw checkError;
-      }
+      if (checkError) throw checkError;
 
-      console.log('Queue status check result:', queueStatus);
-
-      if (queueStatus?.in_queue) {
-        console.log('User already in queue, showing confirm modal');
-        setQueuePosition(queueStatus.position || 0);
-        setQueueTotal(queueStatus.total || 0);
+      if (inQueue) {
         setShowConfirmModal(true);
-        return;
-      }
-
-      console.log('Joining ready queue...');
-      const { data: queueResult, error: joinError } = await supabase.rpc('join_ready_queue_with_checkin', {
-        p_employee_id: employeeId,
-        p_store_id: storeId
-      });
-
-      console.log('Queue join result:', queueResult, 'Error:', joinError);
-
-      if (joinError) {
-        console.error('Error joining queue:', joinError);
-        throw joinError;
-      }
-
-      if (!queueResult?.success) {
-        console.error('Queue join failed with message:', queueResult?.message);
-        setShowPinModal(false);
-        setErrorMessage(queueResult?.message || 'Unable to join the ready queue. Please ensure you are checked in.');
-        setShowErrorModal(true);
-        return;
-      }
-
-      console.log('Successfully joined queue, showing success modal');
-      const position = queueResult.position || 0;
-      const total = queueResult.total || 0;
-
-      if (storeName) {
-        setSuccessMessage(
-          t('queue.joinedAtStoreWithPosition')
-            .replace('{store}', storeName)
-            .replace('{position}', position.toString())
-            .replace('{total}', total.toString())
-        );
       } else {
-        setSuccessMessage(
-          t('queue.joinedWithPosition')
-            .replace('{position}', position.toString())
-            .replace('{total}', total.toString())
-        );
+        const { data: queueResult, error: joinError } = await supabase.rpc('join_ready_queue_with_checkin', {
+          p_employee_id: employeeId,
+          p_store_id: storeId
+        });
+
+        if (joinError) throw joinError;
+
+        if (!queueResult?.success) {
+          setShowPinModal(false);
+          setErrorMessage('Unable to join the ready queue. Please ensure you are checked in.');
+          setShowErrorModal(true);
+          return;
+        }
+
+        setSuccessMessage(t('home.joinedQueue'));
+        setShowSuccessModal(true);
       }
-      setShowSuccessModal(true);
     } catch (error: any) {
       console.error('Queue operation failed:', error);
-      setShowPinModal(false);
-      setErrorMessage(error?.message || 'Failed to process request. Please try again.');
-      setShowErrorModal(true);
+      setPinError('Failed to process request. Please try again.');
     }
   };
 
   const handleStayInQueue = () => {
     setShowConfirmModal(false);
-    setQueuePosition(0);
-    setQueueTotal(0);
     setAuthenticatedSession(null);
     setSelectedAction(null);
     logout();
@@ -378,8 +329,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   const handleSuccessClose = () => {
     setShowSuccessModal(false);
     setSuccessMessage('');
-    setQueuePosition(0);
-    setQueueTotal(0);
     setAuthenticatedSession(null);
     setSelectedAction(null);
     logout();
@@ -409,51 +358,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
   const handleRefresh = () => {
     window.location.reload();
-  };
-
-  const handleQueueStoreSelect = async (storeId: string, storeName: string) => {
-    console.log('handleQueueStoreSelect called:', { storeId, storeName });
-
-    if (!authenticatedSession) {
-      console.error('No authenticated session found');
-      setShowQueueStoreModal(false);
-      return;
-    }
-
-    try {
-      setShowQueueStoreModal(false);
-      await handleReady(authenticatedSession.employee_id, storeId, storeName);
-    } catch (error: any) {
-      console.error('Error in handleQueueStoreSelect:', error);
-      setErrorMessage('Failed to join queue. Please try again.');
-      setShowErrorModal(true);
-    }
-  };
-
-  const handleQueueStoreModalClose = () => {
-    setShowQueueStoreModal(false);
-    setAuthenticatedSession(null);
-    setSelectedAction(null);
-    logout();
-  };
-
-  const handleCheckInOutStoreSelect = async (storeId: string, storeName: string) => {
-    setShowCheckInOutStoreModal(false);
-    if (authenticatedSession) {
-      await handleCheckInOut(
-        authenticatedSession.employee_id,
-        storeId,
-        authenticatedSession.display_name,
-        authenticatedSession.pay_type
-      );
-    }
-  };
-
-  const handleCheckInOutStoreModalClose = () => {
-    setShowCheckInOutStoreModal(false);
-    setAuthenticatedSession(null);
-    setSelectedAction(null);
-    logout();
   };
 
   return (
@@ -562,11 +466,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
       <Modal isOpen={showConfirmModal} onClose={() => setShowConfirmModal(false)} title={t('queue.title')}>
         <div className="text-center py-4">
-          <p className="text-lg text-gray-900 mb-6">
-            {t('queue.alreadyInQueueWithPosition')
-              .replace('{position}', queuePosition.toString())
-              .replace('{total}', queueTotal.toString())}
-          </p>
+          <p className="text-lg text-gray-900 mb-6">{t('home.alreadyInQueue')}</p>
           <div className="flex gap-3 justify-center">
             <button
               onClick={handleStayInQueue}
@@ -600,22 +500,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           </button>
         </div>
       </Modal>
-
-      <QueueStoreSelectionModal
-        isOpen={showQueueStoreModal}
-        storeIds={availableStoreIds}
-        employeeId={authenticatedSession?.employee_id || ''}
-        onSelect={handleQueueStoreSelect}
-        onClose={handleQueueStoreModalClose}
-      />
-
-      <CheckInOutStoreSelectionModal
-        isOpen={showCheckInOutStoreModal}
-        storeIds={availableStoreIds}
-        employeeId={authenticatedSession?.employee_id || ''}
-        onSelect={handleCheckInOutStoreSelect}
-        onClose={handleCheckInOutStoreModalClose}
-      />
     </div>
   );
 }
