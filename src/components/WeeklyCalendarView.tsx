@@ -92,13 +92,13 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                           <div className="space-y-0.5">
                             <div className="flex flex-col items-center">
                               <span className="text-[9px] text-gray-500">Cash</span>
-                              <span className={`font-semibold text-[10px] ${dayData.tips_cash === 0 ? 'text-gray-900' : 'text-green-600'}`}>
+                              <span className={`text-[10px] ${dayData.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
                                 ${dayData.tips_cash.toFixed(0)}
                               </span>
                             </div>
                             <div className="flex flex-col items-center">
                               <span className="text-[9px] text-gray-500">Card</span>
-                              <span className={`font-semibold text-[10px] ${dayData.tips_card === 0 ? 'text-gray-900' : 'text-blue-600'}`}>
+                              <span className={`text-[10px] ${dayData.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
                                 ${dayData.tips_card.toFixed(0)}
                               </span>
                             </div>
@@ -118,13 +118,13 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                     <div className="space-y-0.5">
                       <div className="flex flex-col items-center">
                         <span className="text-[9px] text-gray-500">Cash</span>
-                        <span className={`font-semibold text-[10px] ${summary.tips_cash === 0 ? 'text-gray-900' : 'text-green-600'}`}>
+                        <span className={`text-[10px] ${summary.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
                           ${summary.tips_cash.toFixed(0)}
                         </span>
                       </div>
                       <div className="flex flex-col items-center">
                         <span className="text-[9px] text-gray-500">Card</span>
-                        <span className={`font-semibold text-[10px] ${summary.tips_card === 0 ? 'text-gray-900' : 'text-blue-600'}`}>
+                        <span className={`text-[10px] ${summary.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
                           ${summary.tips_card.toFixed(0)}
                         </span>
                       </div>
