@@ -600,14 +600,14 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
   function handlePaymentMethodClick(method: 'Cash' | 'Card' | 'Mixed') {
     setTempPaymentData({
-      payment_cash: formData.payment_cash,
-      payment_card: formData.payment_card,
-      payment_gift_card: formData.payment_gift_card,
-      tip_customer_cash: formData.tip_customer_cash,
-      tip_customer_card: formData.tip_customer_card,
-      tip_receptionist: formData.tip_receptionist,
-      discount_amount: formData.discount_amount,
-      discount_percentage: formData.discount_percentage,
+      payment_cash: '',
+      payment_card: '',
+      payment_gift_card: '',
+      tip_customer_cash: '',
+      tip_customer_card: '',
+      tip_receptionist: '',
+      discount_amount: '',
+      discount_percentage: '',
     });
     setFormData({ ...formData, payment_method: method });
     setShowPaymentModal(true);
