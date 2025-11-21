@@ -156,8 +156,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           const tipCustomerCash = item.tip_customer_cash || 0;
           const tipCustomerCard = item.tip_customer_card || 0;
           const tipReceptionist = item.tip_receptionist || 0;
-          const tipCash = tipCustomerCash + tipReceptionist;
-          const tipCard = tipCustomerCard;
+          const tipCash = tipCustomerCash;
+          const tipCard = tipCustomerCard + tipReceptionist;
           const tipTotal = tipCash + tipCard;
 
           dayData.tips_cash += tipCash;
@@ -306,8 +306,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           const tipCustomerCard = item.tip_customer_card || 0;
           const tipCustomer = tipCustomerCash + tipCustomerCard;
           const tipReceptionist = item.tip_receptionist || 0;
-          const tipCash = tipCustomerCash + tipReceptionist;
-          const tipCard = tipCustomerCard;
+          const tipCash = tipCustomerCash;
+          const tipCard = tipCustomerCard + tipReceptionist;
 
           summary.services_count += 1;
           summary.revenue += itemRevenue;
