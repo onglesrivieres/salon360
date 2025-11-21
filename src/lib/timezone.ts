@@ -57,3 +57,37 @@ export function getCurrentDateEST(): string {
 export function getESTTimezone(): string {
   return EST_TIMEZONE;
 }
+
+export function convertToESTDatetimeString(utcDateString: string): string {
+  if (!utcDateString) return '';
+  const date = new Date(utcDateString);
+
+  const estDate = new Date(date.toLocaleString('en-US', { timeZone: EST_TIMEZONE }));
+  const year = estDate.getFullYear();
+  const month = String(estDate.getMonth() + 1).padStart(2, '0');
+  const day = String(estDate.getDate()).padStart(2, '0');
+  const hours = String(estDate.getHours()).padStart(2, '0');
+  const minutes = String(estDate.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+export function convertESTDatetimeStringToUTC(estDatetimeString: string): string {
+  if (!estDatetimeString) return '';
+
+  const parts = estDatetimeString.split('T');
+  if (parts.length !== 2) return '';
+
+  const [datePart, timePart] = parts;
+
+  const dateTimeString = `${datePart} ${timePart}:00`;
+
+  const utcDate = new Date(new Date(dateTimeString).toLocaleString('en-US', { timeZone: 'UTC' }));
+  const estDate = new Date(new Date(dateTimeString).toLocaleString('en-US', { timeZone: EST_TIMEZONE }));
+
+  const diff = utcDate.getTime() - estDate.getTime();
+
+  const localAsEST = new Date(dateTimeString);
+  const correctedUTC = new Date(localAsEST.getTime() - diff);
+
+  return correctedUTC.toISOString();
+}

@@ -17,7 +17,7 @@ import { Modal } from './ui/Modal';
 import { useToast } from './ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
-import { formatDateTimeEST } from '../lib/timezone';
+import { formatDateTimeEST, convertToESTDatetimeString, convertESTDatetimeStringToUTC } from '../lib/timezone';
 
 interface TicketEditorProps {
   ticketId: string | null;
@@ -367,19 +367,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     }
   }
 
-  function convertToLocalDatetimeString(utcDateString: string): string {
-    if (!utcDateString) return '';
-    const date = new Date(utcDateString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  }
-
   function handleEditOpeningTime() {
-    setTempOpeningTime(convertToLocalDatetimeString(formData.opening_time));
+    setTempOpeningTime(convertToESTDatetimeString(formData.opening_time));
     setIsEditingOpeningTime(true);
   }
 
@@ -394,7 +383,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       return;
     }
 
-    const newDate = new Date(tempOpeningTime);
+    const utcDateString = convertESTDatetimeStringToUTC(tempOpeningTime);
+    const newDate = new Date(utcDateString);
     const now = new Date();
 
     if (newDate > now) {
@@ -410,7 +400,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       }
     }
 
-    setFormData({ ...formData, opening_time: newDate.toISOString() });
+    setFormData({ ...formData, opening_time: utcDateString });
     setIsEditingOpeningTime(false);
     setTempOpeningTime('');
   }
@@ -1423,7 +1413,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     Cancel
                   </Button>
                 </div>
-                <p className="text-xs text-gray-500">Time shown in your local timezone</p>
+                <p className="text-xs text-gray-500">Time shown in EST timezone</p>
               </div>
             ) : !ticketId ? (
               <div className="space-y-2">
@@ -1434,16 +1424,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   </label>
                   <input
                     type="datetime-local"
-                    value={convertToLocalDatetimeString(formData.opening_time || new Date().toISOString())}
+                    value={convertToESTDatetimeString(formData.opening_time || new Date().toISOString())}
                     onChange={(e) => {
-                      const newDate = new Date(e.target.value);
-                      setFormData({ ...formData, opening_time: newDate.toISOString() });
+                      const utcDateString = convertESTDatetimeStringToUTC(e.target.value);
+                      setFormData({ ...formData, opening_time: utcDateString });
                     }}
                     className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     disabled={isReadOnly}
                   />
                 </div>
-                <p className="text-xs text-gray-500">Time shown in your local timezone</p>
+                <p className="text-xs text-gray-500">Time shown in EST timezone</p>
               </div>
             ) : (
               <div className="flex items-center justify-between">
