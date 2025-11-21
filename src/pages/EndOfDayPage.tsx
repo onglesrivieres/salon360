@@ -107,7 +107,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       const { data: tickets, error: ticketsError } = await supabase
         .from('sale_tickets')
-        .select('id, ticket_items(payment_cash)')
+        .select('id, ticket_items(payment_cash, tip_customer_cash)')
         .eq('ticket_date', selectedDate)
         .eq('store_id', selectedStoreId)
         .not('closed_at', 'is', null);
@@ -117,7 +117,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       const totalCash = tickets?.reduce((sum, ticket) => {
         const ticketItems = (ticket.ticket_items as any) || [];
         const itemsTotal = ticketItems.reduce((itemSum: number, item: any) =>
-          itemSum + (parseFloat(item.payment_cash) || 0), 0);
+          itemSum + (parseFloat(item.payment_cash) || 0) + (parseFloat(item.tip_customer_cash) || 0), 0);
         return sum + itemsTotal;
       }, 0) || 0;
       setExpectedCash(totalCash);
