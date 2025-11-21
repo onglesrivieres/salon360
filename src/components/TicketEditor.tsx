@@ -130,6 +130,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     customer_type: '' as '' | 'Appointment' | 'Requested' | 'Assigned',
     customer_name: '',
     customer_phone: '',
+    payment_method: '' as '' | 'Cash' | 'Card' | 'Mixed',
     payment_cash: '',
     payment_card: '',
     payment_gift_card: '',
@@ -146,6 +147,17 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
   const [isEditingOpeningTime, setIsEditingOpeningTime] = useState(false);
   const [tempOpeningTime, setTempOpeningTime] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [tempPaymentData, setTempPaymentData] = useState({
+    payment_cash: '',
+    payment_card: '',
+    payment_gift_card: '',
+    tip_customer_cash: '',
+    tip_customer_card: '',
+    tip_receptionist: '',
+    discount_amount: '',
+    discount_percentage: '',
+  });
 
   useEffect(() => {
     loadData();
@@ -281,6 +293,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_type: ticketData.customer_type || '',
           customer_name: ticketData.customer_name,
           customer_phone: ticketData.customer_phone || '',
+          payment_method: ticketData.payment_method || '',
           payment_cash: firstItem ? parseFloat(firstItem.payment_cash || 0).toString() : '0',
           payment_card: firstItem ? parseFloat(firstItem.payment_card || 0).toString() : '0',
           payment_gift_card: firstItem ? parseFloat(firstItem.payment_gift_card || 0).toString() : '0',
@@ -557,6 +570,41 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     }
   }
 
+  function handlePaymentMethodClick(method: 'Cash' | 'Card' | 'Mixed') {
+    setTempPaymentData({
+      payment_cash: formData.payment_cash,
+      payment_card: formData.payment_card,
+      payment_gift_card: formData.payment_gift_card,
+      tip_customer_cash: formData.tip_customer_cash,
+      tip_customer_card: formData.tip_customer_card,
+      tip_receptionist: formData.tip_receptionist,
+      discount_amount: formData.discount_amount,
+      discount_percentage: formData.discount_percentage,
+    });
+    setFormData({ ...formData, payment_method: method });
+    setShowPaymentModal(true);
+  }
+
+  function handlePaymentModalSave() {
+    setFormData({
+      ...formData,
+      payment_cash: tempPaymentData.payment_cash,
+      payment_card: tempPaymentData.payment_card,
+      payment_gift_card: tempPaymentData.payment_gift_card,
+      tip_customer_cash: tempPaymentData.tip_customer_cash,
+      tip_customer_card: tempPaymentData.tip_customer_card,
+      tip_receptionist: tempPaymentData.tip_receptionist,
+      discount_amount: tempPaymentData.discount_amount,
+      discount_percentage: tempPaymentData.discount_percentage,
+    });
+    setShowPaymentModal(false);
+    showToast('Payment details saved', 'success');
+  }
+
+  function handlePaymentModalCancel() {
+    setShowPaymentModal(false);
+  }
+
   async function checkOpeningCashRecorded(storeId: string, ticketDate: string): Promise<boolean> {
     const { data, error } = await supabase
       .from('end_of_day_records')
@@ -728,6 +776,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_type: formData.customer_type || null,
           customer_name: formData.customer_name,
           customer_phone: formData.customer_phone,
+          payment_method: formData.payment_method || null,
           total,
           notes: formData.notes,
           saved_by: session?.employee_id,
@@ -810,6 +859,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_type: formData.customer_type || null,
           customer_name: formData.customer_name,
           customer_phone: formData.customer_phone,
+          payment_method: formData.payment_method || null,
           total,
           notes: formData.notes,
           store_id: selectedStoreId || null,
@@ -951,8 +1001,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       return;
     }
 
-    if (!formData.payment_method || (formData.payment_method !== 'Cash' && formData.payment_method !== 'Card')) {
-      showToast('Please select a payment method (Cash or Card) before closing the ticket', 'error');
+    if (!formData.payment_method || !['Cash', 'Card', 'Mixed'].includes(formData.payment_method)) {
+      showToast('Please select a payment method (Cash, Card, or Mixed) before closing the ticket', 'error');
       return;
     }
 
@@ -1765,196 +1815,106 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           {ticketId && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-2">
-                Payment Details <span className="text-red-600">*</span>
+                Payment Method <span className="text-red-600">*</span>
               </h3>
-              <div className="border border-gray-200 rounded-lg p-3 bg-green-50">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-0.5 flex items-center gap-1">
-                      <Banknote className="w-3 h-3" />
-                      Cash Payment
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.payment_cash}
-                        onChange={(e) =>
-                          setFormData({ ...formData, payment_cash: e.target.value })
-                        }
-                        onFocus={handleNumericFieldFocus}
-                        onBlur={(e) => handleNumericFieldBlur(e, 'payment_cash')}
-                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                        disabled={isTicketClosed || isReadOnly}
-                        placeholder="0.00"
-                      />
-                    </div>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <button
+                  type="button"
+                  onClick={() => handlePaymentMethodClick('Cash')}
+                  disabled={isTicketClosed || isReadOnly}
+                  className={`relative p-4 rounded-lg border-2 transition-all duration-200 ${
+                    formData.payment_method === 'Cash'
+                      ? 'border-green-500 bg-green-50 shadow-md'
+                      : 'border-gray-300 bg-white hover:border-green-400 hover:bg-green-50'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <Banknote className={`w-8 h-8 ${formData.payment_method === 'Cash' ? 'text-green-600' : 'text-gray-600'}`} />
+                    <span className={`text-sm font-semibold ${formData.payment_method === 'Cash' ? 'text-green-700' : 'text-gray-700'}`}>
+                      Cash
+                    </span>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-0.5 flex items-center gap-1">
-                      <CreditCard className="w-3 h-3" />
-                      Card Payment
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.payment_card}
-                        onChange={(e) =>
-                          setFormData({ ...formData, payment_card: e.target.value })
-                        }
-                        onFocus={handleNumericFieldFocus}
-                        onBlur={(e) => handleNumericFieldBlur(e, 'payment_card')}
-                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                        disabled={isTicketClosed || isReadOnly}
-                        placeholder="0.00"
-                      />
+                  {formData.payment_method === 'Cash' && (
+                    <div className="absolute top-2 right-2">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
                     </div>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handlePaymentMethodClick('Card')}
+                  disabled={isTicketClosed || isReadOnly}
+                  className={`relative p-4 rounded-lg border-2 transition-all duration-200 ${
+                    formData.payment_method === 'Card'
+                      ? 'border-blue-500 bg-blue-50 shadow-md'
+                      : 'border-gray-300 bg-white hover:border-blue-400 hover:bg-blue-50'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <CreditCard className={`w-8 h-8 ${formData.payment_method === 'Card' ? 'text-blue-600' : 'text-gray-600'}`} />
+                    <span className={`text-sm font-semibold ${formData.payment_method === 'Card' ? 'text-blue-700' : 'text-gray-700'}`}>
+                      Card
+                    </span>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-0.5 flex items-center gap-1">
-                      <Gift className="w-3 h-3" />
-                      Gift Card Payment
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.payment_gift_card}
-                        onChange={(e) =>
-                          setFormData({ ...formData, payment_gift_card: e.target.value })
-                        }
-                        onFocus={handleNumericFieldFocus}
-                        onBlur={(e) => handleNumericFieldBlur(e, 'payment_gift_card')}
-                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                        disabled={isTicketClosed || isReadOnly}
-                        placeholder="0.00"
-                      />
+                  {formData.payment_method === 'Card' && (
+                    <div className="absolute top-2 right-2">
+                      <CheckCircle className="w-5 h-5 text-blue-600" />
                     </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                      Tip (Cash) by Customer
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.tip_customer_cash}
-                        onChange={(e) =>
-                          setFormData({ ...formData, tip_customer_cash: e.target.value })
-                        }
-                        onFocus={handleNumericFieldFocus}
-                        onBlur={(e) => handleNumericFieldBlur(e, 'tip_customer_cash')}
-                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                        disabled={isTicketClosed || isReadOnly}
-                        placeholder="0.00"
-                      />
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handlePaymentMethodClick('Mixed')}
+                  disabled={isTicketClosed || isReadOnly}
+                  className={`relative p-4 rounded-lg border-2 transition-all duration-200 ${
+                    formData.payment_method === 'Mixed'
+                      ? 'border-teal-500 bg-teal-50 shadow-md'
+                      : 'border-gray-300 bg-white hover:border-teal-400 hover:bg-teal-50'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="flex gap-1">
+                      <Banknote className={`w-6 h-6 ${formData.payment_method === 'Mixed' ? 'text-teal-600' : 'text-gray-600'}`} />
+                      <CreditCard className={`w-6 h-6 ${formData.payment_method === 'Mixed' ? 'text-teal-600' : 'text-gray-600'}`} />
                     </div>
+                    <span className={`text-sm font-semibold ${formData.payment_method === 'Mixed' ? 'text-teal-700' : 'text-gray-700'}`}>
+                      Mixed
+                    </span>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                      Tip (Card) by Customer
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.tip_customer_card}
-                        onChange={(e) =>
-                          setFormData({ ...formData, tip_customer_card: e.target.value })
-                        }
-                        onFocus={handleNumericFieldFocus}
-                        onBlur={(e) => handleNumericFieldBlur(e, 'tip_customer_card')}
-                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                        disabled={isTicketClosed || isReadOnly}
-                        placeholder="0.00"
-                      />
+                  {formData.payment_method === 'Mixed' && (
+                    <div className="absolute top-2 right-2">
+                      <CheckCircle className="w-5 h-5 text-teal-600" />
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                      Tip Paired by Receptionist
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.tip_receptionist}
-                        onChange={(e) =>
-                          setFormData({ ...formData, tip_receptionist: e.target.value })
-                        }
-                        onFocus={handleNumericFieldFocus}
-                        onBlur={(e) => handleNumericFieldBlur(e, 'tip_receptionist')}
-                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                        disabled={isTicketClosed || isReadOnly}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                      Discount Amount
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.discount_amount}
-                        onChange={(e) =>
-                          setFormData({ ...formData, discount_amount: e.target.value })
-                        }
-                        onFocus={handleNumericFieldFocus}
-                        onBlur={(e) => handleNumericFieldBlur(e, 'discount_amount')}
-                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                        disabled={isTicketClosed || isReadOnly}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                      Discount Percentage
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        value={formData.discount_percentage}
-                        onChange={(e) =>
-                          setFormData({ ...formData, discount_percentage: e.target.value })
-                        }
-                        onFocus={handleNumericFieldFocus}
-                        onBlur={(e) => handleNumericFieldBlur(e, 'discount_percentage')}
-                        className="w-full pl-2 pr-8 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                        disabled={isTicketClosed || isReadOnly}
-                        placeholder="0"
-                      />
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">%</span>
-                    </div>
-                  </div>
-                </div>
+                  )}
+                </button>
               </div>
+
+              {formData.payment_method && (
+                <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 mb-3">
+                  <h4 className="text-xs font-semibold text-gray-700 mb-2">Payment Summary</h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Total Payments:</span>
+                      <span className="font-semibold text-gray-900">${calculateTotalPayments().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Total Tips:</span>
+                      <span className="font-semibold text-gray-900">${calculateTotalTips().toFixed(2)}</span>
+                    </div>
+                    {(parseFloat(formData.discount_amount) > 0 || parseFloat(formData.discount_percentage) > 0) && (
+                      <div className="flex justify-between text-orange-600">
+                        <span>Discount Applied:</span>
+                        <span className="font-semibold">
+                          {parseFloat(formData.discount_percentage) > 0 && `${formData.discount_percentage}% `}
+                          {parseFloat(formData.discount_amount) > 0 && `$${parseFloat(formData.discount_amount).toFixed(2)}`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -2190,6 +2150,216 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             >
               {saving ? 'Deleting...' : 'Delete Ticket'}
             </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showPaymentModal}
+        onClose={handlePaymentModalCancel}
+        title={`Payment Details - ${formData.payment_method}`}
+        size="lg"
+      >
+        <div className="space-y-4">
+          {(formData.payment_method === 'Cash' || formData.payment_method === 'Mixed') && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <Banknote className="w-4 h-4 text-green-600" />
+                Cash Payment
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={tempPaymentData.payment_cash}
+                  onChange={(e) =>
+                    setTempPaymentData({ ...tempPaymentData, payment_cash: e.target.value })
+                  }
+                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+          )}
+
+          {(formData.payment_method === 'Card' || formData.payment_method === 'Mixed') && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-blue-600" />
+                Card Payment
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={tempPaymentData.payment_card}
+                  onChange={(e) =>
+                    setTempPaymentData({ ...tempPaymentData, payment_card: e.target.value })
+                  }
+                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+          )}
+
+          {formData.payment_method === 'Mixed' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <Gift className="w-4 h-4 text-purple-600" />
+                Gift Card Payment
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={tempPaymentData.payment_gift_card}
+                  onChange={(e) =>
+                    setTempPaymentData({ ...tempPaymentData, payment_gift_card: e.target.value })
+                  }
+                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="border-t border-gray-200 pt-4">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Tips</h4>
+
+            {(formData.payment_method === 'Cash' || formData.payment_method === 'Mixed') && (
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tip (Cash) by Customer
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={tempPaymentData.tip_customer_cash}
+                    onChange={(e) =>
+                      setTempPaymentData({ ...tempPaymentData, tip_customer_cash: e.target.value })
+                    }
+                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+            )}
+
+            {(formData.payment_method === 'Card' || formData.payment_method === 'Mixed') && (
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tip (Card) by Customer
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={tempPaymentData.tip_customer_card}
+                    onChange={(e) =>
+                      setTempPaymentData({ ...tempPaymentData, tip_customer_card: e.target.value })
+                    }
+                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tip Paired by Receptionist
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={tempPaymentData.tip_receptionist}
+                  onChange={(e) =>
+                    setTempPaymentData({ ...tempPaymentData, tip_receptionist: e.target.value })
+                  }
+                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-200 pt-4">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Discounts</h4>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Discount Amount
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={tempPaymentData.discount_amount}
+                    onChange={(e) =>
+                      setTempPaymentData({ ...tempPaymentData, discount_amount: e.target.value })
+                    }
+                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Discount Percentage
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={tempPaymentData.discount_percentage}
+                    onChange={(e) =>
+                      setTempPaymentData({ ...tempPaymentData, discount_percentage: e.target.value })
+                    }
+                    className="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="0"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              onClick={handlePaymentModalCancel}
+              variant="outline"
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePaymentModalSave}
+              variant="primary"
+              className="flex-1"
+            >
+              Save Payment Details
+            </Button>
           </div>
         </div>
       </Modal>
