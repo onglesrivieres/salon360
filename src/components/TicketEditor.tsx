@@ -2240,6 +2240,53 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           </div>
 
           <div className="border-t border-gray-200 pt-4">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Discounts</h4>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Discount Amount
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={tempPaymentData.discount_amount}
+                    onChange={(e) =>
+                      setTempPaymentData({ ...tempPaymentData, discount_amount: e.target.value })
+                    }
+                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Discount Percentage
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={tempPaymentData.discount_percentage}
+                    onChange={(e) =>
+                      setTempPaymentData({ ...tempPaymentData, discount_percentage: e.target.value })
+                    }
+                    className="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="0"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-200 pt-4">
             <h4 className="text-sm font-semibold text-gray-900 mb-3">Tips</h4>
 
             <div className={formData.payment_method === 'Mixed' ? 'grid grid-cols-1 md:grid-cols-3 gap-3' : 'grid grid-cols-1 md:grid-cols-2 gap-3'}>
@@ -2310,53 +2357,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           </div>
 
           <div className="border-t border-gray-200 pt-4">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Discounts</h4>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Discount Amount
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={tempPaymentData.discount_amount}
-                    onChange={(e) =>
-                      setTempPaymentData({ ...tempPaymentData, discount_amount: e.target.value })
-                    }
-                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Discount Percentage
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="100"
-                    value={tempPaymentData.discount_percentage}
-                    onChange={(e) =>
-                      setTempPaymentData({ ...tempPaymentData, discount_percentage: e.target.value })
-                    }
-                    className="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    placeholder="0"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-200 pt-4">
             <h4 className="text-sm font-semibold text-gray-900 mb-3">Collection Summary</h4>
             <div className="space-y-2">
               {(formData.payment_method === 'Cash' || formData.payment_method === 'Mixed') && (
@@ -2379,11 +2379,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   <span className="font-semibold">${calculateTempGiftCardCollected().toFixed(2)}</span>
                 </div>
               )}
-
-              <div className="flex justify-between items-center text-base font-bold text-purple-600 pt-2 border-t border-gray-300">
-                <span>Grand Total Collected:</span>
-                <span>${calculateTempTotalCollected().toFixed(2)}</span>
-              </div>
             </div>
           </div>
 
