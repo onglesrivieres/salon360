@@ -551,6 +551,33 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     return servicePrice + tipsExcludingReceptionist;
   }
 
+  function calculateTempCashCollected(): number {
+    return (
+      (parseFloat(tempPaymentData.payment_cash) || 0) +
+      (parseFloat(tempPaymentData.tip_customer_cash) || 0)
+    );
+  }
+
+  function calculateTempCardCollected(): number {
+    return (
+      (parseFloat(tempPaymentData.payment_card) || 0) +
+      (parseFloat(tempPaymentData.tip_customer_card) || 0)
+    );
+  }
+
+  function calculateTempGiftCardCollected(): number {
+    return parseFloat(tempPaymentData.payment_gift_card) || 0;
+  }
+
+  function calculateTempTotalCollected(): number {
+    const servicePrice = calculateTotal();
+    const tipsExcludingReceptionist = (
+      (parseFloat(tempPaymentData.tip_customer_cash) || 0) +
+      (parseFloat(tempPaymentData.tip_customer_card) || 0)
+    );
+    return servicePrice + tipsExcludingReceptionist;
+  }
+
   function handleNumericFieldFocus(event: React.FocusEvent<HTMLInputElement>) {
     const value = event.target.value;
     const numericValue = parseFloat(value);
@@ -1929,26 +1956,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 <span>Total Discount:</span>
                 <span>-${calculateTotalDiscount().toFixed(2)}</span>
               </div>
-
-              <div className="border-t border-gray-300 pt-2 space-y-1">
-                <div className="text-xs font-semibold text-gray-600 mb-1">Collection Summary:</div>
-                <div className="flex justify-between items-center text-sm text-green-700">
-                  <span>Total Cash Collected:</span>
-                  <span className="font-semibold">${calculateTotalCashCollected().toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm text-blue-700">
-                  <span>Total Card Collected:</span>
-                  <span className="font-semibold">${calculateTotalCardCollected().toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm text-purple-700">
-                  <span>Gift Card Redeemed:</span>
-                  <span className="font-semibold">${calculateTotalGiftCardCollected().toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center text-base font-bold text-purple-600 pt-2 border-t border-gray-300">
-                  <span>Grand Total Collected:</span>
-                  <span>${calculateTotalCollected().toFixed(2)}</span>
-                </div>
-              </div>
             </div>
           )}
 
@@ -2341,6 +2348,37 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-200 pt-4">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Collection Summary</h4>
+            <div className="space-y-2">
+              {(formData.payment_method === 'Cash' || formData.payment_method === 'Mixed') && (
+                <div className="flex justify-between items-center text-sm text-green-700">
+                  <span>Total Cash Collected:</span>
+                  <span className="font-semibold">${calculateTempCashCollected().toFixed(2)}</span>
+                </div>
+              )}
+
+              {(formData.payment_method === 'Card' || formData.payment_method === 'Mixed') && (
+                <div className="flex justify-between items-center text-sm text-blue-700">
+                  <span>Total Card Collected:</span>
+                  <span className="font-semibold">${calculateTempCardCollected().toFixed(2)}</span>
+                </div>
+              )}
+
+              {formData.payment_method === 'Mixed' && (
+                <div className="flex justify-between items-center text-sm text-purple-700">
+                  <span>Gift Card Redeemed:</span>
+                  <span className="font-semibold">${calculateTempGiftCardCollected().toFixed(2)}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center text-base font-bold text-purple-600 pt-2 border-t border-gray-300">
+                <span>Grand Total Collected:</span>
+                <span>${calculateTempTotalCollected().toFixed(2)}</span>
               </div>
             </div>
           </div>
