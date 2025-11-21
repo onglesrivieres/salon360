@@ -1926,19 +1926,18 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       <span className="text-gray-600">Total Payments:</span>
                       <span className="font-semibold text-gray-900">${calculateTotalPayments().toFixed(2)}</span>
                     </div>
+                    <div className="flex justify-between text-red-600">
+                      <span>Total Discounts:</span>
+                      <span className="font-semibold">-${calculateTotalDiscount().toFixed(2)}</span>
+                    </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Total Tips:</span>
                       <span className="font-semibold text-gray-900">${calculateTotalTips().toFixed(2)}</span>
                     </div>
-                    {(parseFloat(formData.discount_amount) > 0 || parseFloat(formData.discount_percentage) > 0) && (
-                      <div className="flex justify-between text-orange-600">
-                        <span>Discount Applied:</span>
-                        <span className="font-semibold">
-                          {parseFloat(formData.discount_percentage) > 0 && `${formData.discount_percentage}% `}
-                          {parseFloat(formData.discount_amount) > 0 && `$${parseFloat(formData.discount_amount).toFixed(2)}`}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex justify-between items-center text-base font-bold text-blue-700 pt-2 border-t border-gray-300 mt-2">
+                      <span>Grand Total Collected:</span>
+                      <span>${calculateTotalCollected().toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
               )}
