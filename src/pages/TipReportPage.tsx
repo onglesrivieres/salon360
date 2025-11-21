@@ -595,13 +595,13 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                       <div className="space-y-0.5">
                         <div className="flex justify-between items-center">
                           <span className="text-[9px] text-gray-600">T. (Cash)</span>
-                          <span className="text-[9px] font-semibold text-green-600">
+                          <span className={`text-[9px] font-semibold ${summary.tips_cash === 0 ? 'text-gray-900' : 'text-green-600'}`}>
                             ${summary.tips_cash.toFixed(2)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-[9px] text-gray-600">T. (Card)</span>
-                          <span className="text-[9px] font-semibold text-blue-600">
+                          <span className={`text-[9px] font-semibold ${summary.tips_card === 0 ? 'text-gray-900' : 'text-blue-600'}`}>
                             ${summary.tips_card.toFixed(2)}
                           </span>
                         </div>
@@ -643,13 +643,13 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                               <div className="space-y-0">
                                 <div className="flex justify-between items-center">
                                   <span className="text-[8px] text-gray-600">T. (given)</span>
-                                  <span className="text-[8px] font-semibold text-gray-900">
+                                  <span className={`text-[8px] font-semibold ${item.tip_customer === 0 ? 'text-gray-900' : 'text-gray-900'}`}>
                                     ${item.tip_customer.toFixed(2)}
                                   </span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                   <span className="text-[8px] text-gray-600">T. (paired)</span>
-                                  <span className="text-[8px] font-semibold text-orange-600">
+                                  <span className={`text-[8px] font-semibold ${item.tip_receptionist === 0 ? 'text-gray-900' : 'text-orange-600'}`}>
                                     ${item.tip_receptionist.toFixed(2)}
                                   </span>
                                 </div>
