@@ -107,19 +107,49 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       const { data: tickets, error: ticketsError } = await supabase
         .from('sale_tickets')
-        .select('id, ticket_items(payment_cash, tip_customer_cash)')
+        .select(
+          `
+          id,
+          ticket_items (
+            payment_cash,
+            tip_customer_cash
+          )
+        `
+        )
         .eq('ticket_date', selectedDate)
         .eq('store_id', selectedStoreId)
         .not('closed_at', 'is', null);
 
       if (ticketsError) throw ticketsError;
 
-      const totalCash = tickets?.reduce((sum, ticket) => {
-        const ticketItems = (ticket.ticket_items as any) || [];
-        const itemsTotal = ticketItems.reduce((itemSum: number, item: any) =>
-          itemSum + (parseFloat(item.payment_cash) || 0) + (parseFloat(item.tip_customer_cash) || 0), 0);
-        return sum + itemsTotal;
-      }, 0) || 0;
+      console.log('EOD Tickets Query Results:', {
+        ticketCount: tickets?.length || 0,
+        sampleTicket: tickets?.[0],
+        selectedDate,
+        selectedStoreId
+      });
+
+      let totalCash = 0;
+      for (const ticket of tickets || []) {
+        const ticketItems = (ticket as any).ticket_items || [];
+        console.log('Processing ticket:', ticket, 'Items:', ticketItems);
+
+        for (const item of ticketItems) {
+          const paymentCash = parseFloat(item.payment_cash) || 0;
+          const tipCash = parseFloat(item.tip_customer_cash) || 0;
+          const itemTotal = paymentCash + tipCash;
+
+          console.log('Item cash calculation:', {
+            payment_cash: paymentCash,
+            tip_customer_cash: tipCash,
+            itemTotal
+          });
+
+          totalCash += itemTotal;
+        }
+      }
+
+      console.log('Total cash from tickets:', totalCash);
       setExpectedCash(totalCash);
     } catch (error) {
       showToast('Failed to load EOD data', 'error');
