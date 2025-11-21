@@ -1664,12 +1664,12 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             )}
           </div>
 
-          <div>
+          <div className="border border-gray-200 rounded-lg p-3 bg-yellow-50">
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Service Item <span className="text-red-600">*</span>
             </label>
             {items.length === 0 ? (
-              <div className="border border-gray-200 rounded-lg p-3">
+              <div className="border border-gray-200 rounded-lg p-3 bg-white">
                 {!isTicketClosed && services.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {services
@@ -1722,7 +1722,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 )}
               </div>
             ) : (
-              <div className="border border-gray-200 rounded-lg p-3 space-y-3">
+              <div className="border border-gray-200 rounded-lg p-3 space-y-3 bg-white">
                 <div className="flex items-start gap-2">
                   <div className="flex-1">
                     {items[0].is_custom ? (
@@ -1833,7 +1833,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           </div>
 
           {ticketId && (
-            <div>
+            <div className="border border-gray-200 rounded-lg p-3 bg-green-50">
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 Payment Method <span className="text-red-600">*</span>
               </label>
