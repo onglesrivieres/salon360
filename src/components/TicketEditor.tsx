@@ -1327,7 +1327,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           </div>
         </div>
 
-        <div className="p-3 md:p-4 space-y-4 md:space-y-3 pb-20 md:pb-4">
+        <div className="p-3 md:p-4 space-y-2.5 pb-20 md:pb-4">
           {ticket?.approval_status === 'pending_approval' && ticket.approval_deadline && (
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
               <div className="flex items-start gap-2">
@@ -1835,23 +1835,23 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
           {ticketId && (
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-2">
+              <h3 className="text-sm font-semibold text-gray-900 mb-1.5">
                 Payment Method <span className="text-red-600">*</span>
               </h3>
-              <div className="grid grid-cols-3 gap-3 mb-3">
+              <div className="grid grid-cols-3 gap-2 mb-2.5">
                 <button
                   type="button"
                   onClick={() => handlePaymentMethodClick('Cash')}
                   disabled={isTicketClosed || isReadOnly}
-                  className={`relative p-4 rounded-lg border-2 transition-all duration-200 ${
+                  className={`relative p-2.5 rounded-lg border-2 transition-all duration-200 ${
                     formData.payment_method === 'Cash'
                       ? 'border-green-500 bg-green-50 shadow-md'
                       : 'border-gray-300 bg-white hover:border-green-400 hover:bg-green-50'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  <div className="flex flex-col items-center gap-2">
-                    <Banknote className={`w-8 h-8 ${formData.payment_method === 'Cash' ? 'text-green-600' : 'text-gray-600'}`} />
-                    <span className={`text-sm font-semibold ${formData.payment_method === 'Cash' ? 'text-green-700' : 'text-gray-700'}`}>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <Banknote className={`w-6 h-6 ${formData.payment_method === 'Cash' ? 'text-green-600' : 'text-gray-600'}`} />
+                    <span className={`text-xs font-semibold ${formData.payment_method === 'Cash' ? 'text-green-700' : 'text-gray-700'}`}>
                       Cash
                     </span>
                   </div>
@@ -1866,15 +1866,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   type="button"
                   onClick={() => handlePaymentMethodClick('Card')}
                   disabled={isTicketClosed || isReadOnly}
-                  className={`relative p-4 rounded-lg border-2 transition-all duration-200 ${
+                  className={`relative p-2.5 rounded-lg border-2 transition-all duration-200 ${
                     formData.payment_method === 'Card'
                       ? 'border-blue-500 bg-blue-50 shadow-md'
                       : 'border-gray-300 bg-white hover:border-blue-400 hover:bg-blue-50'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  <div className="flex flex-col items-center gap-2">
-                    <CreditCard className={`w-8 h-8 ${formData.payment_method === 'Card' ? 'text-blue-600' : 'text-gray-600'}`} />
-                    <span className={`text-sm font-semibold ${formData.payment_method === 'Card' ? 'text-blue-700' : 'text-gray-700'}`}>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <CreditCard className={`w-6 h-6 ${formData.payment_method === 'Card' ? 'text-blue-600' : 'text-gray-600'}`} />
+                    <span className={`text-xs font-semibold ${formData.payment_method === 'Card' ? 'text-blue-700' : 'text-gray-700'}`}>
                       Card
                     </span>
                   </div>
@@ -1889,18 +1889,18 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   type="button"
                   onClick={() => handlePaymentMethodClick('Mixed')}
                   disabled={isTicketClosed || isReadOnly}
-                  className={`relative p-4 rounded-lg border-2 transition-all duration-200 ${
+                  className={`relative p-2.5 rounded-lg border-2 transition-all duration-200 ${
                     formData.payment_method === 'Mixed'
                       ? 'border-teal-500 bg-teal-50 shadow-md'
                       : 'border-gray-300 bg-white hover:border-teal-400 hover:bg-teal-50'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  <div className="flex flex-col items-center gap-2">
+                  <div className="flex flex-col items-center gap-1.5">
                     <div className="flex gap-1">
-                      <Banknote className={`w-6 h-6 ${formData.payment_method === 'Mixed' ? 'text-teal-600' : 'text-gray-600'}`} />
-                      <CreditCard className={`w-6 h-6 ${formData.payment_method === 'Mixed' ? 'text-teal-600' : 'text-gray-600'}`} />
+                      <Banknote className={`w-5 h-5 ${formData.payment_method === 'Mixed' ? 'text-teal-600' : 'text-gray-600'}`} />
+                      <CreditCard className={`w-5 h-5 ${formData.payment_method === 'Mixed' ? 'text-teal-600' : 'text-gray-600'}`} />
                     </div>
-                    <span className={`text-sm font-semibold ${formData.payment_method === 'Mixed' ? 'text-teal-700' : 'text-gray-700'}`}>
+                    <span className={`text-xs font-semibold ${formData.payment_method === 'Mixed' ? 'text-teal-700' : 'text-gray-700'}`}>
                       Mixed
                     </span>
                   </div>
@@ -1913,8 +1913,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               </div>
 
               {formData.payment_method && (
-                <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 mb-3">
-                  <h4 className="text-xs font-semibold text-gray-700 mb-2">Payment Summary</h4>
+                <div className="border border-gray-200 rounded-lg p-2.5 bg-gray-50 mb-2.5">
+                  <h4 className="text-xs font-semibold text-gray-700 mb-1.5">Payment Summary</h4>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Total Payments:</span>
