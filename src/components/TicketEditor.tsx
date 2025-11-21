@@ -17,6 +17,7 @@ import { Modal } from './ui/Modal';
 import { useToast } from './ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
+import { formatDateTimeEST } from '../lib/timezone';
 
 interface TicketEditorProps {
   ticketId: string | null;
@@ -1456,14 +1457,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             ) : (
               <div>
                 <p className="text-sm text-gray-900 font-medium">
-                  {formData.opening_time ? new Date(formData.opening_time).toLocaleString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true,
-                  }) : 'Not set'}
+                  {formData.opening_time ? formatDateTimeEST(formData.opening_time) : 'Not set'}
                 </p>
               </div>
             )}
