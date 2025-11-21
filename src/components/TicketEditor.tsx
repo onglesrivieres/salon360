@@ -1958,18 +1958,18 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             </div>
           )}
 
-          <div className="border-t border-gray-200 pt-3 space-y-2">
-            <div className="flex justify-between items-center text-base font-bold text-gray-900">
-              <span>Total Service Price:</span>
-              <span>${calculateSubtotal().toFixed(2)}</span>
-            </div>
+          {ticketId && (
+            <div className="border-t border-gray-200 pt-3 space-y-2">
+              <div className="flex justify-between items-center text-base font-bold text-gray-900">
+                <span>Total Service Price:</span>
+                <span>${calculateSubtotal().toFixed(2)}</span>
+              </div>
 
-            <div className="flex justify-between items-center text-base font-semibold text-red-600">
-              <span>Total Discount:</span>
-              <span>-${calculateTotalDiscount().toFixed(2)}</span>
-            </div>
+              <div className="flex justify-between items-center text-base font-semibold text-red-600">
+                <span>Total Discount:</span>
+                <span>-${calculateTotalDiscount().toFixed(2)}</span>
+              </div>
 
-            {ticketId && (
               <div className="border-t border-gray-300 pt-2 space-y-1">
                 <div className="text-xs font-semibold text-gray-600 mb-1">Collection Summary:</div>
                 <div className="flex justify-between items-center text-sm text-green-700">
@@ -1989,8 +1989,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   <span>${calculateTotalCollected().toFixed(2)}</span>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
