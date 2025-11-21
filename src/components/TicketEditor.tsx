@@ -2168,82 +2168,12 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         size="lg"
       >
         <div className="space-y-4">
-          {(formData.payment_method === 'Cash' || formData.payment_method === 'Mixed') && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <Banknote className="w-4 h-4 text-green-600" />
-                Cash Payment
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={tempPaymentData.payment_cash}
-                  onChange={(e) =>
-                    setTempPaymentData({ ...tempPaymentData, payment_cash: e.target.value })
-                  }
-                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-          )}
-
-          {(formData.payment_method === 'Card' || formData.payment_method === 'Mixed') && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-blue-600" />
-                Card Payment
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={tempPaymentData.payment_card}
-                  onChange={(e) =>
-                    setTempPaymentData({ ...tempPaymentData, payment_card: e.target.value })
-                  }
-                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-          )}
-
-          {formData.payment_method === 'Mixed' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <Gift className="w-4 h-4 text-purple-600" />
-                Gift Card Payment
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={tempPaymentData.payment_gift_card}
-                  onChange={(e) =>
-                    setTempPaymentData({ ...tempPaymentData, payment_gift_card: e.target.value })
-                  }
-                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="border-t border-gray-200 pt-4">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Tips</h4>
-
+          <div className={formData.payment_method === 'Mixed' ? 'grid grid-cols-1 md:grid-cols-3 gap-3' : 'grid grid-cols-1 gap-3'}>
             {(formData.payment_method === 'Cash' || formData.payment_method === 'Mixed') && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tip (Cash) by Customer
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <Banknote className="w-4 h-4 text-green-600" />
+                  Cash Payment
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
@@ -2251,9 +2181,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     type="number"
                     step="0.01"
                     min="0"
-                    value={tempPaymentData.tip_customer_cash}
+                    value={tempPaymentData.payment_cash}
                     onChange={(e) =>
-                      setTempPaymentData({ ...tempPaymentData, tip_customer_cash: e.target.value })
+                      setTempPaymentData({ ...tempPaymentData, payment_cash: e.target.value })
                     }
                     className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                     placeholder="0.00"
@@ -2263,9 +2193,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             )}
 
             {(formData.payment_method === 'Card' || formData.payment_method === 'Mixed') && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tip (Card) by Customer
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-blue-600" />
+                  Card Payment
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
@@ -2273,9 +2204,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     type="number"
                     step="0.01"
                     min="0"
-                    value={tempPaymentData.tip_customer_card}
+                    value={tempPaymentData.payment_card}
                     onChange={(e) =>
-                      setTempPaymentData({ ...tempPaymentData, tip_customer_card: e.target.value })
+                      setTempPaymentData({ ...tempPaymentData, payment_card: e.target.value })
                     }
                     className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="0.00"
@@ -2284,23 +2215,96 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tip Paired by Receptionist
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={tempPaymentData.tip_receptionist}
-                  onChange={(e) =>
-                    setTempPaymentData({ ...tempPaymentData, tip_receptionist: e.target.value })
-                  }
-                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500"
-                  placeholder="0.00"
-                />
+            {formData.payment_method === 'Mixed' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <Gift className="w-4 h-4 text-purple-600" />
+                  Gift Card Payment
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={tempPaymentData.payment_gift_card}
+                    onChange={(e) =>
+                      setTempPaymentData({ ...tempPaymentData, payment_gift_card: e.target.value })
+                    }
+                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-gray-200 pt-4">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Tips</h4>
+
+            <div className={formData.payment_method === 'Mixed' ? 'grid grid-cols-1 md:grid-cols-3 gap-3' : 'grid grid-cols-1 md:grid-cols-2 gap-3'}>
+              {(formData.payment_method === 'Cash' || formData.payment_method === 'Mixed') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tip (Cash) by Customer
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={tempPaymentData.tip_customer_cash}
+                      onChange={(e) =>
+                        setTempPaymentData({ ...tempPaymentData, tip_customer_cash: e.target.value })
+                      }
+                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {(formData.payment_method === 'Card' || formData.payment_method === 'Mixed') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tip (Card) by Customer
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={tempPaymentData.tip_customer_card}
+                      onChange={(e) =>
+                        setTempPaymentData({ ...tempPaymentData, tip_customer_card: e.target.value })
+                      }
+                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tip Paired by Receptionist
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={tempPaymentData.tip_receptionist}
+                    onChange={(e) =>
+                      setTempPaymentData({ ...tempPaymentData, tip_receptionist: e.target.value })
+                    }
+                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    placeholder="0.00"
+                  />
+                </div>
               </div>
             </div>
           </div>
