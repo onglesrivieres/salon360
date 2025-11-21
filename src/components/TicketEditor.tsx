@@ -1931,12 +1931,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       <span className="font-semibold">-${calculateTotalDiscount().toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Total Tips:</span>
-                      <span className="font-semibold text-gray-900">${calculateTotalTips().toFixed(2)}</span>
+                      <span className="text-gray-600">Total Tips Given by Clients:</span>
+                      <span className="font-semibold text-gray-900">${calculateTipsExcludingReceptionist().toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between items-center text-base font-bold text-blue-700 pt-2 border-t border-gray-300 mt-2">
                       <span>Grand Total Collected:</span>
                       <span>${calculateTotalCollected().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600 text-sm">
+                      <span>Total Tips Paired by Receptionist:</span>
+                      <span className="font-semibold">${(parseFloat(formData.tip_receptionist) || 0).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
