@@ -1391,150 +1391,148 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-gray-600" />
-                  <label className="text-xs font-medium text-gray-700">
-                    Opening Time
-                  </label>
-                </div>
-                {!isReadOnly && session && session.role_permission && (
-                  Permissions.tickets.canEdit(session.role_permission, false, false) && !isEditingOpeningTime && ticketId && (
-                    <button
-                      type="button"
-                      onClick={handleEditOpeningTime}
-                      className="text-blue-600 hover:text-blue-700 p-1 rounded transition-colors"
-                      title="Edit opening time"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  )
-                )}
+          <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-gray-600" />
+                <label className="text-xs font-medium text-gray-700">
+                  Opening Time
+                </label>
               </div>
-
-              {isEditingOpeningTime ? (
-                <div className="space-y-2">
-                  <input
-                    type="datetime-local"
-                    value={tempOpeningTime}
-                    onChange={(e) => setTempOpeningTime(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleSaveOpeningTime}
-                      className="flex-1"
-                    >
-                      Save
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={handleCancelEditOpeningTime}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                  <p className="text-xs text-gray-500">Time shown in your local timezone</p>
-                </div>
-              ) : !ticketId ? (
-                <div className="space-y-2">
-                  <input
-                    type="datetime-local"
-                    value={convertToLocalDatetimeString(formData.opening_time || new Date().toISOString())}
-                    onChange={(e) => {
-                      const newDate = new Date(e.target.value);
-                      setFormData({ ...formData, opening_time: newDate.toISOString() });
-                    }}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    disabled={isReadOnly}
-                  />
-                  <p className="text-xs text-gray-500">Time shown in your local timezone</p>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-sm text-gray-900 font-medium">
-                    {formData.opening_time ? formatDateTimeEST(formData.opening_time) : 'Not set'}
-                  </p>
-                </div>
+              {!isReadOnly && session && session.role_permission && (
+                Permissions.tickets.canEdit(session.role_permission, false, false) && !isEditingOpeningTime && ticketId && (
+                  <button
+                    type="button"
+                    onClick={handleEditOpeningTime}
+                    className="text-blue-600 hover:text-blue-700 p-1 rounded transition-colors"
+                    title="Edit opening time"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                )
               )}
             </div>
 
-            <div className="border border-gray-200 rounded-lg p-3 bg-purple-50">
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Customer Type <span className="text-red-600">*</span>
-              </label>
-              <div className="flex gap-2 mb-2">
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, customer_type: 'Appointment' })}
-                  className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
-                    formData.customer_type === 'Appointment'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
-                  }`}
-                  disabled={isTicketClosed || isReadOnly}
-                >
-                  Appointment
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, customer_type: 'Requested' })}
-                  className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
-                    formData.customer_type === 'Requested'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
-                  }`}
-                  disabled={isTicketClosed || isReadOnly}
-                >
-                  Requested
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, customer_type: 'Assigned' })}
-                  className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
-                    formData.customer_type === 'Assigned'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
-                  }`}
-                  disabled={isTicketClosed || isReadOnly}
-                >
-                  Assigned
-                </button>
+            {isEditingOpeningTime ? (
+              <div className="space-y-2">
+                <input
+                  type="datetime-local"
+                  value={tempOpeningTime}
+                  onChange={(e) => setTempOpeningTime(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleSaveOpeningTime}
+                    className="flex-1"
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={handleCancelEditOpeningTime}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500">Time shown in your local timezone</p>
               </div>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Name
-                  </label>
-                  <input
-                    value={formData.customer_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, customer_name: e.target.value })
-                    }
-                    placeholder="e.g. John"
-                    disabled={isTicketClosed}
-                    className="w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                    Phone Number (Optional)
-                  </label>
-                  <input
-                    value={formData.customer_phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, customer_phone: e.target.value })
-                    }
-                    placeholder="e.g. 1234"
-                    disabled={isTicketClosed}
-                    className="w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                  />
-                </div>
+            ) : !ticketId ? (
+              <div className="space-y-2">
+                <input
+                  type="datetime-local"
+                  value={convertToLocalDatetimeString(formData.opening_time || new Date().toISOString())}
+                  onChange={(e) => {
+                    const newDate = new Date(e.target.value);
+                    setFormData({ ...formData, opening_time: newDate.toISOString() });
+                  }}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isReadOnly}
+                />
+                <p className="text-xs text-gray-500">Time shown in your local timezone</p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm text-gray-900 font-medium">
+                  {formData.opening_time ? formatDateTimeEST(formData.opening_time) : 'Not set'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="border border-gray-200 rounded-lg p-3 bg-purple-50">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Customer Type <span className="text-red-600">*</span>
+            </label>
+            <div className="flex gap-2 mb-2">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, customer_type: 'Appointment' })}
+                className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
+                  formData.customer_type === 'Appointment'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
+                }`}
+                disabled={isTicketClosed || isReadOnly}
+              >
+                Appointment
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, customer_type: 'Requested' })}
+                className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
+                  formData.customer_type === 'Requested'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
+                }`}
+                disabled={isTicketClosed || isReadOnly}
+              >
+                Requested
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, customer_type: 'Assigned' })}
+                className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
+                  formData.customer_type === 'Assigned'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
+                }`}
+                disabled={isTicketClosed || isReadOnly}
+              >
+                Assigned
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                  Name
+                </label>
+                <input
+                  value={formData.customer_name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, customer_name: e.target.value })
+                  }
+                  placeholder="e.g. John"
+                  disabled={isTicketClosed}
+                  className="w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                  Phone Number (Optional)
+                </label>
+                <input
+                  value={formData.customer_phone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, customer_phone: e.target.value })
+                  }
+                  placeholder="e.g. 1234"
+                  disabled={isTicketClosed}
+                  className="w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                />
               </div>
             </div>
           </div>
