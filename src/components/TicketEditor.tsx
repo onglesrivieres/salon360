@@ -1318,19 +1318,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         </div>
 
         <div className="p-3 md:p-4 space-y-2.5 pb-20 md:pb-4">
-          {ticket?.approval_status === 'pending_approval' && ticket.approval_deadline && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <Clock className="w-4 h-4 text-orange-600 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-orange-900">Awaiting Technician Approval</p>
-                  <p className="text-xs text-orange-700 mt-1">
-                    {getTimeUntilDeadline()} until automatic approval
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {ticket?.approval_status === 'rejected' && ticket.requires_admin_review && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
