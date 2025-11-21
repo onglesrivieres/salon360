@@ -424,11 +424,19 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   function getCurrentWeekLabel(): string {
     const weekStart = getWeekStartDate(selectedDate);
     const weekDates = getWeekDates(weekStart);
-    const startDate = new Date(weekDates[0]);
-    const endDate = new Date(weekDates[6]);
+    const startDate = new Date(weekDates[0] + 'T00:00:00');
+    const endDate = new Date(weekDates[6] + 'T00:00:00');
 
-    const formatDate = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
-    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+    const startYear = startDate.getFullYear();
+    const endYear = endDate.getFullYear();
+
+    if (startYear !== endYear) {
+      const formatDateWithYear = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+      return `${formatDateWithYear(startDate)} - ${formatDateWithYear(endDate)}`;
+    } else {
+      const formatDate = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+      return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+    }
   }
 
   function getMinDate(): string {
