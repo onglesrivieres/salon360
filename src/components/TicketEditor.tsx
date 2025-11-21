@@ -1945,20 +1945,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             </div>
           )}
 
-          {ticketId && (
-            <div className="border-t border-gray-200 pt-3 space-y-2">
-              <div className="flex justify-between items-center text-base font-bold text-gray-900">
-                <span>Total Service Price:</span>
-                <span>${calculateSubtotal().toFixed(2)}</span>
-              </div>
-
-              <div className="flex justify-between items-center text-base font-semibold text-red-600">
-                <span>Total Discount:</span>
-                <span>-${calculateTotalDiscount().toFixed(2)}</span>
-              </div>
-            </div>
-          )}
-
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Notes / Comments
