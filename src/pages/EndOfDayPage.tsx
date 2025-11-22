@@ -35,11 +35,11 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
   const [openingDenominations, setOpeningDenominations] = useState<CashDenominations>({
     bill_20: 0,
-    bill_10: 10,
-    bill_5: 10,
-    bill_2: 10,
-    bill_1: 20,
-    coin_25: 8,
+    bill_10: 0,
+    bill_5: 0,
+    bill_2: 0,
+    bill_1: 0,
+    coin_25: 0,
     coin_10: 0,
     coin_5: 0,
   });
