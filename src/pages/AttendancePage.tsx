@@ -6,6 +6,7 @@ import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { AttendanceCommentModal } from '../components/AttendanceCommentModal';
+import { formatTimeEST, formatDateEST } from '../lib/timezone';
 
 interface AttendanceSession {
   attendanceRecordId: string;
@@ -191,17 +192,9 @@ export function AttendancePage() {
     Object.values(summary).forEach((employee) => {
       Object.entries(employee.dates).forEach(([date, sessions]) => {
         sessions.forEach((record) => {
-          const checkIn = new Date(record.checkInTime).toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-          });
+          const checkIn = formatTimeEST(record.checkInTime);
           const checkOut = record.checkOutTime
-            ? new Date(record.checkOutTime).toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-              })
+            ? formatTimeEST(record.checkOutTime)
             : '';
           const hours = record.totalHours ? record.totalHours.toFixed(2) : '';
 
@@ -240,7 +233,7 @@ export function AttendancePage() {
     return new Date(year, month - 1, day);
   };
 
-  const periodRange = `${parseLocalDate(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${parseLocalDate(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  const periodRange = `${formatDateEST(parseLocalDate(startDate), { month: 'short', day: 'numeric' })} - ${formatDateEST(parseLocalDate(endDate), { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
   if (session && session.role && !Permissions.endOfDay.canView(session.role)) {
     return (
@@ -365,7 +358,7 @@ export function AttendancePage() {
                                       <span className="hidden sm:inline">{record.status === 'checked_in' ? 'In' : 'Out'}</span>
                                     </div>
                                     <div className="text-[10px] text-gray-600">
-                                      {new Date(record.checkInTime).toLocaleTimeString('en-US', {
+                                      {formatTimeEST(record.checkInTime, {
                                         hour: 'numeric',
                                         minute: '2-digit',
                                         hour12: false
@@ -373,7 +366,7 @@ export function AttendancePage() {
                                     </div>
                                     {record.checkOutTime && (
                                       <div className="text-[10px] text-gray-600">
-                                        {new Date(record.checkOutTime).toLocaleTimeString('en-US', {
+                                        {formatTimeEST(record.checkOutTime, {
                                           hour: 'numeric',
                                           minute: '2-digit',
                                           hour12: false

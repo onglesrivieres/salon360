@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { WeeklyCalendarView } from '../components/WeeklyCalendarView';
 import { TicketEditor } from '../components/TicketEditor';
+import { formatTimeEST } from '../lib/timezone';
 
 interface TechnicianSummary {
   technician_id: string;
@@ -628,11 +629,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                       </p>
                       <div className="space-y-1 max-h-72 overflow-y-auto">
                         {summary.items.map((item, index) => {
-                          const openTime = new Date(item.opened_at).toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: true,
-                          });
+                          const openTime = formatTimeEST(item.opened_at);
 
                           return (
                             <div
