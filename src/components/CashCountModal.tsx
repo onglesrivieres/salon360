@@ -100,11 +100,11 @@ export function CashCountModal({
           type="number"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-12 text-center text-sm py-1"
+          className="w-6 text-center text-sm py-1"
           min="0"
         />
         <span className="text-xs font-semibold text-gray-900 w-20 text-right">
-          = ${itemTotal.toFixed(2)}
+          ${itemTotal.toFixed(2)}
         </span>
       </div>
     );
