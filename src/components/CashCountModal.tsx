@@ -103,7 +103,6 @@ export function CashCountModal({
           className="w-4 text-center text-sm py-1"
           min="0"
         />
-        <span className="text-xs text-gray-500">x ${denomination.toFixed(2)}</span>
         <span className="text-xs font-semibold text-gray-900 w-20 text-right">
           = ${itemTotal.toFixed(2)}
         </span>
