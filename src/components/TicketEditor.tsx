@@ -589,9 +589,12 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   }
 
   function handlePaymentMethodClick(method: 'Cash' | 'Card' | 'Mixed') {
+    const subtotal = calculateSubtotal();
+    const subtotalStr = subtotal > 0 ? subtotal.toFixed(2) : '';
+
     setTempPaymentData({
-      payment_cash: '',
-      payment_card: '',
+      payment_cash: method === 'Cash' ? subtotalStr : '',
+      payment_card: method === 'Card' ? subtotalStr : '',
       payment_gift_card: '',
       tip_customer_cash: '',
       tip_customer_card: '',
@@ -2158,6 +2161,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     placeholder="0.00"
                   />
                 </div>
+                {formData.payment_method === 'Cash' && tempPaymentData.payment_cash && (
+                  <p className="text-xs text-gray-500 mt-1">Prefilled with service subtotal</p>
+                )}
               </div>
             )}
 
@@ -2181,6 +2187,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     placeholder="0.00"
                   />
                 </div>
+                {formData.payment_method === 'Card' && tempPaymentData.payment_card && (
+                  <p className="text-xs text-gray-500 mt-1">Prefilled with service subtotal</p>
+                )}
               </div>
             )}
 
