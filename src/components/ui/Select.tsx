@@ -7,11 +7,12 @@ interface SelectOption {
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
-  options: SelectOption[];
+  options?: SelectOption[];
   error?: string;
+  children?: React.ReactNode;
 }
 
-export function Select({ label, options, error, className = '', ...props }: SelectProps) {
+export function Select({ label, options, error, className = '', children, ...props }: SelectProps) {
   return (
     <div className="w-full">
       {label && (
@@ -25,11 +26,15 @@ export function Select({ label, options, error, className = '', ...props }: Sele
         } ${className}`}
         {...props}
       >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
+        {options ? (
+          options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))
+        ) : (
+          children
+        )}
       </select>
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
