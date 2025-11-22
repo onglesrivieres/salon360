@@ -100,7 +100,7 @@ export function CashCountModal({
           type="number"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-4 text-center text-sm py-1"
+          className="w-12 text-center text-sm py-1"
           min="0"
         />
         <span className="text-xs font-semibold text-gray-900 w-20 text-right">
