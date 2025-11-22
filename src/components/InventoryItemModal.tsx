@@ -105,7 +105,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         reorder_level: parseFloat(formData.reorder_level) || 0,
         unit_cost: parseFloat(formData.unit_cost) || 0,
         is_active: true,
-        updated_at: new Date().toISOString(),
       };
 
       if (item) {
@@ -119,10 +118,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
       } else {
         const { error } = await supabase
           .from('inventory_items')
-          .insert({
-            ...itemData,
-            created_at: new Date().toISOString(),
-          });
+          .insert(itemData);
 
         if (error) throw error;
         showToast('Item created successfully', 'success');
@@ -132,10 +128,23 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
       onClose();
     } catch (error: any) {
       console.error('Error saving item:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
+
       if (error.code === '23505') {
-        showToast('Item code already exists', 'error');
+        showToast('Item code already exists for this store', 'error');
+      } else if (error.code === '23503') {
+        showToast('Invalid store reference. Please refresh and try again.', 'error');
+      } else if (error.code === '42501') {
+        showToast('Permission denied. Please check your role permissions.', 'error');
+      } else if (error.message) {
+        showToast(`Error: ${error.message}`, 'error');
       } else {
-        showToast('Failed to save item', 'error');
+        showToast('Failed to save item. Please check console for details.', 'error');
       }
     } finally {
       setSaving(false);
