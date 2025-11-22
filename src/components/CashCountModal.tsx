@@ -94,16 +94,16 @@ export function CashCountModal({
   }) => {
     const itemTotal = value * denomination;
     return (
-      <div className="flex items-center gap-1.5">
-        <label className="text-xs text-gray-700 w-16">{label}</label>
+      <div className="flex items-center gap-3">
+        <label className="text-xs text-gray-700 w-20 whitespace-nowrap flex-shrink-0">{label}</label>
         <Input
           type="number"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-6 text-center text-sm py-1"
+          className="w-6 text-center text-xs py-1 flex-shrink-0"
           min="0"
         />
-        <span className="text-xs font-semibold text-gray-900 w-20 text-right">
+        <span className="text-xs font-semibold text-gray-900 w-24 text-right whitespace-nowrap flex-shrink-0">
           ${itemTotal.toFixed(2)}
         </span>
       </div>
