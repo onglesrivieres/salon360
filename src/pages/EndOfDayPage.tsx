@@ -14,6 +14,8 @@ interface EndOfDayPageProps {
 }
 
 interface CashDenominations {
+  bill_100: number;
+  bill_50: number;
   bill_20: number;
   bill_10: number;
   bill_5: number;
@@ -34,6 +36,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [expectedCash, setExpectedCash] = useState(0);
 
   const [openingDenominations, setOpeningDenominations] = useState<CashDenominations>({
+    bill_100: 0,
+    bill_50: 0,
     bill_20: 0,
     bill_10: 0,
     bill_5: 0,
@@ -45,6 +49,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   });
 
   const [closingDenominations, setClosingDenominations] = useState<CashDenominations>({
+    bill_100: 0,
+    bill_50: 0,
     bill_20: 0,
     bill_10: 0,
     bill_5: 0,
@@ -83,6 +89,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       if (existingRecord) {
         setEodRecord(existingRecord);
         setOpeningDenominations({
+          bill_100: existingRecord.bill_100,
+          bill_50: existingRecord.bill_50,
           bill_20: existingRecord.bill_20,
           bill_10: existingRecord.bill_10,
           bill_5: existingRecord.bill_5,
@@ -93,6 +101,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           coin_5: existingRecord.coin_5,
         });
         setClosingDenominations({
+          bill_100: existingRecord.closing_bill_100,
+          bill_50: existingRecord.closing_bill_50,
           bill_20: existingRecord.closing_bill_20,
           bill_10: existingRecord.closing_bill_10,
           bill_5: existingRecord.closing_bill_5,
@@ -161,6 +171,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
   function calculateTotal(denominations: CashDenominations): number {
     return (
+      denominations.bill_100 * 100 +
+      denominations.bill_50 * 50 +
       denominations.bill_20 * 20 +
       denominations.bill_10 * 10 +
       denominations.bill_5 * 5 +
@@ -179,6 +191,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const isBalanced = Math.abs(cashVariance) < 0.01;
   const isOpeningCashRecorded = eodRecord && (
     eodRecord.opening_cash_amount > 0 ||
+    eodRecord.bill_100 > 0 ||
+    eodRecord.bill_50 > 0 ||
     eodRecord.bill_20 > 0 ||
     eodRecord.bill_10 > 0 ||
     eodRecord.bill_5 > 0 ||
@@ -200,6 +214,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       setOpeningDenominations(denominations);
 
       const openingTotal = (
+        denominations.bill_100 * 100 +
+        denominations.bill_50 * 50 +
         denominations.bill_20 * 20 +
         denominations.bill_10 * 10 +
         denominations.bill_5 * 5 +
@@ -214,6 +230,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         store_id: selectedStoreId,
         date: selectedDate,
         opening_cash_amount: openingTotal,
+        bill_100: denominations.bill_100,
+        bill_50: denominations.bill_50,
         bill_20: denominations.bill_20,
         bill_10: denominations.bill_10,
         bill_5: denominations.bill_5,
@@ -223,6 +241,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         coin_10: denominations.coin_10,
         coin_5: denominations.coin_5,
         closing_cash_amount: closingCashTotal,
+        closing_bill_100: closingDenominations.bill_100,
+        closing_bill_50: closingDenominations.bill_50,
         closing_bill_20: closingDenominations.bill_20,
         closing_bill_10: closingDenominations.bill_10,
         closing_bill_5: closingDenominations.bill_5,
@@ -283,6 +303,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         store_id: selectedStoreId,
         date: selectedDate,
         opening_cash_amount: openingCashTotal,
+        bill_100: openingDenominations.bill_100,
+        bill_50: openingDenominations.bill_50,
         bill_20: openingDenominations.bill_20,
         bill_10: openingDenominations.bill_10,
         bill_5: openingDenominations.bill_5,
@@ -292,6 +314,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         coin_10: openingDenominations.coin_10,
         coin_5: openingDenominations.coin_5,
         closing_cash_amount: closingCashTotal,
+        closing_bill_100: closingDenominations.bill_100,
+        closing_bill_50: closingDenominations.bill_50,
         closing_bill_20: closingDenominations.bill_20,
         closing_bill_10: closingDenominations.bill_10,
         closing_bill_5: closingDenominations.bill_5,
@@ -337,6 +361,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     const headers = ['Description', 'Amount'];
     const rows = [
       ['Opening Cash', openingCashTotal.toFixed(2)],
+      ['  $100 Bills', `${openingDenominations.bill_100} x $100`],
+      ['  $50 Bills', `${openingDenominations.bill_50} x $50`],
       ['  $20 Bills', `${openingDenominations.bill_20} x $20`],
       ['  $10 Bills', `${openingDenominations.bill_10} x $10`],
       ['  $5 Bills', `${openingDenominations.bill_5} x $5`],
@@ -347,6 +373,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       ['  5¢ Coins', `${openingDenominations.coin_5} x $0.05`],
       ['', ''],
       ['Closing Cash', closingCashTotal.toFixed(2)],
+      ['  $100 Bills', `${closingDenominations.bill_100} x $100`],
+      ['  $50 Bills', `${closingDenominations.bill_50} x $50`],
       ['  $20 Bills', `${closingDenominations.bill_20} x $20`],
       ['  $10 Bills', `${closingDenominations.bill_10} x $10`],
       ['  $5 Bills', `${closingDenominations.bill_5} x $5`],

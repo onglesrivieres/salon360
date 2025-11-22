@@ -359,6 +359,8 @@ export interface EndOfDayRecord {
   store_id: string;
   date: string;
   opening_cash_amount: number;
+  bill_100: number;
+  bill_50: number;
   bill_20: number;
   bill_10: number;
   bill_5: number;
@@ -368,6 +370,8 @@ export interface EndOfDayRecord {
   coin_10: number;
   coin_5: number;
   closing_cash_amount: number;
+  closing_bill_100: number;
+  closing_bill_50: number;
   closing_bill_20: number;
   closing_bill_10: number;
   closing_bill_5: number;

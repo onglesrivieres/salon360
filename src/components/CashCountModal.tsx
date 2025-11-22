@@ -5,6 +5,8 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 
 interface CashDenominations {
+  bill_100: number;
+  bill_50: number;
   bill_20: number;
   bill_10: number;
   bill_5: number;
@@ -48,6 +50,8 @@ export function CashCountModal({
 
   function calculateTotal(): number {
     return (
+      denominations.bill_100 * 100 +
+      denominations.bill_50 * 50 +
       denominations.bill_20 * 20 +
       denominations.bill_10 * 10 +
       denominations.bill_5 * 5 +
@@ -114,6 +118,18 @@ export function CashCountModal({
     <Modal isOpen={isOpen} onClose={handleCancel} title={title} size="md">
       <div className="space-y-3">
         <div className="space-y-1.5">
+          <DenominationInput
+            label="$100 Bills"
+            value={denominations.bill_100}
+            onChange={(v) => updateDenomination('bill_100', v)}
+            denomination={100}
+          />
+          <DenominationInput
+            label="$50 Bills"
+            value={denominations.bill_50}
+            onChange={(v) => updateDenomination('bill_50', v)}
+            denomination={50}
+          />
           <DenominationInput
             label="$20 Bills"
             value={denominations.bill_20}

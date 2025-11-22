@@ -160,7 +160,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('end_of_day_records')
-        .select('opening_cash_amount, bill_20, bill_10, bill_5, bill_2, bill_1, coin_25, coin_10, coin_5')
+        .select('opening_cash_amount, bill_100, bill_50, bill_20, bill_10, bill_5, bill_2, bill_1, coin_25, coin_10, coin_5')
         .eq('store_id', selectedStoreId)
         .eq('date', today)
         .maybeSingle();
