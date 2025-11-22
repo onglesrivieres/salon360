@@ -57,14 +57,46 @@ export function InventoryTransactionModal({
 
     try {
       const { data, error } = await supabase
-        .from('inventory_items')
-        .select('*')
+        .from('store_inventory_stock')
+        .select(`
+          *,
+          item:master_inventory_items (
+            id,
+            code,
+            name,
+            description,
+            category,
+            unit,
+            unit_cost,
+            reorder_level,
+            is_active
+          )
+        `)
         .eq('store_id', selectedStoreId)
-        .eq('is_active', true)
-        .order('name');
+        .order('created_at');
 
       if (error) throw error;
-      setInventoryItems(data || []);
+
+      const mappedItems = (data || [])
+        .filter((stock: any) => stock.item?.is_active)
+        .map((stock: any) => ({
+          id: stock.id,
+          store_id: stock.store_id,
+          code: stock.item.code,
+          name: stock.item.name,
+          description: stock.item.description,
+          category: stock.item.category,
+          unit: stock.item.unit,
+          quantity_on_hand: stock.quantity_on_hand,
+          reorder_level: stock.reorder_level_override ?? stock.item.reorder_level,
+          unit_cost: stock.unit_cost_override ?? stock.item.unit_cost,
+          is_active: stock.item.is_active,
+          created_at: stock.created_at,
+          updated_at: stock.updated_at,
+          master_item_id: stock.item.id,
+        }));
+
+      setInventoryItems(mappedItems);
     } catch (error) {
       console.error('Error fetching inventory items:', error);
     }
@@ -202,14 +234,18 @@ export function InventoryTransactionModal({
 
       if (transactionError) throw transactionError;
 
-      const itemsData = validItems.map((item) => ({
-        transaction_id: transaction.id,
-        item_id: item.item_id,
-        quantity: parseFloat(item.quantity),
-        unit_cost: parseFloat(item.unit_cost) || 0,
-        notes: item.notes.trim(),
-        created_at: new Date().toISOString(),
-      }));
+      const itemsData = validItems.map((item) => {
+        const inventoryItem = inventoryItems.find((i) => i.id === item.item_id);
+        return {
+          transaction_id: transaction.id,
+          item_id: item.item_id,
+          master_item_id: inventoryItem?.master_item_id || item.item_id,
+          quantity: parseFloat(item.quantity),
+          unit_cost: parseFloat(item.unit_cost) || 0,
+          notes: item.notes.trim(),
+          created_at: new Date().toISOString(),
+        };
+      });
 
       const { error: itemsError } = await supabase
         .from('inventory_transaction_items')

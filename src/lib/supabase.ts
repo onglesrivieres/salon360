@@ -277,6 +277,45 @@ export interface ApprovalStatistics {
   requires_review: number;
 }
 
+export interface MasterInventoryItem {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  category: string;
+  unit: string;
+  unit_cost: number;
+  reorder_level: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreInventoryStock {
+  id: string;
+  store_id: string;
+  item_id: string;
+  quantity_on_hand: number;
+  unit_cost_override?: number;
+  reorder_level_override?: number;
+  last_counted_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreInventoryWithDetails extends StoreInventoryStock {
+  item?: MasterInventoryItem;
+  code?: string;
+  name?: string;
+  description?: string;
+  category?: string;
+  unit?: string;
+  unit_cost?: number;
+  reorder_level?: number;
+  is_low_stock?: boolean;
+  is_active?: boolean;
+}
+
 export interface InventoryItem {
   id: string;
   store_id: string;
@@ -291,6 +330,7 @@ export interface InventoryItem {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  master_item_id?: string;
 }
 
 export interface InventoryTransaction {
