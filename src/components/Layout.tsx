@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle } from 'lucide-react';
+import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
 import { supabase, Store } from '../lib/supabase';
@@ -9,8 +9,8 @@ import { initializeVersionCheck, startVersionCheck } from '../lib/version';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentPage: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals';
-  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals') => void;
+  currentPage: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals' | 'inventory';
+  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals' | 'inventory') => void;
 }
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
@@ -255,6 +255,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     { id: 'eod' as const, label: 'End of Day', icon: DollarSign },
     { id: 'attendance' as const, label: 'Attendance', icon: Calendar },
     { id: 'technicians' as const, label: t('nav.employees'), icon: Users },
+    { id: 'inventory' as const, label: 'Inventory', icon: Package },
     { id: 'services' as const, label: t('nav.services'), icon: Briefcase },
   ];
 

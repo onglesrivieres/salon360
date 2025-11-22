@@ -15,8 +15,9 @@ const EmployeesPage = lazy(() => import('./pages/EmployeesPage').then(m => ({ de
 const ServicesPage = lazy(() => import('./pages/ServicesPage').then(m => ({ default: m.ServicesPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const PendingApprovalsPage = lazy(() => import('./pages/PendingApprovalsPage').then(m => ({ default: m.PendingApprovalsPage })));
+const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
 
-type Page = 'tickets' | 'eod' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'approvals';
+type Page = 'tickets' | 'eod' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'approvals' | 'inventory';
 
 function AppContent() {
   const { isAuthenticated, selectedStoreId, selectStore, session, login } = useAuth();
@@ -153,6 +154,7 @@ function AppContent() {
           {currentPage === 'eod' && <EndOfDayPage selectedDate={selectedDate} onDateChange={setSelectedDate} />}
           {currentPage === 'attendance' && <AttendancePage />}
           {currentPage === 'technicians' && <EmployeesPage />}
+          {currentPage === 'inventory' && <InventoryPage />}
           {currentPage === 'services' && <ServicesPage />}
           {currentPage === 'settings' && <SettingsPage />}
         </Suspense>

@@ -135,6 +135,24 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
     },
   },
+
+  inventory: {
+    canView: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
+    },
+    canCreateItems: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
+    canEditItems: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
+    canCreateTransactions: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+    },
+    canApprove: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
+  },
 };
 
 export function getPermissionMessage(
@@ -145,7 +163,7 @@ export function getPermissionMessage(
 }
 
 export function canAccessPage(
-  page: 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'attendance' | 'approvals',
+  page: 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'attendance' | 'approvals' | 'inventory',
   roles: Role[] | RolePermission
 ): boolean {
   switch (page) {
@@ -165,6 +183,8 @@ export function canAccessPage(
       return Permissions.attendance.canView(roles);
     case 'approvals':
       return Permissions.tickets.canViewPendingApprovals(roles);
+    case 'inventory':
+      return Permissions.inventory.canView(roles);
     default:
       return false;
   }
@@ -191,6 +211,10 @@ export function getAccessiblePages(roles: Role[] | RolePermission): string[] {
 
   if (Permissions.employees.canView(roles)) {
     pages.push('technicians');
+  }
+
+  if (Permissions.inventory.canView(roles)) {
+    pages.push('inventory');
   }
 
   if (Permissions.services.canView(roles)) {

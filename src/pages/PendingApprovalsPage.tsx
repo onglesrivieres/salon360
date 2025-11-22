@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle } from 'lucide-react';
-import { supabase, PendingApprovalTicket, ApprovalStatistics } from '../lib/supabase';
+import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus } from 'lucide-react';
+import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
@@ -9,9 +9,12 @@ import { Modal } from '../components/ui/Modal';
 
 export function PendingApprovalsPage() {
   const [tickets, setTickets] = useState<PendingApprovalTicket[]>([]);
+  const [inventoryApprovals, setInventoryApprovals] = useState<PendingInventoryApproval[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<PendingApprovalTicket | null>(null);
+  const [selectedInventory, setSelectedInventory] = useState<PendingInventoryApproval | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showInventoryRejectModal, setShowInventoryRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
   const [approvalStats, setApprovalStats] = useState<ApprovalStatistics | null>(null);
@@ -21,6 +24,7 @@ export function PendingApprovalsPage() {
   useEffect(() => {
     if (session?.employee_id) {
       fetchPendingApprovals();
+      fetchInventoryApprovals();
       fetchApprovalStats();
     }
   }, [session?.employee_id, selectedStoreId]);
@@ -29,6 +33,7 @@ export function PendingApprovalsPage() {
     const interval = setInterval(() => {
       if (session?.employee_id) {
         fetchPendingApprovals();
+        fetchInventoryApprovals();
         fetchApprovalStats();
       }
     }, 30000);
@@ -113,6 +118,100 @@ export function PendingApprovalsPage() {
       showToast('Failed to load pending approvals', 'error');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchInventoryApprovals() {
+    if (!selectedStoreId || !session?.employee_id) return;
+
+    try {
+      const { data, error } = await supabase.rpc('get_pending_inventory_approvals', {
+        p_employee_id: session.employee_id,
+        p_store_id: selectedStoreId,
+      });
+
+      if (error) throw error;
+      setInventoryApprovals(data || []);
+    } catch (error) {
+      console.error('Error fetching inventory approvals:', error);
+    }
+  }
+
+  async function handleApproveInventory(approval: PendingInventoryApproval) {
+    if (!session?.employee_id) return;
+
+    try {
+      setProcessing(true);
+      const userRoles = session.role || [];
+      const isManager = userRoles.some((role) => ['Manager', 'Owner'].includes(role));
+      const isRecipient = approval.recipient_name && session.employee_id === approval.id;
+
+      const updates: any = { updated_at: new Date().toISOString() };
+
+      if (isManager) {
+        updates.manager_approved = true;
+        updates.manager_approved_at = new Date().toISOString();
+        updates.manager_approved_by_id = session.employee_id;
+      }
+
+      if (isRecipient) {
+        updates.recipient_approved = true;
+        updates.recipient_approved_at = new Date().toISOString();
+        updates.recipient_approved_by_id = session.employee_id;
+      }
+
+      const { error } = await supabase
+        .from('inventory_transactions')
+        .update(updates)
+        .eq('id', approval.id);
+
+      if (error) throw error;
+
+      showToast('Inventory transaction approved', 'success');
+      fetchInventoryApprovals();
+    } catch (error) {
+      console.error('Error approving inventory:', error);
+      showToast('Failed to approve transaction', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  function handleRejectInventoryClick(approval: PendingInventoryApproval) {
+    setSelectedInventory(approval);
+    setRejectionReason('');
+    setShowInventoryRejectModal(true);
+  }
+
+  async function handleRejectInventory() {
+    if (!selectedInventory || !rejectionReason.trim()) {
+      showToast('Please provide a rejection reason', 'error');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+
+      const { error } = await supabase
+        .from('inventory_transactions')
+        .update({
+          status: 'rejected',
+          rejection_reason: rejectionReason.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', selectedInventory.id);
+
+      if (error) throw error;
+
+      showToast('Inventory transaction rejected', 'success');
+      setShowInventoryRejectModal(false);
+      setSelectedInventory(null);
+      fetchInventoryApprovals();
+    } catch (error) {
+      console.error('Error rejecting inventory:', error);
+      showToast('Failed to reject transaction', 'error');
+    } finally {
+      setProcessing(false);
     }
   }
 
@@ -287,13 +386,104 @@ export function PendingApprovalsPage() {
         </div>
       )}
 
-      {tickets.length === 0 ? (
+      {inventoryApprovals.length > 0 && (
+        <div className="mb-6">
+          <div className="mb-3">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Package className="w-5 h-5" />
+              Pending Inventory Approvals ({inventoryApprovals.length})
+            </h3>
+            <p className="text-sm text-gray-600">
+              Review and approve inventory transactions
+            </p>
+          </div>
+          <div className="space-y-3">
+            {inventoryApprovals.map((approval) => (
+              <div
+                key={approval.id}
+                className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      {approval.transaction_type === 'in' ? (
+                        <PackagePlus className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <PackageMinus className="w-5 h-5 text-orange-600" />
+                      )}
+                      <span className="font-semibold text-gray-900">
+                        {approval.transaction_number}
+                      </span>
+                      <Badge variant={approval.transaction_type === 'in' ? 'success' : 'default'}>
+                        {approval.transaction_type.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Requested by: <span className="font-medium">{approval.requested_by_name}</span>
+                      {approval.recipient_name && (
+                        <span> → Recipient: <span className="font-medium">{approval.recipient_name}</span></span>
+                      )}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {approval.item_count} item{approval.item_count !== 1 ? 's' : ''} • Total value: ${approval.total_value?.toFixed(2) || '0.00'}
+                    </p>
+                    {approval.notes && (
+                      <p className="text-sm text-gray-600 mt-1 italic">{approval.notes}</p>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      {approval.requires_manager_approval && !approval.manager_approved && (
+                        <Badge variant="warning" className="text-xs">
+                          Needs Manager Approval
+                        </Badge>
+                      )}
+                      {approval.requires_recipient_approval && !approval.recipient_approved && (
+                        <Badge variant="warning" className="text-xs">
+                          Needs Recipient Approval
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleApproveInventory(approval)}
+                      disabled={processing}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleRejectInventoryClick(approval)}
+                      disabled={processing}
+                    >
+                      <XCircle className="w-4 h-4 mr-1" />
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tickets.length === 0 && inventoryApprovals.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
           <p className="text-lg font-medium text-gray-900 mb-1">All caught up!</p>
-          <p className="text-sm text-gray-500">You have no tickets pending approval.</p>
+          <p className="text-sm text-gray-500">You have no pending approvals.</p>
         </div>
-      ) : (
+      ) : tickets.length > 0 ? (
+        <div className="mb-3">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Pending Ticket Approvals ({tickets.length})
+          </h3>
+        </div>
+      ) : null}
+
+      {tickets.length > 0 && (
         <div className="space-y-3">
           {tickets.map((ticket) => {
             const urgency = getUrgencyLevel(ticket.hours_remaining);
@@ -430,6 +620,37 @@ export function PendingApprovalsPage() {
               <p className="text-sm text-yellow-800">
                 The ticket will be locked and require admin review before any further action can be taken.
               </p>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={showInventoryRejectModal}
+        onClose={() => !processing && setShowInventoryRejectModal(false)}
+        title="Reject Inventory Transaction"
+        onConfirm={handleRejectInventory}
+        confirmText={processing ? 'Rejecting...' : 'Reject Transaction'}
+        confirmVariant="danger"
+        cancelText="Cancel"
+      >
+        {selectedInventory && (
+          <div>
+            <p className="text-gray-700 mb-3">
+              Rejecting transaction <strong>{selectedInventory.transaction_number}</strong> will prevent inventory quantities from being updated.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Reason for Rejection <span className="text-red-600">*</span>
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Please explain why you are rejecting this transaction..."
+                disabled={processing}
+              />
             </div>
           </div>
         )}

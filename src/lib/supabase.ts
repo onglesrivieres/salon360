@@ -277,6 +277,83 @@ export interface ApprovalStatistics {
   requires_review: number;
 }
 
+export interface InventoryItem {
+  id: string;
+  store_id: string;
+  code: string;
+  name: string;
+  description: string;
+  category: string;
+  unit: string;
+  quantity_on_hand: number;
+  reorder_level: number;
+  unit_cost: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryTransaction {
+  id: string;
+  store_id: string;
+  transaction_type: 'in' | 'out';
+  transaction_number: string;
+  requested_by_id: string;
+  recipient_id?: string;
+  notes: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requires_recipient_approval: boolean;
+  requires_manager_approval: boolean;
+  recipient_approved: boolean;
+  recipient_approved_at?: string;
+  recipient_approved_by_id?: string;
+  manager_approved: boolean;
+  manager_approved_at?: string;
+  manager_approved_by_id?: string;
+  rejection_reason: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryTransactionItem {
+  id: string;
+  transaction_id: string;
+  item_id: string;
+  quantity: number;
+  unit_cost: number;
+  notes: string;
+  created_at: string;
+}
+
+export interface InventoryTransactionWithDetails extends InventoryTransaction {
+  requested_by_name?: string;
+  recipient_name?: string;
+  items?: InventoryTransactionItemWithDetails[];
+}
+
+export interface InventoryTransactionItemWithDetails extends InventoryTransactionItem {
+  item_name?: string;
+  item_code?: string;
+  item_unit?: string;
+}
+
+export interface PendingInventoryApproval {
+  id: string;
+  transaction_number: string;
+  transaction_type: 'in' | 'out';
+  requested_by_name: string;
+  recipient_name: string;
+  notes: string;
+  status: string;
+  requires_recipient_approval: boolean;
+  requires_manager_approval: boolean;
+  recipient_approved: boolean;
+  manager_approved: boolean;
+  created_at: string;
+  item_count: number;
+  total_value: number;
+}
+
 export interface EndOfDayRecord {
   id: string;
   store_id: string;
