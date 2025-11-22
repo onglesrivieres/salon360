@@ -53,7 +53,10 @@ export function InventoryPage() {
   }, [selectedStoreId]);
 
   async function fetchItems() {
-    if (!selectedStoreId) return;
+    if (!selectedStoreId) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -75,7 +78,9 @@ export function InventoryPage() {
   }
 
   async function fetchTransactions() {
-    if (!selectedStoreId) return;
+    if (!selectedStoreId) {
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -145,6 +150,18 @@ export function InventoryPage() {
 
   const categories = Array.from(new Set(items.map((item) => item.category))).sort();
   const lowStockItems = items.filter((item) => item.quantity_on_hand <= item.reorder_level);
+
+  if (!selectedStoreId) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="text-center py-12">
+          <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">No Store Selected</h2>
+          <p className="text-gray-500">Please select a store to view inventory</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
