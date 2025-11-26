@@ -191,6 +191,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   useEffect(() => {
     if (isSelfServiceMode && session?.employee_id && !ticketId && items.length === 0) {
       setLastUsedEmployeeId(session.employee_id);
+      setSelectedTechnicianId(session.employee_id);
     }
   }, [isSelfServiceMode, session, ticketId, items.length]);
 
