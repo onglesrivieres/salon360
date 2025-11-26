@@ -54,6 +54,7 @@ export interface Technician {
   can_reset_pin?: boolean;
   pin_temp?: string;
   last_pin_change?: string;
+  tip_report_show_details?: boolean;
   created_at: string;
   updated_at: string;
 }

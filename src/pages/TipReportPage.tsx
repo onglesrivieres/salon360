@@ -49,6 +49,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   const [weeklyData, setWeeklyData] = useState<Map<string, Map<string, { tips_cash: number; tips_card: number; tips_total: number }>>>(new Map());
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState(true);
   const { showToast } = useToast();
   const { session, selectedStoreId, t } = useAuth();
 
@@ -228,6 +229,22 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
       const canViewAll = session?.role_permission ? Permissions.endOfDay.canViewAll(session.role_permission) : false;
       const isTechnician = !canViewAll;
+
+      if (isTechnician && session?.employee_id) {
+        const { data: employeeData, error: employeeError } = await supabase
+          .from('employees')
+          .select('tip_report_show_details')
+          .eq('id', session.employee_id)
+          .maybeSingle();
+
+        if (!employeeError && employeeData) {
+          setShowDetails(employeeData.tip_report_show_details ?? true);
+        } else {
+          setShowDetails(true);
+        }
+      } else {
+        setShowDetails(true);
+      }
 
       let query = supabase
         .from('sale_tickets')
@@ -602,24 +619,35 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                         Summary
                       </p>
                       <div className="space-y-0.5">
-                        <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-gray-600">T. (Cash)</span>
-                          <span className={`text-[9px] ${summary.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
-                            ${summary.tips_cash.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-gray-600">T. (Card)</span>
-                          <span className={`text-[9px] ${summary.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
-                            ${summary.tips_card.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
-                          <span className="text-[9px] font-medium text-gray-900">Total</span>
-                          <span className="text-[10px] font-bold text-gray-900">
-                            ${summary.tips_total.toFixed(2)}
-                          </span>
-                        </div>
+                        {showDetails ? (
+                          <>
+                            <div className="flex justify-between items-center">
+                              <span className="text-[9px] text-gray-600">T. (Cash)</span>
+                              <span className={`text-[9px] ${summary.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
+                                ${summary.tips_cash.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-[9px] text-gray-600">T. (Card)</span>
+                              <span className={`text-[9px] ${summary.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
+                                ${summary.tips_card.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
+                              <span className="text-[9px] font-medium text-gray-900">Total</span>
+                              <span className="text-[10px] font-bold text-gray-900">
+                                ${summary.tips_total.toFixed(2)}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] font-medium text-gray-900">Total Tips</span>
+                            <span className="text-[10px] font-bold text-gray-900">
+                              ${summary.tips_total.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -630,6 +658,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                       <div className="space-y-1 max-h-72 overflow-y-auto">
                         {summary.items.map((item, index) => {
                           const openTime = formatTimeEST(item.opened_at);
+                          const totalTip = item.tip_customer + item.tip_receptionist;
 
                           return (
                             <div
@@ -645,20 +674,29 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                   {item.service_code}
                                 </div>
                               </div>
-                              <div className="space-y-0">
+                              {showDetails ? (
+                                <div className="space-y-0">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-[8px] text-gray-600">T. (given)</span>
+                                    <span className={`text-[8px] ${item.tip_customer === 0 ? 'text-gray-900' : 'font-semibold text-gray-900'}`}>
+                                      ${item.tip_customer.toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-[8px] text-gray-600">T. (paired)</span>
+                                    <span className={`text-[8px] ${item.tip_receptionist === 0 ? 'text-gray-900' : 'font-semibold text-orange-600'}`}>
+                                      ${item.tip_receptionist.toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : (
                                 <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-600">T. (given)</span>
-                                  <span className={`text-[8px] ${item.tip_customer === 0 ? 'text-gray-900' : 'font-semibold text-gray-900'}`}>
-                                    ${item.tip_customer.toFixed(2)}
+                                  <span className="text-[8px] text-gray-600">Total Tip</span>
+                                  <span className={`text-[8px] ${totalTip === 0 ? 'text-gray-900' : 'font-semibold text-gray-900'}`}>
+                                    ${totalTip.toFixed(2)}
                                   </span>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-600">T. (paired)</span>
-                                  <span className={`text-[8px] ${item.tip_receptionist === 0 ? 'text-gray-900' : 'font-semibold text-orange-600'}`}>
-                                    ${item.tip_receptionist.toFixed(2)}
-                                  </span>
-                                </div>
-                              </div>
+                              )}
                             </div>
                           );
                         })}
