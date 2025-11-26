@@ -57,10 +57,28 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
   const isApproved = ticket?.approval_status === 'approved' || ticket?.approval_status === 'auto_approved';
 
-  const isReadOnly = ticket && session && session.role_permission && !Permissions.tickets.canEdit(
-    session.role_permission,
-    !!ticket.closed_at,
-    isApproved
+  const isSelfServiceMode = !ticketId && session?.role_permission && Permissions.tickets.isSelfServiceRole(session.role_permission);
+
+  const canEditAsSelfService = ticketId && ticket?.opened_by_role &&
+    ['Technician', 'Spa Expert', 'Supervisor'].includes(ticket.opened_by_role) &&
+    session?.employee_id === ticket.created_by &&
+    session?.role_permission &&
+    Permissions.tickets.canEditSelfServiceTicket(
+      session.role_permission,
+      session.employee_id,
+      ticket.created_by
+    );
+
+  const isReadOnly = ticket && session && session.role_permission && (
+    !Permissions.tickets.canEdit(
+      session.role_permission,
+      !!ticket.closed_at,
+      isApproved
+    ) || (
+      Permissions.tickets.isSelfServiceRole(session.role_permission) &&
+      ticket.created_by === session.employee_id &&
+      !canEditAsSelfService
+    )
   );
 
   const canEditNotes = session && session.role_permission && ticket && Permissions.tickets.canEditNotes(
@@ -163,6 +181,43 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   useEffect(() => {
     loadData();
   }, [ticketId]);
+
+  useEffect(() => {
+    if (isSelfServiceMode && !ticketId) {
+      checkAttendanceAndValidate();
+    }
+  }, [isSelfServiceMode, ticketId]);
+
+  useEffect(() => {
+    if (isSelfServiceMode && session?.employee_id && !ticketId && items.length === 0) {
+      setLastUsedEmployeeId(session.employee_id);
+    }
+  }, [isSelfServiceMode, session, ticketId, items.length]);
+
+  async function checkAttendanceAndValidate() {
+    if (!session?.employee_id || !selectedStoreId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .select('id, status')
+        .eq('employee_id', session.employee_id)
+        .eq('store_id', selectedStoreId)
+        .eq('work_date', selectedDate)
+        .eq('status', 'checked_in')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data) {
+        showToast('You must be checked in to create tickets. Please check in first.', 'error');
+        setTimeout(() => onClose(), 2000);
+      }
+    } catch (error) {
+      console.error('Error checking attendance:', error);
+      showToast('Failed to verify attendance status', 'error');
+    }
+  }
 
   useEffect(() => {
     if (selectedStoreId) {
@@ -830,6 +885,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           updated_at: new Date().toISOString(),
         };
 
+        if (
+          ticket.opened_by_role &&
+          ['Technician', 'Spa Expert', 'Supervisor'].includes(ticket.opened_by_role) &&
+          !ticket.reviewed_by_receptionist &&
+          session?.role_permission &&
+          Permissions.tickets.canReviewSelfServiceTicket(session.role_permission)
+        ) {
+          updateData.reviewed_by_receptionist = true;
+        }
+
         if (formData.opening_time && formData.opening_time !== ticket.opened_at) {
           updateData.opened_at = formData.opening_time;
           await logActivity(ticketId, 'updated', `${session?.display_name} updated ticket opening time`, {
@@ -912,6 +977,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           store_id: selectedStoreId || null,
           created_by: session?.employee_id,
           saved_by: session?.employee_id,
+          opened_by_role: session?.role_permission || null,
+          reviewed_by_receptionist: session?.role_permission && Permissions.tickets.isSelfServiceRole(session.role_permission) ? false : true,
         };
 
         if (formData.opening_time) {
@@ -1379,6 +1446,41 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             </div>
           )}
 
+          {isSelfServiceMode && !ticketId && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-start gap-2">
+                <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-800 mb-1">
+                    Self-Service Mode
+                  </p>
+                  <p className="text-xs text-green-700">
+                    • You can only create tickets for yourself<br/>
+                    • A receptionist or manager will review your ticket<br/>
+                    • You cannot edit after saving
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isReadOnly &&
+           ticket?.opened_by_role &&
+           ['Technician', 'Spa Expert', 'Supervisor'].includes(ticket.opened_by_role) &&
+           session?.employee_id === ticket.created_by && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900">View Only</p>
+                  <p className="text-xs text-blue-700 mt-1">
+                    You cannot edit tickets after saving. A receptionist or manager can make changes if needed.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {isApproved && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-3">
               <div className="flex items-start gap-2">
@@ -1580,7 +1682,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             )}
 
             <div className="flex flex-wrap gap-2">
-              {!isTicketClosed && sortedTechnicians.filter(t => t.queue_status === 'ready').map((tech) => (
+              {!isTicketClosed && sortedTechnicians
+                .filter(t => t.queue_status === 'ready')
+                .filter(t => !isSelfServiceMode || t.employee_id === session?.employee_id)
+                .map((tech) => (
                 <button
                   key={tech.employee_id}
                   type="button"
@@ -1609,7 +1714,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 </button>
               ))}
 
-              {!isTicketClosed && sortedTechnicians.filter(t => t.queue_status === 'neutral').map((tech) => (
+              {!isTicketClosed && sortedTechnicians
+                .filter(t => t.queue_status === 'neutral')
+                .filter(t => !isSelfServiceMode || t.employee_id === session?.employee_id)
+                .map((tech) => (
                 <button
                   key={tech.employee_id}
                   type="button"
@@ -1631,7 +1739,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 </button>
               ))}
 
-              {!isTicketClosed && sortedTechnicians.filter(t => t.queue_status === 'busy').map((tech) => {
+              {!isTicketClosed && sortedTechnicians
+                .filter(t => t.queue_status === 'busy')
+                .filter(t => !isSelfServiceMode || t.employee_id === session?.employee_id)
+                .map((tech) => {
                 const timeRemaining = calculateTimeRemaining(tech);
                 return (
                   <button

@@ -198,6 +198,11 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     // Apply approval status filter
     if (approvalFilter !== 'all') {
       filtered = filtered.filter(ticket => {
+        if (approvalFilter === 'self_service_pending') {
+          return ticket.opened_by_role &&
+            ['Technician', 'Spa Expert', 'Supervisor'].includes(ticket.opened_by_role) &&
+            !ticket.reviewed_by_receptionist;
+        }
         if (approvalFilter === 'open') return !ticket.closed_at;
         if (approvalFilter === 'closed') return ticket.closed_at && !ticket.approval_status;
         if (approvalFilter === 'pending_approval') return ticket.approval_status === 'pending_approval';
@@ -299,6 +304,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
             className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] md:min-h-0"
           >
             <option value="all">All Tickets</option>
+            <option value="self_service_pending">Self-Service (Needs Review)</option>
             <option value="open">Open</option>
             <option value="closed">Closed (No Status)</option>
             <option value="pending_approval">Pending Approval</option>
@@ -382,10 +388,19 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                 );
                 const canView = session && session.role_permission && Permissions.tickets.canView(session.role_permission);
 
+                const isSelfServiceTicket =
+                  ticket.opened_by_role &&
+                  ['Technician', 'Spa Expert', 'Supervisor'].includes(ticket.opened_by_role) &&
+                  !ticket.reviewed_by_receptionist;
+
                 return (
                   <tr
                     key={ticket.id}
-                    className={`hover:bg-gray-50 ${canView ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
+                    className={`
+                      ${isSelfServiceTicket ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50'}
+                      ${canView ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}
+                      transition-colors duration-200
+                    `}
                     onClick={() => canView && openEditor(ticket.id)}
                     title={!canView ? 'You do not have permission to view this ticket' : ''}
                   >
@@ -405,25 +420,32 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                       ${ticket.total.toFixed(2)}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      {ticket.closed_at ? (
-                        isTimeDeviationHigh(ticket) ? (
-                          <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flash-red">
-                            Closed
+                      <div className="flex items-center gap-1">
+                        {isSelfServiceTicket && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-600 text-white">
+                            Self-Service
+                          </span>
+                        )}
+                        {ticket.closed_at ? (
+                          isTimeDeviationHigh(ticket) ? (
+                            <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flash-red">
+                              Closed
+                            </div>
+                          ) : (
+                            <Badge variant="success">Closed</Badge>
+                          )
+                        ) : ticket.completed_at ? (
+                          <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            Completed
                           </div>
                         ) : (
-                          <Badge variant="success">Closed</Badge>
-                        )
-                      ) : ticket.completed_at ? (
-                        <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                          Completed
-                        </div>
-                      ) : (
-                        <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          isTimeDeviationHigh(ticket) ? 'flash-red' : 'bg-orange-100 text-red-600'
-                        }`}>
-                          {formatDuration(ticket.opened_at)}
-                        </div>
-                      )}
+                          <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            isTimeDeviationHigh(ticket) ? 'flash-red' : 'bg-orange-100 text-red-600'
+                          }`}>
+                            {formatDuration(ticket.opened_at)}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       {getApprovalStatusBadge(ticket)}

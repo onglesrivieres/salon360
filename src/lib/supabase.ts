@@ -127,6 +127,8 @@ export interface SaleTicket {
   approval_deadline?: string | null;
   rejection_reason?: string | null;
   requires_admin_review?: boolean;
+  opened_by_role?: string;
+  reviewed_by_receptionist?: boolean;
   created_at: string;
   updated_at: string;
 }

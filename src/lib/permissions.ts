@@ -22,7 +22,24 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
     },
     canCreate: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
+    },
+    isSelfServiceRole: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Technician', 'Spa Expert', 'Supervisor']);
+    },
+    canReviewSelfServiceTicket: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Manager', 'Owner']);
+    },
+    canEditSelfServiceTicket: (
+      roles: Role[] | RolePermission,
+      currentEmployeeId: string,
+      ticketCreatedBy?: string
+    ): boolean => {
+      const isSelfServiceRole = hasAnyRole(roles, ['Technician', 'Spa Expert', 'Supervisor']);
+      if (!isSelfServiceRole || !ticketCreatedBy) {
+        return false;
+      }
+      return currentEmployeeId === ticketCreatedBy;
     },
     canEdit: (roles: Role[] | RolePermission, isClosed: boolean, isApproved?: boolean): boolean => {
       if (hasAnyRole(roles, ['Admin', 'Owner'])) return true;
