@@ -1660,16 +1660,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           </div>
 
           <div className="border border-gray-200 rounded-lg p-3 bg-blue-50">
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-xs font-medium text-gray-700">
-                Technician <span className="text-red-600">*</span>
-              </label>
-              <div className="flex items-center gap-1.5 text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded">
-                <Clock className="w-3 h-3" />
-                <span className="font-medium">{getFullDayName(getDayOfWeek(selectedDate))}</span>
-                <span className="text-blue-600">• {employees.length} available</span>
-              </div>
-            </div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">
+              Technician <span className="text-red-600">*</span>
+            </label>
 
             {employees.length === 0 && !isTicketClosed && (
               <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
