@@ -504,11 +504,22 @@ export function InventoryPage() {
                   <tr>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('code')}
+                      onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center gap-1">
-                        Code
-                        {sortColumn === 'code' && (
+                        Name
+                        {sortColumn === 'name' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('category')}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        Category
+                        {sortColumn === 'category' && (
                           sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
                         )}
                       </div>
@@ -531,28 +542,6 @@ export function InventoryPage() {
                       <div className="flex items-center gap-1">
                         Brand
                         {sortColumn === 'brand' && (
-                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('name')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Name
-                        {sortColumn === 'name' && (
-                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('category')}
-                    >
-                      <div className="flex items-center justify-center gap-1">
-                        Category
-                        {sortColumn === 'category' && (
                           sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
                         )}
                       </div>
@@ -619,20 +608,17 @@ export function InventoryPage() {
                         key={item.id}
                         className={`hover:bg-gray-50 ${isLowStock ? 'bg-amber-50' : ''}`}
                       >
-                        <td className="px-4 py-3 text-sm font-mono text-gray-900 whitespace-nowrap">
-                          {item.code}
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          {item.name}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-center">
+                          <Badge variant="secondary">{item.category}</Badge>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-900">
                           {item.supplier}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-900">
                           {item.brand || '-'}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                          {item.name}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-center">
-                          <Badge variant="secondary">{item.category}</Badge>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" title={item.description}>
                           {item.description || '-'}
