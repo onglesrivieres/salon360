@@ -97,6 +97,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const [showCustomService, setShowCustomService] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [pendingBusyTechnicianCompletion, setPendingBusyTechnicianCompletion] = useState<{
+    technicianId: string;
+    currentTicketId: string;
+  } | null>(null);
 
   const calculateTimeRemaining = (tech: TechnicianWithQueue): string => {
     if (!tech.ticket_start_time || !tech.estimated_duration_min) {
@@ -861,6 +865,56 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     try {
       setSaving(true);
 
+      // If there's a pending busy technician completion, complete their previous ticket first
+      if (pendingBusyTechnicianCompletion) {
+        if (!session?.employee_id) {
+          showToast('Unable to complete previous ticket: session error', 'error');
+          setSaving(false);
+          return;
+        }
+
+        try {
+          console.log('Completing previous ticket:', pendingBusyTechnicianCompletion.currentTicketId);
+
+          const { error: completeError, data: completedTicket } = await supabase
+            .from('sale_tickets')
+            .update({
+              completed_at: new Date().toISOString(),
+              completed_by: session.employee_id,
+            })
+            .eq('id', pendingBusyTechnicianCompletion.currentTicketId)
+            .select()
+            .maybeSingle();
+
+          if (completeError) {
+            console.error('Error completing previous ticket:', completeError);
+            showToast(`Failed to complete previous ticket: ${completeError.message}`, 'error');
+            setSaving(false);
+            return;
+          }
+
+          if (!completedTicket) {
+            showToast('Previous ticket not found', 'error');
+            setSaving(false);
+            return;
+          }
+
+          await logActivity(
+            pendingBusyTechnicianCompletion.currentTicketId,
+            'updated',
+            `${session.display_name} marked service as completed (technician assigned to new ticket)`,
+            {}
+          );
+
+          console.log('Previous ticket completed successfully');
+        } catch (error: any) {
+          console.error('Failed to complete previous ticket:', error);
+          showToast(error?.message || 'Failed to complete previous ticket', 'error');
+          setSaving(false);
+          return;
+        }
+      }
+
       if (!ticketId && selectedStoreId) {
         const openingCashRecorded = await checkOpeningCashRecorded(selectedStoreId, selectedDate);
         if (!openingCashRecorded) {
@@ -1037,6 +1091,12 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         showToast('Ticket created successfully', 'success');
       }
 
+      // Clear pending completion state and refresh technicians after successful save
+      if (pendingBusyTechnicianCompletion) {
+        setPendingBusyTechnicianCompletion(null);
+        await fetchSortedTechnicians();
+      }
+
       onClose();
     } catch (error: any) {
       showToast(error.message || 'Failed to save ticket', 'error');
@@ -1055,56 +1115,27 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       return;
     }
 
-    if (!session?.employee_id) {
-      console.error('No employee_id in session');
-      showToast('Unable to complete ticket: session error', 'error');
-      return;
+    // Store pending completion info instead of completing immediately
+    setPendingBusyTechnicianCompletion({
+      technicianId,
+      currentTicketId
+    });
+
+    setSelectedTechnicianId(technicianId);
+    setLastUsedEmployeeId(technicianId);
+    if (items.length > 0) {
+      updateItem(0, 'employee_id', technicianId);
     }
 
-    try {
-      console.log('Completing ticket:', currentTicketId, 'for employee:', session.employee_id);
+    showToast('Previous ticket will be completed when you save this ticket', 'info');
+  }
 
-      // Mark the technician's current ticket as completed (stops the timer)
-      const { error, data } = await supabase
-        .from('sale_tickets')
-        .update({
-          completed_at: new Date().toISOString(),
-          completed_by: session.employee_id,
-        })
-        .eq('id', currentTicketId)
-        .select()
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error completing ticket:', error);
-        showToast(`Failed to complete ticket: ${error.message}`, 'error');
-        return;
-      }
-
-      if (!data) {
-        console.error('No ticket found with ID:', currentTicketId);
-        showToast('Ticket not found', 'error');
-        return;
-      }
-
-      console.log('Ticket completed successfully:', data);
-
-      await logActivity(currentTicketId, 'updated', `${session.display_name} marked service as completed (technician assigned to new ticket)`, {});
-
-      setSelectedTechnicianId(technicianId);
-      setLastUsedEmployeeId(technicianId);
-      if (items.length > 0) {
-        updateItem(0, 'employee_id', technicianId);
-      }
-
-      showToast('Previous ticket marked as completed', 'success');
-
-      // Refresh technician list to update statuses
-      await fetchSortedTechnicians();
-    } catch (error: any) {
-      console.error('Failed to complete previous ticket:', error);
-      showToast(error?.message || 'Failed to complete previous ticket', 'error');
+  function handleClose() {
+    // Clear pending completion state when closing without saving
+    if (pendingBusyTechnicianCompletion) {
+      setPendingBusyTechnicianCompletion(null);
     }
+    onClose();
   }
 
   async function handleCloseTicket() {
@@ -1367,7 +1398,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       <>
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={onClose}
+          onClick={handleClose}
         />
         <div className="fixed inset-0 md:right-0 md:left-auto md:top-0 h-full w-full md:max-w-4xl bg-white shadow-xl z-50 overflow-y-auto flex items-center justify-center">
           <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center">
@@ -1376,7 +1407,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             <p className="text-gray-600 mb-6">
               You do not have permission to create tickets. Only Admin and Receptionist roles can create new tickets.
             </p>
-            <Button onClick={onClose} variant="primary">
+            <Button onClick={handleClose} variant="primary">
               Close
             </Button>
           </div>
@@ -1409,7 +1440,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             <div className="flex items-center gap-2">
               {getApprovalStatusBadge()}
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-2 -mr-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 <X className="w-6 h-6 md:w-5 md:h-5" />
@@ -1664,6 +1695,14 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               Technician <span className="text-red-600">*</span>
             </label>
 
+            {pendingBusyTechnicianCompletion && (
+              <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs text-amber-800 font-medium">
+                  ⚠️ The selected technician's current ticket will be completed when you save this ticket
+                </p>
+              </div>
+            )}
+
             {employees.length === 0 && !isTicketClosed && (
               <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="text-xs text-amber-800">
@@ -1767,7 +1806,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                         ? 'bg-red-600 text-white ring-2 ring-red-400'
                         : 'bg-red-100 text-red-800 hover:bg-red-200'
                     }`}
-                    title={`${tech.display_name} is currently working on ${tech.open_ticket_count} ticket(s)${timeRemaining ? ` - ${timeRemaining} remaining` : ''}. Click to complete their current ticket and assign to new ticket.`}
+                    title={`${tech.display_name} is currently working on ${tech.open_ticket_count} ticket(s)${timeRemaining ? ` - ${timeRemaining} remaining` : ''}. Click to select - their current ticket will be completed when you save this ticket.`}
                     disabled={isReadOnly}
                   >
                     <div className="flex items-center gap-2">
