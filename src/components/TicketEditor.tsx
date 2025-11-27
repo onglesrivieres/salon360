@@ -1100,7 +1100,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       showToast('Previous ticket marked as completed', 'success');
 
       // Refresh technician list to update statuses
-      await fetchTechnicians();
+      await fetchSortedTechnicians();
     } catch (error: any) {
       console.error('Failed to complete previous ticket:', error);
       showToast(error?.message || 'Failed to complete previous ticket', 'error');
