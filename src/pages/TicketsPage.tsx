@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit2, Calendar, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Edit2, Calendar, CheckCircle, Clock, AlertCircle, Filter, X } from 'lucide-react';
 import { supabase, SaleTicket } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -23,6 +23,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   const [approvalFilter, setApprovalFilter] = useState<string>('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
   const [technicianFilter, setTechnicianFilter] = useState<string>('all');
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
@@ -291,6 +292,20 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     }
   }
 
+  function getActiveFilterCount(): number {
+    let count = 0;
+    if (approvalFilter !== 'all') count++;
+    if (paymentMethodFilter !== 'all') count++;
+    if (technicianFilter !== 'all') count++;
+    return count;
+  }
+
+  function clearAllFilters(): void {
+    setApprovalFilter('all');
+    setPaymentMethodFilter('all');
+    setTechnicianFilter('all');
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -304,41 +319,109 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
         <h2 className="text-base md:text-lg font-bold text-gray-900">Sale Tickets</h2>
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
-          <select
-            value={approvalFilter}
-            onChange={(e) => setApprovalFilter(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] md:min-h-0"
-          >
-            <option value="all">All Tickets</option>
-            <option value="self_service_pending">Self-Service (Needs Review)</option>
-            <option value="open">Open</option>
-            <option value="closed">Closed (No Status)</option>
-            <option value="pending_approval">Pending Approval</option>
-            <option value="approved">Approved</option>
-            <option value="auto_approved">Auto-Approved</option>
-            <option value="rejected">Rejected</option>
-          </select>
-          <select
-            value={paymentMethodFilter}
-            onChange={(e) => setPaymentMethodFilter(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] md:min-h-0"
-          >
-            <option value="all">All Payment Methods</option>
-            <option value="Cash">Cash</option>
-            <option value="Card">Card</option>
-            <option value="Mixed">Mixed</option>
-            <option value="Other">Other</option>
-          </select>
-          <select
-            value={technicianFilter}
-            onChange={(e) => setTechnicianFilter(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] md:min-h-0"
-          >
-            <option value="all">All Technicians</option>
-            {technicians.map(tech => (
-              <option key={tech.id} value={tech.id}>{tech.name}</option>
-            ))}
-          </select>
+          <div className="relative">
+            <button
+              onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+              className={`px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] md:min-h-0 flex items-center gap-2 ${
+                getActiveFilterCount() > 0
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Filter className="w-4 h-4" />
+              <span>Filters</span>
+              {getActiveFilterCount() > 0 && (
+                <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full">
+                  {getActiveFilterCount()}
+                </span>
+              )}
+            </button>
+
+            {isFilterPanelOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsFilterPanelOpen(false)}
+                />
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                  <div className="p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
+                      <button
+                        onClick={() => setIsFilterPanelOpen(false)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Approval Status
+                      </label>
+                      <select
+                        value={approvalFilter}
+                        onChange={(e) => setApprovalFilter(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="all">All Tickets</option>
+                        <option value="self_service_pending">Self-Service (Needs Review)</option>
+                        <option value="open">Open</option>
+                        <option value="closed">Closed (No Status)</option>
+                        <option value="pending_approval">Pending Approval</option>
+                        <option value="approved">Approved</option>
+                        <option value="auto_approved">Auto-Approved</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Payment Method
+                      </label>
+                      <select
+                        value={paymentMethodFilter}
+                        onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="all">All Payment Methods</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Card">Card</option>
+                        <option value="Mixed">Mixed</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Technician
+                      </label>
+                      <select
+                        value={technicianFilter}
+                        onChange={(e) => setTechnicianFilter(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="all">All Technicians</option>
+                        {technicians.map(tech => (
+                          <option key={tech.id} value={tech.id}>{tech.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {getActiveFilterCount() > 0 && (
+                      <button
+                        onClick={clearAllFilters}
+                        className="w-full px-3 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                      >
+                        Clear All Filters
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
           <div className="flex items-center gap-2 flex-1 md:flex-initial">
             <Calendar className="w-4 h-4 text-gray-400" />
             <input
