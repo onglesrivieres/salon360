@@ -190,23 +190,25 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       const today = getCurrentDateEST();
       console.log('Check-in/out flow:', { employeeId, storeId, displayName, today, action });
 
-      const { data: attendance } = await supabase
-        .from('attendance_records')
-        .select('*')
-        .eq('employee_id', employeeId)
-        .eq('store_id', storeId)
-        .eq('work_date', today)
-        .maybeSingle();
-
-      console.log('Attendance record found:', attendance);
-      const isCheckedIn = attendance && attendance.status === 'checked_in';
-      console.log('Is checked in:', isCheckedIn);
-
       if (action === 'checkin') {
-        if (isCheckedIn) {
+        // For check-in: check if already checked in today
+        const { data: todayAttendance } = await supabase
+          .from('attendance_records')
+          .select('*')
+          .eq('employee_id', employeeId)
+          .eq('store_id', storeId)
+          .eq('work_date', today)
+          .eq('status', 'checked_in')
+          .is('check_out_time', null)
+          .maybeSingle();
+
+        console.log('Today attendance record found:', todayAttendance);
+
+        if (todayAttendance) {
           setPinError('You are already checked in');
           return;
         }
+
         // Check if within check-in window (15 min before opening)
         const { data: canCheckIn, error: windowError } = await supabase.rpc('can_checkin_now', {
           p_store_id: storeId
@@ -239,12 +241,27 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         setSuccessMessage(`${t('home.welcome')} ${displayName}! ${t('home.checkedIn')}`);
         setShowSuccessModal(true);
       } else if (action === 'checkout') {
-        if (!isCheckedIn) {
+        // For check-out: find any active check-in regardless of date
+        const { data: activeAttendance } = await supabase
+          .from('attendance_records')
+          .select('*')
+          .eq('employee_id', employeeId)
+          .eq('store_id', storeId)
+          .eq('status', 'checked_in')
+          .is('check_out_time', null)
+          .order('check_in_time', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        console.log('Active attendance record found:', activeAttendance);
+
+        if (!activeAttendance) {
+          console.log('No active check-in found for employee');
           setPinError('You are not checked in');
           return;
         }
 
-        console.log('Attempting to check out employee:', { employeeId, storeId });
+        console.log('Attempting to check out employee:', { employeeId, storeId, checkInDate: activeAttendance.work_date });
 
         const { data: checkOutSuccess, error: checkOutError } = await supabase.rpc('check_out_employee', {
           p_employee_id: employeeId,
