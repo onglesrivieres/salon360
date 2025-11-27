@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Search, RefreshCw } from 'lucide-react';
-import { supabase, Employee, Store } from '../lib/supabase';
+import { supabase, Employee, Store, WeeklySchedule } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
@@ -12,6 +12,7 @@ import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { resetPIN } from '../lib/auth';
 import { Permissions } from '../lib/permissions';
+import { getDefaultSchedule, getFullDayName, formatScheduleDisplay } from '../lib/schedule-utils';
 
 export function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -38,6 +39,7 @@ export function EmployeesPage() {
     store_ids: [] as string[],
     notes: '',
     tip_report_show_details: true,
+    weekly_schedule: getDefaultSchedule(),
   });
 
   useEffect(() => {
@@ -139,6 +141,7 @@ export function EmployeesPage() {
         store_ids: storeIds,
         notes: employee.notes,
         tip_report_show_details: employee.tip_report_show_details ?? true,
+        weekly_schedule: employee.weekly_schedule || getDefaultSchedule(),
       });
     } else {
       setEditingEmployee(null);
@@ -150,6 +153,7 @@ export function EmployeesPage() {
         store_ids: [],
         notes: '',
         tip_report_show_details: true,
+        weekly_schedule: getDefaultSchedule(),
       });
     }
     setIsDrawerOpen(true);
@@ -188,6 +192,7 @@ export function EmployeesPage() {
         pay_type: formData.pay_type,
         notes: formData.notes,
         tip_report_show_details: formData.tip_report_show_details,
+        weekly_schedule: formData.weekly_schedule,
         updated_at: new Date().toISOString(),
       };
 
@@ -336,6 +341,9 @@ export function EmployeesPage() {
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('emp.assignedStores')}
                 </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Schedule
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -375,6 +383,9 @@ export function EmployeesPage() {
                       ) : (
                         <span>{storeNames}</span>
                       )}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-gray-600">
+                      <span className="font-mono">{formatScheduleDisplay(employee.weekly_schedule)}</span>
                     </td>
                   </tr>
                 );
@@ -452,6 +463,46 @@ export function EmployeesPage() {
                 { value: 'daily', label: 'Daily' },
               ]}
             />
+          )}
+          {session && session.role && (session.role.includes('Owner') || session.role.includes('Manager')) && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Weekly Schedule *
+              </label>
+              <p className="text-xs text-gray-500 mb-3">
+                Select the days this employee is scheduled to work
+              </p>
+              <div className="grid grid-cols-7 gap-2">
+                {(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const).map((day) => (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => {
+                      setFormData({
+                        ...formData,
+                        weekly_schedule: {
+                          ...formData.weekly_schedule,
+                          [day]: !formData.weekly_schedule[day],
+                        },
+                      });
+                    }}
+                    className={`py-2 px-1 rounded-lg text-xs font-medium transition-all ${
+                      formData.weekly_schedule[day]
+                        ? 'bg-green-600 text-white shadow-md'
+                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="hidden sm:block">{getFullDayName(day)}</span>
+                      <span className="sm:hidden">{getFullDayName(day).slice(0, 2)}</span>
+                      {formData.weekly_schedule[day] && (
+                        <span className="text-xs">✓</span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
           <MultiSelect
             label={t('emp.assignedStores')}

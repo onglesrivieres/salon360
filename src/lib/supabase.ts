@@ -55,8 +55,21 @@ export interface Technician {
   pin_temp?: string;
   last_pin_change?: string;
   tip_report_show_details?: boolean;
+  weekly_schedule?: WeeklySchedule;
   created_at: string;
   updated_at: string;
+}
+
+export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
+export interface WeeklySchedule {
+  monday: boolean;
+  tuesday: boolean;
+  wednesday: boolean;
+  thursday: boolean;
+  friday: boolean;
+  saturday: boolean;
+  sunday: boolean;
 }
 
 export type Employee = Technician;

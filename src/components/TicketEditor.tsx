@@ -18,6 +18,7 @@ import { useToast } from './ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { formatDateTimeEST, convertToESTDatetimeString, convertESTDatetimeStringToUTC } from '../lib/timezone';
+import { filterAvailableEmployees, getDayOfWeek, getFullDayName } from '../lib/schedule-utils';
 
 interface TicketEditorProps {
   ticketId: string | null;
@@ -311,14 +312,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       const allEmployees = (employeesRes.data || []).filter(emp =>
         emp.role.includes('Technician') || emp.role.includes('Spa Expert')
       );
-      const filteredEmployees = selectedStoreId
+      const storeFilteredEmployees = selectedStoreId
         ? allEmployees.filter(emp => !emp.store_id || emp.store_id === selectedStoreId)
         : allEmployees;
 
-      setEmployees(filteredEmployees);
+      const availableEmployees = filterAvailableEmployees(storeFilteredEmployees, selectedDate);
 
-      if (filteredEmployees.length > 0) {
-        setLastUsedEmployeeId(filteredEmployees[0].id);
+      setEmployees(availableEmployees);
+
+      if (availableEmployees.length > 0) {
+        setLastUsedEmployeeId(availableEmployees[0].id);
       }
 
       await fetchSortedTechnicians();
@@ -1656,9 +1659,24 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           </div>
 
           <div className="border border-gray-200 rounded-lg p-3 bg-blue-50">
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Technician <span className="text-red-600">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-medium text-gray-700">
+                Technician <span className="text-red-600">*</span>
+              </label>
+              <div className="flex items-center gap-1.5 text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded">
+                <Clock className="w-3 h-3" />
+                <span className="font-medium">{getFullDayName(getDayOfWeek(selectedDate))}</span>
+                <span className="text-blue-600">• {employees.length} available</span>
+              </div>
+            </div>
+
+            {employees.length === 0 && !isTicketClosed && (
+              <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs text-amber-800">
+                  No employees scheduled for {getFullDayName(getDayOfWeek(selectedDate))}. Please update employee schedules.
+                </p>
+              </div>
+            )}
 
             {!isTicketClosed && (
               <div className="flex items-start gap-3 mb-2">
