@@ -280,6 +280,15 @@ export interface ApprovalStatistics {
   requires_review: number;
 }
 
+export interface Supplier {
+  id: string;
+  name: string;
+  code_prefix: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface MasterInventoryItem {
   id: string;
   code: string;
@@ -289,6 +298,8 @@ export interface MasterInventoryItem {
   unit: string;
   unit_cost: number;
   reorder_level: number;
+  brand?: string;
+  supplier: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -330,6 +341,8 @@ export interface InventoryItem {
   quantity_on_hand: number;
   reorder_level: number;
   unit_cost: number;
+  brand?: string;
+  supplier: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;

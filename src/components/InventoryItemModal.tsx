@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { useToast } from './ui/Toast';
-import { supabase, InventoryItem, MasterInventoryItem } from '../lib/supabase';
+import { supabase, InventoryItem, MasterInventoryItem, Supplier } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { previewItemCode, generateItemCode, ensureUniqueCode } from '../lib/inventory-codes';
 
 interface InventoryItemModalProps {
   isOpen: boolean;
@@ -41,10 +42,12 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
   const { showToast } = useToast();
   const { selectedStoreId } = useAuth();
   const [saving, setSaving] = useState(false);
-  const [searchingItem, setSearchingItem] = useState(false);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loadingSuppliers, setLoadingSuppliers] = useState(false);
   const [existingMasterItem, setExistingMasterItem] = useState<MasterInventoryItem | null>(null);
   const [formData, setFormData] = useState({
-    code: '',
+    supplier: '',
+    brand: '',
     name: '',
     description: '',
     category: '',
@@ -55,9 +58,16 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
   });
 
   useEffect(() => {
+    if (isOpen) {
+      fetchSuppliers();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     if (item) {
       setFormData({
-        code: item.code,
+        supplier: item.supplier || '',
+        brand: item.brand || '',
         name: item.name,
         description: item.description || '',
         category: item.category,
@@ -76,6 +86,8 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           unit: item.unit,
           unit_cost: item.unit_cost,
           reorder_level: item.reorder_level,
+          brand: item.brand,
+          supplier: item.supplier,
           is_active: item.is_active,
           created_at: item.created_at,
           updated_at: item.updated_at,
@@ -83,7 +95,8 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
       }
     } else {
       setFormData({
-        code: '',
+        supplier: '',
+        brand: '',
         name: '',
         description: '',
         category: '',
@@ -96,38 +109,22 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
     }
   }, [item, isOpen]);
 
-  async function handleCodeBlur() {
-    if (!formData.code.trim() || item) return;
-
+  async function fetchSuppliers() {
     try {
-      setSearchingItem(true);
+      setLoadingSuppliers(true);
       const { data, error } = await supabase
-        .from('master_inventory_items')
+        .from('suppliers')
         .select('*')
-        .eq('code', formData.code.trim())
-        .maybeSingle();
+        .eq('is_active', true)
+        .order('name');
 
       if (error) throw error;
-
-      if (data) {
-        setExistingMasterItem(data);
-        setFormData({
-          ...formData,
-          name: data.name,
-          description: data.description,
-          category: data.category,
-          unit: data.unit,
-          unit_cost: data.unit_cost.toString(),
-          reorder_level: data.reorder_level.toString(),
-        });
-        showToast(`Found existing item: ${data.name}`, 'success');
-      } else {
-        setExistingMasterItem(null);
-      }
+      setSuppliers(data || []);
     } catch (error) {
-      console.error('Error searching for item:', error);
+      console.error('Error fetching suppliers:', error);
+      showToast('Failed to load suppliers', 'error');
     } finally {
-      setSearchingItem(false);
+      setLoadingSuppliers(false);
     }
   }
 
@@ -139,7 +136,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
       return;
     }
 
-    if (!formData.code || !formData.name || !formData.category) {
+    if (!formData.supplier || !formData.name || !formData.category) {
       showToast('Please fill in all required fields', 'error');
       return;
     }
@@ -199,14 +196,26 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         if (stockError) throw stockError;
         showToast('Item added to store successfully', 'success');
       } else {
+        const selectedSupplier = suppliers.find(s => s.name === formData.supplier);
+        if (!selectedSupplier) {
+          showToast('Invalid supplier selected', 'error');
+          setSaving(false);
+          return;
+        }
+
+        const baseCode = generateItemCode(selectedSupplier.code_prefix, formData.name);
+        const uniqueCode = await ensureUniqueCode(baseCode);
+
         const masterItemData = {
-          code: formData.code.trim(),
+          code: uniqueCode,
           name: formData.name.trim(),
           description: formData.description.trim(),
           category: formData.category,
           unit: formData.unit,
           unit_cost: parseFloat(formData.unit_cost) || 0,
           reorder_level: parseFloat(formData.reorder_level) || 0,
+          brand: formData.brand.trim() || null,
+          supplier: formData.supplier,
           is_active: true,
         };
 
@@ -256,55 +265,44 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
   const isUsingMasterItem = !!existingMasterItem && !item;
   const isNewMasterItem = !existingMasterItem && !item;
 
+  const selectedSupplier = suppliers.find(s => s.name === formData.supplier);
+  const codePreview = selectedSupplier && formData.name
+    ? previewItemCode(selectedSupplier.code_prefix, formData.name)
+    : '';
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={item ? 'Edit Item' : 'Add Item'} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Item Code <span className="text-red-500">*</span>
+              Supplier <span className="text-red-500">*</span>
             </label>
-            <div className="relative">
-              <Input
-                value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                onBlur={handleCodeBlur}
-                placeholder="e.g., POLISH-001"
-                required
-                disabled={isEditingExistingItem}
-              />
-              {searchingItem && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <Search className="w-4 h-4 text-gray-400 animate-pulse" />
-                </div>
-              )}
-            </div>
-            {!isEditingExistingItem && (
-              <p className="text-xs text-gray-500 mt-1">
-                {isUsingMasterItem
-                  ? '✓ Found in catalog - adding to this store'
-                  : 'Company-wide unique code'}
-              </p>
-            )}
+            <Select
+              value={formData.supplier}
+              onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
+              required
+              disabled={isEditingExistingItem || loadingSuppliers}
+            >
+              <option value="">Select Supplier</option>
+              {suppliers.map((supplier) => (
+                <option key={supplier.id} value={supplier.name}>
+                  {supplier.name}
+                </option>
+              ))}
+            </Select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Category <span className="text-red-500">*</span>
+              Brand
             </label>
-            <Select
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              required
+            <Input
+              value={formData.brand}
+              onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+              placeholder="e.g., OPI"
               disabled={isUsingMasterItem}
-            >
-              <option value="">Select Category</option>
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </Select>
+            />
           </div>
         </div>
 
@@ -315,10 +313,54 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           <Input
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="e.g., OPI Polish - Red"
+            placeholder="e.g., Base Gel"
             required
             disabled={isUsingMasterItem}
           />
+        </div>
+
+        {!isEditingExistingItem && codePreview && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Item Code (Auto-generated)
+            </label>
+            <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg font-mono text-sm text-gray-700">
+              {codePreview}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Code format: Supplier prefix + Item name (first 4 characters)
+            </p>
+          </div>
+        )}
+
+        {isEditingExistingItem && item && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Item Code
+            </label>
+            <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg font-mono text-sm text-gray-700">
+              {item.code}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Category <span className="text-red-500">*</span>
+          </label>
+          <Select
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            required
+            disabled={isUsingMasterItem}
+          >
+            <option value="">Select Category</option>
+            {CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </Select>
         </div>
 
         <div>

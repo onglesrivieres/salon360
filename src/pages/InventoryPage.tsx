@@ -11,6 +11,10 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  LayoutGrid,
+  Table2,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import { supabase, InventoryItem, InventoryTransactionWithDetails, StoreInventoryWithDetails } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
@@ -25,6 +29,9 @@ import { InventoryTransactionModal } from '../components/InventoryTransactionMod
 import { formatDateTimeEST } from '../lib/timezone';
 
 type Tab = 'items' | 'transactions';
+type ViewMode = 'grid' | 'table';
+type SortColumn = 'code' | 'supplier' | 'brand' | 'name' | 'category' | 'quantity_on_hand' | 'reorder_level' | 'unit_cost' | 'total_value';
+type SortDirection = 'asc' | 'desc';
 
 export function InventoryPage() {
   const [activeTab, setActiveTab] = useState<Tab>('items');
@@ -33,7 +40,15 @@ export function InventoryPage() {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [supplierFilter, setSupplierFilter] = useState('');
+  const [brandFilter, setBrandFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const saved = localStorage.getItem('inventoryViewMode');
+    return (saved === 'table' || saved === 'grid') ? saved : 'grid';
+  });
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [showItemModal, setShowItemModal] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [transactionType, setTransactionType] = useState<'in' | 'out' | undefined>(undefined);
@@ -74,6 +89,8 @@ export function InventoryPage() {
             unit,
             unit_cost,
             reorder_level,
+            brand,
+            supplier,
             is_active
           )
         `)
@@ -95,6 +112,8 @@ export function InventoryPage() {
           quantity_on_hand: stock.quantity_on_hand,
           reorder_level: stock.reorder_level_override ?? stock.item.reorder_level,
           unit_cost: stock.unit_cost_override ?? stock.item.unit_cost,
+          brand: stock.item.brand,
+          supplier: stock.item.supplier,
           is_active: stock.item.is_active,
           created_at: stock.created_at,
           updated_at: stock.updated_at,
@@ -183,13 +202,56 @@ export function InventoryPage() {
     setTransactionType(undefined);
   }
 
+  function toggleViewMode(mode: ViewMode) {
+    setViewMode(mode);
+    localStorage.setItem('inventoryViewMode', mode);
+  }
+
+  function handleSort(column: SortColumn) {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  }
+
   const filteredItems = items.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.code.toLowerCase().includes(searchQuery.toLowerCase());
+      item.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.supplier && item.supplier.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.brand && item.brand.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = !categoryFilter || item.category === categoryFilter;
-    return matchesSearch && matchesCategory;
+    const matchesSupplier = !supplierFilter || item.supplier === supplierFilter;
+    const matchesBrand = !brandFilter || item.brand === brandFilter;
+    return matchesSearch && matchesCategory && matchesSupplier && matchesBrand;
   });
+
+  const sortedItems = sortColumn ? [...filteredItems].sort((a, b) => {
+    let aVal: any;
+    let bVal: any;
+
+    if (sortColumn === 'total_value') {
+      aVal = a.quantity_on_hand * a.unit_cost;
+      bVal = b.quantity_on_hand * b.unit_cost;
+    } else {
+      aVal = a[sortColumn];
+      bVal = b[sortColumn];
+    }
+
+    if (aVal == null) return 1;
+    if (bVal == null) return -1;
+
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  }) : filteredItems;
 
   const filteredTransactions = transactions.filter((t) => {
     if (!statusFilter) return true;
@@ -197,6 +259,8 @@ export function InventoryPage() {
   });
 
   const categories = Array.from(new Set(items.map((item) => item.category))).sort();
+  const suppliers = Array.from(new Set(items.map((item) => item.supplier).filter(Boolean))).sort();
+  const brands = Array.from(new Set(items.map((item) => item.brand).filter(Boolean))).sort();
   const lowStockItems = items.filter((item) => item.quantity_on_hand <= item.reorder_level);
 
   if (!selectedStoreId) {
@@ -264,45 +328,97 @@ export function InventoryPage() {
 
       {activeTab === 'items' && (
         <div>
-          <div className="mb-4 flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search items..."
-                className="pl-10"
-              />
+          <div className="mb-4 flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search items..."
+                  className="pl-10"
+                />
+              </div>
+              <Select
+                value={supplierFilter}
+                onChange={(e) => setSupplierFilter(e.target.value)}
+                className="w-full sm:w-48"
+              >
+                <option value="">All Suppliers</option>
+                {suppliers.map((supplier) => (
+                  <option key={supplier} value={supplier}>
+                    {supplier}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                value={brandFilter}
+                onChange={(e) => setBrandFilter(e.target.value)}
+                className="w-full sm:w-48"
+              >
+                <option value="">All Brands</option>
+                {brands.map((brand) => (
+                  <option key={brand} value={brand}>
+                    {brand}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="w-full sm:w-48"
+              >
+                <option value="">All Categories</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </Select>
             </div>
-            <Select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full sm:w-48"
-            >
-              <option value="">All Categories</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </Select>
-            {canCreateItems && (
-              <Button onClick={handleAddItem}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Item
-              </Button>
-            )}
+            <div className="flex gap-3">
+              <div className="flex gap-1 border border-gray-300 rounded-lg p-1">
+                <button
+                  onClick={() => toggleViewMode('grid')}
+                  className={`p-2 rounded transition-colors ${
+                    viewMode === 'grid'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                  title="Grid view"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => toggleViewMode('table')}
+                  className={`p-2 rounded transition-colors ${
+                    viewMode === 'table'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                  title="Table view"
+                >
+                  <Table2 className="w-4 h-4" />
+                </button>
+              </div>
+              {canCreateItems && (
+                <Button onClick={handleAddItem} className="ml-auto">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Item
+                </Button>
+              )}
+            </div>
           </div>
 
           {loading ? (
             <div className="text-center py-12 text-gray-500">Loading...</div>
-          ) : filteredItems.length === 0 ? (
+          ) : sortedItems.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              {searchQuery || categoryFilter ? 'No items match your filters' : 'No items yet'}
+              {searchQuery || categoryFilter || supplierFilter || brandFilter ? 'No items match your filters' : 'No items yet'}
             </div>
-          ) : (
+          ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredItems.map((item) => {
+              {sortedItems.map((item) => {
                 const isLowStock = item.quantity_on_hand <= item.reorder_level;
                 const totalValue = item.quantity_on_hand * item.unit_cost;
 
@@ -318,6 +434,9 @@ export function InventoryPage() {
                           <div>
                             <h3 className="font-semibold text-gray-900">{item.name}</h3>
                             <p className="text-sm text-gray-500">{item.code}</p>
+                            {item.brand && (
+                              <p className="text-xs text-gray-500 mt-0.5">Brand: {item.brand}</p>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -332,8 +451,9 @@ export function InventoryPage() {
                     </div>
 
                     <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Badge variant="secondary">{item.category}</Badge>
+                        <Badge variant="secondary">{item.supplier}</Badge>
                         {isLowStock && (
                           <Badge variant="warning" className="flex items-center gap-1">
                             <AlertTriangle className="w-3 h-3" />
@@ -376,6 +496,174 @@ export function InventoryPage() {
                   </div>
                 );
               })}
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('code')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Code
+                        {sortColumn === 'code' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('supplier')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Supplier
+                        {sortColumn === 'supplier' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('brand')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Brand
+                        {sortColumn === 'brand' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('name')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Name
+                        {sortColumn === 'name' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('category')}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        Category
+                        {sortColumn === 'category' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Description
+                    </th>
+                    <th
+                      className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('quantity_on_hand')}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        Qty On Hand
+                        {sortColumn === 'quantity_on_hand' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('reorder_level')}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        Reorder
+                        {sortColumn === 'reorder_level' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('unit_cost')}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        Unit Cost
+                        {sortColumn === 'unit_cost' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('total_value')}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        Total Value
+                        {sortColumn === 'total_value' && (
+                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {sortedItems.map((item) => {
+                    const isLowStock = item.quantity_on_hand <= item.reorder_level;
+                    const totalValue = item.quantity_on_hand * item.unit_cost;
+
+                    return (
+                      <tr
+                        key={item.id}
+                        className={`hover:bg-gray-50 ${isLowStock ? 'bg-amber-50' : ''}`}
+                      >
+                        <td className="px-4 py-3 text-sm font-mono text-gray-900 whitespace-nowrap">
+                          {item.code}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {item.supplier}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {item.brand || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          {item.name}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-center">
+                          <Badge variant="secondary">{item.category}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" title={item.description}>
+                          {item.description || '-'}
+                        </td>
+                        <td className={`px-4 py-3 text-sm text-right font-semibold ${isLowStock ? 'text-amber-600' : 'text-gray-900'}`}>
+                          {item.quantity_on_hand} {item.unit}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right text-gray-900">
+                          {item.reorder_level} {item.unit}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right text-gray-900">
+                          ${item.unit_cost.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
+                          ${totalValue.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-center">
+                          {canEditItems && (
+                            <button
+                              onClick={() => handleEditItem(item)}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
