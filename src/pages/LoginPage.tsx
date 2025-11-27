@@ -4,6 +4,7 @@ import { authenticateWithPIN } from '../lib/auth';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { supabase } from '../lib/supabase';
+import { getCurrentDateEST } from '../lib/timezone';
 
 interface LoginPageProps {
   selectedAction?: 'checkin' | 'ready' | 'report' | null;
@@ -58,7 +59,7 @@ export function LoginPage({ selectedAction, onCheckOutComplete, onBack }: LoginP
     let storeId = selectedStoreId || sessionStorage.getItem('selected_store_id');
 
     if (!storeId) {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentDateEST();
       const { data: attendanceRecord } = await supabase
         .from('attendance_records')
         .select('store_id')
@@ -105,7 +106,9 @@ export function LoginPage({ selectedAction, onCheckOutComplete, onBack }: LoginP
         return;
       }
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentDateEST();
+      console.log('LoginPage check-in/out flow:', { employeeId: session.employee_id, storeId, today });
+
       const { data: attendance } = await supabase
         .from('attendance_records')
         .select('*')
@@ -114,7 +117,9 @@ export function LoginPage({ selectedAction, onCheckOutComplete, onBack }: LoginP
         .eq('work_date', today)
         .maybeSingle();
 
+      console.log('LoginPage attendance record:', attendance);
       const isCheckedIn = attendance && attendance.status === 'checked_in';
+      console.log('LoginPage is checked in:', isCheckedIn);
 
       if (!isCheckedIn) {
         const { error: checkInError } = await supabase.rpc('check_in_employee', {
@@ -135,17 +140,27 @@ export function LoginPage({ selectedAction, onCheckOutComplete, onBack }: LoginP
         showToast(`Welcome ${displayName}! You're checked in and in the ready queue.`, 'success');
         login(session);
       } else {
+        console.log('LoginPage attempting to check out:', { employeeId: session.employee_id, storeId });
+
         const { data: checkOutSuccess, error: checkOutError } = await supabase.rpc('check_out_employee', {
           p_employee_id: session.employee_id,
           p_store_id: storeId
         });
 
-        if (checkOutError) throw checkOutError;
+        console.log('LoginPage check-out result:', { checkOutSuccess, checkOutError });
+
+        if (checkOutError) {
+          console.error('LoginPage check-out error:', checkOutError);
+          throw checkOutError;
+        }
 
         if (!checkOutSuccess) {
+          console.error('LoginPage check-out failed: No active check-in found');
           showToast('No active check-in found', 'error');
           return;
         }
+
+        console.log('LoginPage check-out successful, removing from queue');
 
         const { error: deleteError } = await supabase
           .from('technician_ready_queue')

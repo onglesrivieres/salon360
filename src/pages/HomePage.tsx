@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { authenticateWithPIN } from '../lib/auth';
 import { initializeVersionCheck, startVersionCheck } from '../lib/version';
+import { getCurrentDateEST } from '../lib/timezone';
 
 interface HomePageProps {
   onActionSelected: (action: 'checkin' | 'ready' | 'report', session?: any, storeId?: string, hasMultipleStores?: boolean, availableStoreIds?: string[]) => void;
@@ -186,7 +187,9 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
   const handleCheckInOut = async (employeeId: string, storeId: string, displayName: string, payType: string) => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentDateEST();
+      console.log('Check-in/out flow:', { employeeId, storeId, displayName, today });
+
       const { data: attendance } = await supabase
         .from('attendance_records')
         .select('*')
@@ -195,7 +198,9 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         .eq('work_date', today)
         .maybeSingle();
 
+      console.log('Attendance record found:', attendance);
       const isCheckedIn = attendance && attendance.status === 'checked_in';
+      console.log('Is checked in:', isCheckedIn);
 
       if (!isCheckedIn) {
         // Check if within check-in window (15 min before opening)
@@ -230,17 +235,27 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         setSuccessMessage(`${t('home.welcome')} ${displayName}! ${t('home.checkedIn')}`);
         setShowSuccessModal(true);
       } else {
+        console.log('Attempting to check out employee:', { employeeId, storeId });
+
         const { data: checkOutSuccess, error: checkOutError } = await supabase.rpc('check_out_employee', {
           p_employee_id: employeeId,
           p_store_id: storeId
         });
 
-        if (checkOutError) throw checkOutError;
+        console.log('Check-out result:', { checkOutSuccess, checkOutError });
+
+        if (checkOutError) {
+          console.error('Check-out error:', checkOutError);
+          throw checkOutError;
+        }
 
         if (!checkOutSuccess) {
+          console.error('Check-out failed: No active check-in found');
           setPinError('No active check-in found');
           return;
         }
+
+        console.log('Check-out successful, removing from queue');
 
         const { error: deleteError } = await supabase
           .from('technician_ready_queue')
