@@ -12,6 +12,7 @@ interface InventoryTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialTransactionType?: 'in' | 'out';
 }
 
 interface TransactionItemForm {
@@ -25,11 +26,12 @@ export function InventoryTransactionModal({
   isOpen,
   onClose,
   onSuccess,
+  initialTransactionType,
 }: InventoryTransactionModalProps) {
   const { showToast } = useToast();
   const { selectedStoreId, session } = useAuth();
   const [saving, setSaving] = useState(false);
-  const [transactionType, setTransactionType] = useState<'in' | 'out'>('in');
+  const [transactionType, setTransactionType] = useState<'in' | 'out'>(initialTransactionType || 'in');
   const [recipientId, setRecipientId] = useState('');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<TransactionItemForm[]>([
@@ -49,8 +51,8 @@ export function InventoryTransactionModal({
     setItems([{ item_id: '', quantity: '', unit_cost: '', notes: '' }]);
     setRecipientId('');
     setNotes('');
-    setTransactionType('in');
-  }, [isOpen]);
+    setTransactionType(initialTransactionType || 'in');
+  }, [isOpen, initialTransactionType]);
 
   async function fetchInventoryItems() {
     if (!selectedStoreId) return;
@@ -281,18 +283,20 @@ export function InventoryTransactionModal({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Transaction Type <span className="text-red-500">*</span>
-            </label>
-            <Select
-              value={transactionType}
-              onChange={(e) => setTransactionType(e.target.value as 'in' | 'out')}
-            >
-              <option value="in">IN - Receiving Items</option>
-              <option value="out">OUT - Giving to Employee</option>
-            </Select>
-          </div>
+          {!initialTransactionType && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Transaction Type <span className="text-red-500">*</span>
+              </label>
+              <Select
+                value={transactionType}
+                onChange={(e) => setTransactionType(e.target.value as 'in' | 'out')}
+              >
+                <option value="in">IN - Receiving Items</option>
+                <option value="out">OUT - Giving to Employee</option>
+              </Select>
+            </div>
+          )}
 
           {transactionType === 'out' && (
             <div>

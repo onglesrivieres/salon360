@@ -36,6 +36,7 @@ export function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [showItemModal, setShowItemModal] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [transactionType, setTransactionType] = useState<'in' | 'out' | undefined>(undefined);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const { showToast } = useToast();
   const { selectedStoreId, session } = useAuth();
@@ -165,6 +166,21 @@ export function InventoryPage() {
   function handleTransactionSuccess() {
     fetchTransactions();
     fetchItems();
+  }
+
+  function handleOpenInventoryIn() {
+    setTransactionType('in');
+    setShowTransactionModal(true);
+  }
+
+  function handleOpenInventoryOut() {
+    setTransactionType('out');
+    setShowTransactionModal(true);
+  }
+
+  function handleTransactionModalClose() {
+    setShowTransactionModal(false);
+    setTransactionType(undefined);
   }
 
   const filteredItems = items.filter((item) => {
@@ -379,10 +395,22 @@ export function InventoryPage() {
               <option value="rejected">Rejected</option>
             </Select>
             {canCreateTransactions && (
-              <Button onClick={() => setShowTransactionModal(true)} className="ml-auto">
-                <Plus className="w-4 h-4 mr-2" />
-                New Transaction
-              </Button>
+              <div className="flex gap-2 ml-auto">
+                <Button
+                  onClick={handleOpenInventoryIn}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <PackagePlus className="w-4 h-4 mr-2" />
+                  Inventory In
+                </Button>
+                <Button
+                  onClick={handleOpenInventoryOut}
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                >
+                  <PackageMinus className="w-4 h-4 mr-2" />
+                  Inventory Out
+                </Button>
+              </div>
             )}
           </div>
 
@@ -472,8 +500,9 @@ export function InventoryPage() {
 
       <InventoryTransactionModal
         isOpen={showTransactionModal}
-        onClose={() => setShowTransactionModal(false)}
+        onClose={handleTransactionModalClose}
         onSuccess={handleTransactionSuccess}
+        initialTransactionType={transactionType}
       />
     </div>
   );
