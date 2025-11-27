@@ -655,7 +655,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                       <p className="text-[9px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">
                         Sale Tickets
                       </p>
-                      <div className="space-y-1 max-h-72 overflow-y-auto">
+                      <div className="space-y-1 max-h-[1500px] overflow-y-auto">
                         {summary.items.map((item, index) => {
                           const openTime = formatTimeEST(item.opened_at);
                           const totalTip = item.tip_customer + item.tip_receptionist;
