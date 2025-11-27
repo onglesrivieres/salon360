@@ -21,6 +21,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [approvalFilter, setApprovalFilter] = useState<string>('all');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
   const [technicianFilter, setTechnicianFilter] = useState<string>('all');
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
@@ -213,6 +214,11 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
       });
     }
 
+    // Apply payment method filter
+    if (paymentMethodFilter !== 'all') {
+      filtered = filtered.filter(ticket => ticket.payment_method === paymentMethodFilter);
+    }
+
     // Apply technician filter
     if (technicianFilter !== 'all') {
       filtered = filtered.filter(ticket => {
@@ -222,7 +228,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     }
 
     return filtered;
-  }, [tickets, approvalFilter, technicianFilter]);
+  }, [tickets, approvalFilter, paymentMethodFilter, technicianFilter]);
 
   function getMinDate(): string {
     const date = new Date();
@@ -311,6 +317,17 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
             <option value="approved">Approved</option>
             <option value="auto_approved">Auto-Approved</option>
             <option value="rejected">Rejected</option>
+          </select>
+          <select
+            value={paymentMethodFilter}
+            onChange={(e) => setPaymentMethodFilter(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] md:min-h-0"
+          >
+            <option value="all">All Payment Methods</option>
+            <option value="Cash">Cash</option>
+            <option value="Card">Card</option>
+            <option value="Mixed">Mixed</option>
+            <option value="Other">Other</option>
           </select>
           <select
             value={technicianFilter}
