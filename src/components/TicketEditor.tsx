@@ -226,7 +226,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       fetchSortedTechnicians();
 
       const queueChannel = supabase
-        .channel(`ready-queue-${selectedStoreId}`)
+        .channel(`ready-queue-${selectedStoreId}-${selectedDate}`)
         .on(
           'postgres_changes',
           {
@@ -257,7 +257,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         supabase.removeChannel(queueChannel);
       };
     }
-  }, [selectedStoreId]);
+  }, [selectedStoreId, selectedDate]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -274,7 +274,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
     try {
       const { data, error } = await supabase.rpc('get_sorted_technicians_for_store', {
-        p_store_id: selectedStoreId
+        p_store_id: selectedStoreId,
+        p_date: selectedDate
       });
 
       if (error) throw error;
