@@ -11,12 +11,12 @@ import { initializeVersionCheck, startVersionCheck } from '../lib/version';
 import { getCurrentDateEST } from '../lib/timezone';
 
 interface HomePageProps {
-  onActionSelected: (action: 'checkin' | 'ready' | 'report', session?: any, storeId?: string, hasMultipleStores?: boolean, availableStoreIds?: string[]) => void;
+  onActionSelected: (action: 'checkin' | 'checkout' | 'ready' | 'report', session?: any, storeId?: string, hasMultipleStores?: boolean, availableStoreIds?: string[]) => void;
 }
 
 export function HomePage({ onActionSelected }: HomePageProps) {
   const { logout, t } = useAuth();
-  const [selectedAction, setSelectedAction] = useState<'checkin' | 'ready' | 'report' | null>(null);
+  const [selectedAction, setSelectedAction] = useState<'checkin' | 'checkout' | 'ready' | 'report' | null>(null);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -45,7 +45,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     };
   }, []);
 
-  const handleActionClick = (action: 'checkin' | 'ready' | 'report') => {
+  const handleActionClick = (action: 'checkin' | 'checkout' | 'ready' | 'report') => {
     setSelectedAction(action);
     setShowPinModal(true);
     setPinError('');
@@ -169,8 +169,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
       setShowPinModal(false);
 
-      if (selectedAction === 'checkin') {
-        await handleCheckInOut(session.employee_id, storeId, displayName, payType);
+      if (selectedAction === 'checkin' || selectedAction === 'checkout') {
+        await handleCheckInOut(session.employee_id, storeId, displayName, payType, selectedAction);
       } else if (selectedAction === 'ready') {
         await handleReady(session.employee_id, storeId);
       } else if (selectedAction === 'report') {
@@ -185,10 +185,10 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     }
   };
 
-  const handleCheckInOut = async (employeeId: string, storeId: string, displayName: string, payType: string) => {
+  const handleCheckInOut = async (employeeId: string, storeId: string, displayName: string, payType: string, action: 'checkin' | 'checkout') => {
     try {
       const today = getCurrentDateEST();
-      console.log('Check-in/out flow:', { employeeId, storeId, displayName, today });
+      console.log('Check-in/out flow:', { employeeId, storeId, displayName, today, action });
 
       const { data: attendance } = await supabase
         .from('attendance_records')
@@ -202,7 +202,11 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       const isCheckedIn = attendance && attendance.status === 'checked_in';
       console.log('Is checked in:', isCheckedIn);
 
-      if (!isCheckedIn) {
+      if (action === 'checkin') {
+        if (isCheckedIn) {
+          setPinError('You are already checked in');
+          return;
+        }
         // Check if within check-in window (15 min before opening)
         const { data: canCheckIn, error: windowError } = await supabase.rpc('can_checkin_now', {
           p_store_id: storeId
@@ -234,7 +238,12 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
         setSuccessMessage(`${t('home.welcome')} ${displayName}! ${t('home.checkedIn')}`);
         setShowSuccessModal(true);
-      } else {
+      } else if (action === 'checkout') {
+        if (!isCheckedIn) {
+          setPinError('You are not checked in');
+          return;
+        }
+
         console.log('Attempting to check out employee:', { employeeId, storeId });
 
         const { data: checkOutSuccess, error: checkOutError } = await supabase.rpc('check_out_employee', {
@@ -365,7 +374,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   };
 
   const getPinModalTitle = () => {
-    if (selectedAction === 'checkin') return `${t('home.enterPinFor')} ${t('technician.checkInOut')}`;
+    if (selectedAction === 'checkin') return 'Clock In - Enter PIN';
+    if (selectedAction === 'checkout') return 'Clock Out - Enter PIN';
     if (selectedAction === 'ready') return `${t('home.enterPinFor')} ${t('technician.ready')}`;
     if (selectedAction === 'report') return `${t('home.enterPinFor')} ${t('technician.report')}`;
     return t('auth.enterPIN');
@@ -399,11 +409,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          <button
-            onClick={() => handleActionClick('checkin')}
-            disabled={isLoading}
-            className="hidden custom:flex bg-white rounded-xl p-5 sm:p-6 shadow-lg transition-all duration-200 hover:shadow-xl hover:scale-105 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <div className="hidden custom:flex bg-white rounded-xl p-5 sm:p-6 shadow-lg">
             <div className="flex flex-col items-center text-center w-full">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-green-100 flex items-center justify-center mb-2 sm:mb-3">
                 <UserCheck className="w-7 h-7 sm:w-8 sm:h-8 text-green-600" />
@@ -411,11 +417,29 @@ export function HomePage({ onActionSelected }: HomePageProps) {
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">
                 {t('technician.checkInOut')}
               </h3>
-              <p className="text-gray-600 text-xs sm:text-sm">
+              <p className="text-gray-600 text-xs sm:text-sm mb-4">
                 {t('technician.checkInOutDesc')}
               </p>
+              <div className="grid grid-cols-2 gap-2 w-full">
+                <button
+                  onClick={() => handleActionClick('checkin')}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 hover:scale-105 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  In
+                </button>
+                <button
+                  onClick={() => handleActionClick('checkout')}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 hover:scale-105 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  Out
+                </button>
+              </div>
             </div>
-          </button>
+          </div>
 
           <button
             onClick={() => handleActionClick('ready')}
