@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package } from 'lucide-react';
+import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package, List, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
-import { supabase, Store } from '../lib/supabase';
+import { supabase, Store, TechnicianWithQueue } from '../lib/supabase';
 import { NotificationBadge } from './ui/NotificationBadge';
 import { VersionNotification } from './VersionNotification';
 import { initializeVersionCheck, startVersionCheck } from '../lib/version';
+import { Modal } from './ui/Modal';
+import { TechnicianQueue } from './TechnicianQueue';
+import { getCurrentDateEST } from '../lib/timezone';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,6 +25,10 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
   const [hasNewVersion, setHasNewVersion] = useState(false);
   const [isOpeningCashMissing, setIsOpeningCashMissing] = useState(false);
+  const [showQueueModal, setShowQueueModal] = useState(false);
+  const [sortedTechnicians, setSortedTechnicians] = useState<TechnicianWithQueue[]>([]);
+  const [loadingQueue, setLoadingQueue] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -225,11 +232,71 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   function handleStoreChange(storeId: string) {
     selectStore(storeId);
     setIsStoreDropdownOpen(false);
+    setShowQueueModal(false);
   }
 
   const handleRefresh = () => {
     window.location.reload();
   };
+
+  async function fetchTechnicianQueue() {
+    if (!selectedStoreId) return;
+
+    setLoadingQueue(true);
+    try {
+      const today = getCurrentDateEST();
+      const { data, error } = await supabase.rpc('get_sorted_technicians_for_store', {
+        p_store_id: selectedStoreId,
+        p_date: today
+      });
+
+      if (error) throw error;
+      setSortedTechnicians(data || []);
+    } catch (error) {
+      console.error('Error fetching technician queue:', error);
+    } finally {
+      setLoadingQueue(false);
+    }
+  }
+
+  const handleOpenQueueModal = () => {
+    setShowQueueModal(true);
+    fetchTechnicianQueue();
+  };
+
+  useEffect(() => {
+    if (!showQueueModal) return;
+
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    const refreshInterval = setInterval(() => {
+      fetchTechnicianQueue();
+    }, 30000);
+
+    const queueChannel = supabase
+      .channel(`queue-${selectedStoreId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'technician_ready_queue',
+          filter: `store_id=eq.${selectedStoreId}`,
+        },
+        () => {
+          fetchTechnicianQueue();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(refreshInterval);
+      supabase.removeChannel(queueChannel);
+    };
+  }, [showQueueModal, selectedStoreId]);
 
   const getGoogleRating = () => {
     if (!currentStore) return null;
@@ -305,6 +372,15 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   {currentStore.name}
                 </span>
               ) : null}
+              {session && session.role && canAccessPage('tickets', session.role) && (
+                <button
+                  onClick={handleOpenQueueModal}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 border-2 border-blue-600 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors"
+                >
+                  <List className="w-4 h-4" />
+                  <span className="hidden sm:inline">QUEUE</span>
+                </button>
+              )}
             </div>
             <div className="flex items-center gap-2 md:gap-3">
               {googleRating && (
@@ -423,6 +499,48 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
         <main className="flex-1 p-2 md:p-3 layout-main">{children}</main>
       </div>
+
+      <Modal
+        isOpen={showQueueModal}
+        onClose={() => setShowQueueModal(false)}
+        title={`Technician Queue - ${currentStore?.name || 'Store'}`}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-600">
+              Real-time view of available technicians
+            </p>
+            <button
+              onClick={fetchTechnicianQueue}
+              disabled={loadingQueue}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingQueue ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+
+          {loadingQueue && sortedTechnicians.length === 0 ? (
+            <div className="text-center py-8">
+              <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-2" />
+              <p className="text-sm text-gray-600">Loading queue...</p>
+            </div>
+          ) : (
+            <TechnicianQueue
+              sortedTechnicians={sortedTechnicians}
+              isReadOnly={true}
+              showLegend={true}
+              currentTime={currentTime}
+            />
+          )}
+
+          <div className="pt-4 border-t border-gray-200">
+            <p className="text-xs text-gray-500 text-center">
+              Queue updates automatically every 30 seconds
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

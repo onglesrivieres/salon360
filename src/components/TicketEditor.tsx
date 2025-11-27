@@ -19,6 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { formatDateTimeEST, convertToESTDatetimeString, convertESTDatetimeStringToUTC } from '../lib/timezone';
 import { filterAvailableEmployees, getDayOfWeek, getFullDayName } from '../lib/schedule-utils';
+import { TechnicianQueue } from './TechnicianQueue';
 
 interface TicketEditorProps {
   ticketId: string | null;
@@ -1130,6 +1131,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     showToast('Previous ticket will be completed when you save this ticket', 'info');
   }
 
+  function handleTechnicianSelect(technicianId: string, currentTicketId?: string) {
+    if (isTicketClosed || isReadOnly) return;
+    handleSelectBusyTechnician(technicianId, currentTicketId);
+  }
+
   function handleClose() {
     // Clear pending completion state when closing without saving
     if (pendingBusyTechnicianCompletion) {
@@ -1711,134 +1717,29 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               </div>
             )}
 
-            {!isTicketClosed && (
-              <div className="flex items-start gap-3 mb-2">
-                {sortedTechnicians.filter(t => t.queue_status === 'ready').length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Award className="w-3.5 h-3.5 text-green-600" />
-                    <span className="text-xs font-semibold text-green-700 uppercase whitespace-nowrap">Available</span>
-                  </div>
-                )}
-                {sortedTechnicians.filter(t => t.queue_status === 'neutral').length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Not Ready</span>
-                  </div>
-                )}
-                {sortedTechnicians.filter(t => t.queue_status === 'busy').length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Lock className="w-3.5 h-3.5 text-red-600" />
-                    <span className="text-xs font-semibold text-red-700 uppercase whitespace-nowrap">Busy</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-2">
-              {!isTicketClosed && sortedTechnicians
-                .filter(t => t.queue_status === 'ready')
-                .filter(t => !isSelfServiceMode || t.employee_id === session?.employee_id)
-                .map((tech) => (
-                <button
-                  key={tech.employee_id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedTechnicianId(tech.employee_id);
-                    setLastUsedEmployeeId(tech.employee_id);
-                    if (items.length > 0) {
-                      updateItem(0, 'employee_id', tech.employee_id);
-                    }
-                  }}
-                  className={`relative py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
-                    selectedTechnicianId === tech.employee_id
-                      ? 'bg-green-600 text-white ring-2 ring-green-400'
-                      : 'bg-green-100 text-green-800 hover:bg-green-200'
-                  }`}
-                  disabled={isTicketClosed || isReadOnly}
-                >
-                  <div className="flex items-center gap-2">
-                    {tech.queue_position > 0 && (
-                      <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-white text-green-600 rounded-full">
-                        {tech.queue_position}
-                      </span>
-                    )}
-                    <span>{tech.display_name}</span>
-                  </div>
-                </button>
-              ))}
-
-              {!isTicketClosed && sortedTechnicians
-                .filter(t => t.queue_status === 'neutral')
-                .filter(t => !isSelfServiceMode || t.employee_id === session?.employee_id)
-                .map((tech) => (
-                <button
-                  key={tech.employee_id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedTechnicianId(tech.employee_id);
-                    setLastUsedEmployeeId(tech.employee_id);
-                    if (items.length > 0) {
-                      updateItem(0, 'employee_id', tech.employee_id);
-                    }
-                  }}
-                  className={`py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
-                    selectedTechnicianId === tech.employee_id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
-                  }`}
-                  disabled={isTicketClosed || isReadOnly}
-                >
-                  {tech.display_name}
-                </button>
-              ))}
-
-              {!isTicketClosed && sortedTechnicians
-                .filter(t => t.queue_status === 'busy')
-                .filter(t => !isSelfServiceMode || t.employee_id === session?.employee_id)
-                .map((tech) => {
-                const timeRemaining = calculateTimeRemaining(tech);
-                return (
-                  <button
-                    key={tech.employee_id}
-                    type="button"
-                    onClick={() => handleSelectBusyTechnician(tech.employee_id, tech.current_open_ticket_id)}
-                    className={`py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
-                      selectedTechnicianId === tech.employee_id
-                        ? 'bg-red-600 text-white ring-2 ring-red-400'
-                        : 'bg-red-100 text-red-800 hover:bg-red-200'
-                    }`}
-                    title={`${tech.display_name} is currently working on ${tech.open_ticket_count} ticket(s)${timeRemaining ? ` - ${timeRemaining} remaining` : ''}. Click to select - their current ticket will be completed when you save this ticket.`}
-                    disabled={isReadOnly}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Lock className="w-3 h-3" />
-                      <span>{tech.display_name}</span>
-                      {timeRemaining && (
-                        <span className="inline-flex items-center text-xs font-medium">
-                          {timeRemaining}
-                        </span>
-                      )}
+            {!isTicketClosed ? (
+              <TechnicianQueue
+                sortedTechnicians={sortedTechnicians.filter(t => !isSelfServiceMode || t.employee_id === session?.employee_id)}
+                selectedTechnicianId={selectedTechnicianId}
+                onTechnicianSelect={handleTechnicianSelect}
+                isReadOnly={isReadOnly}
+                showLegend={true}
+                currentTime={currentTime}
+              />
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {items.length > 0 && Array.from(new Set(items.map(item => item.employee_id))).map((employeeId) => {
+                  const item = items.find(i => i.employee_id === employeeId);
+                  if (!item?.employee) return null;
+                  return (
+                    <div
+                      key={employeeId}
+                      className="py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium bg-gray-100 text-gray-700 min-h-[48px] md:min-h-0 flex items-center"
+                    >
+                      {item.employee.display_name}
                     </div>
-                  </button>
-                );
-              })}
-
-              {isTicketClosed && items.length > 0 && Array.from(new Set(items.map(item => item.employee_id))).map((employeeId) => {
-                const item = items.find(i => i.employee_id === employeeId);
-                if (!item?.employee) return null;
-                return (
-                  <div
-                    key={employeeId}
-                    className="py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium bg-gray-100 text-gray-700 min-h-[48px] md:min-h-0 flex items-center"
-                  >
-                    {item.employee.display_name}
-                  </div>
-                );
-              })}
-            </div>
-
-            {!isTicketClosed && sortedTechnicians.length === 0 && (
-              <div className="text-center py-3 text-sm text-gray-500">
-                No technicians available
+                  );
+                })}
               </div>
             )}
           </div>
