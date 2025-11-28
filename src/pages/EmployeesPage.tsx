@@ -486,17 +486,17 @@ export function EmployeesPage() {
                         },
                       });
                     }}
-                    className={`py-2 px-1 rounded-lg text-xs font-medium transition-all ${
+                    className={`py-1.5 px-1 rounded-lg font-medium transition-all ${
                       formData.weekly_schedule[day]
                         ? 'bg-green-600 text-white shadow-md'
                         : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
                     }`}
                   >
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="hidden sm:block">{getFullDayName(day)}</span>
-                      <span className="sm:hidden">{getFullDayName(day).slice(0, 2)}</span>
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="hidden sm:block text-[10px] leading-tight">{getFullDayName(day)}</span>
+                      <span className="sm:hidden text-[10px]">{getFullDayName(day).slice(0, 2)}</span>
                       {formData.weekly_schedule[day] && (
-                        <span className="text-xs">✓</span>
+                        <span className="text-[10px]">✓</span>
                       )}
                     </div>
                   </button>
