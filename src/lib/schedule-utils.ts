@@ -58,6 +58,19 @@ export function getFullDayName(day: DayOfWeek): string {
   return day.charAt(0).toUpperCase() + day.slice(1);
 }
 
+export function getThreeLetterDayName(day: DayOfWeek): string {
+  const threeLetter: Record<DayOfWeek, string> = {
+    monday: 'Mon',
+    tuesday: 'Tue',
+    wednesday: 'Wed',
+    thursday: 'Thu',
+    friday: 'Fri',
+    saturday: 'Sat',
+    sunday: 'Sun',
+  };
+  return threeLetter[day];
+}
+
 export function formatScheduleDisplay(schedule: WeeklySchedule | undefined | null): string {
   const workingDays = getWorkingDays(schedule);
   if (workingDays.length === 7) {

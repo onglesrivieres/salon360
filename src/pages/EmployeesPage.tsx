@@ -12,7 +12,7 @@ import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { resetPIN } from '../lib/auth';
 import { Permissions } from '../lib/permissions';
-import { getDefaultSchedule, getFullDayName, formatScheduleDisplay } from '../lib/schedule-utils';
+import { getDefaultSchedule, getThreeLetterDayName, formatScheduleDisplay } from '../lib/schedule-utils';
 
 export function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -493,8 +493,7 @@ export function EmployeesPage() {
                     }`}
                   >
                     <div className="flex flex-col items-center gap-0.5">
-                      <span className="hidden sm:block text-[10px] leading-tight">{getFullDayName(day)}</span>
-                      <span className="sm:hidden text-[10px]">{getFullDayName(day).slice(0, 2)}</span>
+                      <span className="text-[10px] leading-tight">{getThreeLetterDayName(day)}</span>
                       {formData.weekly_schedule[day] && (
                         <span className="text-[10px]">✓</span>
                       )}
