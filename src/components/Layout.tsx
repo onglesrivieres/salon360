@@ -29,9 +29,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [sortedTechnicians, setSortedTechnicians] = useState<TechnicianWithQueue[]>([]);
   const [loadingQueue, setLoadingQueue] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [leavingQueueEmployeeId, setLeavingQueueEmployeeId] = useState<string | undefined>();
-  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-  const [employeeToRemove, setEmployeeToRemove] = useState<string | undefined>();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -265,34 +262,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const handleOpenQueueModal = () => {
     setShowQueueModal(true);
     fetchTechnicianQueue();
-  };
-
-  const handleLeaveQueue = async (employeeId: string) => {
-    setEmployeeToRemove(employeeId);
-    setShowLeaveConfirm(true);
-  };
-
-  const confirmLeaveQueue = async () => {
-    if (!employeeToRemove || !selectedStoreId) return;
-
-    setLeavingQueueEmployeeId(employeeToRemove);
-    try {
-      const { error } = await supabase.rpc('leave_ready_queue', {
-        p_employee_id: employeeToRemove,
-        p_store_id: selectedStoreId
-      });
-
-      if (error) throw error;
-
-      await fetchTechnicianQueue();
-      setShowLeaveConfirm(false);
-      setEmployeeToRemove(undefined);
-    } catch (error) {
-      console.error('Error leaving queue:', error);
-      alert('Failed to leave queue. Please try again.');
-    } finally {
-      setLeavingQueueEmployeeId(undefined);
-    }
   };
 
   useEffect(() => {
@@ -562,10 +531,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               isReadOnly={true}
               showLegend={true}
               currentTime={currentTime}
-              currentEmployeeId={session?.employee_id}
-              allowLeaveQueue={true}
-              onLeaveQueue={handleLeaveQueue}
-              leavingQueueEmployeeId={leavingQueueEmployeeId}
             />
           )}
 
@@ -573,39 +538,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             <p className="text-xs text-gray-500 text-center">
               Queue updates automatically every 30 seconds
             </p>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
-        isOpen={showLeaveConfirm}
-        onClose={() => {
-          setShowLeaveConfirm(false);
-          setEmployeeToRemove(undefined);
-        }}
-        title="Leave Queue"
-      >
-        <div className="text-center py-4">
-          <p className="text-lg text-gray-900 mb-6">
-            Are you sure you want to leave the ready queue?
-          </p>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => {
-                setShowLeaveConfirm(false);
-                setEmployeeToRemove(undefined);
-              }}
-              className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={confirmLeaveQueue}
-              disabled={!!leavingQueueEmployeeId}
-              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-            >
-              {leavingQueueEmployeeId ? 'Leaving...' : 'Leave Queue'}
-            </button>
           </div>
         </div>
       </Modal>

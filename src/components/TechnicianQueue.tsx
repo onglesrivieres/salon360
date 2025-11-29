@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award, Lock, Clock, X } from 'lucide-react';
+import { Award, Lock, Clock } from 'lucide-react';
 import { TechnicianWithQueue } from '../lib/supabase';
 
 interface TechnicianQueueProps {
@@ -9,10 +9,6 @@ interface TechnicianQueueProps {
   isReadOnly?: boolean;
   showLegend?: boolean;
   currentTime?: Date;
-  currentEmployeeId?: string;
-  allowLeaveQueue?: boolean;
-  onLeaveQueue?: (employeeId: string) => void;
-  leavingQueueEmployeeId?: string;
 }
 
 export function TechnicianQueue({
@@ -22,10 +18,6 @@ export function TechnicianQueue({
   isReadOnly = false,
   showLegend = true,
   currentTime = new Date(),
-  currentEmployeeId,
-  allowLeaveQueue = false,
-  onLeaveQueue,
-  leavingQueueEmployeeId,
 }: TechnicianQueueProps) {
 
   const calculateTimeRemaining = (tech: TechnicianWithQueue): string => {
@@ -85,53 +77,28 @@ export function TechnicianQueue({
       )}
 
       <div className="flex flex-wrap gap-2">
-        {readyTechnicians.map((tech) => {
-          const isCurrentEmployee = currentEmployeeId === tech.employee_id;
-          const canLeave = allowLeaveQueue && isCurrentEmployee;
-          const isLeaving = leavingQueueEmployeeId === tech.employee_id;
-
-          return (
-            <div key={tech.employee_id} className="relative inline-flex">
-              <button
-                type="button"
-                onClick={() => !isReadOnly && onTechnicianSelect?.(tech.employee_id)}
-                className={`py-2 px-3 text-sm rounded-lg font-medium transition-colors ${
-                  selectedTechnicianId === tech.employee_id
-                    ? 'bg-green-600 text-white ring-2 ring-green-400'
-                    : 'bg-green-100 text-green-800 hover:bg-green-200'
-                } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} ${canLeave ? 'pr-8' : ''}`}
-                disabled={isReadOnly || isLeaving}
-              >
-                <div className="flex items-center gap-2">
-                  {tech.queue_position > 0 && (
-                    <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-white text-green-600 rounded-full">
-                      {tech.queue_position}
-                    </span>
-                  )}
-                  <span>{tech.display_name}</span>
-                </div>
-              </button>
-              {canLeave && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onLeaveQueue?.(tech.employee_id);
-                  }}
-                  disabled={isLeaving}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Leave queue"
-                >
-                  {isLeaving ? (
-                    <div className="w-3 h-3 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <X className="w-3 h-3 text-red-600" />
-                  )}
-                </button>
+        {readyTechnicians.map((tech) => (
+          <button
+            key={tech.employee_id}
+            type="button"
+            onClick={() => !isReadOnly && onTechnicianSelect?.(tech.employee_id)}
+            className={`relative py-2 px-3 text-sm rounded-lg font-medium transition-colors ${
+              selectedTechnicianId === tech.employee_id
+                ? 'bg-green-600 text-white ring-2 ring-green-400'
+                : 'bg-green-100 text-green-800 hover:bg-green-200'
+            } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}
+            disabled={isReadOnly}
+          >
+            <div className="flex items-center gap-2">
+              {tech.queue_position > 0 && (
+                <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-white text-green-600 rounded-full">
+                  {tech.queue_position}
+                </span>
               )}
+              <span>{tech.display_name}</span>
             </div>
-          );
-        })}
+          </button>
+        ))}
 
         {neutralTechnicians.map((tech) => (
           <button
