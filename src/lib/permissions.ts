@@ -1,5 +1,5 @@
-export type RolePermission = 'Admin' | 'Receptionist' | 'Technician' | 'Supervisor';
-export type Role = 'Technician' | 'Receptionist' | 'Supervisor' | 'Manager' | 'Owner' | 'Spa Expert';
+export type RolePermission = 'Admin' | 'Receptionist' | 'Technician' | 'Supervisor' | 'Cashier';
+export type Role = 'Technician' | 'Receptionist' | 'Supervisor' | 'Manager' | 'Owner' | 'Spa Expert' | 'Cashier';
 
 export interface PermissionCheck {
   canView: boolean;
@@ -19,10 +19,10 @@ function hasAnyRole(roles: Role[] | RolePermission, allowedRoles: string[]): boo
 export const Permissions = {
   tickets: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
     },
     canCreate: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
     },
     isSelfServiceRole: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Technician', 'Spa Expert', 'Supervisor']);
@@ -43,23 +43,23 @@ export const Permissions = {
     },
     canEdit: (roles: Role[] | RolePermission, isClosed: boolean, isApproved?: boolean): boolean => {
       if (hasAnyRole(roles, ['Admin', 'Owner'])) return true;
-      if (hasAnyRole(roles, ['Receptionist', 'Supervisor', 'Manager'])) return !isClosed && !isApproved;
+      if (hasAnyRole(roles, ['Receptionist', 'Supervisor', 'Manager', 'Cashier'])) return !isClosed && !isApproved;
       return false;
     },
     canEditNotes: (roles: Role[] | RolePermission, isClosed: boolean): boolean => {
       if (hasAnyRole(roles, ['Admin', 'Owner'])) return true;
-      if (hasAnyRole(roles, ['Receptionist', 'Supervisor', 'Manager'])) return !isClosed;
+      if (hasAnyRole(roles, ['Receptionist', 'Supervisor', 'Manager', 'Cashier'])) return !isClosed;
       if (hasAnyRole(roles, ['Technician', 'Spa Expert'])) return !isClosed;
       return false;
     },
     canDelete: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
     },
     canViewAll: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
     },
     canClose: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
     },
     canReopen: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);

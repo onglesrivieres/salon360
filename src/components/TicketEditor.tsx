@@ -316,7 +316,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       setServices(servicesRes.data || []);
 
       const allEmployees = (employeesRes.data || []).filter(emp =>
-        emp.role.includes('Technician') || emp.role.includes('Spa Expert')
+        (emp.role.includes('Technician') || emp.role.includes('Spa Expert')) && !emp.role.includes('Cashier')
       );
       const storeFilteredEmployees = selectedStoreId
         ? allEmployees.filter(emp => !emp.store_id || emp.store_id === selectedStoreId)

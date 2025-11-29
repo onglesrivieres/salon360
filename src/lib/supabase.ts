@@ -40,8 +40,8 @@ export interface Technician {
   id: string;
   legal_name: string;
   display_name: string;
-  role: ('Technician' | 'Receptionist' | 'Manager' | 'Owner' | 'Spa Expert' | 'Supervisor')[];
-  role_permission?: 'Admin' | 'Receptionist' | 'Technician';
+  role: ('Technician' | 'Receptionist' | 'Manager' | 'Owner' | 'Spa Expert' | 'Supervisor' | 'Cashier')[];
+  role_permission?: 'Admin' | 'Receptionist' | 'Technician' | 'Supervisor' | 'Cashier';
   status: 'Active' | 'Inactive';
   store_id?: string;
   pay_type?: 'hourly' | 'daily';

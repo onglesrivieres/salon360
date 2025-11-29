@@ -53,6 +53,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
       }
 
       const isTechnician = session?.role_permission === 'Technician';
+      const isCashier = session?.role_permission === 'Cashier';
 
       let query = supabase
         .from('sale_tickets')
@@ -74,7 +75,12 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
         query = query.eq('store_id', selectedStoreId);
       }
 
-      query = query.order('opened_at', { ascending: false });
+      // Cashiers can only see open tickets
+      if (isCashier) {
+        query = query.is('closed_at', null);
+      }
+
+      query = query.order('opened_at', { ascending: false});
 
       const { data, error } = await query;
 
