@@ -32,7 +32,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [leavingQueueEmployeeId, setLeavingQueueEmployeeId] = useState<string | undefined>();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [employeeToRemove, setEmployeeToRemove] = useState<string | undefined>();
-  const [queueFilter, setQueueFilter] = useState<'all' | 'ready' | 'neutral' | 'busy'>('all');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -264,7 +263,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   }
 
   const handleOpenQueueModal = () => {
-    setQueueFilter('all');
     setShowQueueModal(true);
     fetchTechnicianQueue();
   };
@@ -541,7 +539,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-600">
-              Real-time view of available technicians
+              Technicians who have checked in and joined the queue
             </p>
             <button
               onClick={fetchTechnicianQueue}
@@ -553,49 +551,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             </button>
           </div>
 
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => setQueueFilter('all')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                queueFilter === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              All ({sortedTechnicians.length})
-            </button>
-            <button
-              onClick={() => setQueueFilter('ready')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                queueFilter === 'ready'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-green-100 text-green-800 hover:bg-green-200'
-              }`}
-            >
-              Ready ({sortedTechnicians.filter(t => t.queue_status === 'ready').length})
-            </button>
-            <button
-              onClick={() => setQueueFilter('neutral')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                queueFilter === 'neutral'
-                  ? 'bg-gray-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Not Ready ({sortedTechnicians.filter(t => t.queue_status === 'neutral').length})
-            </button>
-            <button
-              onClick={() => setQueueFilter('busy')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                queueFilter === 'busy'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-red-100 text-red-800 hover:bg-red-200'
-              }`}
-            >
-              Busy ({sortedTechnicians.filter(t => t.queue_status === 'busy').length})
-            </button>
-          </div>
-
           {loadingQueue && sortedTechnicians.length === 0 ? (
             <div className="text-center py-8">
               <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-2" />
@@ -603,11 +558,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             </div>
           ) : (
             <TechnicianQueue
-              sortedTechnicians={
-                queueFilter === 'all'
-                  ? sortedTechnicians
-                  : sortedTechnicians.filter(t => t.queue_status === queueFilter)
-              }
+              sortedTechnicians={sortedTechnicians.filter(t => t.queue_status === 'ready')}
               isReadOnly={true}
               showLegend={true}
               currentTime={currentTime}
