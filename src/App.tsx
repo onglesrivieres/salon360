@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { TicketsPage } from './pages/TicketsPage';
 import { supabase } from './lib/supabase';
+import { getCurrentDateEST } from './lib/timezone';
 import { StoreSelectionModal } from './components/StoreSelectionModal';
 
 const EndOfDayPage = lazy(() => import('./pages/EndOfDayPage').then(m => ({ default: m.EndOfDayPage })));
@@ -40,6 +41,25 @@ function AppContent() {
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0]
   );
+
+  // Lock Cashiers to today's date only
+  useEffect(() => {
+    if (session?.role_permission === 'Cashier') {
+      const today = getCurrentDateEST();
+      if (selectedDate !== today) {
+        setSelectedDate(today);
+      }
+    }
+  }, [session?.role_permission, selectedDate]);
+
+  // Handle date changes - prevent Cashiers from changing date
+  const handleDateChange = (newDate: string) => {
+    if (session?.role_permission === 'Cashier') {
+      // Cashiers can only view today - ignore date changes
+      return;
+    }
+    setSelectedDate(newDate);
+  };
 
   useEffect(() => {
     if (isAuthenticated && !selectedStoreId && session?.employee_id && !showWelcome) {
@@ -148,10 +168,10 @@ function AppContent() {
             <div className="text-gray-500">Loading...</div>
           </div>
         }>
-          {currentPage === 'tickets' && <TicketsPage selectedDate={selectedDate} onDateChange={setSelectedDate} />}
+          {currentPage === 'tickets' && <TicketsPage selectedDate={selectedDate} onDateChange={handleDateChange} />}
           {currentPage === 'approvals' && <PendingApprovalsPage />}
-          {currentPage === 'tipreport' && <TipReportPage selectedDate={selectedDate} onDateChange={setSelectedDate} />}
-          {currentPage === 'eod' && <EndOfDayPage selectedDate={selectedDate} onDateChange={setSelectedDate} />}
+          {currentPage === 'tipreport' && <TipReportPage selectedDate={selectedDate} onDateChange={handleDateChange} />}
+          {currentPage === 'eod' && <EndOfDayPage selectedDate={selectedDate} onDateChange={handleDateChange} />}
           {currentPage === 'attendance' && <AttendancePage />}
           {currentPage === 'technicians' && <EmployeesPage />}
           {currentPage === 'inventory' && <InventoryPage />}

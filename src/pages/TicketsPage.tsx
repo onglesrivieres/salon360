@@ -7,7 +7,7 @@ import { useToast } from '../components/ui/Toast';
 import { TicketEditor } from '../components/TicketEditor';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
-import { formatTimeEST } from '../lib/timezone';
+import { formatTimeEST, getCurrentDateEST } from '../lib/timezone';
 
 interface TicketsPageProps {
   selectedDate: string;
@@ -54,6 +54,16 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
       const isTechnician = session?.role_permission === 'Technician';
       const isCashier = session?.role_permission === 'Cashier';
+
+      // Safety check: Cashiers can only view today's date
+      if (isCashier) {
+        const today = getCurrentDateEST();
+        if (selectedDate !== today) {
+          onDateChange(today);
+          showToast('Cashiers can only view today\'s tickets', 'info');
+          return;
+        }
+      }
 
       let query = supabase
         .from('sale_tickets')
@@ -428,17 +438,19 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
             )}
           </div>
 
-          <div className="flex items-center gap-2 flex-1 md:flex-initial">
-            <Calendar className="w-4 h-4 text-gray-400" />
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => onDateChange(e.target.value)}
-              min={getMinDate()}
-              max={getMaxDate()}
-              className="px-2 py-1.5 md:py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 md:flex-initial min-h-[44px] md:min-h-0"
-            />
-          </div>
+          {session?.role_permission !== 'Cashier' && (
+            <div className="flex items-center gap-2 flex-1 md:flex-initial">
+              <Calendar className="w-4 h-4 text-gray-400" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => onDateChange(e.target.value)}
+                min={getMinDate()}
+                max={getMaxDate()}
+                className="px-2 py-1.5 md:py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 md:flex-initial min-h-[44px] md:min-h-0"
+              />
+            </div>
+          )}
           {session && session.role_permission && Permissions.tickets.canCreate(session.role_permission) && (
             <Button size="sm" onClick={() => openEditor()} className="min-h-[44px] md:min-h-0">
               <Plus className="w-4 h-4 md:w-3 md:h-3 mr-1" />
