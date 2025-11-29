@@ -1662,36 +1662,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 Assigned
               </button>
             </div>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                  Name
-                </label>
-                <input
-                  value={formData.customer_name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, customer_name: e.target.value })
-                  }
-                  placeholder="e.g. John"
-                  disabled={isTicketClosed}
-                  className="w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                  Phone Number (Optional)
-                </label>
-                <input
-                  value={formData.customer_phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, customer_phone: e.target.value })
-                  }
-                  placeholder="e.g. 1234"
-                  disabled={isTicketClosed}
-                  className="w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                />
-              </div>
-            </div>
           </div>
 
           <div className="border border-gray-200 rounded-lg p-3 bg-blue-50">
