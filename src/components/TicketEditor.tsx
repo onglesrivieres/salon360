@@ -18,7 +18,7 @@ import { useToast } from './ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { formatDateTimeEST, convertToESTDatetimeString, convertESTDatetimeStringToUTC } from '../lib/timezone';
-import { filterAvailableEmployees, getDayOfWeek, getFullDayName } from '../lib/schedule-utils';
+import { getDayOfWeek, getFullDayName } from '../lib/schedule-utils';
 import { TechnicianQueue } from './TechnicianQueue';
 
 interface TicketEditorProps {
@@ -322,12 +322,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         ? allEmployees.filter(emp => !emp.store_id || emp.store_id === selectedStoreId)
         : allEmployees;
 
-      const availableEmployees = filterAvailableEmployees(storeFilteredEmployees, selectedDate);
+      setEmployees(storeFilteredEmployees);
 
-      setEmployees(availableEmployees);
-
-      if (availableEmployees.length > 0) {
-        setLastUsedEmployeeId(availableEmployees[0].id);
+      if (storeFilteredEmployees.length > 0) {
+        setLastUsedEmployeeId(storeFilteredEmployees[0].id);
       }
 
       await fetchSortedTechnicians();
