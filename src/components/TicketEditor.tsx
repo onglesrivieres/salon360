@@ -1573,7 +1573,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     Cancel
                   </Button>
                 </div>
-                <p className="text-xs text-gray-500">Time shown in EST timezone</p>
               </div>
             ) : !ticketId ? (
               <div className="space-y-2">
@@ -1593,7 +1592,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     disabled={isReadOnly}
                   />
                 </div>
-                <p className="text-xs text-gray-500">Time shown in EST timezone</p>
               </div>
             ) : (
               <div className="flex items-center justify-between">
