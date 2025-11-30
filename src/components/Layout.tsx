@@ -34,6 +34,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [employeeToRemove, setEmployeeToRemove] = useState<string | undefined>();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const canViewAllQueueStatuses = session?.role && Permissions.queue.canViewAllQueueStatuses(session.role);
+
   useEffect(() => {
     if (selectedStoreId) {
       fetchStore();
@@ -539,7 +541,9 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-600">
-              Technicians who have checked in and joined the queue
+              {canViewAllQueueStatuses
+                ? 'Real-time view of all technicians and their current status'
+                : 'Technicians who have checked in and joined the queue'}
             </p>
             <button
               onClick={fetchTechnicianQueue}
@@ -558,12 +562,14 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             </div>
           ) : (
             <TechnicianQueue
-              sortedTechnicians={sortedTechnicians.filter(t => t.queue_status === 'ready')}
+              sortedTechnicians={canViewAllQueueStatuses
+                ? sortedTechnicians
+                : sortedTechnicians.filter(t => t.queue_status === 'ready')}
               isReadOnly={true}
               showLegend={true}
               currentTime={currentTime}
               currentEmployeeId={session?.employee_id}
-              allowLeaveQueue={true}
+              allowLeaveQueue={!canViewAllQueueStatuses}
               onLeaveQueue={handleLeaveQueue}
               leavingQueueEmployeeId={leavingQueueEmployeeId}
             />

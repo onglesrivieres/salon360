@@ -170,6 +170,12 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
     },
   },
+
+  queue: {
+    canViewAllQueueStatuses: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+    },
+  },
 };
 
 export function getPermissionMessage(
