@@ -88,6 +88,7 @@ export interface Service {
   duration_min: number;
   category: string;
   active: boolean;
+  archived: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -99,6 +100,7 @@ export interface StoreService {
   price_override?: number;
   duration_override?: number;
   active: boolean;
+  archived: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -113,6 +115,7 @@ export interface StoreServiceWithDetails {
   duration_min: number;
   category: string;
   active: boolean;
+  archived: boolean;
   created_at: string;
   updated_at: string;
   usage_count?: number;

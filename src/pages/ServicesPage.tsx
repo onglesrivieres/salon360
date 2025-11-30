@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Search, Store as StoreIcon } from 'lucide-react';
+import { Plus, Search, Store as StoreIcon, Archive } from 'lucide-react';
 import { supabase, StoreServiceWithDetails } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -10,12 +10,14 @@ import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 
+type ServiceStatus = 'active' | 'inactive' | 'archived';
+
 export function ServicesPage() {
   const [services, setServices] = useState<StoreServiceWithDetails[]>([]);
   const [filteredServices, setFilteredServices] = useState<StoreServiceWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterActive, setFilterActive] = useState('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | ServiceStatus>('all');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingService, setEditingService] = useState<StoreServiceWithDetails | null>(null);
   const { showToast } = useToast();
@@ -27,7 +29,7 @@ export function ServicesPage() {
     price: '',
     duration_min: '30',
     category: 'Extensions des Ongles',
-    active: true,
+    status: 'active' as ServiceStatus,
   });
 
   useEffect(() => {
@@ -47,12 +49,18 @@ export function ServicesPage() {
       );
     }
 
-    if (filterActive !== 'all') {
-      filtered = filtered.filter((s) => s.active === (filterActive === 'active'));
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter((s) => getServiceStatus(s) === filterStatus);
     }
 
     setFilteredServices(filtered);
-  }, [services, searchTerm, filterActive]);
+  }, [services, searchTerm, filterStatus]);
+
+  function getServiceStatus(service: StoreServiceWithDetails): ServiceStatus {
+    if (service.archived) return 'archived';
+    if (service.active) return 'active';
+    return 'inactive';
+  }
 
   async function fetchServices() {
     if (!selectedStoreId) {
@@ -77,32 +85,37 @@ export function ServicesPage() {
     }
   }
 
-  function openDrawer(service?: StoreServiceWithDetails) {
+  function openDrawerForNew() {
+    if (!session || !session.role || !Permissions.services.canCreate(session.role)) {
+      showToast('You do not have permission to create services', 'error');
+      return;
+    }
+    setEditingService(null);
+    setFormData({
+      code: '',
+      name: '',
+      price: '',
+      duration_min: '30',
+      category: 'Extensions des Ongles',
+      status: 'active',
+    });
+    setIsDrawerOpen(true);
+  }
+
+  function openDrawerForEdit(service: StoreServiceWithDetails) {
     if (!session || !session.role || !Permissions.services.canEdit(session.role)) {
       showToast('You do not have permission to edit services', 'error');
       return;
     }
-    if (service) {
-      setEditingService(service);
-      setFormData({
-        code: service.code,
-        name: service.name,
-        price: service.price.toString(),
-        duration_min: service.duration_min.toString(),
-        category: service.category,
-        active: service.active,
-      });
-    } else {
-      setEditingService(null);
-      setFormData({
-        code: '',
-        name: '',
-        price: '',
-        duration_min: '30',
-        category: 'Extensions des Ongles',
-        active: true,
-      });
-    }
+    setEditingService(service);
+    setFormData({
+      code: service.code,
+      name: service.name,
+      price: service.price.toString(),
+      duration_min: service.duration_min.toString(),
+      category: service.category,
+      status: getServiceStatus(service),
+    });
     setIsDrawerOpen(true);
   }
 
@@ -114,8 +127,8 @@ export function ServicesPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!session || !session.role || !Permissions.services.canEdit(session.role)) {
-      showToast('You do not have permission to save services', 'error');
+    if (!session || !session.role) {
+      showToast('You must be logged in', 'error');
       return;
     }
 
@@ -124,32 +137,120 @@ export function ServicesPage() {
       return;
     }
 
-    if (!formData.price || !formData.duration_min) {
+    if (!formData.code || !formData.name || !formData.price || !formData.duration_min) {
       showToast('Please fill in all required fields', 'error');
       return;
     }
 
     try {
       if (editingService) {
+        if (!Permissions.services.canEdit(session.role)) {
+          showToast('You do not have permission to edit services', 'error');
+          return;
+        }
+
+        const updateData = {
+          price_override: parseFloat(formData.price),
+          duration_override: parseInt(formData.duration_min),
+          active: formData.status === 'active',
+          archived: formData.status === 'archived',
+          updated_at: new Date().toISOString(),
+        };
+
         const { error } = await supabase
           .from('store_services')
-          .update({
-            price_override: parseFloat(formData.price),
-            duration_override: parseInt(formData.duration_min),
-            active: formData.active,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq('id', editingService.store_service_id);
 
         if (error) throw error;
         showToast('Service updated successfully', 'success');
+      } else {
+        if (!Permissions.services.canCreate(session.role)) {
+          showToast('You do not have permission to create services', 'error');
+          return;
+        }
+
+        const { data: existingService, error: checkError } = await supabase
+          .from('services')
+          .select('id')
+          .eq('code', formData.code.toUpperCase())
+          .maybeSingle();
+
+        if (checkError) throw checkError;
+
+        let serviceId: string;
+
+        if (existingService) {
+          serviceId = existingService.id;
+        } else {
+          const { data: newService, error: serviceError } = await supabase
+            .from('services')
+            .insert({
+              code: formData.code.toUpperCase(),
+              name: formData.name,
+              base_price: parseFloat(formData.price),
+              duration_min: parseInt(formData.duration_min),
+              category: formData.category,
+              active: formData.status === 'active',
+              archived: formData.status === 'archived',
+            })
+            .select('id')
+            .single();
+
+          if (serviceError) throw serviceError;
+          serviceId = newService.id;
+        }
+
+        const { error: storeServiceError } = await supabase
+          .from('store_services')
+          .insert({
+            store_id: selectedStoreId,
+            service_id: serviceId,
+            price_override: parseFloat(formData.price),
+            duration_override: parseInt(formData.duration_min),
+            active: formData.status === 'active',
+            archived: formData.status === 'archived',
+          });
+
+        if (storeServiceError) {
+          if (storeServiceError.code === '23505') {
+            showToast('This service already exists for this store', 'error');
+          } else {
+            throw storeServiceError;
+          }
+          return;
+        }
+
+        showToast('Service created successfully', 'success');
       }
 
       await fetchServices();
       closeDrawer();
     } catch (error: any) {
       console.error('Error saving service:', error);
-      showToast('Failed to save service', 'error');
+      showToast(error.message || 'Failed to save service', 'error');
+    }
+  }
+
+  function getBadgeVariant(status: ServiceStatus): 'success' | 'warning' | 'default' {
+    switch (status) {
+      case 'active':
+        return 'success';
+      case 'inactive':
+        return 'warning';
+      case 'archived':
+        return 'default';
+    }
+  }
+
+  function getStatusLabel(status: ServiceStatus): string {
+    switch (status) {
+      case 'active':
+        return 'Active';
+      case 'inactive':
+        return 'Inactive';
+      case 'archived':
+        return 'Archived';
     }
   }
 
@@ -172,13 +273,23 @@ export function ServicesPage() {
     );
   }
 
+  const canManage = session?.role && Permissions.services.canCreate(session.role);
+
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="mb-3">
-        <h2 className="text-lg font-bold text-gray-900">Store Services</h2>
-        <p className="text-xs text-gray-600 mt-1">
-          Manage pricing and availability for this store's services
-        </p>
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Store Services</h2>
+          <p className="text-xs text-gray-600 mt-1">
+            Manage pricing and availability for this store's services
+          </p>
+        </div>
+        {canManage && (
+          <Button onClick={openDrawerForNew} size="sm">
+            <Plus className="w-4 h-4 mr-1" />
+            Add Service
+          </Button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow">
@@ -196,12 +307,13 @@ export function ServicesPage() {
             </div>
           </div>
           <Select
-            value={filterActive}
-            onChange={(e) => setFilterActive(e.target.value)}
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
             options={[
               { value: 'all', label: 'All Services' },
               { value: 'active', label: 'Active Only' },
               { value: 'inactive', label: 'Inactive Only' },
+              { value: 'archived', label: 'Archived Only' },
             ]}
           />
         </div>
@@ -231,34 +343,39 @@ export function ServicesPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredServices.map((service) => (
-                <tr
-                  key={service.store_service_id}
-                  onClick={() => openDrawer(service)}
-                  className="hover:bg-gray-50 cursor-pointer"
-                >
-                  <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
-                    {service.code}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    {service.name}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600">
-                    {service.category}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    ${service.price.toFixed(2)}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600">
-                    {service.duration_min} min
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    <Badge variant={service.active ? 'success' : 'default'}>
-                      {service.active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
+              {filteredServices.map((service) => {
+                const status = getServiceStatus(service);
+                return (
+                  <tr
+                    key={service.store_service_id}
+                    onClick={() => openDrawerForEdit(service)}
+                    className={`hover:bg-gray-50 cursor-pointer ${
+                      status === 'archived' ? 'opacity-60' : ''
+                    }`}
+                  >
+                    <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                      {service.code}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
+                      {service.name}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600">
+                      {service.category}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
+                      ${service.price.toFixed(2)}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600">
+                      {service.duration_min} min
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <Badge variant={getBadgeVariant(status)}>
+                        {getStatusLabel(status)}
+                      </Badge>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -273,33 +390,50 @@ export function ServicesPage() {
       <Drawer
         isOpen={isDrawerOpen}
         onClose={closeDrawer}
-        title={editingService ? 'Edit Store Service' : 'Service Details'}
+        title={editingService ? 'Edit Store Service' : 'Add New Service'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-            <p className="text-xs text-blue-800">
-              You are editing the pricing and availability for this service at your store.
-              Service details (code, name, category) cannot be changed here.
-            </p>
-          </div>
+          {editingService ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <p className="text-xs text-blue-800">
+                Editing pricing and availability for this service at your store.
+                Service code, name, and category are read-only.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+              <p className="text-xs text-green-800">
+                Creating a new service for your store. If the service code already exists globally,
+                it will be linked to your store with the specified pricing.
+              </p>
+            </div>
+          )}
 
           <Input
-            label="Service Code"
+            label="Service Code *"
             value={formData.code}
-            disabled
-            readOnly
+            onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+            placeholder="e.g., MANI-001"
+            disabled={!!editingService}
+            readOnly={!!editingService}
+            required
           />
           <Input
-            label="Service Name"
+            label="Service Name *"
             value={formData.name}
-            disabled
-            readOnly
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="e.g., Classic Manicure"
+            disabled={!!editingService}
+            readOnly={!!editingService}
+            required
           />
           <Input
             label="Category"
             value={formData.category}
-            disabled
-            readOnly
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            placeholder="e.g., Extensions des Ongles"
+            disabled={!!editingService}
+            readOnly={!!editingService}
           />
           <Input
             label="Store Price *"
@@ -321,24 +455,68 @@ export function ServicesPage() {
             }
             required
           />
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="active"
-              checked={formData.active}
-              onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <label htmlFor="active" className="text-sm text-gray-700">
-              Active (available for this store)
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Service Status *
             </label>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="status"
+                  value="active"
+                  checked={formData.status === 'active'}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as ServiceStatus })}
+                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">
+                  <span className="font-medium">Active</span> - Available for new tickets
+                </span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="status"
+                  value="inactive"
+                  checked={formData.status === 'inactive'}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as ServiceStatus })}
+                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">
+                  <span className="font-medium">Inactive</span> - Temporarily unavailable
+                </span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="status"
+                  value="archived"
+                  checked={formData.status === 'archived'}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as ServiceStatus })}
+                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">
+                  <span className="font-medium">Archived</span> - Permanently removed from use
+                </span>
+              </label>
+            </div>
+            {formData.status === 'archived' && (
+              <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+                <p className="text-xs text-yellow-800">
+                  <Archive className="w-3 h-3 inline mr-1" />
+                  Archived services are hidden from ticket creation but preserve ticket history.
+                </p>
+              </div>
+            )}
           </div>
+
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="ghost" onClick={closeDrawer}>
               Cancel
             </Button>
             <Button type="submit">
-              Update Service
+              {editingService ? 'Update Service' : 'Create Service'}
             </Button>
           </div>
         </form>

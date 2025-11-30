@@ -128,10 +128,13 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
     },
     canCreate: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Supervisor', 'Owner']);
     },
     canEdit: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Supervisor', 'Owner']);
+    },
+    canArchive: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Supervisor', 'Owner']);
     },
     canDelete: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Owner']);
