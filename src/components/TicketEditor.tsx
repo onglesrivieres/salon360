@@ -1685,7 +1685,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
             {!isTicketClosed ? (
               <TechnicianQueue
-                sortedTechnicians={sortedTechnicians.filter(t => !isSelfServiceMode || t.employee_id === session?.employee_id)}
+                sortedTechnicians={
+                  session?.role && Permissions.tickets.canViewAllTechniciansInEditor(session.role)
+                    ? sortedTechnicians
+                    : sortedTechnicians.filter(t => t.employee_id === session?.employee_id)
+                }
                 selectedTechnicianId={selectedTechnicianId}
                 onTechnicianSelect={handleTechnicianSelect}
                 isReadOnly={isReadOnly}

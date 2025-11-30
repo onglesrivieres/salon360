@@ -27,6 +27,9 @@ export const Permissions = {
     isSelfServiceRole: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Technician', 'Spa Expert', 'Supervisor']);
     },
+    canViewAllTechniciansInEditor: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+    },
     canReviewSelfServiceTicket: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Manager', 'Owner']);
     },
