@@ -482,19 +482,22 @@ export function EmployeesPage() {
                         ...formData,
                         weekly_schedule: {
                           ...formData.weekly_schedule,
-                          [day]: !formData.weekly_schedule[day],
+                          [day]: {
+                            ...formData.weekly_schedule[day],
+                            is_working: !formData.weekly_schedule[day].is_working,
+                          },
                         },
                       });
                     }}
                     className={`py-1.5 px-1 rounded-lg font-medium transition-all ${
-                      formData.weekly_schedule[day]
+                      formData.weekly_schedule[day].is_working
                         ? 'bg-green-600 text-white shadow-md'
                         : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
                     }`}
                   >
                     <div className="flex flex-col items-center gap-0.5">
                       <span className="text-[10px] leading-tight">{getThreeLetterDayName(day)}</span>
-                      {formData.weekly_schedule[day] && (
+                      {formData.weekly_schedule[day].is_working && (
                         <span className="text-[10px]">✓</span>
                       )}
                     </div>

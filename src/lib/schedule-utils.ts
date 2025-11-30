@@ -1,4 +1,4 @@
-import { Employee, WeeklySchedule, DayOfWeek } from './supabase';
+import { Employee, WeeklySchedule, DayOfWeek, DaySchedule } from './supabase';
 
 export function getDayOfWeek(dateString: string): DayOfWeek {
   const date = new Date(dateString);
@@ -13,7 +13,7 @@ export function isEmployeeAvailable(employee: Employee, dateString: string): boo
   }
 
   const dayOfWeek = getDayOfWeek(dateString);
-  return employee.weekly_schedule[dayOfWeek] === true;
+  return employee.weekly_schedule[dayOfWeek]?.is_working === true;
 }
 
 export function filterAvailableEmployees(employees: Employee[], dateString: string): Employee[] {
@@ -21,14 +21,20 @@ export function filterAvailableEmployees(employees: Employee[], dateString: stri
 }
 
 export function getDefaultSchedule(): WeeklySchedule {
+  const defaultDay: DaySchedule = {
+    is_working: true,
+    start_time: '09:00',
+    end_time: '18:00',
+  };
+
   return {
-    monday: true,
-    tuesday: true,
-    wednesday: true,
-    thursday: true,
-    friday: true,
-    saturday: true,
-    sunday: true,
+    monday: { ...defaultDay },
+    tuesday: { ...defaultDay },
+    wednesday: { ...defaultDay },
+    thursday: { ...defaultDay },
+    friday: { ...defaultDay },
+    saturday: { ...defaultDay },
+    sunday: { ...defaultDay },
   };
 }
 
@@ -38,7 +44,7 @@ export function getWorkingDays(schedule: WeeklySchedule | undefined | null): Day
   }
 
   const days: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-  return days.filter(day => schedule[day] === true);
+  return days.filter(day => schedule[day]?.is_working === true);
 }
 
 export function getAbbreviatedDayName(day: DayOfWeek): string {
