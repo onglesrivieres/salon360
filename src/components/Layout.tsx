@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package, List, RefreshCw, Circle } from 'lucide-react';
+import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package, List, RefreshCw, Circle, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
 import { supabase, Store, TechnicianWithQueue } from '../lib/supabase';
@@ -12,8 +12,8 @@ import { getCurrentDateEST } from '../lib/timezone';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentPage: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals' | 'inventory';
-  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals' | 'inventory') => void;
+  currentPage: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals' | 'inventory' | 'insights';
+  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals' | 'inventory' | 'insights') => void;
 }
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
@@ -402,6 +402,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     { id: 'technicians' as const, label: t('nav.employees'), icon: Users },
     { id: 'inventory' as const, label: 'Inventory', icon: Package },
     { id: 'services' as const, label: t('nav.services'), icon: Briefcase },
+    { id: 'insights' as const, label: 'Insights', icon: TrendingUp },
   ];
 
   return (

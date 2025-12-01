@@ -182,6 +182,12 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
     },
   },
+
+  insights: {
+    canView: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
+  },
 };
 
 export function getPermissionMessage(
@@ -192,7 +198,7 @@ export function getPermissionMessage(
 }
 
 export function canAccessPage(
-  page: 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'attendance' | 'approvals' | 'inventory',
+  page: 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'attendance' | 'approvals' | 'inventory' | 'insights',
   roles: Role[] | RolePermission
 ): boolean {
   switch (page) {
@@ -214,6 +220,8 @@ export function canAccessPage(
       return Permissions.tickets.canViewPendingApprovals(roles);
     case 'inventory':
       return Permissions.inventory.canView(roles);
+    case 'insights':
+      return Permissions.insights.canView(roles);
     default:
       return false;
   }
@@ -248,6 +256,10 @@ export function getAccessiblePages(roles: Role[] | RolePermission): string[] {
 
   if (Permissions.services.canView(roles)) {
     pages.push('services');
+  }
+
+  if (Permissions.insights.canView(roles)) {
+    pages.push('insights');
   }
 
   return pages;

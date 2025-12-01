@@ -17,8 +17,9 @@ const ServicesPage = lazy(() => import('./pages/ServicesPage').then(m => ({ defa
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const PendingApprovalsPage = lazy(() => import('./pages/PendingApprovalsPage').then(m => ({ default: m.PendingApprovalsPage })));
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
+const InsightsPage = lazy(() => import('./pages/InsightsPage').then(m => ({ default: m.InsightsPage })));
 
-type Page = 'tickets' | 'eod' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'approvals' | 'inventory';
+type Page = 'tickets' | 'eod' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'approvals' | 'inventory' | 'insights';
 
 function AppContent() {
   const { isAuthenticated, selectedStoreId, selectStore, session, login } = useAuth();
@@ -176,6 +177,7 @@ function AppContent() {
           {currentPage === 'technicians' && <EmployeesPage />}
           {currentPage === 'inventory' && <InventoryPage />}
           {currentPage === 'services' && <ServicesPage />}
+          {currentPage === 'insights' && <InsightsPage />}
           {currentPage === 'settings' && <SettingsPage />}
         </Suspense>
       </Layout>
