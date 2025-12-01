@@ -411,7 +411,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   className="inline-flex items-center gap-2 px-3 py-1.5 border-2 border-blue-600 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors"
                 >
                   <List className="w-4 h-4" />
-                  <span className="hidden sm:inline">QUEUE</span>
+                  <span>QUEUE</span>
                 </button>
               )}
             </div>
