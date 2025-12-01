@@ -149,9 +149,30 @@ export function ServicesPage() {
           return;
         }
 
+        // Check if code is being changed and if it conflicts with another service in the store
+        if (formData.code.toUpperCase() !== editingService.code.toUpperCase()) {
+          const { data: existingService, error: checkError } = await supabase
+            .from('store_services')
+            .select('id')
+            .eq('store_id', selectedStoreId)
+            .eq('code', formData.code.toUpperCase())
+            .neq('id', editingService.store_service_id)
+            .maybeSingle();
+
+          if (checkError) throw checkError;
+
+          if (existingService) {
+            showToast('This service code already exists in your store', 'error');
+            return;
+          }
+        }
+
         const updateData = {
-          price_override: parseFloat(formData.price),
-          duration_override: parseInt(formData.duration_min),
+          code: formData.code.toUpperCase(),
+          name: formData.name,
+          category: formData.category,
+          price: parseFloat(formData.price),
+          duration_min: parseInt(formData.duration_min),
           active: formData.status === 'active',
           archived: formData.status === 'archived',
           updated_at: new Date().toISOString(),
@@ -170,51 +191,38 @@ export function ServicesPage() {
           return;
         }
 
+        // Check if code already exists in this store
         const { data: existingService, error: checkError } = await supabase
-          .from('services')
+          .from('store_services')
           .select('id')
+          .eq('store_id', selectedStoreId)
           .eq('code', formData.code.toUpperCase())
           .maybeSingle();
 
         if (checkError) throw checkError;
 
-        let serviceId: string;
-
         if (existingService) {
-          serviceId = existingService.id;
-        } else {
-          const { data: newService, error: serviceError } = await supabase
-            .from('services')
-            .insert({
-              code: formData.code.toUpperCase(),
-              name: formData.name,
-              base_price: parseFloat(formData.price),
-              duration_min: parseInt(formData.duration_min),
-              category: formData.category,
-              active: formData.status === 'active',
-              archived: formData.status === 'archived',
-            })
-            .select('id')
-            .single();
-
-          if (serviceError) throw serviceError;
-          serviceId = newService.id;
+          showToast('This service code already exists in your store', 'error');
+          return;
         }
 
         const { error: storeServiceError } = await supabase
           .from('store_services')
           .insert({
             store_id: selectedStoreId,
-            service_id: serviceId,
-            price_override: parseFloat(formData.price),
-            duration_override: parseInt(formData.duration_min),
+            code: formData.code.toUpperCase(),
+            name: formData.name,
+            category: formData.category,
+            base_price: parseFloat(formData.price),
+            price: parseFloat(formData.price),
+            duration_min: parseInt(formData.duration_min),
             active: formData.status === 'active',
             archived: formData.status === 'archived',
           });
 
         if (storeServiceError) {
           if (storeServiceError.code === '23505') {
-            showToast('This service already exists for this store', 'error');
+            showToast('This service code already exists in your store', 'error');
           } else {
             throw storeServiceError;
           }
@@ -393,29 +401,19 @@ export function ServicesPage() {
         title={editingService ? 'Edit Store Service' : 'Add New Service'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          {editingService ? (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-              <p className="text-xs text-blue-800">
-                Editing pricing and availability for this service at your store.
-                Service code, name, and category are read-only.
-              </p>
-            </div>
-          ) : (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-              <p className="text-xs text-green-800">
-                Creating a new service for your store. If the service code already exists globally,
-                it will be linked to your store with the specified pricing.
-              </p>
-            </div>
-          )}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <p className="text-xs text-blue-800">
+              {editingService
+                ? 'All changes only affect this store. Other stores are not impacted.'
+                : 'Creating a new service for your store. All fields are fully customizable.'}
+            </p>
+          </div>
 
           <Input
             label="Service Code *"
             value={formData.code}
             onChange={(e) => setFormData({ ...formData, code: e.target.value })}
             placeholder="e.g., MANI-001"
-            disabled={!!editingService}
-            readOnly={!!editingService}
             required
           />
           <Input
@@ -423,8 +421,6 @@ export function ServicesPage() {
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="e.g., Classic Manicure"
-            disabled={!!editingService}
-            readOnly={!!editingService}
             required
           />
           <Input
@@ -432,11 +428,9 @@ export function ServicesPage() {
             value={formData.category}
             onChange={(e) => setFormData({ ...formData, category: e.target.value })}
             placeholder="e.g., Extensions des Ongles"
-            disabled={!!editingService}
-            readOnly={!!editingService}
           />
           <Input
-            label="Store Price *"
+            label="Price *"
             type="number"
             step="0.01"
             min="0"
