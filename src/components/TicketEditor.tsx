@@ -2113,19 +2113,24 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     </span>
                   </div>
                   <span className="text-xs text-gray-500">
-                    {new Date(log.created_at).toLocaleString()}
+                    {formatDateTimeEST(log.created_at)}
                   </span>
                 </div>
                 <p className="text-sm text-gray-700">{log.description}</p>
-                {log.changes && Object.keys(log.changes).length > 0 && (
-                  <div className="mt-2 text-xs text-gray-600 bg-white px-2 py-1 rounded">
-                    {Object.entries(log.changes).map(([key, value]) => (
-                      <div key={key}>
-                        <strong>{key}:</strong> {JSON.stringify(value)}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {log.changes && Object.keys(log.changes).length > 0 && (() => {
+                  const filteredChanges = Object.entries(log.changes).filter(
+                    ([key]) => !['customer_name', 'ticket_no', 'closed_by_roles'].includes(key)
+                  );
+                  return filteredChanges.length > 0 ? (
+                    <div className="mt-2 text-xs text-gray-600 bg-white px-2 py-1 rounded">
+                      {filteredChanges.map(([key, value]) => (
+                        <div key={key}>
+                          <strong>{key}:</strong> {JSON.stringify(value)}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
               </div>
             ))
           )}
