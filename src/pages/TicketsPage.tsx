@@ -542,11 +542,6 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <div className="flex items-center gap-1">
-                        {isSelfServiceTicket && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-600 text-white">
-                            Self-Service
-                          </span>
-                        )}
                         {ticket.closed_at ? (
                           isTimeDeviationHigh(ticket) ? (
                             <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flash-red">
