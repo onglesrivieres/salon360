@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package, List, RefreshCw } from 'lucide-react';
+import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package, List, RefreshCw, Circle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
 import { supabase, Store, TechnicianWithQueue } from '../lib/supabase';
@@ -32,6 +32,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [leavingQueueEmployeeId, setLeavingQueueEmployeeId] = useState<string | undefined>();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [employeeToRemove, setEmployeeToRemove] = useState<string | undefined>();
+  const [userQueueStatus, setUserQueueStatus] = useState<'ready' | 'neutral' | 'busy'>('neutral');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const canViewAllQueueStatuses = session?.role && Permissions.queue.canViewAllQueueStatuses(session.role);
@@ -298,6 +299,50 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   };
 
   useEffect(() => {
+    // Extract current user's queue status from sortedTechnicians
+    if (session?.employee_id && sortedTechnicians.length > 0) {
+      const currentUser = sortedTechnicians.find(tech => tech.employee_id === session.employee_id);
+      if (currentUser) {
+        setUserQueueStatus(currentUser.queue_status as 'ready' | 'neutral' | 'busy');
+      } else {
+        setUserQueueStatus('neutral');
+      }
+    } else {
+      setUserQueueStatus('neutral');
+    }
+  }, [sortedTechnicians, session?.employee_id]);
+
+  useEffect(() => {
+    // Fetch initial queue status on mount
+    if (session?.employee_id && selectedStoreId && session?.role && canAccessPage('tickets', session.role)) {
+      fetchTechnicianQueue();
+    }
+
+    // Set up real-time subscription for queue status updates
+    if (!session?.employee_id || !selectedStoreId || !session?.role || !canAccessPage('tickets', session.role)) return;
+
+    const queueStatusChannel = supabase
+      .channel(`queue-status-${selectedStoreId}-${session.employee_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'technician_ready_queue',
+          filter: `store_id=eq.${selectedStoreId}`,
+        },
+        () => {
+          fetchTechnicianQueue();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(queueStatusChannel);
+    };
+  }, [session?.employee_id, selectedStoreId, session?.role]);
+
+  useEffect(() => {
     if (!showQueueModal) return;
 
     const timer = setInterval(() => {
@@ -410,7 +455,15 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   onClick={handleOpenQueueModal}
                   className="inline-flex items-center gap-2 px-3 py-1.5 border-2 border-blue-600 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors"
                 >
-                  <List className="w-4 h-4" />
+                  <Circle
+                    className={`w-4 h-4 ${
+                      userQueueStatus === 'ready'
+                        ? 'text-green-500 fill-green-500'
+                        : userQueueStatus === 'busy'
+                        ? 'text-red-500 fill-red-500'
+                        : 'text-gray-400 fill-gray-400 animate-pulse'
+                    }`}
+                  />
                   <span>QUEUE</span>
                 </button>
               )}
