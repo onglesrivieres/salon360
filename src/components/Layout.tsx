@@ -456,12 +456,12 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   className="inline-flex items-center gap-2 px-3 py-1.5 border-2 border-blue-600 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors"
                 >
                   <Circle
-                    className={`w-4 h-4 ${
+                    className={`w-4 h-4 animate-pulse ${
                       userQueueStatus === 'ready'
                         ? 'text-green-500 fill-green-500'
                         : userQueueStatus === 'busy'
                         ? 'text-red-500 fill-red-500'
-                        : 'text-gray-400 fill-gray-400 animate-pulse'
+                        : 'text-gray-400 fill-gray-400'
                     }`}
                   />
                   <span>QUEUE</span>
