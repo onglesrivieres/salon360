@@ -90,18 +90,20 @@ export function TechnicianQueue({
       )}
 
       <div className="flex flex-wrap gap-2">
-        {readyTechnicians.map((tech) => (
-          <button
-            key={tech.employee_id}
-            type="button"
-            onClick={() => !isReadOnly && onTechnicianSelect?.(tech.employee_id)}
-            className={`py-2 px-3 text-sm rounded-lg font-medium transition-colors ${
-              selectedTechnicianId === tech.employee_id
-                ? 'bg-green-600 text-white ring-2 ring-green-400'
-                : 'bg-green-100 text-green-800 hover:bg-green-200'
-            } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}
-            disabled={isReadOnly}
-          >
+        {readyTechnicians.map((tech) => {
+          const isCurrentEmployee = currentEmployeeId === tech.employee_id;
+          return (
+            <button
+              key={tech.employee_id}
+              type="button"
+              onClick={() => !isReadOnly && onTechnicianSelect?.(tech.employee_id)}
+              className={`py-2 px-3 text-sm rounded-lg font-medium transition-colors ${
+                selectedTechnicianId === tech.employee_id
+                  ? 'bg-green-600 text-white ring-2 ring-green-400'
+                  : 'bg-green-100 text-green-800 hover:bg-green-200'
+              } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} ${isCurrentEmployee ? 'animate-pulse' : ''}`}
+              disabled={isReadOnly}
+            >
             <div className="flex items-center gap-2">
               {tech.queue_position > 0 && (
                 <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-white text-green-600 rounded-full">
@@ -111,26 +113,31 @@ export function TechnicianQueue({
               <span>{tech.display_name}</span>
             </div>
           </button>
-        ))}
+          );
+        })}
 
-        {neutralTechnicians.map((tech) => (
-          <button
-            key={tech.employee_id}
-            type="button"
-            onClick={() => !isReadOnly && onTechnicianSelect?.(tech.employee_id)}
-            className={`py-2 px-3 text-sm rounded-lg font-medium transition-colors ${
-              selectedTechnicianId === tech.employee_id
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
-            } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}
-            disabled={isReadOnly}
-          >
-            {tech.display_name}
-          </button>
-        ))}
+        {neutralTechnicians.map((tech) => {
+          const isCurrentEmployee = currentEmployeeId === tech.employee_id;
+          return (
+            <button
+              key={tech.employee_id}
+              type="button"
+              onClick={() => !isReadOnly && onTechnicianSelect?.(tech.employee_id)}
+              className={`py-2 px-3 text-sm rounded-lg font-medium transition-colors ${
+                selectedTechnicianId === tech.employee_id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
+              } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} ${isCurrentEmployee ? 'animate-pulse' : ''}`}
+              disabled={isReadOnly}
+            >
+              {tech.display_name}
+            </button>
+          );
+        })}
 
         {busyTechnicians.map((tech) => {
           const timeRemaining = calculateTimeRemaining(tech);
+          const isCurrentEmployee = currentEmployeeId === tech.employee_id;
           return (
             <button
               key={tech.employee_id}
@@ -140,7 +147,7 @@ export function TechnicianQueue({
                 selectedTechnicianId === tech.employee_id
                   ? 'bg-red-600 text-white ring-2 ring-red-400'
                   : 'bg-red-100 text-red-800 hover:bg-red-200'
-              } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}
+              } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} ${isCurrentEmployee ? 'animate-pulse' : ''}`}
               title={!isReadOnly ? `${tech.display_name} is currently working on ${tech.open_ticket_count} ticket(s)${timeRemaining ? ` - ${timeRemaining} remaining` : ''}` : undefined}
               disabled={isReadOnly}
             >
