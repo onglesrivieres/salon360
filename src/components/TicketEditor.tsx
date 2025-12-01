@@ -338,7 +338,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             *,
             ticket_items (
               *,
-              service:services(*),
+              service:store_services!ticket_items_store_service_id_fkey(*),
               employee:employees!ticket_items_employee_id_fkey(*)
             )
           `
@@ -375,7 +375,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         setItems(
           ticketItems.map((item: any) => ({
             id: item.id,
-            service_id: item.service_id || '',
+            service_id: item.store_service_id || '',
             employee_id: item.employee_id,
             qty: parseFloat(item.qty || 0).toString(),
             price_each: parseFloat(item.price_each || 0).toString(),
@@ -385,7 +385,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             addon_price: parseFloat(item.addon_price || 0).toString(),
             service: item.service,
             employee: item.employee,
-            is_custom: !item.service_id,
+            is_custom: !item.store_service_id,
             custom_service_name: item.custom_service_name || '',
           }))
         );
@@ -989,7 +989,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
           const itemData = {
             sale_ticket_id: ticketId,
-            service_id: item.is_custom ? null : item.service_id,
+            store_service_id: item.is_custom ? null : item.service_id,
             custom_service_name: item.is_custom ? item.custom_service_name : null,
             employee_id: item.employee_id,
             qty: parseFloat(item.qty),
@@ -1057,7 +1057,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         const itemsData = items.map((item) => {
           return {
             sale_ticket_id: newTicket.id,
-            service_id: item.is_custom ? null : item.service_id,
+            store_service_id: item.is_custom ? null : item.service_id,
             custom_service_name: item.is_custom ? item.custom_service_name : null,
             employee_id: item.employee_id,
             qty: parseFloat(item.qty),

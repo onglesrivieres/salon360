@@ -257,7 +257,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           closed_at,
           ticket_items${isTechnician ? '!inner' : ''} (
             id,
-            service_id,
+            store_service_id,
+            custom_service_name,
             employee_id,
             qty,
             price_each,
@@ -265,7 +266,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             tip_customer_cash,
             tip_customer_card,
             tip_receptionist,
-            service:services(code, name, duration_min),
+            service:store_services!ticket_items_store_service_id_fkey(code, name, duration_min),
             employee:employees!ticket_items_employee_id_fkey(
               id,
               display_name

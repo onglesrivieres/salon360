@@ -159,7 +159,9 @@ export interface SaleTicket {
 export interface TicketItem {
   id: string;
   sale_ticket_id: string;
-  service_id: string;
+  service_id?: string | null;
+  store_service_id?: string | null;
+  custom_service_name?: string | null;
   employee_id: string;
   qty: number;
   price_each: number;

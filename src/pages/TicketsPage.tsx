@@ -75,7 +75,8 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
             tip_customer_cash,
             tip_customer_card,
             tip_receptionist,
-            service:services(code, name, duration_min),
+            custom_service_name,
+            service:store_services!ticket_items_store_service_id_fkey(code, name, duration_min),
             employee:employees!ticket_items_employee_id_fkey(display_name)
           )
         `)
@@ -139,7 +140,9 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
   function getServiceName(ticket: any): string {
     if (!ticket.ticket_items || ticket.ticket_items.length === 0) return '-';
-    const service = ticket.ticket_items[0]?.service;
+    const firstItem = ticket.ticket_items[0];
+    if (firstItem?.custom_service_name) return firstItem.custom_service_name;
+    const service = firstItem?.service;
     return service ? service.code : '-';
   }
 
