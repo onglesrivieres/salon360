@@ -973,6 +973,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         await logActivity(ticketId, 'updated', `${session?.display_name} updated ticket`, {
           customer_name: formData.customer_name,
           total,
+          payment_method: formData.payment_method,
+          payment_cash: paymentCash,
+          payment_card: paymentCard,
+          payment_gift_card: paymentGiftCard,
+          tip_customer_cash: tipCustomerCash,
+          tip_customer_card: tipCustomerCard,
+          tip_receptionist: tipReceptionist,
+          discount_amount: parseFloat(formData.discount_amount) || 0,
+          discount_percentage: parseFloat(formData.discount_percentage) || 0,
         });
 
         const existingItemIds = items.filter((item) => item.id).map((item) => item.id);
@@ -1085,6 +1094,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           ticket_no: ticketNo,
           customer_name: formData.customer_name,
           total,
+          payment_method: formData.payment_method,
+          payment_cash: paymentCash,
+          payment_card: paymentCard,
+          payment_gift_card: paymentGiftCard,
+          tip_customer_cash: tipCustomerCash,
+          tip_customer_card: tipCustomerCard,
+          tip_receptionist: tipReceptionist,
+          discount_amount: parseFloat(formData.discount_amount) || 0,
+          discount_percentage: parseFloat(formData.discount_percentage) || 0,
         });
 
         showToast('Ticket created successfully', 'success');
@@ -2121,11 +2139,42 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   const filteredChanges = Object.entries(log.changes).filter(
                     ([key]) => !['customer_name', 'ticket_no', 'closed_by_roles'].includes(key)
                   );
+
+                  const formatValue = (key: string, value: any): string => {
+                    const monetaryFields = [
+                      'total', 'payment_cash', 'payment_card', 'payment_gift_card',
+                      'tip_customer_cash', 'tip_customer_card', 'tip_receptionist',
+                      'discount_amount'
+                    ];
+
+                    if (monetaryFields.includes(key) && typeof value === 'number') {
+                      return `$${value.toFixed(2)}`;
+                    }
+
+                    if (key === 'discount_percentage' && typeof value === 'number') {
+                      return `${value}%`;
+                    }
+
+                    if (typeof value === 'object' && value !== null) {
+                      return JSON.stringify(value);
+                    }
+
+                    return String(value);
+                  };
+
+                  const formatFieldName = (key: string): string => {
+                    return key
+                      .split('_')
+                      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                      .join(' ');
+                  };
+
                   return filteredChanges.length > 0 ? (
                     <div className="mt-2 text-xs text-gray-600 bg-white px-2 py-1 rounded">
                       {filteredChanges.map(([key, value]) => (
-                        <div key={key}>
-                          <strong>{key}:</strong> {JSON.stringify(value)}
+                        <div key={key} className="py-0.5">
+                          <strong className="text-gray-700">{formatFieldName(key)}:</strong>{' '}
+                          <span className="text-gray-900">{formatValue(key, value)}</span>
                         </div>
                       ))}
                     </div>
