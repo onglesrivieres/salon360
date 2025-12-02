@@ -521,20 +521,23 @@ export function useSalesBreakdownData(dateRange: DateRange, viewBy: ViewByType):
         const tickets = ticketsResult.data || [];
 
         if (viewBy === 'hourly') {
-          const hours = Array.from({ length: 24 }, (_, i) => i);
+          const hours = Array.from({ length: 13 }, (_, i) => i + 9);
           const timeLabels = hours.map((h) => {
             const hour = h === 0 ? 12 : h > 12 ? h - 12 : h;
-            const period = h < 12 ? 'a.m.' : 'p.m.';
-            return `${hour}:00 ${period}`;
+            const period = h < 12 ? 'a' : 'p';
+            return `${hour}${period}`;
           });
 
-          const grossSales = new Array(24).fill(0);
-          const refunds = new Array(24).fill(0);
+          const grossSales = new Array(13).fill(0);
+          const refunds = new Array(13).fill(0);
 
           tickets.forEach((ticket) => {
             if (ticket.closed_at) {
               const hour = new Date(ticket.closed_at).getHours();
-              grossSales[hour] += ticket.total || 0;
+              if (hour >= 9 && hour <= 21) {
+                const index = hour - 9;
+                grossSales[index] += ticket.total || 0;
+              }
             }
           });
 
