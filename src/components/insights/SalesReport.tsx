@@ -1,6 +1,11 @@
 import { FileText } from 'lucide-react';
+import { DateRange } from '../../lib/timeFilters';
 
-export function SalesReport() {
+interface SalesReportProps {
+  dateRange: DateRange;
+}
+
+export function SalesReport({ dateRange }: SalesReportProps) {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow p-6 border border-gray-200">

@@ -1,6 +1,11 @@
 import { CreditCard, Banknote, Gift } from 'lucide-react';
+import { DateRange } from '../../lib/timeFilters';
 
-export function PaymentTypes() {
+interface PaymentTypesProps {
+  dateRange: DateRange;
+}
+
+export function PaymentTypes({ dateRange }: PaymentTypesProps) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

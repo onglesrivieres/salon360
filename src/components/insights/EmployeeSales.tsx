@@ -1,6 +1,11 @@
 import { Users, Award, TrendingUp } from 'lucide-react';
+import { DateRange } from '../../lib/timeFilters';
 
-export function EmployeeSales() {
+interface EmployeeSalesProps {
+  dateRange: DateRange;
+}
+
+export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
