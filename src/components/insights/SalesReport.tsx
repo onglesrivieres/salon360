@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Printer, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { Printer, SlidersHorizontal } from 'lucide-react';
 import { DateRange } from '../../lib/timeFilters';
 import { useSalesReportData } from '../../hooks/useSalesData';
 import { formatCurrency, formatNumber } from '../../lib/formatters';
@@ -15,67 +15,25 @@ export function SalesReport({ dateRange }: SalesReportProps) {
   const reportData = useSalesReportData(dateRange);
   const [showFilters, setShowFilters] = useState(false);
 
-  const formatDateRange = (range: DateRange) => {
-    const start = new Date(range.startDate);
-    const end = new Date(range.endDate);
-
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    };
-
-    if (range.startDate === range.endDate) {
-      const dateStr = start.toLocaleDateString('en-US', options);
-      return `${dateStr}, 12:00 a.m. - 11:59 p.m.`;
-    }
-
-    const startStr = start.toLocaleDateString('en-US', options);
-    const endStr = end.toLocaleDateString('en-US', options);
-    return `${startStr} - ${endStr}`;
-  };
-
   const isToday = dateRange.startDate === new Date().toISOString().split('T')[0];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-            onClick={() => {}}
-          >
-            <ChevronLeft className="w-5 h-5 text-gray-600" />
-          </button>
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">{formatDateRange(dateRange)}</h2>
-          </div>
-          <button
-            className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => {}}
-            disabled={isToday}
-          >
-            <ChevronRight className="w-5 h-5 text-gray-600" />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            Filters
-          </button>
-          <button
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            onClick={() => window.print()}
-          >
-            <Printer className="w-4 h-4" />
-            Print
-          </button>
-        </div>
+      <div className="flex items-center justify-end gap-3">
+        <button
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          onClick={() => setShowFilters(!showFilters)}
+        >
+          <SlidersHorizontal className="w-4 h-4" />
+          Filters
+        </button>
+        <button
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          onClick={() => window.print()}
+        >
+          <Printer className="w-4 h-4" />
+          Print
+        </button>
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-6">
