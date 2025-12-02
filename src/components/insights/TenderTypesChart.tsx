@@ -1,71 +1,110 @@
-import { PaymentBreakdownData } from '../../hooks/useSalesData';
 import { formatCurrency } from '../../lib/formatters';
 
 interface TenderTypesChartProps {
-  data: PaymentBreakdownData;
+  creditCard: number;
+  debitCard: number;
+  isLoading?: boolean;
 }
 
-export function TenderTypesChart({ data }: TenderTypesChartProps) {
-  if (data.isLoading) {
+export function TenderTypesChart({ creditCard, debitCard, isLoading = false }: TenderTypesChartProps) {
+  const chartHeight = 320;
+  const chartPadding = { top: 20, right: 40, bottom: 60, left: 80 };
+  const chartWidth = 900;
+
+  const maxValue = Math.max(creditCard, debitCard, 100);
+  const yAxisMax = Math.ceil(maxValue / 500) * 500;
+  const yAxisSteps = 4;
+  const yAxisStep = yAxisMax / yAxisSteps;
+
+  const plotHeight = chartHeight - chartPadding.top - chartPadding.bottom;
+  const plotWidth = chartWidth - chartPadding.left - chartPadding.right;
+
+  const barWidth = 100;
+  const barSpacing = 200;
+
+  const debitBarHeight = (debitCard / yAxisMax) * plotHeight;
+  const creditBarHeight = (creditCard / yAxisMax) * plotHeight;
+
+  const debitBarX = plotWidth / 2 - barSpacing - barWidth / 2;
+  const creditBarX = plotWidth / 2 + barSpacing - barWidth / 2;
+
+  if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Top 5 Tender Types</h3>
-        <div className="h-64 flex items-center justify-center">
-          <div className="animate-pulse text-gray-400">Loading...</div>
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
+          <div className="h-80 bg-gray-100 rounded"></div>
         </div>
       </div>
     );
   }
-
-  if (data.error) {
-    return (
-      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Top 5 Tender Types</h3>
-        <div className="h-64 flex items-center justify-center">
-          <div className="text-red-600">{data.error}</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (data.tenderTypes.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Top 5 Tender Types</h3>
-        <div className="h-64 flex items-center justify-center">
-          <div className="text-gray-500">No payment data available</div>
-        </div>
-      </div>
-    );
-  }
-
-  const maxAmount = Math.max(...data.tenderTypes.map((t) => t.amount));
-  const chartHeight = 240;
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Top 5 Tender Types</h3>
-      <div className="space-y-4 mb-4">
-        {data.tenderTypes.map((tender, index) => {
-          const percentage = (tender.amount / maxAmount) * 100;
-          return (
-            <div key={index}>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-medium text-gray-700">{tender.method}</span>
-                <span className="text-sm font-semibold text-gray-900">{formatCurrency(tender.amount)}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div
-                  className="bg-blue-600 h-3 rounded-full transition-all duration-300"
-                  style={{ width: `${percentage}%` }}
-                ></div>
-              </div>
-            </div>
-          );
-        })}
+    <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+          <span className="text-sm font-medium text-gray-700">Amount Collected</span>
+        </div>
       </div>
-      <div className="flex justify-end mt-6">
-        <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">DETAILS</button>
+
+      <div className="overflow-x-auto">
+        <svg width={chartWidth} height={chartHeight} className="mx-auto">
+          <g transform={`translate(${chartPadding.left}, ${chartPadding.top})`}>
+            {Array.from({ length: yAxisSteps + 1 }).map((_, i) => {
+              const y = (plotHeight / yAxisSteps) * i;
+              const value = yAxisMax - i * yAxisStep;
+              return (
+                <g key={i}>
+                  <line x1={0} y1={y} x2={plotWidth} y2={y} stroke="#e5e7eb" strokeWidth={1} />
+                  <text x={-10} y={y + 4} textAnchor="end" className="text-sm fill-gray-600">
+                    {value === 0 ? '$0' : `$${(value / 1000).toFixed(value >= 1000 ? 0 : 1)}k`}
+                  </text>
+                </g>
+              );
+            })}
+
+            <rect
+              x={debitBarX}
+              y={plotHeight - debitBarHeight}
+              width={barWidth}
+              height={debitBarHeight}
+              fill="#4472C4"
+              className="hover:opacity-80 transition-opacity cursor-pointer"
+            >
+              <title>{formatCurrency(debitCard)}</title>
+            </rect>
+
+            <rect
+              x={creditBarX}
+              y={plotHeight - creditBarHeight}
+              width={barWidth}
+              height={creditBarHeight}
+              fill="#4472C4"
+              className="hover:opacity-80 transition-opacity cursor-pointer"
+            >
+              <title>{formatCurrency(creditCard)}</title>
+            </rect>
+
+            <text
+              x={debitBarX + barWidth / 2}
+              y={plotHeight + 30}
+              textAnchor="middle"
+              className="text-sm fill-gray-700 font-medium"
+            >
+              Debit Card
+            </text>
+
+            <text
+              x={creditBarX + barWidth / 2}
+              y={plotHeight + 30}
+              textAnchor="middle"
+              className="text-sm fill-gray-700 font-medium"
+            >
+              Credit Card
+            </text>
+          </g>
+        </svg>
       </div>
     </div>
   );
