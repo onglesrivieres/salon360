@@ -17,7 +17,7 @@ export function SalesOverview({ dateRange }: SalesOverviewProps) {
     <div className="space-y-6">
       <SalesMetrics data={metricsData} />
 
-      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+      <div className="bg-white rounded-lg shadow p-4 md:p-6 border border-gray-200">
         <div className="mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-1">Sales Summary</h3>
           <p className="text-sm text-gray-600">Net Sales</p>

@@ -24,17 +24,17 @@ export function SalesChart({ data }: SalesChartProps) {
 
   const maxValue = Math.max(...data.currentData, ...data.previousData);
   const chartHeight = 280;
-  const chartPadding = { top: 20, right: 20, bottom: 40, left: 60 };
-  const chartWidth = 800;
-  const barWidth = Math.max(20, (chartWidth - chartPadding.left - chartPadding.right) / (data.labels.length * 2.5));
-  const groupSpacing = barWidth / 2;
+  const chartPadding = { top: 20, right: 10, bottom: 32, left: 50 };
+  const chartWidth = 720;
+  const barWidth = Math.max(10, (chartWidth - chartPadding.left - chartPadding.right) / (data.labels.length * 2.2));
+  const groupSpacing = Math.max(2, barWidth / 4);
 
   const yAxisSteps = 5;
   const yAxisMax = Math.ceil(maxValue / 100) * 100 || 100;
   const yAxisStep = yAxisMax / yAxisSteps;
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto scroll-smooth">
       <svg
         width={Math.max(chartWidth, data.labels.length * (barWidth * 2 + groupSpacing) + chartPadding.left + chartPadding.right)}
         height={chartHeight}
@@ -54,8 +54,8 @@ export function SalesChart({ data }: SalesChartProps) {
                   stroke="#e5e7eb"
                   strokeWidth={1}
                 />
-                <text x={-10} y={y + 4} textAnchor="end" className="text-xs fill-gray-600">
-                  ${value}
+                <text x={-8} y={y + 4} textAnchor="end" className="text-xs fill-gray-600">
+                  {value >= 1000 ? `$${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}K` : `$${value}`}
                 </text>
               </g>
             );
@@ -107,14 +107,16 @@ export function SalesChart({ data }: SalesChartProps) {
                   </title>
                 </rect>
 
-                <text
-                  x={x + barWidth}
-                  y={chartHeight - chartPadding.top - chartPadding.bottom + 20}
-                  textAnchor="middle"
-                  className="text-xs fill-gray-600"
-                >
-                  {label}
-                </text>
+                {(index % 2 === 0 || data.labels.length <= 12) && (
+                  <text
+                    x={x + barWidth}
+                    y={chartHeight - chartPadding.top - chartPadding.bottom + 20}
+                    textAnchor="middle"
+                    className="text-xs fill-gray-600"
+                  >
+                    {label.replace('am', 'a').replace('pm', 'p')}
+                  </text>
+                )}
               </g>
             );
           })}
