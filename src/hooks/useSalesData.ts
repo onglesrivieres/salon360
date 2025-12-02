@@ -441,11 +441,14 @@ export function useSalesReportData(dateRange: DateRange): SalesReportData {
         const grossSales = netSales;
         const refunds = 0;
 
-        const hourlyData = new Array(24).fill(0);
+        const hourlyData = new Array(13).fill(0);
         tickets.forEach((ticket) => {
           if (ticket.closed_at) {
             const hour = new Date(ticket.closed_at).getHours();
-            hourlyData[hour] += ticket.total || 0;
+            if (hour >= 9 && hour <= 21) {
+              const index = hour - 9;
+              hourlyData[index] += ticket.total || 0;
+            }
           }
         });
 

@@ -19,7 +19,7 @@ export function SalesReportChart({ hourlyData, showNowIndicator = false }: Sales
   const plotWidth = chartWidth - chartPadding.left - chartPadding.right;
 
   const points = hourlyData.map((value, index) => {
-    const x = (index / 23) * plotWidth;
+    const x = (index / 12) * plotWidth;
     const y = plotHeight - (value / yAxisMax) * plotHeight;
     return { x, y, value };
   });
@@ -39,17 +39,23 @@ export function SalesReportChart({ hourlyData, showNowIndicator = false }: Sales
   const areaPath = `${pathData} L ${plotWidth} ${plotHeight} L 0 ${plotHeight} Z`;
 
   const currentHour = new Date().getHours();
-  const nowX = (currentHour / 23) * plotWidth;
+  const showNow = currentHour >= 9 && currentHour <= 21;
+  const nowX = showNow ? ((currentHour - 9) / 12) * plotWidth : 0;
 
   const xAxisLabels = [
-    { hour: 0, label: '12a' },
-    { hour: 3, label: '3a' },
-    { hour: 6, label: '6a' },
-    { hour: 9, label: '9a' },
-    { hour: 12, label: '12p' },
-    { hour: 15, label: '3p' },
-    { hour: 18, label: '6p' },
-    { hour: 21, label: '9p' },
+    { index: 0, label: '9a' },
+    { index: 1, label: '10a' },
+    { index: 2, label: '11a' },
+    { index: 3, label: '12p' },
+    { index: 4, label: '1p' },
+    { index: 5, label: '2p' },
+    { index: 6, label: '3p' },
+    { index: 7, label: '4p' },
+    { index: 8, label: '5p' },
+    { index: 9, label: '6p' },
+    { index: 10, label: '7p' },
+    { index: 11, label: '8p' },
+    { index: 12, label: '9p' },
   ];
 
   return (
@@ -86,7 +92,7 @@ export function SalesReportChart({ hourlyData, showNowIndicator = false }: Sales
             </circle>
           ))}
 
-          {showNowIndicator && (
+          {showNowIndicator && showNow && (
             <g>
               <line
                 x1={nowX}
@@ -108,11 +114,11 @@ export function SalesReportChart({ hourlyData, showNowIndicator = false }: Sales
             </g>
           )}
 
-          {xAxisLabels.map(({ hour, label }) => {
-            const x = (hour / 23) * plotWidth;
+          {xAxisLabels.map(({ index, label }) => {
+            const x = (index / 12) * plotWidth;
             return (
               <text
-                key={hour}
+                key={index}
                 x={x}
                 y={plotHeight + 25}
                 textAnchor="middle"
