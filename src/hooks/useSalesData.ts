@@ -845,3 +845,174 @@ export function useCardPaymentAnalysis(dateRange: DateRange): CardPaymentAnalysi
 
   return data;
 }
+
+export interface EmployeeSalesRow {
+  employeeId: string;
+  employeeName: string;
+  employeeRole: string;
+  grossSales: number;
+  refunds: number;
+  netSales: number;
+  nonRevenueItems: number;
+  giftCardActivations: number;
+  tips: number;
+  transactions: number;
+}
+
+export interface EmployeeSalesData {
+  employees: EmployeeSalesRow[];
+  summary: {
+    totalNetSales: number;
+    averagePerTransaction: number;
+    totalTips: number;
+    totalTransactions: number;
+  };
+  isLoading: boolean;
+  error: string | null;
+}
+
+export function useEmployeeSalesData(dateRange: DateRange): EmployeeSalesData {
+  const [data, setData] = useState<EmployeeSalesData>({
+    employees: [],
+    summary: {
+      totalNetSales: 0,
+      averagePerTransaction: 0,
+      totalTips: 0,
+      totalTransactions: 0,
+    },
+    isLoading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchEmployeeSales() {
+      try {
+        setData((prev) => ({ ...prev, isLoading: true, error: null }));
+
+        const ticketsResult = await supabase
+          .from('sale_tickets')
+          .select(`
+            id,
+            total,
+            ticket_items (
+              id,
+              employee_id,
+              line_subtotal,
+              tip_customer,
+              tip_receptionist,
+              employees (
+                id,
+                display_name,
+                role
+              )
+            )
+          `)
+          .gte('ticket_date', dateRange.startDate)
+          .lte('ticket_date', dateRange.endDate)
+          .not('closed_at', 'is', null);
+
+        if (cancelled) return;
+
+        if (ticketsResult.error) throw ticketsResult.error;
+
+        const tickets = ticketsResult.data || [];
+
+        const employeeMap = new Map<string, {
+          name: string;
+          role: string;
+          grossSales: number;
+          refunds: number;
+          tips: number;
+          transactions: Set<string>;
+        }>();
+
+        tickets.forEach((ticket) => {
+          if (!ticket.ticket_items || ticket.ticket_items.length === 0) return;
+
+          ticket.ticket_items.forEach((item: any) => {
+            if (!item.employee_id || !item.employees) return;
+
+            const employeeId = item.employee_id;
+            const employee = item.employees;
+
+            if (!employeeMap.has(employeeId)) {
+              employeeMap.set(employeeId, {
+                name: employee.display_name || 'Unknown',
+                role: Array.isArray(employee.role) ? employee.role.join(', ') : employee.role || 'Unknown',
+                grossSales: 0,
+                refunds: 0,
+                tips: 0,
+                transactions: new Set(),
+              });
+            }
+
+            const empData = employeeMap.get(employeeId)!;
+            const lineSubtotal = item.line_subtotal || 0;
+
+            if (lineSubtotal >= 0) {
+              empData.grossSales += lineSubtotal;
+            } else {
+              empData.refunds += Math.abs(lineSubtotal);
+            }
+
+            empData.tips += (item.tip_customer || 0) + (item.tip_receptionist || 0);
+            empData.transactions.add(ticket.id);
+          });
+        });
+
+        const employeeRows: EmployeeSalesRow[] = Array.from(employeeMap.entries()).map(
+          ([employeeId, empData]) => ({
+            employeeId,
+            employeeName: empData.name,
+            employeeRole: empData.role,
+            grossSales: empData.grossSales,
+            refunds: empData.refunds,
+            netSales: empData.grossSales - empData.refunds,
+            nonRevenueItems: 0,
+            giftCardActivations: 0,
+            tips: empData.tips,
+            transactions: empData.transactions.size,
+          })
+        );
+
+        employeeRows.sort((a, b) => b.netSales - a.netSales);
+
+        const totalNetSales = employeeRows.reduce((sum, emp) => sum + emp.netSales, 0);
+        const totalTips = employeeRows.reduce((sum, emp) => sum + emp.tips, 0);
+        const totalTransactions = employeeRows.reduce((sum, emp) => sum + emp.transactions, 0);
+        const averagePerTransaction = totalTransactions > 0 ? totalNetSales / totalTransactions : 0;
+
+        setData({
+          employees: employeeRows,
+          summary: {
+            totalNetSales,
+            averagePerTransaction,
+            totalTips,
+            totalTransactions,
+          },
+          isLoading: false,
+          error: null,
+        });
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Error fetching employee sales data:', error);
+          setData((prev) => ({
+            ...prev,
+            isLoading: false,
+            error: 'Failed to load employee sales data',
+          }));
+        }
+      }
+    }
+
+    fetchEmployeeSales();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dateRange.startDate, dateRange.endDate]);
+
+  return data;
+}
