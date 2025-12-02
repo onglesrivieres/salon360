@@ -1,82 +1,40 @@
-import { TrendingUp, DollarSign, ShoppingCart, Users } from 'lucide-react';
 import { DateRange } from '../../lib/timeFilters';
+import { useSalesMetrics, useSalesChartData, usePaymentBreakdown } from '../../hooks/useSalesData';
+import { SalesMetrics } from './SalesMetrics';
+import { SalesChart } from './SalesChart';
+import { TenderTypesChart } from './TenderTypesChart';
 
 interface SalesOverviewProps {
   dateRange: DateRange;
 }
 
 export function SalesOverview({ dateRange }: SalesOverviewProps) {
+  const metricsData = useSalesMetrics(dateRange);
+  const chartData = useSalesChartData(dateRange);
+  const paymentData = usePaymentBreakdown(dateRange);
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-gray-900 mt-2">Coming Soon</p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Tickets</p>
-              <p className="text-2xl font-bold text-gray-900 mt-2">Coming Soon</p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <ShoppingCart className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Avg. Ticket Value</p>
-              <p className="text-2xl font-bold text-gray-900 mt-2">Coming Soon</p>
-            </div>
-            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-orange-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Active Customers</p>
-              <p className="text-2xl font-bold text-gray-900 mt-2">Coming Soon</p>
-            </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Users className="w-6 h-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
-      </div>
+      <SalesMetrics data={metricsData} />
 
       <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
-        <div className="h-64 flex items-center justify-center text-gray-500">
-          Chart visualization coming soon
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">Sales Summary</h3>
+          <p className="text-sm text-gray-600">Net Sales</p>
         </div>
+        <SalesChart data={chartData} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Services</h3>
-          <div className="h-48 flex items-center justify-center text-gray-500">
-            Service breakdown coming soon
-          </div>
-        </div>
+        <TenderTypesChart data={paymentData} />
 
         <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Sales by Store</h3>
-          <div className="h-48 flex items-center justify-center text-gray-500">
-            Store comparison coming soon
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Top 5 Card Types</h3>
+          <div className="h-64 flex items-center justify-center text-gray-500">
+            Card type breakdown coming soon
+          </div>
+          <div className="flex justify-end mt-6">
+            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">DETAILS</button>
           </div>
         </div>
       </div>
