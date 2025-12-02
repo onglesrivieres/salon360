@@ -2437,25 +2437,40 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tip Paired by Receptionist
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={tempPaymentData.tip_receptionist}
-                    onChange={(e) =>
-                      setTempPaymentData({ ...tempPaymentData, tip_receptionist: e.target.value })
-                    }
-                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
+              {(() => {
+                const isTipPairedEnabled = items.some(item => {
+                  const employee = employees.find(emp => emp.id === item.employee_id);
+                  return employee?.tip_paired_enabled !== false;
+                });
+
+                return (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tip Paired by Receptionist
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={tempPaymentData.tip_receptionist}
+                        onChange={(e) =>
+                          setTempPaymentData({ ...tempPaymentData, tip_receptionist: e.target.value })
+                        }
+                        disabled={!isTipPairedEnabled}
+                        className={`w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 ${
+                          !isTipPairedEnabled ? 'bg-gray-100 cursor-not-allowed' : ''
+                        }`}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    {!isTipPairedEnabled && (
+                      <p className="text-xs text-gray-500 mt-1">Tip pairing is disabled for all employees on this ticket</p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

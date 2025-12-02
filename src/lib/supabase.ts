@@ -55,6 +55,7 @@ export interface Technician {
   pin_temp?: string;
   last_pin_change?: string;
   tip_report_show_details?: boolean;
+  tip_paired_enabled?: boolean;
   weekly_schedule?: WeeklySchedule;
   created_at: string;
   updated_at: string;

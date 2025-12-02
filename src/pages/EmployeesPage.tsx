@@ -39,6 +39,7 @@ export function EmployeesPage() {
     store_ids: [] as string[],
     notes: '',
     tip_report_show_details: true,
+    tip_paired_enabled: true,
     weekly_schedule: getDefaultSchedule(),
   });
 
@@ -141,6 +142,7 @@ export function EmployeesPage() {
         store_ids: storeIds,
         notes: employee.notes,
         tip_report_show_details: employee.tip_report_show_details ?? true,
+        tip_paired_enabled: employee.tip_paired_enabled ?? true,
         weekly_schedule: employee.weekly_schedule || getDefaultSchedule(),
       });
     } else {
@@ -153,6 +155,7 @@ export function EmployeesPage() {
         store_ids: [],
         notes: '',
         tip_report_show_details: true,
+        tip_paired_enabled: true,
         weekly_schedule: getDefaultSchedule(),
       });
     }
@@ -192,6 +195,7 @@ export function EmployeesPage() {
         pay_type: formData.pay_type,
         notes: formData.notes,
         tip_report_show_details: formData.tip_report_show_details,
+        tip_paired_enabled: formData.tip_paired_enabled,
         weekly_schedule: formData.weekly_schedule,
         updated_at: new Date().toISOString(),
       };
@@ -542,6 +546,18 @@ export function EmployeesPage() {
             />
             <label htmlFor="tip_report_show_details" className="ml-2 text-sm font-medium text-gray-700">
               Tip Report: Detail
+            </label>
+          </div>
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="tip_paired_enabled"
+              checked={formData.tip_paired_enabled}
+              onChange={(e) => setFormData({ ...formData, tip_paired_enabled: e.target.checked })}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="tip_paired_enabled" className="ml-2 text-sm font-medium text-gray-700">
+              Tip Paired
             </label>
           </div>
           <div>
