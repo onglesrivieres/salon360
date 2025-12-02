@@ -11,7 +11,7 @@ export function TenderTypesTable({ dateRange }: TenderTypesTableProps) {
 
   if (data.isLoading) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-6">
         <div className="animate-pulse">
           <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
           <div className="space-y-3">
@@ -25,7 +25,7 @@ export function TenderTypesTable({ dateRange }: TenderTypesTableProps) {
 
   if (data.error) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-6">
         <p className="text-red-600">{data.error}</p>
       </div>
     );
@@ -33,17 +33,17 @@ export function TenderTypesTable({ dateRange }: TenderTypesTableProps) {
 
   return (
     <div className="bg-white rounded-lg border border-gray-200">
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <h3 className="text-xl font-bold text-gray-900 mb-6">Tender types</h3>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scroll-smooth">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 bg-gray-50">
+                <th className="text-left py-2 px-3 text-xs md:text-sm font-semibold text-gray-900 bg-gray-50">
                   Tender
                 </th>
-                <th className="text-right py-3 px-4 text-sm font-semibold text-gray-900 bg-gray-50">
+                <th className="text-right py-2 px-3 text-xs md:text-sm font-semibold text-gray-900 bg-gray-50">
                   Total
                 </th>
               </tr>
@@ -51,20 +51,20 @@ export function TenderTypesTable({ dateRange }: TenderTypesTableProps) {
             <tbody>
               {data.tenderTypes.map((tender, index) => (
                 <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
-                  <td className="py-3 px-4 text-sm font-medium text-gray-900">
+                  <td className="py-2 px-3 text-xs md:text-sm font-medium text-gray-900">
                     <span className="border-b-2 border-dotted border-gray-400">
                       {tender.tenderType === 'Card' ? 'Credit and debit cards' : tender.tenderType}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-right text-sm text-gray-900">
+                  <td className="py-2 px-3 text-right text-xs md:text-sm text-gray-900">
                     {formatCurrency(tender.amount)}
                   </td>
                 </tr>
               ))}
 
               <tr className="hover:bg-gray-50">
-                <td className="py-3 px-4 text-sm font-semibold text-gray-900">Amount collected</td>
-                <td className="py-3 px-4 text-right text-sm font-semibold text-gray-900">
+                <td className="py-2 px-3 text-xs md:text-sm font-semibold text-gray-900">Amount collected</td>
+                <td className="py-2 px-3 text-right text-xs md:text-sm font-semibold text-gray-900">
                   {formatCurrency(data.totalCollected)}
                 </td>
               </tr>

@@ -8,8 +8,8 @@ interface TenderTypesChartProps {
 
 export function TenderTypesChart({ creditCard, debitCard, isLoading = false }: TenderTypesChartProps) {
   const chartHeight = 320;
-  const chartPadding = { top: 20, right: 40, bottom: 60, left: 80 };
-  const chartWidth = 900;
+  const chartPadding = { top: 20, right: 20, bottom: 50, left: 60 };
+  const chartWidth = 720;
 
   const maxValue = Math.max(creditCard, debitCard, 100);
   const yAxisMax = Math.ceil(maxValue / 500) * 500;
@@ -20,7 +20,7 @@ export function TenderTypesChart({ creditCard, debitCard, isLoading = false }: T
   const plotWidth = chartWidth - chartPadding.left - chartPadding.right;
 
   const barWidth = 100;
-  const barSpacing = 200;
+  const barSpacing = 150;
 
   const debitBarHeight = (debitCard / yAxisMax) * plotHeight;
   const creditBarHeight = (creditCard / yAxisMax) * plotHeight;
@@ -40,7 +40,7 @@ export function TenderTypesChart({ creditCard, debitCard, isLoading = false }: T
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-6">
       <div className="mb-4">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-blue-600"></div>
@@ -48,7 +48,7 @@ export function TenderTypesChart({ creditCard, debitCard, isLoading = false }: T
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto scroll-smooth">
         <svg width={chartWidth} height={chartHeight} className="mx-auto">
           <g transform={`translate(${chartPadding.left}, ${chartPadding.top})`}>
             {Array.from({ length: yAxisSteps + 1 }).map((_, i) => {
@@ -57,8 +57,8 @@ export function TenderTypesChart({ creditCard, debitCard, isLoading = false }: T
               return (
                 <g key={i}>
                   <line x1={0} y1={y} x2={plotWidth} y2={y} stroke="#e5e7eb" strokeWidth={1} />
-                  <text x={-10} y={y + 4} textAnchor="end" className="text-sm fill-gray-600">
-                    {value === 0 ? '$0' : `$${(value / 1000).toFixed(value >= 1000 ? 0 : 1)}k`}
+                  <text x={-8} y={y + 4} textAnchor="end" className="text-xs fill-gray-600">
+                    {value === 0 ? '$0' : `$${(value / 1000).toFixed(value >= 1000 ? 0 : 1)}K`}
                   </text>
                 </g>
               );

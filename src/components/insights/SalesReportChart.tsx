@@ -7,8 +7,8 @@ interface SalesReportChartProps {
 
 export function SalesReportChart({ hourlyData, showNowIndicator = false }: SalesReportChartProps) {
   const chartHeight = 320;
-  const chartPadding = { top: 20, right: 40, bottom: 40, left: 60 };
-  const chartWidth = 900;
+  const chartPadding = { top: 20, right: 20, bottom: 35, left: 50 };
+  const chartWidth = 720;
 
   const maxValue = Math.max(...hourlyData, 100);
   const yAxisMax = Math.ceil(maxValue / 100) * 100;
@@ -42,18 +42,18 @@ export function SalesReportChart({ hourlyData, showNowIndicator = false }: Sales
   const nowX = (currentHour / 23) * plotWidth;
 
   const xAxisLabels = [
-    { hour: 0, label: '12a.m.' },
-    { hour: 3, label: '3' },
-    { hour: 6, label: '6' },
-    { hour: 9, label: '9' },
-    { hour: 12, label: '12p.m.' },
-    { hour: 15, label: '3' },
-    { hour: 18, label: '6' },
-    { hour: 21, label: '9' },
+    { hour: 0, label: '12a' },
+    { hour: 3, label: '3a' },
+    { hour: 6, label: '6a' },
+    { hour: 9, label: '9a' },
+    { hour: 12, label: '12p' },
+    { hour: 15, label: '3p' },
+    { hour: 18, label: '6p' },
+    { hour: 21, label: '9p' },
   ];
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto scroll-smooth">
       <svg width={chartWidth} height={chartHeight} className="mx-auto">
         <defs>
           <linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1">
@@ -69,8 +69,8 @@ export function SalesReportChart({ hourlyData, showNowIndicator = false }: Sales
             return (
               <g key={i}>
                 <line x1={0} y1={y} x2={plotWidth} y2={y} stroke="#e5e7eb" strokeWidth={1} />
-                <text x={-10} y={y + 4} textAnchor="end" className="text-xs fill-gray-600">
-                  ${value}
+                <text x={-8} y={y + 4} textAnchor="end" className="text-xs fill-gray-600">
+                  {value >= 1000 ? `$${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}K` : `$${value}`}
                 </text>
               </g>
             );

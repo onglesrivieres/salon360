@@ -108,15 +108,15 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reporting - Employee Sales</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Reporting - Employee Sales</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+        <div className="flex items-center gap-2 md:gap-3">
+          <button className="flex items-center gap-2 px-3 py-2 md:px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
             <Download className="w-4 h-4" />
             EXPORT
           </button>
           <button
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 md:px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             onClick={() => window.print()}
           >
             <Printer className="w-4 h-4" />
@@ -128,9 +128,9 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 md:gap-3">
         <div className="relative">
-          <select className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-1.5 md:px-4 md:py-2 pr-10 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option>Today</option>
             <option>This Week</option>
             <option>This Month</option>
@@ -140,7 +140,7 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
         </div>
 
         <div className="relative">
-          <select className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-1.5 md:px-4 md:py-2 pr-10 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option>All Devices</option>
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
@@ -162,8 +162,8 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
         </button>
       </div>
 
-      <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4 md:p-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <p className="text-sm font-medium text-gray-600">Net sales</p>
@@ -172,7 +172,7 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
             {employeeSalesData.isLoading ? (
               <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
             ) : (
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-2xl md:text-3xl font-bold text-gray-900">
                 {formatCurrency(employeeSalesData.summary.totalNetSales)}
               </p>
             )}
@@ -186,7 +186,7 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
             {employeeSalesData.isLoading ? (
               <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
             ) : (
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-2xl md:text-3xl font-bold text-gray-900">
                 {formatCurrency(employeeSalesData.summary.averagePerTransaction)}
               </p>
             )}
@@ -200,7 +200,7 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
             {employeeSalesData.isLoading ? (
               <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
             ) : (
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-2xl md:text-3xl font-bold text-gray-900">
                 {formatCurrency(employeeSalesData.summary.totalTips)}
               </p>
             )}
@@ -209,7 +209,7 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200">
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+        <div className="p-4 md:p-6 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">Employees sales summary</h3>
           <div className="relative">
             <button className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -219,12 +219,12 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scroll-smooth">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th
-                  className="text-left py-3 px-4 text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
+                  className="text-left py-2 px-3 text-xs md:text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 sticky left-0 bg-gray-50 z-10"
                   onClick={() => handleSort('name')}
                 >
                   <div className="flex items-center gap-2">
@@ -233,7 +233,7 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
                   </div>
                 </th>
                 <th
-                  className="text-center py-3 px-4 text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
+                  className="text-center py-2 px-3 text-xs md:text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('grossSales')}
                 >
                   <div className="flex items-center justify-center gap-1">
@@ -289,7 +289,7 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
                     <InfoTooltip text="Total tips received" />
                   </div>
                 </th>
-                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-900">
+                <th className="text-center py-2 px-3 text-xs md:text-sm font-semibold text-gray-900">
                   Additional
                 </th>
               </tr>
@@ -298,7 +298,7 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
               {employeeSalesData.isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-gray-200">
-                    <td className="py-3 px-4">
+                    <td className="py-2 px-3 sticky left-0 bg-white z-10">
                       <div className="h-4 bg-gray-200 rounded animate-pulse w-32"></div>
                     </td>
                     {Array.from({ length: 7 }).map((_, j) => (
@@ -323,7 +323,7 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
               ) : (
                 sortedEmployees.map((employee) => (
                   <tr key={employee.employeeId} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="py-3 px-4">
+                    <td className="py-2 px-3 sticky left-0 bg-white z-10">
                       <div>
                         <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
                           {employee.employeeName}
@@ -331,25 +331,25 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
                         <p className="text-xs text-gray-500">{employee.employeeRole}</p>
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-center text-sm text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                       {formatCurrency(employee.grossSales)}
                     </td>
-                    <td className="py-3 px-4 text-center text-sm text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                       {formatCurrency(employee.refunds)}
                     </td>
-                    <td className="py-3 px-4 text-center text-sm text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                       {formatCurrency(employee.netSales)}
                     </td>
-                    <td className="py-3 px-4 text-center text-sm text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                       {formatCurrency(employee.nonRevenueItems)}
                     </td>
-                    <td className="py-3 px-4 text-center text-sm text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                       {formatCurrency(employee.giftCardActivations)}
                     </td>
-                    <td className="py-3 px-4 text-center text-sm text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                       {formatCurrency(employee.tips)}
                     </td>
-                    <td className="py-3 px-4 text-center text-sm text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                       {formatCurrency(0)}
                     </td>
                   </tr>

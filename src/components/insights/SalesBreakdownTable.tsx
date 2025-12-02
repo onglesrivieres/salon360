@@ -33,7 +33,7 @@ export function SalesBreakdownTable({ dateRange }: SalesBreakdownTableProps) {
 
   return (
     <div className="bg-white rounded-lg border border-gray-200">
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-bold text-gray-900">Sales</h3>
           <div className="flex items-center gap-2">
@@ -53,17 +53,17 @@ export function SalesBreakdownTable({ dateRange }: SalesBreakdownTableProps) {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scroll-smooth">
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900 bg-gray-50">
+                <th className="text-left py-2 px-3 text-xs md:text-sm font-semibold text-gray-900 bg-gray-50 sticky left-0 z-10">
                   Total
                 </th>
                 {data.timeLabels.map((label, index) => (
                   <th
                     key={index}
-                    className="text-right py-3 px-4 text-sm font-medium text-gray-700 bg-gray-50 whitespace-nowrap"
+                    className="text-right py-2 px-3 text-xs md:text-sm font-medium text-gray-700 bg-gray-50 whitespace-nowrap"
                   >
                     {label}
                   </th>
@@ -72,56 +72,56 @@ export function SalesBreakdownTable({ dateRange }: SalesBreakdownTableProps) {
             </thead>
             <tbody>
               <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="py-3 px-4 text-sm font-medium text-gray-900">
+                <td className="py-2 px-3 text-xs md:text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
                   <span className="border-b-2 border-dotted border-gray-400">Gross sales</span>
                 </td>
-                <td className="py-3 px-4 text-right text-sm font-semibold text-blue-600">
+                <td className="py-2 px-3 text-right text-xs md:text-sm font-semibold text-blue-600">
                   {formatCurrency(data.totals.grossSales)}
                 </td>
                 {data.grossSales.map((amount, index) => (
-                  <td key={index} className="py-3 px-4 text-right text-sm text-gray-900">
+                  <td key={index} className="py-2 px-3 text-right text-xs md:text-sm text-gray-900">
                     {formatCurrency(amount)}
                   </td>
                 ))}
               </tr>
 
               <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="py-3 px-4 text-sm font-medium text-gray-900">
+                <td className="py-2 px-3 text-xs md:text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
                   <span className="border-b-2 border-dotted border-gray-400">Refunds</span>
                 </td>
-                <td className="py-3 px-4 text-right text-sm font-semibold text-blue-600">
+                <td className="py-2 px-3 text-right text-xs md:text-sm font-semibold text-blue-600">
                   {formatCurrency(data.totals.refunds)}
                 </td>
                 {data.refunds.map((amount, index) => (
-                  <td key={index} className="py-3 px-4 text-right text-sm text-gray-900">
+                  <td key={index} className="py-2 px-3 text-right text-xs md:text-sm text-gray-900">
                     {formatCurrency(amount)}
                   </td>
                 ))}
               </tr>
 
               <tr className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="py-3 px-4 text-sm font-medium text-gray-900">
+                <td className="py-2 px-3 text-xs md:text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
                   <span className="border-b-2 border-dotted border-gray-400">Net sales</span>
                 </td>
-                <td className="py-3 px-4 text-right text-sm font-semibold text-blue-600">
+                <td className="py-2 px-3 text-right text-xs md:text-sm font-semibold text-blue-600">
                   {formatCurrency(data.totals.netSales)}
                 </td>
                 {data.netSales.map((amount, index) => (
-                  <td key={index} className="py-3 px-4 text-right text-sm text-gray-900">
+                  <td key={index} className="py-2 px-3 text-right text-xs md:text-sm text-gray-900">
                     {formatCurrency(amount)}
                   </td>
                 ))}
               </tr>
 
               <tr className="hover:bg-gray-50">
-                <td className="py-3 px-4 text-sm font-medium text-gray-900">
+                <td className="py-2 px-3 text-xs md:text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
                   <span className="border-b-2 border-dotted border-gray-400">Amount collected</span>
                 </td>
-                <td className="py-3 px-4 text-right text-sm font-semibold text-blue-600">
+                <td className="py-2 px-3 text-right text-xs md:text-sm font-semibold text-blue-600">
                   {formatCurrency(data.totals.amountCollected)}
                 </td>
                 {data.amountCollected.map((amount, index) => (
-                  <td key={index} className="py-3 px-4 text-right text-sm text-gray-900">
+                  <td key={index} className="py-2 px-3 text-right text-xs md:text-sm text-gray-900">
                     {formatCurrency(amount)}
                   </td>
                 ))}

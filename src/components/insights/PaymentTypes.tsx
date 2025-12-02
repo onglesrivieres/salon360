@@ -46,17 +46,17 @@ export function PaymentTypes({ dateRange }: PaymentTypesProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">
             Reporting - Sales by Tender and Card Type
           </h1>
         </div>
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+        <div className="flex items-center gap-2 md:gap-3">
+          <button className="flex items-center gap-2 px-3 py-2 md:px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
             <Download className="w-4 h-4" />
             EXPORT
           </button>
           <button
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 md:px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             onClick={() => window.print()}
           >
             <Printer className="w-4 h-4" />
@@ -68,9 +68,9 @@ export function PaymentTypes({ dateRange }: PaymentTypesProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 md:gap-3">
         <div className="relative">
-          <select className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-1.5 md:px-4 md:py-2 pr-10 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option>Today</option>
             <option>This Week</option>
             <option>This Month</option>
@@ -80,21 +80,21 @@ export function PaymentTypes({ dateRange }: PaymentTypesProps) {
         </div>
 
         <div className="relative">
-          <select className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-1.5 md:px-4 md:py-2 pr-10 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option>All Employees</option>
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
         </div>
 
         <div className="relative">
-          <select className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-1.5 md:px-4 md:py-2 pr-10 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option>All Devices</option>
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
         </div>
 
         <div className="relative">
-          <button className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <button className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-1.5 md:px-4 md:py-2 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
             More Filters
             <ChevronDown className="w-4 h-4" />
           </button>

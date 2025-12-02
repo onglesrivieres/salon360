@@ -52,35 +52,35 @@ export function CardPaymentTable({ data, showTips }: CardPaymentTableProps) {
 
   return (
     <div className="bg-white rounded-lg border border-gray-200">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto scroll-smooth">
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">
+              <th className="text-left py-2 px-3 text-xs md:text-sm font-semibold text-gray-900 sticky left-0 bg-gray-50 z-10">
                 Tender Types
               </th>
-              <th className="text-center py-3 px-4 text-sm font-semibold text-gray-900">
+              <th className="text-center py-2 px-3 text-xs md:text-sm font-semibold text-gray-900">
                 <div className="flex items-center justify-center gap-1">
                   Transactions
                   <InfoTooltip text="Number of completed transactions" />
                 </div>
               </th>
-              <th className="text-center py-3 px-4 text-sm font-semibold text-gray-900">
+              <th className="text-center py-2 px-3 text-xs md:text-sm font-semibold text-gray-900">
                 <div className="flex items-center justify-center gap-1">
                   Sales Total
                   <InfoTooltip text="Total sales before refunds" />
                 </div>
               </th>
-              <th className="text-center py-3 px-4 text-sm font-semibold text-gray-900">
+              <th className="text-center py-2 px-3 text-xs md:text-sm font-semibold text-gray-900">
                 <div className="flex items-center justify-center gap-1">
                   Transaction Refunds
                   <InfoTooltip text="Refunds processed" />
                 </div>
               </th>
-              <th className="text-center py-3 px-4 text-sm font-semibold text-gray-900">
+              <th className="text-center py-2 px-3 text-xs md:text-sm font-semibold text-gray-900">
                 Manual Refunds
               </th>
-              <th className="text-center py-3 px-4 text-sm font-semibold text-gray-900">
+              <th className="text-center py-2 px-3 text-xs md:text-sm font-semibold text-gray-900">
                 <div className="flex items-center justify-center gap-1">
                   Amount Collected
                   <InfoTooltip text="Actual money collected" />
@@ -93,7 +93,7 @@ export function CardPaymentTable({ data, showTips }: CardPaymentTableProps) {
               className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
               onClick={() => toggleSection('root')}
             >
-              <td className="py-3 px-4 text-sm font-bold text-gray-900">
+              <td className="py-2 px-3 text-xs md:text-sm font-bold text-gray-900 sticky left-0 bg-white z-10">
                 <div className="flex items-center gap-2">
                   {expandedSections.has('root') ? (
                     <ChevronDown className="w-4 h-4" />
@@ -103,19 +103,19 @@ export function CardPaymentTable({ data, showTips }: CardPaymentTableProps) {
                   Credit Cards + Debit Cards
                 </div>
               </td>
-              <td className="py-3 px-4 text-center text-sm text-gray-900">
+              <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                 {formatNumber(data.grandTotal.transactions)}
               </td>
-              <td className="py-3 px-4 text-center text-sm text-gray-900">
+              <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                 {formatCurrency(data.grandTotal.salesTotal)}
               </td>
-              <td className="py-3 px-4 text-center text-sm text-gray-900">
+              <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                 {formatCurrency(data.grandTotal.refunds)}
               </td>
-              <td className="py-3 px-4 text-center text-sm text-gray-900">
+              <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                 {formatCurrency(data.grandTotal.manualRefunds)}
               </td>
-              <td className="py-3 px-4 text-center text-sm text-gray-900">
+              <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                 {formatCurrency(data.grandTotal.amountCollected)}
               </td>
             </tr>
@@ -126,7 +126,7 @@ export function CardPaymentTable({ data, showTips }: CardPaymentTableProps) {
                   className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
                   onClick={() => toggleSection('credit')}
                 >
-                  <td className="py-3 px-4 text-sm font-semibold text-gray-900">
+                  <td className="py-2 px-3 text-xs md:text-sm font-semibold text-gray-900 sticky left-0 bg-white z-10">
                     <div className="flex items-center gap-2 pl-8">
                       {expandedSections.has('credit') ? (
                         <ChevronDown className="w-4 h-4" />
@@ -136,19 +136,19 @@ export function CardPaymentTable({ data, showTips }: CardPaymentTableProps) {
                       Credit Card
                     </div>
                   </td>
-                  <td className="py-3 px-4 text-center text-sm text-gray-900">
+                  <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                     {formatNumber(data.creditCards.total.transactions)}
                   </td>
-                  <td className="py-3 px-4 text-center text-sm text-gray-900">
+                  <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                     {formatCurrency(data.creditCards.total.salesTotal)}
                   </td>
-                  <td className="py-3 px-4 text-center text-sm text-gray-900">
+                  <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                     {formatCurrency(data.creditCards.total.refunds)}
                   </td>
-                  <td className="py-3 px-4 text-center text-sm text-gray-900">
+                  <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                     {formatCurrency(data.creditCards.total.manualRefunds)}
                   </td>
-                  <td className="py-3 px-4 text-center text-sm text-gray-900">
+                  <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                     {formatCurrency(data.creditCards.total.amountCollected)}
                   </td>
                 </tr>
@@ -156,20 +156,20 @@ export function CardPaymentTable({ data, showTips }: CardPaymentTableProps) {
                 {expandedSections.has('credit') &&
                   data.creditCards.cards.map((card, index) => (
                     <tr key={`credit-${index}`} className="border-b border-gray-200 hover:bg-gray-50">
-                      <td className="py-3 px-4 text-sm text-gray-900 pl-16">{card.cardType}</td>
-                      <td className="py-3 px-4 text-center text-sm text-gray-900">
+                      <td className="py-2 px-3 text-xs md:text-sm text-gray-900 pl-16 sticky left-0 bg-white z-10">{card.cardType}</td>
+                      <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                         {formatNumber(card.transactions)}
                       </td>
-                      <td className="py-3 px-4 text-center text-sm text-gray-900">
+                      <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                         {formatCurrency(card.salesTotal)}
                       </td>
-                      <td className="py-3 px-4 text-center text-sm text-gray-900">
+                      <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                         {formatCurrency(card.refunds)}
                       </td>
-                      <td className="py-3 px-4 text-center text-sm text-gray-900">
+                      <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                         {formatCurrency(card.manualRefunds)}
                       </td>
-                      <td className="py-3 px-4 text-center text-sm text-gray-900">
+                      <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                         {formatCurrency(card.amountCollected)}
                       </td>
                     </tr>
@@ -177,22 +177,22 @@ export function CardPaymentTable({ data, showTips }: CardPaymentTableProps) {
 
                 {expandedSections.has('credit') && (
                   <tr className="border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
-                    <td className="py-3 px-4 text-sm font-semibold text-gray-900 pl-16">
+                    <td className="py-2 px-3 text-xs md:text-sm font-semibold text-gray-900 pl-16 sticky left-0 bg-gray-50 z-10">
                       Total Credit Card
                     </td>
-                    <td className="py-3 px-4 text-center text-sm font-semibold text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm font-semibold text-gray-900">
                       {formatNumber(data.creditCards.total.transactions)}
                     </td>
-                    <td className="py-3 px-4 text-center text-sm font-semibold text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm font-semibold text-gray-900">
                       {formatCurrency(data.creditCards.total.salesTotal)}
                     </td>
-                    <td className="py-3 px-4 text-center text-sm font-semibold text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm font-semibold text-gray-900">
                       {formatCurrency(data.creditCards.total.refunds)}
                     </td>
-                    <td className="py-3 px-4 text-center text-sm font-semibold text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm font-semibold text-gray-900">
                       {formatCurrency(data.creditCards.total.manualRefunds)}
                     </td>
-                    <td className="py-3 px-4 text-center text-sm font-semibold text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm font-semibold text-gray-900">
                       {formatCurrency(data.creditCards.total.amountCollected)}
                     </td>
                   </tr>
@@ -202,7 +202,7 @@ export function CardPaymentTable({ data, showTips }: CardPaymentTableProps) {
                   className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
                   onClick={() => toggleSection('debit')}
                 >
-                  <td className="py-3 px-4 text-sm font-semibold text-gray-900">
+                  <td className="py-2 px-3 text-xs md:text-sm font-semibold text-gray-900 sticky left-0 bg-white z-10">
                     <div className="flex items-center gap-2 pl-8">
                       {expandedSections.has('debit') ? (
                         <ChevronDown className="w-4 h-4" />
@@ -212,19 +212,19 @@ export function CardPaymentTable({ data, showTips }: CardPaymentTableProps) {
                       Debit Card
                     </div>
                   </td>
-                  <td className="py-3 px-4 text-center text-sm text-gray-900">
+                  <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                     {formatNumber(data.debitCards.total.transactions)}
                   </td>
-                  <td className="py-3 px-4 text-center text-sm text-gray-900">
+                  <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                     {formatCurrency(data.debitCards.total.salesTotal)}
                   </td>
-                  <td className="py-3 px-4 text-center text-sm text-gray-900">
+                  <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                     {formatCurrency(data.debitCards.total.refunds)}
                   </td>
-                  <td className="py-3 px-4 text-center text-sm text-gray-900">
+                  <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                     {formatCurrency(data.debitCards.total.manualRefunds)}
                   </td>
-                  <td className="py-3 px-4 text-center text-sm text-gray-900">
+                  <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                     {formatCurrency(data.debitCards.total.amountCollected)}
                   </td>
                 </tr>
@@ -232,20 +232,20 @@ export function CardPaymentTable({ data, showTips }: CardPaymentTableProps) {
                 {expandedSections.has('debit') &&
                   data.debitCards.cards.map((card, index) => (
                     <tr key={`debit-${index}`} className="border-b border-gray-200 hover:bg-gray-50">
-                      <td className="py-3 px-4 text-sm text-gray-900 pl-16">{card.cardType}</td>
-                      <td className="py-3 px-4 text-center text-sm text-gray-900">
+                      <td className="py-2 px-3 text-xs md:text-sm text-gray-900 pl-16 sticky left-0 bg-white z-10">{card.cardType}</td>
+                      <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                         {formatNumber(card.transactions)}
                       </td>
-                      <td className="py-3 px-4 text-center text-sm text-gray-900">
+                      <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                         {formatCurrency(card.salesTotal)}
                       </td>
-                      <td className="py-3 px-4 text-center text-sm text-gray-900">
+                      <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                         {formatCurrency(card.refunds)}
                       </td>
-                      <td className="py-3 px-4 text-center text-sm text-gray-900">
+                      <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                         {formatCurrency(card.manualRefunds)}
                       </td>
-                      <td className="py-3 px-4 text-center text-sm text-gray-900">
+                      <td className="py-2 px-3 text-center text-xs md:text-sm text-gray-900">
                         {formatCurrency(card.amountCollected)}
                       </td>
                     </tr>
@@ -253,44 +253,44 @@ export function CardPaymentTable({ data, showTips }: CardPaymentTableProps) {
 
                 {expandedSections.has('debit') && (
                   <tr className="border-b border-gray-200 hover:bg-gray-50 bg-gray-50">
-                    <td className="py-3 px-4 text-sm font-semibold text-gray-900 pl-16">
+                    <td className="py-2 px-3 text-xs md:text-sm font-semibold text-gray-900 pl-16 sticky left-0 bg-gray-50 z-10">
                       Total Debit Card
                     </td>
-                    <td className="py-3 px-4 text-center text-sm font-semibold text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm font-semibold text-gray-900">
                       {formatNumber(data.debitCards.total.transactions)}
                     </td>
-                    <td className="py-3 px-4 text-center text-sm font-semibold text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm font-semibold text-gray-900">
                       {formatCurrency(data.debitCards.total.salesTotal)}
                     </td>
-                    <td className="py-3 px-4 text-center text-sm font-semibold text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm font-semibold text-gray-900">
                       {formatCurrency(data.debitCards.total.refunds)}
                     </td>
-                    <td className="py-3 px-4 text-center text-sm font-semibold text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm font-semibold text-gray-900">
                       {formatCurrency(data.debitCards.total.manualRefunds)}
                     </td>
-                    <td className="py-3 px-4 text-center text-sm font-semibold text-gray-900">
+                    <td className="py-2 px-3 text-center text-xs md:text-sm font-semibold text-gray-900">
                       {formatCurrency(data.debitCards.total.amountCollected)}
                     </td>
                   </tr>
                 )}
 
                 <tr className="border-b border-gray-200 hover:bg-gray-50 bg-gray-100">
-                  <td className="py-3 px-4 text-sm font-bold text-gray-900 pl-8">
+                  <td className="py-2 px-3 text-xs md:text-sm font-bold text-gray-900 pl-8 sticky left-0 bg-gray-100 z-10">
                     Total Credit Cards + Debit Cards
                   </td>
-                  <td className="py-3 px-4 text-center text-sm font-bold text-gray-900">
+                  <td className="py-2 px-3 text-center text-xs md:text-sm font-bold text-gray-900">
                     {formatNumber(data.grandTotal.transactions)}
                   </td>
-                  <td className="py-3 px-4 text-center text-sm font-bold text-gray-900">
+                  <td className="py-2 px-3 text-center text-xs md:text-sm font-bold text-gray-900">
                     {formatCurrency(data.grandTotal.salesTotal)}
                   </td>
-                  <td className="py-3 px-4 text-center text-sm font-bold text-gray-900">
+                  <td className="py-2 px-3 text-center text-xs md:text-sm font-bold text-gray-900">
                     {formatCurrency(data.grandTotal.refunds)}
                   </td>
-                  <td className="py-3 px-4 text-center text-sm font-bold text-gray-900">
+                  <td className="py-2 px-3 text-center text-xs md:text-sm font-bold text-gray-900">
                     {formatCurrency(data.grandTotal.manualRefunds)}
                   </td>
-                  <td className="py-3 px-4 text-center text-sm font-bold text-gray-900">
+                  <td className="py-2 px-3 text-center text-xs md:text-sm font-bold text-gray-900">
                     {formatCurrency(data.grandTotal.amountCollected)}
                   </td>
                 </tr>
@@ -298,20 +298,20 @@ export function CardPaymentTable({ data, showTips }: CardPaymentTableProps) {
             )}
 
             <tr className="bg-gray-50">
-              <td className="py-3 px-4 text-sm font-bold text-gray-900">Total</td>
-              <td className="py-3 px-4 text-center text-sm font-bold text-gray-900">
+              <td className="py-2 px-3 text-xs md:text-sm font-bold text-gray-900 sticky left-0 bg-gray-50 z-10">Total</td>
+              <td className="py-2 px-3 text-center text-xs md:text-sm font-bold text-gray-900">
                 {formatNumber(data.grandTotal.transactions)}
               </td>
-              <td className="py-3 px-4 text-center text-sm font-bold text-gray-900">
+              <td className="py-2 px-3 text-center text-xs md:text-sm font-bold text-gray-900">
                 {formatCurrency(data.grandTotal.salesTotal)}
               </td>
-              <td className="py-3 px-4 text-center text-sm font-bold text-gray-900">
+              <td className="py-2 px-3 text-center text-xs md:text-sm font-bold text-gray-900">
                 {formatCurrency(data.grandTotal.refunds)}
               </td>
-              <td className="py-3 px-4 text-center text-sm font-bold text-gray-900">
+              <td className="py-2 px-3 text-center text-xs md:text-sm font-bold text-gray-900">
                 {formatCurrency(data.grandTotal.manualRefunds)}
               </td>
-              <td className="py-3 px-4 text-center text-sm font-bold text-gray-900">
+              <td className="py-2 px-3 text-center text-xs md:text-sm font-bold text-gray-900">
                 {formatCurrency(data.grandTotal.amountCollected)}
               </td>
             </tr>

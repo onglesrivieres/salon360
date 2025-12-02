@@ -78,12 +78,12 @@ export function SalesReport({ dateRange }: SalesReportProps) {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <div className="flex items-start gap-8">
-          <div className="flex-shrink-0 space-y-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-4 md:p-6">
+        <div className="flex flex-col md:flex-row items-start gap-6 md:gap-8">
+          <div className="w-full md:w-auto md:flex-shrink-0 space-y-6">
             <div>
               <p className="text-sm text-gray-600 mb-1">Net sales</p>
-              <p className="text-4xl font-bold text-gray-900">
+              <p className="text-3xl md:text-4xl font-bold text-gray-900">
                 {reportData.isLoading ? (
                   <span className="animate-pulse bg-gray-200 rounded w-48 h-10 inline-block"></span>
                 ) : (
@@ -98,7 +98,7 @@ export function SalesReport({ dateRange }: SalesReportProps) {
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-gray-600">Amount collected</p>
-                <p className="text-xl font-semibold text-gray-900">
+                <p className="text-lg md:text-xl font-semibold text-gray-900">
                   {reportData.isLoading ? (
                     <span className="animate-pulse bg-gray-200 rounded w-32 h-6 inline-block"></span>
                   ) : (
@@ -109,7 +109,7 @@ export function SalesReport({ dateRange }: SalesReportProps) {
 
               <div>
                 <p className="text-sm text-gray-600">Gross sales</p>
-                <p className="text-xl font-semibold text-gray-900">
+                <p className="text-lg md:text-xl font-semibold text-gray-900">
                   {reportData.isLoading ? (
                     <span className="animate-pulse bg-gray-200 rounded w-32 h-6 inline-block"></span>
                   ) : (
@@ -120,7 +120,7 @@ export function SalesReport({ dateRange }: SalesReportProps) {
             </div>
           </div>
 
-          <div className="flex-1">
+          <div className="w-full md:flex-1">
             <div className="mb-2">
               <p className="text-sm font-medium text-gray-600">Hourly view</p>
             </div>
