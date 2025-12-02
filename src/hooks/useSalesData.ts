@@ -340,3 +340,310 @@ export function usePaymentBreakdown(dateRange: DateRange): PaymentBreakdownData 
 
   return data;
 }
+
+export interface SalesReportData {
+  netSales: number;
+  transactions: number;
+  amountCollected: number;
+  grossSales: number;
+  refunds: number;
+  hourlyData: number[];
+  isLoading: boolean;
+  error: string | null;
+}
+
+export interface SalesBreakdownData {
+  timeLabels: string[];
+  grossSales: number[];
+  refunds: number[];
+  netSales: number[];
+  amountCollected: number[];
+  totals: {
+    grossSales: number;
+    refunds: number;
+    netSales: number;
+    amountCollected: number;
+  };
+  isLoading: boolean;
+  error: string | null;
+}
+
+export interface TenderTypeData {
+  tenderType: string;
+  amount: number;
+}
+
+export interface TenderTypesData {
+  tenderTypes: TenderTypeData[];
+  totalCollected: number;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export function useSalesReportData(dateRange: DateRange): SalesReportData {
+  const [data, setData] = useState<SalesReportData>({
+    netSales: 0,
+    transactions: 0,
+    amountCollected: 0,
+    grossSales: 0,
+    refunds: 0,
+    hourlyData: [],
+    isLoading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchReportData() {
+      try {
+        setData((prev) => ({ ...prev, isLoading: true, error: null }));
+
+        const [ticketsResult, itemsResult] = await Promise.all([
+          supabase
+            .from('sale_tickets')
+            .select('id, total, closed_at')
+            .gte('ticket_date', dateRange.startDate)
+            .lte('ticket_date', dateRange.endDate)
+            .not('closed_at', 'is', null),
+          supabase
+            .from('ticket_items')
+            .select('sale_ticket_id, payment_cash, payment_card, payment_gift_card')
+            .in(
+              'sale_ticket_id',
+              (
+                await supabase
+                  .from('sale_tickets')
+                  .select('id')
+                  .gte('ticket_date', dateRange.startDate)
+                  .lte('ticket_date', dateRange.endDate)
+                  .not('closed_at', 'is', null)
+              ).data?.map((t) => t.id) || []
+            ),
+        ]);
+
+        if (cancelled) return;
+
+        if (ticketsResult.error) throw ticketsResult.error;
+
+        const tickets = ticketsResult.data || [];
+        const items = itemsResult.data || [];
+
+        const netSales = tickets.reduce((sum, t) => sum + (t.total || 0), 0);
+        const transactions = tickets.length;
+
+        const amountCollected = items.reduce(
+          (sum, item) =>
+            sum + (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0),
+          0
+        );
+
+        const grossSales = netSales;
+        const refunds = 0;
+
+        const hourlyData = new Array(24).fill(0);
+        tickets.forEach((ticket) => {
+          if (ticket.closed_at) {
+            const hour = new Date(ticket.closed_at).getHours();
+            hourlyData[hour] += ticket.total || 0;
+          }
+        });
+
+        setData({
+          netSales,
+          transactions,
+          amountCollected,
+          grossSales,
+          refunds,
+          hourlyData,
+          isLoading: false,
+          error: null,
+        });
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Error fetching sales report data:', error);
+          setData((prev) => ({
+            ...prev,
+            isLoading: false,
+            error: 'Failed to load sales report data',
+          }));
+        }
+      }
+    }
+
+    fetchReportData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dateRange.startDate, dateRange.endDate]);
+
+  return data;
+}
+
+export type ViewByType = 'hourly' | 'daily' | 'weekly';
+
+export function useSalesBreakdownData(dateRange: DateRange, viewBy: ViewByType): SalesBreakdownData {
+  const [data, setData] = useState<SalesBreakdownData>({
+    timeLabels: [],
+    grossSales: [],
+    refunds: [],
+    netSales: [],
+    amountCollected: [],
+    totals: {
+      grossSales: 0,
+      refunds: 0,
+      netSales: 0,
+      amountCollected: 0,
+    },
+    isLoading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchBreakdownData() {
+      try {
+        setData((prev) => ({ ...prev, isLoading: true, error: null }));
+
+        const ticketsResult = await supabase
+          .from('sale_tickets')
+          .select('id, total, closed_at')
+          .gte('ticket_date', dateRange.startDate)
+          .lte('ticket_date', dateRange.endDate)
+          .not('closed_at', 'is', null);
+
+        if (cancelled) return;
+
+        if (ticketsResult.error) throw ticketsResult.error;
+
+        const tickets = ticketsResult.data || [];
+
+        if (viewBy === 'hourly') {
+          const hours = Array.from({ length: 24 }, (_, i) => i);
+          const timeLabels = hours.map((h) => {
+            const hour = h === 0 ? 12 : h > 12 ? h - 12 : h;
+            const period = h < 12 ? 'a.m.' : 'p.m.';
+            return `${hour}:00 ${period}`;
+          });
+
+          const grossSales = new Array(24).fill(0);
+          const refunds = new Array(24).fill(0);
+
+          tickets.forEach((ticket) => {
+            if (ticket.closed_at) {
+              const hour = new Date(ticket.closed_at).getHours();
+              grossSales[hour] += ticket.total || 0;
+            }
+          });
+
+          const netSales = grossSales.map((g, i) => g - refunds[i]);
+          const amountCollected = [...grossSales];
+
+          setData({
+            timeLabels,
+            grossSales,
+            refunds,
+            netSales,
+            amountCollected,
+            totals: {
+              grossSales: grossSales.reduce((sum, val) => sum + val, 0),
+              refunds: refunds.reduce((sum, val) => sum + val, 0),
+              netSales: netSales.reduce((sum, val) => sum + val, 0),
+              amountCollected: amountCollected.reduce((sum, val) => sum + val, 0),
+            },
+            isLoading: false,
+            error: null,
+          });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Error fetching breakdown data:', error);
+          setData((prev) => ({
+            ...prev,
+            isLoading: false,
+            error: 'Failed to load breakdown data',
+          }));
+        }
+      }
+    }
+
+    fetchBreakdownData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dateRange.startDate, dateRange.endDate, viewBy]);
+
+  return data;
+}
+
+export function useTenderTypesData(dateRange: DateRange): TenderTypesData {
+  const [data, setData] = useState<TenderTypesData>({
+    tenderTypes: [],
+    totalCollected: 0,
+    isLoading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchTenderTypes() {
+      try {
+        setData((prev) => ({ ...prev, isLoading: true, error: null }));
+
+        const ticketsResult = await supabase
+          .from('sale_tickets')
+          .select('id, payment_method, total')
+          .gte('ticket_date', dateRange.startDate)
+          .lte('ticket_date', dateRange.endDate)
+          .not('closed_at', 'is', null);
+
+        if (cancelled) return;
+
+        if (ticketsResult.error) throw ticketsResult.error;
+
+        const tickets = ticketsResult.data || [];
+        const breakdown: Record<string, number> = {};
+
+        tickets.forEach((ticket) => {
+          const method = ticket.payment_method || 'Other';
+          breakdown[method] = (breakdown[method] || 0) + (ticket.total || 0);
+        });
+
+        const tenderTypes = Object.entries(breakdown).map(([tenderType, amount]) => ({
+          tenderType,
+          amount,
+        }));
+
+        const totalCollected = tenderTypes.reduce((sum, t) => sum + t.amount, 0);
+
+        setData({
+          tenderTypes,
+          totalCollected,
+          isLoading: false,
+          error: null,
+        });
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Error fetching tender types:', error);
+          setData((prev) => ({
+            ...prev,
+            isLoading: false,
+            error: 'Failed to load tender types',
+          }));
+        }
+      }
+    }
+
+    fetchTenderTypes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dateRange.startDate, dateRange.endDate]);
+
+  return data;
+}
