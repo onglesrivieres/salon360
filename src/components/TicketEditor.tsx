@@ -2136,8 +2136,37 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 </div>
                 <p className="text-sm text-gray-700">{log.description}</p>
                 {log.changes && Object.keys(log.changes).length > 0 && (() => {
+                  const shouldShowValue = (value: any): boolean => {
+                    if (value === null || value === undefined) return false;
+
+                    if (typeof value === 'number') {
+                      return value !== 0;
+                    }
+
+                    if (typeof value === 'string') {
+                      const trimmed = value.trim();
+                      return trimmed !== '' && trimmed !== '0' && trimmed !== '0.00';
+                    }
+
+                    if (typeof value === 'boolean') {
+                      return value === true;
+                    }
+
+                    if (Array.isArray(value)) {
+                      return value.length > 0;
+                    }
+
+                    if (typeof value === 'object') {
+                      return Object.keys(value).length > 0;
+                    }
+
+                    return true;
+                  };
+
                   const filteredChanges = Object.entries(log.changes).filter(
-                    ([key]) => !['customer_name', 'ticket_no', 'closed_by_roles'].includes(key)
+                    ([key, value]) =>
+                      !['customer_name', 'ticket_no', 'closed_by_roles'].includes(key) &&
+                      shouldShowValue(value)
                   );
 
                   const formatValue = (key: string, value: any): string => {
