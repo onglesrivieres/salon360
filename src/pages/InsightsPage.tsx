@@ -48,10 +48,10 @@ export function InsightsPage() {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="px-4 py-4 border-b border-gray-200 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:px-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Insights</h1>
-            <p className="text-sm text-gray-600 mt-1">Analytics and reports for business insights</p>
+            <h1 className="text-xl font-bold text-gray-900 lg:text-2xl">Insights</h1>
+            <p className="text-xs text-gray-600 mt-1 sm:text-sm">Analytics and reports for business insights</p>
           </div>
           <TimeFilterDropdown
             selectedFilter={selectedFilter}
@@ -61,7 +61,7 @@ export function InsightsPage() {
         </div>
 
         <div className="border-b border-gray-200">
-          <nav className="flex gap-1 px-4" aria-label="Tabs">
+          <nav className="flex gap-0.5 px-2 md:gap-1 md:px-4 overflow-x-auto scrollbar-hide" aria-label="Tabs">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -69,14 +69,14 @@ export function InsightsPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  className={`flex items-center gap-1.5 px-2 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap sm:px-3 sm:gap-2 md:px-4 md:py-3 md:text-sm ${
                     isActive
                       ? 'border-blue-600 text-blue-700'
                       : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
-                  {tab.label}
+                  <Icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                  <span>{tab.label}</span>
                 </button>
               );
             })}
