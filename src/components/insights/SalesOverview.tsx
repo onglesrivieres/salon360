@@ -1,5 +1,5 @@
 import { DateRange } from '../../lib/timeFilters';
-import { useSalesMetrics, useSalesChartData, usePaymentBreakdown } from '../../hooks/useSalesData';
+import { useSalesMetrics, useSalesChartData } from '../../hooks/useSalesData';
 import { SalesMetrics } from './SalesMetrics';
 import { SalesChart } from './SalesChart';
 import { TenderTypesChart } from './TenderTypesChart';
@@ -11,7 +11,6 @@ interface SalesOverviewProps {
 export function SalesOverview({ dateRange }: SalesOverviewProps) {
   const metricsData = useSalesMetrics(dateRange);
   const chartData = useSalesChartData(dateRange);
-  const paymentData = usePaymentBreakdown(dateRange);
 
   return (
     <div className="space-y-6">
@@ -26,7 +25,11 @@ export function SalesOverview({ dateRange }: SalesOverviewProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <TenderTypesChart data={paymentData} />
+        <TenderTypesChart
+          cash={metricsData.current.cashCollected}
+          card={metricsData.current.cardCollected}
+          isLoading={metricsData.isLoading}
+        />
 
         <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Top 5 Card Types</h3>

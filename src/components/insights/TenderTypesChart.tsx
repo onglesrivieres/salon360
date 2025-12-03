@@ -1,17 +1,17 @@
 import { formatCurrency } from '../../lib/formatters';
 
 interface TenderTypesChartProps {
-  creditCard: number;
-  debitCard: number;
+  cash: number;
+  card: number;
   isLoading?: boolean;
 }
 
-export function TenderTypesChart({ creditCard, debitCard, isLoading = false }: TenderTypesChartProps) {
+export function TenderTypesChart({ cash, card, isLoading = false }: TenderTypesChartProps) {
   const chartHeight = 320;
   const chartPadding = { top: 20, right: 20, bottom: 50, left: 60 };
   const chartWidth = 720;
 
-  const maxValue = Math.max(creditCard, debitCard, 100);
+  const maxValue = Math.max(cash, card, 100);
   const yAxisMax = Math.ceil(maxValue / 500) * 500;
   const yAxisSteps = 4;
   const yAxisStep = yAxisMax / yAxisSteps;
@@ -22,11 +22,11 @@ export function TenderTypesChart({ creditCard, debitCard, isLoading = false }: T
   const barWidth = 100;
   const barSpacing = 150;
 
-  const debitBarHeight = (debitCard / yAxisMax) * plotHeight;
-  const creditBarHeight = (creditCard / yAxisMax) * plotHeight;
+  const cashBarHeight = (cash / yAxisMax) * plotHeight;
+  const cardBarHeight = (card / yAxisMax) * plotHeight;
 
-  const debitBarX = plotWidth / 2 - barSpacing - barWidth / 2;
-  const creditBarX = plotWidth / 2 + barSpacing - barWidth / 2;
+  const cashBarX = plotWidth / 2 - barSpacing - barWidth / 2;
+  const cardBarX = plotWidth / 2 + barSpacing - barWidth / 2;
 
   if (isLoading) {
     return (
@@ -65,43 +65,43 @@ export function TenderTypesChart({ creditCard, debitCard, isLoading = false }: T
             })}
 
             <rect
-              x={debitBarX}
-              y={plotHeight - debitBarHeight}
+              x={cashBarX}
+              y={plotHeight - cashBarHeight}
               width={barWidth}
-              height={debitBarHeight}
-              fill="#4472C4"
+              height={cashBarHeight}
+              fill="#10b981"
               className="hover:opacity-80 transition-opacity cursor-pointer"
             >
-              <title>{formatCurrency(debitCard)}</title>
+              <title>{formatCurrency(cash)}</title>
             </rect>
 
             <rect
-              x={creditBarX}
-              y={plotHeight - creditBarHeight}
+              x={cardBarX}
+              y={plotHeight - cardBarHeight}
               width={barWidth}
-              height={creditBarHeight}
-              fill="#4472C4"
+              height={cardBarHeight}
+              fill="#3b82f6"
               className="hover:opacity-80 transition-opacity cursor-pointer"
             >
-              <title>{formatCurrency(creditCard)}</title>
+              <title>{formatCurrency(card)}</title>
             </rect>
 
             <text
-              x={debitBarX + barWidth / 2}
+              x={cashBarX + barWidth / 2}
               y={plotHeight + 30}
               textAnchor="middle"
               className="text-sm fill-gray-700 font-medium"
             >
-              Debit Card
+              Total Cash
             </text>
 
             <text
-              x={creditBarX + barWidth / 2}
+              x={cardBarX + barWidth / 2}
               y={plotHeight + 30}
               textAnchor="middle"
               className="text-sm fill-gray-700 font-medium"
             >
-              Credit Card
+              Total Card
             </text>
           </g>
         </svg>
