@@ -54,15 +54,28 @@ function getEndOfYear(date: Date): Date {
 }
 
 function getBiweeklyPeriod(date: Date): DateRange {
-  const referenceDate = new Date(date.getFullYear(), 0, 1);
-  const daysSinceReference = Math.floor((date.getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24));
-  const periodNumber = Math.floor(daysSinceReference / 14);
+  // Bi-weekly payroll periods starting from October 13, 2024 (Sunday)
+  // This ensures periods align with the company payroll schedule
+  // Periods run Sunday to Saturday for 14 days
+  // Example periods: Oct 13-26, Oct 27-Nov 9, Nov 10-23, Nov 24-Dec 7, etc.
+  // This matches the implementation in AttendancePage.tsx
+  const payrollStartDate = new Date(2024, 9, 13); // October 13, 2024
 
-  const periodStart = new Date(referenceDate);
-  periodStart.setDate(referenceDate.getDate() + (periodNumber * 14));
+  // Normalize dates to midnight for accurate day calculation
+  const normalizedCurrent = new Date(date);
+  normalizedCurrent.setHours(0, 0, 0, 0);
+
+  const normalizedStart = new Date(payrollStartDate);
+  normalizedStart.setHours(0, 0, 0, 0);
+
+  const daysSinceStart = Math.floor((normalizedCurrent.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24));
+  const periodNumber = Math.floor(daysSinceStart / 14);
+
+  const periodStart = new Date(normalizedStart);
+  periodStart.setDate(periodStart.getDate() + (periodNumber * 14));
 
   const periodEnd = new Date(periodStart);
-  periodEnd.setDate(periodStart.getDate() + 13);
+  periodEnd.setDate(periodEnd.getDate() + 13); // 14 days total (0-13)
 
   return {
     startDate: formatDate(periodStart),
