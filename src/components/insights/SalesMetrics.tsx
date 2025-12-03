@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Banknote, CreditCard, Heart, Users } from 'lucide-react';
 import { SalesMetrics as SalesMetricsData } from '../../hooks/useSalesData';
 import { formatCurrency, formatNumber, formatPercentage, calculateTrend } from '../../lib/formatters';
 
@@ -9,8 +9,8 @@ interface SalesMetricsProps {
 export function SalesMetrics({ data }: SalesMetricsProps) {
   if (data.isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
           <div key={i} className="bg-white rounded-lg shadow p-6 border border-gray-200 animate-pulse">
             <div className="h-4 bg-gray-200 rounded w-24 mb-4"></div>
             <div className="h-8 bg-gray-200 rounded w-32"></div>
@@ -22,11 +22,13 @@ export function SalesMetrics({ data }: SalesMetricsProps) {
 
   const transactionsTrend = calculateTrend(data.current.transactions, data.previous.transactions);
   const grossSalesTrend = calculateTrend(data.current.grossSales, data.previous.grossSales);
-  const netSalesTrend = calculateTrend(data.current.netSales, data.previous.netSales);
-  const avgTicketTrend = calculateTrend(data.current.averageTicket, data.previous.averageTicket);
+  const cashCollectedTrend = calculateTrend(data.current.cashCollected, data.previous.cashCollected);
+  const cardCollectedTrend = calculateTrend(data.current.cardCollected, data.previous.cardCollected);
+  const tipsGivenTrend = calculateTrend(data.current.tipsGiven, data.previous.tipsGiven);
+  const tipsPairedTrend = calculateTrend(data.current.tipsPaired, data.previous.tipsPaired);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <MetricCard
         label="Transactions"
         value={formatNumber(data.current.transactions)}
@@ -36,7 +38,7 @@ export function SalesMetrics({ data }: SalesMetricsProps) {
         iconColor="text-green-600"
       />
       <MetricCard
-        label="Gross Sales"
+        label="Total Sales"
         value={formatCurrency(data.current.grossSales)}
         trend={grossSalesTrend}
         icon={DollarSign}
@@ -44,20 +46,36 @@ export function SalesMetrics({ data }: SalesMetricsProps) {
         iconColor="text-blue-600"
       />
       <MetricCard
-        label="Net Sales"
-        value={formatCurrency(data.current.netSales)}
-        trend={netSalesTrend}
-        icon={DollarSign}
+        label="Total Cash Collected"
+        value={formatCurrency(data.current.cashCollected)}
+        trend={cashCollectedTrend}
+        icon={Banknote}
+        iconBgColor="bg-green-100"
+        iconColor="text-green-600"
+      />
+      <MetricCard
+        label="Total Card Collected"
+        value={formatCurrency(data.current.cardCollected)}
+        trend={cardCollectedTrend}
+        icon={CreditCard}
         iconBgColor="bg-blue-100"
         iconColor="text-blue-600"
       />
       <MetricCard
-        label="Average Net Sales / Txn"
-        value={formatCurrency(data.current.averageTicket)}
-        trend={avgTicketTrend}
-        icon={TrendingUp}
-        iconBgColor="bg-orange-100"
-        iconColor="text-orange-600"
+        label="Total Tips Given"
+        value={formatCurrency(data.current.tipsGiven)}
+        trend={tipsGivenTrend}
+        icon={Heart}
+        iconBgColor="bg-amber-100"
+        iconColor="text-amber-600"
+      />
+      <MetricCard
+        label="Total Tips Paired"
+        value={formatCurrency(data.current.tipsPaired)}
+        trend={tipsPairedTrend}
+        icon={Users}
+        iconBgColor="bg-teal-100"
+        iconColor="text-teal-600"
       />
     </div>
   );

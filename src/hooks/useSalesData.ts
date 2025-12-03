@@ -7,6 +7,10 @@ export interface SalesSummary {
   grossSales: number;
   netSales: number;
   averageTicket: number;
+  cashCollected: number;
+  cardCollected: number;
+  tipsGiven: number;
+  tipsPaired: number;
 }
 
 export interface SalesMetrics {
@@ -59,8 +63,8 @@ function getPreviousDateRange(dateRange: DateRange): DateRange {
 
 export function useSalesMetrics(dateRange: DateRange): SalesMetrics {
   const [metrics, setMetrics] = useState<SalesMetrics>({
-    current: { transactions: 0, grossSales: 0, netSales: 0, averageTicket: 0 },
-    previous: { transactions: 0, grossSales: 0, netSales: 0, averageTicket: 0 },
+    current: { transactions: 0, grossSales: 0, netSales: 0, averageTicket: 0, cashCollected: 0, cardCollected: 0, tipsGiven: 0, tipsPaired: 0 },
+    previous: { transactions: 0, grossSales: 0, netSales: 0, averageTicket: 0, cashCollected: 0, cardCollected: 0, tipsGiven: 0, tipsPaired: 0 },
     isLoading: true,
     error: null,
   });
@@ -74,7 +78,7 @@ export function useSalesMetrics(dateRange: DateRange): SalesMetrics {
 
         const previousRange = getPreviousDateRange(dateRange);
 
-        const [currentResult, previousResult] = await Promise.all([
+        const [currentResult, previousResult, currentItemsResult, previousItemsResult] = await Promise.all([
           supabase
             .from('sale_tickets')
             .select('id, total, tax, discount, closed_at')
@@ -87,6 +91,30 @@ export function useSalesMetrics(dateRange: DateRange): SalesMetrics {
             .gte('ticket_date', previousRange.startDate)
             .lte('ticket_date', previousRange.endDate)
             .not('closed_at', 'is', null),
+          supabase
+            .from('ticket_items')
+            .select('sale_ticket_id, payment_cash, payment_card, tip_customer_cash, tip_customer_card, tip_receptionist')
+            .in(
+              'sale_ticket_id',
+              (await supabase
+                .from('sale_tickets')
+                .select('id')
+                .gte('ticket_date', dateRange.startDate)
+                .lte('ticket_date', dateRange.endDate)
+                .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
+            ),
+          supabase
+            .from('ticket_items')
+            .select('sale_ticket_id, payment_cash, payment_card, tip_customer_cash, tip_customer_card, tip_receptionist')
+            .in(
+              'sale_ticket_id',
+              (await supabase
+                .from('sale_tickets')
+                .select('id')
+                .gte('ticket_date', previousRange.startDate)
+                .lte('ticket_date', previousRange.endDate)
+                .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
+            ),
         ]);
 
         if (cancelled) return;
@@ -96,6 +124,18 @@ export function useSalesMetrics(dateRange: DateRange): SalesMetrics {
 
         const currentTickets = currentResult.data || [];
         const previousTickets = previousResult.data || [];
+        const currentItems = currentItemsResult?.data || [];
+        const previousItems = previousItemsResult?.data || [];
+
+        const currentCashCollected = currentItems.reduce((sum, item) => sum + (item.payment_cash || 0), 0);
+        const currentCardCollected = currentItems.reduce((sum, item) => sum + (item.payment_card || 0), 0);
+        const currentTipsGiven = currentItems.reduce((sum, item) => sum + (item.tip_customer_cash || 0) + (item.tip_customer_card || 0), 0);
+        const currentTipsPaired = currentItems.reduce((sum, item) => sum + (item.tip_receptionist || 0), 0);
+
+        const previousCashCollected = previousItems.reduce((sum, item) => sum + (item.payment_cash || 0), 0);
+        const previousCardCollected = previousItems.reduce((sum, item) => sum + (item.payment_card || 0), 0);
+        const previousTipsGiven = previousItems.reduce((sum, item) => sum + (item.tip_customer_cash || 0) + (item.tip_customer_card || 0), 0);
+        const previousTipsPaired = previousItems.reduce((sum, item) => sum + (item.tip_receptionist || 0), 0);
 
         const currentSummary: SalesSummary = {
           transactions: currentTickets.length,
@@ -105,6 +145,10 @@ export function useSalesMetrics(dateRange: DateRange): SalesMetrics {
             currentTickets.length > 0
               ? currentTickets.reduce((sum, t) => sum + (t.total || 0), 0) / currentTickets.length
               : 0,
+          cashCollected: currentCashCollected,
+          cardCollected: currentCardCollected,
+          tipsGiven: currentTipsGiven,
+          tipsPaired: currentTipsPaired,
         };
 
         const previousSummary: SalesSummary = {
@@ -115,6 +159,10 @@ export function useSalesMetrics(dateRange: DateRange): SalesMetrics {
             previousTickets.length > 0
               ? previousTickets.reduce((sum, t) => sum + (t.total || 0), 0) / previousTickets.length
               : 0,
+          cashCollected: previousCashCollected,
+          cardCollected: previousCardCollected,
+          tipsGiven: previousTipsGiven,
+          tipsPaired: previousTipsPaired,
         };
 
         setMetrics({
