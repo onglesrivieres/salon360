@@ -143,8 +143,11 @@ export function getFilterLabel(filterType: TimeFilterType, dateRange?: DateRange
 
     case 'period': {
       const period = getBiweeklyPeriod(today);
-      const start = new Date(period.startDate);
-      const end = new Date(period.endDate);
+      // Parse date strings using local timezone to avoid timezone conversion issues
+      const [startYear, startMonth, startDay] = period.startDate.split('-').map(Number);
+      const [endYear, endMonth, endDay] = period.endDate.split('-').map(Number);
+      const start = new Date(startYear, startMonth - 1, startDay);
+      const end = new Date(endYear, endMonth - 1, endDay);
       return `This Period: ${formatDisplayDate(start)} - ${formatDisplayDate(end)}`;
     }
 
@@ -158,8 +161,11 @@ export function getFilterLabel(filterType: TimeFilterType, dateRange?: DateRange
 
     case 'custom': {
       if (dateRange) {
-        const start = new Date(dateRange.startDate);
-        const end = new Date(dateRange.endDate);
+        // Parse date strings using local timezone to avoid timezone conversion issues
+        const [startYear, startMonth, startDay] = dateRange.startDate.split('-').map(Number);
+        const [endYear, endMonth, endDay] = dateRange.endDate.split('-').map(Number);
+        const start = new Date(startYear, startMonth - 1, startDay);
+        const end = new Date(endYear, endMonth - 1, endDay);
         return `Custom: ${formatDisplayDate(start)} - ${formatDisplayDate(end)}`;
       }
       return 'Custom Range';
