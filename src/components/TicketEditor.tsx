@@ -98,10 +98,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const [showCustomService, setShowCustomService] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [pendingBusyTechnicianCompletion, setPendingBusyTechnicianCompletion] = useState<{
-    technicianId: string;
-    currentTicketId: string;
-  } | null>(null);
 
   const calculateTimeRemaining = (tech: TechnicianWithQueue): string => {
     if (!tech.ticket_start_time || !tech.estimated_duration_min) {
@@ -906,56 +902,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     try {
       setSaving(true);
 
-      // If there's a pending busy technician completion, complete their previous ticket first
-      if (pendingBusyTechnicianCompletion) {
-        if (!session?.employee_id) {
-          showToast('Unable to complete previous ticket: session error', 'error');
-          setSaving(false);
-          return;
-        }
-
-        try {
-          console.log('Completing previous ticket:', pendingBusyTechnicianCompletion.currentTicketId);
-
-          const { error: completeError, data: completedTicket } = await supabase
-            .from('sale_tickets')
-            .update({
-              completed_at: new Date().toISOString(),
-              completed_by: session.employee_id,
-            })
-            .eq('id', pendingBusyTechnicianCompletion.currentTicketId)
-            .select()
-            .maybeSingle();
-
-          if (completeError) {
-            console.error('Error completing previous ticket:', completeError);
-            showToast(`Failed to complete previous ticket: ${completeError.message}`, 'error');
-            setSaving(false);
-            return;
-          }
-
-          if (!completedTicket) {
-            showToast('Previous ticket not found', 'error');
-            setSaving(false);
-            return;
-          }
-
-          await logActivity(
-            pendingBusyTechnicianCompletion.currentTicketId,
-            'updated',
-            `${session.display_name} marked service as completed (technician assigned to new ticket)`,
-            {}
-          );
-
-          console.log('Previous ticket completed successfully');
-        } catch (error: any) {
-          console.error('Failed to complete previous ticket:', error);
-          showToast(error?.message || 'Failed to complete previous ticket', 'error');
-          setSaving(false);
-          return;
-        }
-      }
-
       if (!ticketId && selectedStoreId) {
         const openingCashRecorded = await checkOpeningCashRecorded(selectedStoreId, selectedDate);
         if (!openingCashRecorded) {
@@ -1150,12 +1096,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         showToast('Ticket created successfully', 'success');
       }
 
-      // Clear pending completion state and refresh technicians after successful save
-      if (pendingBusyTechnicianCompletion) {
-        setPendingBusyTechnicianCompletion(null);
-        await fetchSortedTechnicians();
-      }
-
       onClose();
     } catch (error: any) {
       showToast(error.message || 'Failed to save ticket', 'error');
@@ -1165,28 +1105,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   }
 
   async function handleSelectBusyTechnician(technicianId: string, currentTicketId?: string) {
-    if (!currentTicketId) {
-      setSelectedTechnicianId(technicianId);
-      setLastUsedEmployeeId(technicianId);
-      if (items.length > 0) {
-        updateItem(0, 'employee_id', technicianId);
-      }
-      return;
-    }
-
-    // Store pending completion info instead of completing immediately
-    setPendingBusyTechnicianCompletion({
-      technicianId,
-      currentTicketId
-    });
-
     setSelectedTechnicianId(technicianId);
     setLastUsedEmployeeId(technicianId);
     if (items.length > 0) {
       updateItem(0, 'employee_id', technicianId);
     }
-
-    showToast('Previous ticket will be completed when you save this ticket', 'info');
   }
 
   function handleTechnicianSelect(technicianId: string, currentTicketId?: string) {
@@ -1195,10 +1118,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   }
 
   function handleClose() {
-    // Clear pending completion state when closing without saving
-    if (pendingBusyTechnicianCompletion) {
-      setPendingBusyTechnicianCompletion(null);
-    }
     onClose();
   }
 
@@ -1762,14 +1681,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             <label className="block text-xs font-medium text-gray-700 mb-2">
               Technician <span className="text-red-600">*</span>
             </label>
-
-            {pendingBusyTechnicianCompletion && (
-              <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-xs text-amber-800 font-medium">
-                  ⚠️ The selected technician's current ticket will be completed when you save this ticket
-                </p>
-              </div>
-            )}
 
             {employees.length === 0 && !isTicketClosed && (
               <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
