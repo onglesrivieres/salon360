@@ -1677,7 +1677,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               </div>
             )}
 
-            {ticket?.completed_at && (
+            {(ticket?.completed_at || ticket?.closed_at) && (
               <div className="mt-3 pt-3 border-t border-gray-300">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -1686,18 +1686,20 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       Completion Time
                     </label>
                     <p className="text-sm text-gray-900 font-medium">
-                      {formatDateTimeEST(ticket.completed_at)}
+                      {ticket.completed_at ? formatDateTimeEST(ticket.completed_at) : 'Not completed'}
                     </p>
                   </div>
-                  <span
-                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
-                      isCompletionTimeDeviant()
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}
-                  >
-                    {formatCompletionDuration(calculateCompletionDuration())}
-                  </span>
+                  {ticket.completed_at && (
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                        isCompletionTimeDeviant()
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}
+                    >
+                      {formatCompletionDuration(calculateCompletionDuration())}
+                    </span>
+                  )}
                 </div>
               </div>
             )}
