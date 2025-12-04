@@ -1613,7 +1613,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
                   <label className="text-xs font-medium text-gray-700 flex-shrink-0">
-                    Opening Time
+                    Start at
                   </label>
                   <input
                     type="datetime-local"
@@ -1644,7 +1644,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
                 <label className="text-xs font-medium text-gray-700 flex-shrink-0">
-                  Opening Time
+                  Start at
                 </label>
                 <input
                   type="datetime-local"
@@ -1659,11 +1659,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               </div>
             ) : (
               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                {/* Opening Time */}
+                {/* Start at */}
                 <div className="flex items-center gap-1.5 flex-1">
                   <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
                   <label className="text-xs font-medium text-gray-700 flex-shrink-0">
-                    Opening Time
+                    Start at
                   </label>
                   <p className="text-sm text-gray-900 font-medium truncate">
                     {formData.opening_time ? formatDateTimeEST(formData.opening_time) : 'Not set'}
@@ -1687,12 +1687,12 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   <div className="hidden sm:block w-px h-6 bg-gray-300" />
                 )}
 
-                {/* Completion Time */}
+                {/* End at */}
                 {(ticket?.completed_at || ticket?.closed_at) && (
                   <div className="flex items-center gap-1.5 flex-1">
                     <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
                     <label className="text-xs font-medium text-gray-700 flex-shrink-0">
-                      Completion Time
+                      End at
                     </label>
                     <p className="text-sm text-gray-900 font-medium truncate">
                       {ticket.completed_at ? formatDateTimeEST(ticket.completed_at) : 'Not completed'}
