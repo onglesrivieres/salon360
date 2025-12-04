@@ -512,13 +512,24 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                 const isSelfServiceTicket =
                   ticket.opened_by_role &&
                   ['Technician', 'Spa Expert', 'Supervisor'].includes(ticket.opened_by_role) &&
-                  !ticket.reviewed_by_receptionist;
+                  !ticket.reviewed_by_receptionist &&
+                  !ticket.closed_at &&
+                  !ticket.completed_at;
+
+                const isOpenTicket = !ticket.closed_at && !ticket.completed_at;
+
+                let rowBackgroundClass = 'hover:bg-gray-50';
+                if (isSelfServiceTicket) {
+                  rowBackgroundClass = 'bg-green-50 hover:bg-green-100';
+                } else if (isOpenTicket) {
+                  rowBackgroundClass = 'bg-yellow-50 hover:bg-yellow-100 animate-pulse';
+                }
 
                 return (
                   <tr
                     key={ticket.id}
                     className={`
-                      ${isSelfServiceTicket ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50'}
+                      ${rowBackgroundClass}
                       ${canView ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}
                       transition-colors duration-200
                     `}
@@ -605,12 +616,32 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
           );
           const canView = session && Permissions.tickets.canView(session.role_permission);
 
+          const isSelfServiceTicket =
+            ticket.opened_by_role &&
+            ['Technician', 'Spa Expert', 'Supervisor'].includes(ticket.opened_by_role) &&
+            !ticket.reviewed_by_receptionist &&
+            !ticket.closed_at &&
+            !ticket.completed_at;
+
+          const isOpenTicket = !ticket.closed_at && !ticket.completed_at;
+
+          let cardBackgroundClass = 'bg-white';
+          let cardHoverClass = 'active:bg-gray-50';
+
+          if (isSelfServiceTicket) {
+            cardBackgroundClass = 'bg-green-50';
+            cardHoverClass = 'active:bg-green-100';
+          } else if (isOpenTicket) {
+            cardBackgroundClass = 'bg-yellow-50 animate-pulse';
+            cardHoverClass = 'active:bg-yellow-100';
+          }
+
           return (
             <div
               key={ticket.id}
               onClick={() => canView && openEditor(ticket.id)}
-              className={`bg-white rounded-lg shadow p-3 ${
-                canView ? 'cursor-pointer active:bg-gray-50' : 'cursor-not-allowed opacity-60'
+              className={`${cardBackgroundClass} rounded-lg shadow p-3 ${
+                canView ? `cursor-pointer ${cardHoverClass}` : 'cursor-not-allowed opacity-60'
               }`}
             >
               <div className="flex items-start justify-between mb-2">
