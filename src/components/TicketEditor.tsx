@@ -125,6 +125,48 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     return mins > 0 ? `~${hours}h ${mins}min` : `~${hours}h`;
   };
 
+  const calculateCompletionDuration = (): number => {
+    if (!ticket?.opened_at || !ticket?.completed_at) return 0;
+
+    const opened = new Date(ticket.opened_at);
+    const completed = new Date(ticket.completed_at);
+    const durationMinutes = Math.floor((completed.getTime() - opened.getTime()) / (1000 * 60));
+
+    return Math.max(0, durationMinutes);
+  };
+
+  const formatCompletionDuration = (minutes: number): string => {
+    if (minutes === 0) return '0 min';
+
+    if (minutes < 60) {
+      return `${minutes} min`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
+  };
+
+  const getServiceDuration = (): number => {
+    if (!ticket || !items.length) return 0;
+    const firstItem = items[0];
+    if (!firstItem?.service) return 0;
+    return firstItem.service.duration_min || 0;
+  };
+
+  const isCompletionTimeDeviant = (): boolean => {
+    const serviceDuration = getServiceDuration();
+    if (serviceDuration === 0 || !ticket?.completed_at) return false;
+
+    const actualDuration = calculateCompletionDuration();
+    if (actualDuration === 0) return false;
+
+    const tooFast = actualDuration <= serviceDuration * 0.7;
+    const tooSlow = actualDuration >= serviceDuration * 1.3;
+
+    return tooFast || tooSlow;
+  };
+
   const canEmployeePerformService = (employeeId: string, serviceId: string): boolean => {
     const employee = employees.find(e => e.id === employeeId);
     const service = services.find(s => s.id === serviceId);
@@ -1632,6 +1674,31 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     </button>
                   )
                 )}
+              </div>
+            )}
+
+            {ticket?.completed_at && (
+              <div className="mt-3 pt-3 border-t border-gray-300">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                    <label className="text-xs font-medium text-gray-700 flex-shrink-0">
+                      Completion Time
+                    </label>
+                    <p className="text-sm text-gray-900 font-medium">
+                      {formatDateTimeEST(ticket.completed_at)}
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                      isCompletionTimeDeviant()
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}
+                  >
+                    {formatCompletionDuration(calculateCompletionDuration())}
+                  </span>
+                </div>
               </div>
             )}
           </div>
