@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Download, Clock, CheckCircle, XCircle, Users, MessageSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Users, MessageSquare } from 'lucide-react';
 import { supabase, StoreAttendance } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -289,7 +289,7 @@ export function AttendancePage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left p-1.5 text-xs font-semibold text-gray-900 sticky left-0 bg-white z-10 min-w-[80px]">
+                  <th className="text-left p-1.5 text-xs font-semibold text-gray-900 sticky left-0 bg-white z-10 w-[85px] min-w-[85px] max-w-[85px]">
                     Employee
                   </th>
                   {calendarDays.map((day, index) => {
@@ -297,7 +297,7 @@ export function AttendancePage() {
                     return (
                       <th
                         key={index}
-                        className={`text-center p-1 text-xs font-semibold min-w-[60px] ${
+                        className={`text-center p-1 text-xs font-semibold w-[60px] min-w-[60px] max-w-[60px] ${
                           isToday
                             ? 'bg-blue-50 text-blue-700'
                             : 'text-gray-900'
@@ -308,7 +308,7 @@ export function AttendancePage() {
                       </th>
                     );
                   })}
-                  <th className="text-right p-1.5 text-xs font-semibold text-gray-900 sticky right-0 bg-white z-10 min-w-[60px]">
+                  <th className="text-right p-1.5 text-xs font-semibold text-gray-900 sticky right-0 bg-white z-10 w-[65px] min-w-[65px] max-w-[65px]">
                     Total
                   </th>
                 </tr>
@@ -316,7 +316,7 @@ export function AttendancePage() {
               <tbody>
                 {Object.entries(summary).map(([employeeId, employee]) => (
                   <tr key={employeeId} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="p-1.5 text-xs font-medium text-gray-900 sticky left-0 bg-white">
+                    <td className="p-1.5 text-xs font-medium text-gray-900 sticky left-0 bg-white w-[85px] min-w-[85px] max-w-[85px]">
                       {employee.employeeName}
                     </td>
                     {calendarDays.map((day, index) => {
@@ -327,37 +327,32 @@ export function AttendancePage() {
                       return (
                         <td
                           key={index}
-                          className={`p-0.5 text-center align-top ${
+                          className={`p-0.5 text-center align-top w-[60px] min-w-[60px] max-w-[60px] ${
                             isToday ? 'bg-blue-50' : ''
                           }`}
                         >
                           {sessions && sessions.length > 0 ? (
                             <div className="space-y-1">
                               {sessions.map((record, sessionIdx) => (
-                                <div key={sessionIdx} className="relative group border border-gray-200 rounded p-1">
+                                <div
+                                  key={sessionIdx}
+                                  className={`relative group rounded p-1.5 ${
+                                    record.status === 'checked_in'
+                                      ? 'bg-green-500 animate-pulse'
+                                      : 'bg-gray-200'
+                                  }`}
+                                >
                                   <div className="space-y-0.5">
                                     {sessions.length > 1 && (
-                                      <div className="text-[10px] font-semibold text-gray-500">
+                                      <div className={`text-[10px] font-semibold ${
+                                        record.status === 'checked_in' ? 'text-white' : 'text-gray-600'
+                                      }`}>
                                         S{sessionIdx + 1}
                                       </div>
                                     )}
-                                    <div className={`inline-flex items-center justify-center gap-0.5 px-1 py-0.5 rounded text-[10px] ${
-                                      record.status === 'checked_in'
-                                        ? 'bg-green-100 text-green-700'
-                                        : record.status === 'checked_out'
-                                        ? 'bg-gray-100 text-gray-700'
-                                        : 'bg-orange-100 text-orange-700'
+                                    <div className={`text-[10px] font-medium ${
+                                      record.status === 'checked_in' ? 'text-white' : 'text-gray-700'
                                     }`}>
-                                      {record.status === 'checked_in' ? (
-                                        <Clock className="w-2 h-2" />
-                                      ) : record.status === 'checked_out' ? (
-                                        <CheckCircle className="w-2 h-2" />
-                                      ) : (
-                                        <XCircle className="w-2 h-2" />
-                                      )}
-                                      <span className="hidden sm:inline">{record.status === 'checked_in' ? 'In' : 'Out'}</span>
-                                    </div>
-                                    <div className="text-[10px] text-gray-600">
                                       {formatTimeEST(record.checkInTime, {
                                         hour: 'numeric',
                                         minute: '2-digit',
@@ -365,7 +360,9 @@ export function AttendancePage() {
                                       })}
                                     </div>
                                     {record.checkOutTime && (
-                                      <div className="text-[10px] text-gray-600">
+                                      <div className={`text-[10px] font-medium ${
+                                        record.status === 'checked_in' ? 'text-white' : 'text-gray-700'
+                                      }`}>
                                         {formatTimeEST(record.checkOutTime, {
                                           hour: 'numeric',
                                           minute: '2-digit',
@@ -374,7 +371,9 @@ export function AttendancePage() {
                                       </div>
                                     )}
                                     {record.totalHours && (
-                                      <div className="text-[10px] font-semibold text-gray-900">
+                                      <div className={`text-[10px] font-bold ${
+                                        record.status === 'checked_in' ? 'text-white' : 'text-gray-900'
+                                      }`}>
                                         {record.totalHours.toFixed(1)}h
                                       </div>
                                     )}
@@ -389,7 +388,9 @@ export function AttendancePage() {
                                   });
                                   setCommentModalOpen(true);
                                       }}
-                                      className="mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-600"
+                                      className={`mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:text-blue-600 ${
+                                        record.status === 'checked_in' ? 'text-white' : 'text-gray-400'
+                                      }`}
                                     >
                                       <MessageSquare className="w-3 h-3 mx-auto" />
                                     </button>
@@ -403,7 +404,7 @@ export function AttendancePage() {
                         </td>
                       );
                     })}
-                    <td className="p-1.5 text-right text-xs font-bold text-gray-900 sticky right-0 bg-white">
+                    <td className="p-1.5 text-right text-xs font-bold text-gray-900 sticky right-0 bg-white w-[65px] min-w-[65px] max-w-[65px]">
                       <div>{employee.totalHours.toFixed(1)}h</div>
                       <div className="text-[10px] font-normal text-gray-500">
                         {employee.daysPresent}d
@@ -421,25 +422,12 @@ export function AttendancePage() {
         <h3 className="text-sm font-semibold text-gray-900 mb-3">Legend</h3>
         <div className="flex flex-wrap gap-4">
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-2 py-1 rounded text-xs bg-green-100 text-green-700">
-              <Clock className="w-3 h-3" />
-              Active
-            </div>
+            <div className="w-12 h-8 bg-green-500 animate-pulse rounded"></div>
             <span className="text-xs text-gray-600">Currently checked in</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-2 py-1 rounded text-xs bg-gray-100 text-gray-700">
-              <CheckCircle className="w-3 h-3" />
-              Done
-            </div>
+            <div className="w-12 h-8 bg-gray-200 rounded"></div>
             <span className="text-xs text-gray-600">Checked out</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-2 py-1 rounded text-xs bg-orange-100 text-orange-700">
-              <XCircle className="w-3 h-3" />
-              Done
-            </div>
-            <span className="text-xs text-gray-600">Auto checked out</span>
           </div>
         </div>
       </div>
