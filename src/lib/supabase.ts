@@ -175,6 +175,8 @@ export interface TicketItem {
   tip_customer_card: number;
   tip_receptionist: number;
   notes: string;
+  started_at?: string | null;
+  completed_at?: string | null;
   created_at: string;
   updated_at: string;
 }

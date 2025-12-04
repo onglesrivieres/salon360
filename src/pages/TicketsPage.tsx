@@ -76,6 +76,8 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
             tip_customer_card,
             tip_receptionist,
             custom_service_name,
+            started_at,
+            completed_at,
             service:store_services!ticket_items_store_service_id_fkey(code, name, duration_min),
             employee:employees!ticket_items_employee_id_fkey(display_name)
           )
@@ -290,6 +292,50 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     const tooSlow = elapsedMinutes >= serviceDuration * 1.3;
 
     return tooFast || tooSlow;
+  }
+
+  function getCompletionStatus(ticket: any): 'on_time' | 'moderate_deviation' | 'extreme_deviation' | 'unknown' {
+    // Only check status for closed tickets
+    if (!ticket.closed_at) return 'unknown';
+
+    // Get the first ticket item
+    if (!ticket.ticket_items || ticket.ticket_items.length === 0) return 'unknown';
+    const firstItem = ticket.ticket_items[0];
+
+    // Check if we have timing data
+    if (!firstItem.started_at || !firstItem.completed_at) return 'unknown';
+
+    // Get expected duration from service
+    const service = firstItem.service;
+    const expectedDuration = service?.duration_min;
+
+    // If no expected duration (custom service or missing data), return unknown
+    if (!expectedDuration || expectedDuration === 0) return 'unknown';
+
+    // Calculate actual duration in minutes
+    const startTime = new Date(firstItem.started_at);
+    const endTime = new Date(firstItem.completed_at);
+    const actualDurationMs = endTime.getTime() - startTime.getTime();
+    const actualDurationMin = Math.floor(actualDurationMs / 1000 / 60);
+
+    // Calculate deviation percentage
+    const lowerBound = expectedDuration * 0.9;  // 90%
+    const upperBound = expectedDuration * 1.1;  // 110%
+    const extremeLowerBound = expectedDuration * 0.7;  // 70%
+    const extremeUpperBound = expectedDuration * 1.3;  // 130%
+
+    // Check if within 10% range (on time)
+    if (actualDurationMin >= lowerBound && actualDurationMin <= upperBound) {
+      return 'on_time';
+    }
+
+    // Check if extreme deviation (beyond 30%)
+    if (actualDurationMin < extremeLowerBound || actualDurationMin > extremeUpperBound) {
+      return 'extreme_deviation';
+    }
+
+    // Otherwise it's moderate deviation (between 10% and 30%)
+    return 'moderate_deviation';
   }
 
   function formatDuration(openedAt: string): string {
@@ -556,13 +602,26 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                     <td className="px-3 py-2 whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         {ticket.closed_at ? (
-                          isTimeDeviationHigh(ticket) ? (
-                            <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flash-red">
-                              Closed
-                            </div>
-                          ) : (
-                            <Badge variant="success">Closed</Badge>
-                          )
+                          (() => {
+                            const status = getCompletionStatus(ticket);
+                            if (status === 'on_time') {
+                              return <Badge variant="success">Closed</Badge>;
+                            } else if (status === 'moderate_deviation') {
+                              return (
+                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                  Closed
+                                </div>
+                              );
+                            } else if (status === 'extreme_deviation') {
+                              return (
+                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                  Closed
+                                </div>
+                              );
+                            } else {
+                              return <Badge variant="success">Closed</Badge>;
+                            }
+                          })()
                         ) : ticket.completed_at ? (
                           <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                             Completed
@@ -661,13 +720,26 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                 </div>
                 <div className="text-right flex flex-col gap-1 items-end">
                   {ticket.closed_at ? (
-                    isTimeDeviationHigh(ticket) ? (
-                      <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium flash-red">
-                        Closed
-                      </div>
-                    ) : (
-                      <Badge variant="success">Closed</Badge>
-                    )
+                    (() => {
+                      const status = getCompletionStatus(ticket);
+                      if (status === 'on_time') {
+                        return <Badge variant="success">Closed</Badge>;
+                      } else if (status === 'moderate_deviation') {
+                        return (
+                          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Closed
+                          </div>
+                        );
+                      } else if (status === 'extreme_deviation') {
+                        return (
+                          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            Closed
+                          </div>
+                        );
+                      } else {
+                        return <Badge variant="success">Closed</Badge>;
+                      }
+                    })()
                   ) : ticket.completed_at ? (
                     <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
                       Completed
