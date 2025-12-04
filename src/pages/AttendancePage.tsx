@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Download, Users, MessageSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Users } from 'lucide-react';
 import { supabase, StoreAttendance } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
-import { AttendanceCommentModal } from '../components/AttendanceCommentModal';
 import { formatTimeEST, formatDateEST } from '../lib/timezone';
 
 interface AttendanceSession {
@@ -32,12 +31,6 @@ export function AttendancePage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [attendanceData, setAttendanceData] = useState<StoreAttendance[]>([]);
   const [loading, setLoading] = useState(false);
-  const [commentModalOpen, setCommentModalOpen] = useState(false);
-  const [selectedAttendance, setSelectedAttendance] = useState<{
-    employeeName: string;
-    workDate: string;
-    attendanceRecordId: string;
-  } | null>(null);
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
@@ -361,7 +354,11 @@ export function AttendancePage() {
                                     </div>
                                     {record.checkOutTime && (
                                       <div className={`text-[10px] font-medium ${
-                                        record.status === 'checked_in' ? 'text-white' : 'text-gray-700'
+                                        record.status === 'checked_in'
+                                          ? 'text-white'
+                                          : record.status === 'auto_checked_out'
+                                          ? 'text-orange-600'
+                                          : 'text-gray-700'
                                       }`}>
                                         {formatTimeEST(record.checkOutTime, {
                                           hour: 'numeric',
@@ -378,23 +375,6 @@ export function AttendancePage() {
                                       </div>
                                     )}
                                   </div>
-                                  {session && session.role && Permissions.attendance.canComment(session.role) && (
-                                    <button
-                                      onClick={() => {
-                                  setSelectedAttendance({
-                                    employeeName: employee.employeeName,
-                                    workDate: dateStr,
-                                    attendanceRecordId: record.attendanceRecordId,
-                                  });
-                                  setCommentModalOpen(true);
-                                      }}
-                                      className={`mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:text-blue-600 ${
-                                        record.status === 'checked_in' ? 'text-white' : 'text-gray-400'
-                                      }`}
-                                    >
-                                      <MessageSquare className="w-3 h-3 mx-auto" />
-                                    </button>
-                                  )}
                                 </div>
                               ))}
                             </div>
@@ -429,19 +409,14 @@ export function AttendancePage() {
             <div className="w-12 h-8 bg-gray-200 rounded"></div>
             <span className="text-xs text-gray-600">Checked out</span>
           </div>
+          <div className="flex items-center gap-2">
+            <div className="w-12 h-8 bg-gray-200 rounded flex items-center justify-center">
+              <span className="text-xs font-medium text-orange-600">12:00</span>
+            </div>
+            <span className="text-xs text-gray-600">Auto check-out time</span>
+          </div>
         </div>
       </div>
-
-      <AttendanceCommentModal
-        isOpen={commentModalOpen}
-        onClose={() => {
-          setCommentModalOpen(false);
-          setSelectedAttendance(null);
-        }}
-        employeeName={selectedAttendance?.employeeName || ''}
-        workDate={selectedAttendance?.workDate || ''}
-        attendanceRecordId={selectedAttendance?.attendanceRecordId || null}
-      />
     </div>
   );
 }
