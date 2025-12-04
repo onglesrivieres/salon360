@@ -32,6 +32,12 @@ export function ServicesPage() {
     status: 'active' as ServiceStatus,
   });
 
+  const [averageDuration, setAverageDuration] = useState<{
+    average_duration: number | null;
+    sample_count: number;
+  } | null>(null);
+  const [fetchingAverage, setFetchingAverage] = useState(false);
+
   useEffect(() => {
     if (selectedStoreId) {
       fetchServices();
@@ -85,12 +91,38 @@ export function ServicesPage() {
     }
   }
 
+  async function fetchAverageDuration(storeServiceId: string) {
+    try {
+      setFetchingAverage(true);
+      const { data, error } = await supabase.rpc('calculate_service_average_duration', {
+        p_store_service_id: storeServiceId,
+      });
+
+      if (error) throw error;
+
+      if (data) {
+        setAverageDuration(data);
+        if (data.average_duration !== null && data.average_duration > 0) {
+          setFormData((prev) => ({
+            ...prev,
+            duration_min: data.average_duration.toString(),
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching average duration:', error);
+    } finally {
+      setFetchingAverage(false);
+    }
+  }
+
   function openDrawerForNew() {
     if (!session || !session.role || !Permissions.services.canCreate(session.role)) {
       showToast('You do not have permission to create services', 'error');
       return;
     }
     setEditingService(null);
+    setAverageDuration(null);
     setFormData({
       code: '',
       name: '',
@@ -108,6 +140,7 @@ export function ServicesPage() {
       return;
     }
     setEditingService(service);
+    setAverageDuration(null);
     setFormData({
       code: service.code,
       name: service.name,
@@ -117,11 +150,13 @@ export function ServicesPage() {
       status: getServiceStatus(service),
     });
     setIsDrawerOpen(true);
+    fetchAverageDuration(service.store_service_id);
   }
 
   function closeDrawer() {
     setIsDrawerOpen(false);
     setEditingService(null);
+    setAverageDuration(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -439,16 +474,33 @@ export function ServicesPage() {
             placeholder="0.00"
             required
           />
-          <Input
-            label="Duration (minutes) *"
-            type="number"
-            min="1"
-            value={formData.duration_min}
-            onChange={(e) =>
-              setFormData({ ...formData, duration_min: e.target.value })
-            }
-            required
-          />
+          <div>
+            <Input
+              label="Duration (minutes) *"
+              type="number"
+              min="1"
+              value={formData.duration_min}
+              onChange={(e) =>
+                setFormData({ ...formData, duration_min: e.target.value })
+              }
+              required
+            />
+            {fetchingAverage && (
+              <p className="text-xs text-gray-500 mt-1">
+                Calculating average duration...
+              </p>
+            )}
+            {!fetchingAverage && averageDuration && averageDuration.average_duration !== null && (
+              <p className="text-xs text-gray-600 mt-1">
+                Auto-calculated from {averageDuration.sample_count} completed service{averageDuration.sample_count !== 1 ? 's' : ''}
+              </p>
+            )}
+            {!fetchingAverage && averageDuration && averageDuration.average_duration === null && averageDuration.sample_count > 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                Only {averageDuration.sample_count} completed service{averageDuration.sample_count !== 1 ? 's' : ''} found (minimum 5 required for auto-calculation)
+              </p>
+            )}
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
