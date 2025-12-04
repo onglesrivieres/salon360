@@ -102,17 +102,21 @@ export function ServicesPage() {
 
       if (data) {
         setAverageDuration(data);
-        if (data.average_duration !== null && data.average_duration > 0) {
-          setFormData((prev) => ({
-            ...prev,
-            duration_min: data.average_duration.toString(),
-          }));
-        }
       }
     } catch (error) {
       console.error('Error fetching average duration:', error);
     } finally {
       setFetchingAverage(false);
+    }
+  }
+
+  function handleAcceptSuggestedDuration() {
+    if (averageDuration?.average_duration) {
+      setFormData((prev) => ({
+        ...prev,
+        duration_min: averageDuration.average_duration.toString(),
+      }));
+      showToast('Duration updated to suggested value', 'success');
     }
   }
 
@@ -491,14 +495,39 @@ export function ServicesPage() {
               </p>
             )}
             {!fetchingAverage && averageDuration && averageDuration.average_duration !== null && (
-              <p className="text-xs text-gray-600 mt-1">
-                Auto-calculated from {averageDuration.sample_count} completed service{averageDuration.sample_count !== 1 ? 's' : ''}
-              </p>
+              <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-blue-900 mb-1">
+                      Suggested Duration: {averageDuration.average_duration} minutes
+                    </p>
+                    <p className="text-xs text-blue-700">
+                      Based on {averageDuration.sample_count} completed service{averageDuration.sample_count !== 1 ? 's' : ''} from historical data
+                    </p>
+                  </div>
+                  {formData.duration_min !== averageDuration.average_duration.toString() && (
+                    <button
+                      type="button"
+                      onClick={handleAcceptSuggestedDuration}
+                      className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+                    >
+                      Use Suggested
+                    </button>
+                  )}
+                </div>
+                {formData.duration_min === averageDuration.average_duration.toString() && (
+                  <p className="text-xs text-blue-600 mt-2 font-medium">
+                    Currently using suggested duration
+                  </p>
+                )}
+              </div>
             )}
             {!fetchingAverage && averageDuration && averageDuration.average_duration === null && averageDuration.sample_count > 0 && (
-              <p className="text-xs text-gray-500 mt-1">
-                Only {averageDuration.sample_count} completed service{averageDuration.sample_count !== 1 ? 's' : ''} found (minimum 5 required for auto-calculation)
-              </p>
+              <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <p className="text-xs text-gray-600">
+                  Only {averageDuration.sample_count} completed service{averageDuration.sample_count !== 1 ? 's' : ''} found. Minimum 5 required to calculate average duration.
+                </p>
+              </div>
             )}
           </div>
 
