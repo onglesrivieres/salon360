@@ -1001,6 +1001,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             addon_price: addonPrice,
             discount_percentage: discountPercentage,
             discount_amount: discountAmount,
+            started_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
 
@@ -1069,6 +1070,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             addon_price: addonPrice,
             discount_percentage: discountPercentage,
             discount_amount: discountAmount,
+            started_at: new Date().toISOString(),
           };
         });
 
