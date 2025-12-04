@@ -341,13 +341,6 @@ export function AttendancePage() {
                                   }`}
                                 >
                                   <div className="leading-tight">
-                                    {sessions.length > 1 && (
-                                      <div className={`text-[8px] font-semibold ${
-                                        record.status === 'checked_in' ? 'text-white' : 'text-gray-600'
-                                      }`}>
-                                        S{sessionIdx + 1}
-                                      </div>
-                                    )}
                                     <div className={`text-[9px] ${
                                       record.status === 'checked_in' ? 'text-white' : 'text-gray-700'
                                     }`}>
