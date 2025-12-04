@@ -395,13 +395,13 @@ export function AttendancePage() {
                         employee.payType === 'daily' ? (
                           <div>{employee.daysPresent}d</div>
                         ) : (
-                          <div>{employee.totalHours.toFixed(1)}h</div>
+                          <div>{employee.totalHours.toFixed(2)}h</div>
                         )
                       ) : (
                         // Management view - show both metrics
                         <>
-                          <div>{employee.totalHours.toFixed(1)}h</div>
-                          <div className="text-[9px] font-normal text-gray-500">
+                          <div>{employee.totalHours.toFixed(2)}h</div>
+                          <div>
                             {employee.daysPresent}d
                           </div>
                         </>
