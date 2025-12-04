@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Store as StoreIcon, Archive } from 'lucide-react';
+import { Plus, Search, Store as StoreIcon, Archive, Calculator } from 'lucide-react';
 import { supabase, StoreServiceWithDetails } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -102,9 +102,18 @@ export function ServicesPage() {
 
       if (data) {
         setAverageDuration(data);
+
+        if (data.average_duration !== null) {
+          showToast(`The average duration is ${data.average_duration} minutes`, 'success');
+        } else if (data.sample_count > 0) {
+          showToast('Not enough data to calculate average duration', 'info');
+        } else {
+          showToast('No historical data available', 'info');
+        }
       }
     } catch (error) {
       console.error('Error fetching average duration:', error);
+      showToast('Failed to calculate average duration', 'error');
     } finally {
       setFetchingAverage(false);
     }
@@ -117,6 +126,12 @@ export function ServicesPage() {
         duration_min: averageDuration.average_duration.toString(),
       }));
       showToast('Duration updated to suggested value', 'success');
+    }
+  }
+
+  function handleCalculateAverage() {
+    if (editingService?.store_service_id) {
+      fetchAverageDuration(editingService.store_service_id);
     }
   }
 
@@ -154,7 +169,6 @@ export function ServicesPage() {
       status: getServiceStatus(service),
     });
     setIsDrawerOpen(true);
-    fetchAverageDuration(service.store_service_id);
   }
 
   function closeDrawer() {
@@ -479,21 +493,36 @@ export function ServicesPage() {
             required
           />
           <div>
-            <Input
-              label="Duration (minutes) *"
-              type="number"
-              min="1"
-              value={formData.duration_min}
-              onChange={(e) =>
-                setFormData({ ...formData, duration_min: e.target.value })
-              }
-              required
-            />
-            {fetchingAverage && (
-              <p className="text-xs text-gray-500 mt-1">
-                Calculating average duration...
-              </p>
-            )}
+            <div className="mb-2">
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Duration (minutes) *
+                </label>
+                <button
+                  type="button"
+                  onClick={handleCalculateAverage}
+                  disabled={!editingService || fetchingAverage}
+                  className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg transition-colors ${
+                    !editingService || fetchingAverage
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  <Calculator className="w-3 h-3" />
+                  {fetchingAverage ? 'Calculating...' : 'Calculate'}
+                </button>
+              </div>
+              <input
+                type="number"
+                min="1"
+                value={formData.duration_min}
+                onChange={(e) =>
+                  setFormData({ ...formData, duration_min: e.target.value })
+                }
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
             {!fetchingAverage && averageDuration && averageDuration.average_duration !== null && (
               <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <div className="flex items-start justify-between gap-3">
