@@ -251,19 +251,19 @@ export function AttendancePage() {
       </div>
 
       <div className="bg-white rounded-lg shadow mb-2">
-        <div className="p-2 border-b border-gray-200 flex flex-col md:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={navigatePrevious} className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0">
-              <ChevronLeft className="w-5 h-5 md:w-4 md:h-4" />
+        <div className="p-1.5 border-b border-gray-200 flex flex-col md:flex-row items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={navigatePrevious} className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 p-1">
+              <ChevronLeft className="w-4 h-4 md:w-3.5 md:h-3.5" />
             </Button>
-            <h3 className="text-sm md:text-base font-semibold text-gray-900 min-w-[200px] text-center">
+            <h3 className="text-xs md:text-sm font-semibold text-gray-900 min-w-[180px] text-center">
               {periodRange}
             </h3>
-            <Button variant="ghost" size="sm" onClick={navigateNext} className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0">
-              <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
+            <Button variant="ghost" size="sm" onClick={navigateNext} className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 p-1">
+              <ChevronRight className="w-4 h-4 md:w-3.5 md:h-3.5" />
             </Button>
           </div>
-          <Button variant="secondary" size="sm" onClick={navigateToday} className="min-h-[44px] md:min-h-0 w-full md:w-auto">
+          <Button variant="secondary" size="sm" onClick={navigateToday} className="min-h-[44px] md:min-h-0 w-full md:w-auto text-xs">
             Today
           </Button>
         </div>
@@ -282,7 +282,7 @@ export function AttendancePage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left p-1.5 text-xs font-semibold text-gray-900 sticky left-0 bg-white z-10 w-[85px] min-w-[85px] max-w-[85px]">
+                  <th className="text-left p-1 text-[11px] font-semibold text-gray-900 sticky left-0 bg-white z-10 w-[70px] min-w-[70px] max-w-[70px]">
                     Employee
                   </th>
                   {calendarDays.map((day, index) => {
@@ -290,18 +290,18 @@ export function AttendancePage() {
                     return (
                       <th
                         key={index}
-                        className={`text-center p-1 text-xs font-semibold w-[60px] min-w-[60px] max-w-[60px] ${
+                        className={`text-center p-0.5 text-[10px] font-semibold w-[48px] min-w-[48px] max-w-[48px] ${
                           isToday
                             ? 'bg-blue-50 text-blue-700'
                             : 'text-gray-900'
                         }`}
                       >
-                        <div className="text-xs">{day.toLocaleDateString('en-US', { weekday: 'narrow' })}</div>
-                        <div className="text-sm font-bold">{day.getDate()}</div>
+                        <div className="text-[10px]">{day.toLocaleDateString('en-US', { weekday: 'narrow' })}</div>
+                        <div className="text-xs font-bold">{day.getDate()}</div>
                       </th>
                     );
                   })}
-                  <th className="text-right p-1.5 text-xs font-semibold text-gray-900 sticky right-0 bg-white z-10 w-[65px] min-w-[65px] max-w-[65px]">
+                  <th className="text-right p-1 text-[11px] font-semibold text-gray-900 sticky right-0 bg-white z-10 w-[55px] min-w-[55px] max-w-[55px]">
                     Total
                   </th>
                 </tr>
@@ -309,8 +309,10 @@ export function AttendancePage() {
               <tbody>
                 {Object.entries(summary).map(([employeeId, employee]) => (
                   <tr key={employeeId} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="p-1.5 text-xs font-medium text-gray-900 sticky left-0 bg-white w-[85px] min-w-[85px] max-w-[85px]">
-                      {employee.employeeName}
+                    <td className="p-1 text-[11px] font-medium text-gray-900 sticky left-0 bg-white w-[70px] min-w-[70px] max-w-[70px]">
+                      <div className="truncate" title={employee.employeeName}>
+                        {employee.employeeName}
+                      </div>
                     </td>
                     {calendarDays.map((day, index) => {
                       const dateStr = day.toISOString().split('T')[0];
@@ -320,30 +322,30 @@ export function AttendancePage() {
                       return (
                         <td
                           key={index}
-                          className={`p-0.5 text-center align-top w-[60px] min-w-[60px] max-w-[60px] ${
+                          className={`p-0.5 text-center align-top w-[48px] min-w-[48px] max-w-[48px] ${
                             isToday ? 'bg-blue-50' : ''
                           }`}
                         >
                           {sessions && sessions.length > 0 ? (
-                            <div className="space-y-1">
+                            <div className="space-y-0.5">
                               {sessions.map((record, sessionIdx) => (
                                 <div
                                   key={sessionIdx}
-                                  className={`relative group rounded p-1.5 ${
+                                  className={`relative group rounded p-0.5 ${
                                     record.status === 'checked_in'
                                       ? 'bg-green-500 animate-pulse'
                                       : 'bg-gray-200'
                                   }`}
                                 >
-                                  <div className="space-y-0.5">
+                                  <div className="leading-tight">
                                     {sessions.length > 1 && (
-                                      <div className={`text-[10px] font-semibold ${
+                                      <div className={`text-[8px] font-semibold ${
                                         record.status === 'checked_in' ? 'text-white' : 'text-gray-600'
                                       }`}>
                                         S{sessionIdx + 1}
                                       </div>
                                     )}
-                                    <div className={`text-[10px] font-medium ${
+                                    <div className={`text-[9px] ${
                                       record.status === 'checked_in' ? 'text-white' : 'text-gray-700'
                                     }`}>
                                       {formatTimeEST(record.checkInTime, {
@@ -353,7 +355,7 @@ export function AttendancePage() {
                                       })}
                                     </div>
                                     {record.checkOutTime && (
-                                      <div className={`text-[10px] font-medium ${
+                                      <div className={`text-[9px] ${
                                         record.status === 'checked_in'
                                           ? 'text-white'
                                           : record.status === 'auto_checked_out'
@@ -368,7 +370,7 @@ export function AttendancePage() {
                                       </div>
                                     )}
                                     {record.totalHours && (
-                                      <div className={`text-[10px] font-bold ${
+                                      <div className={`text-[9px] font-semibold ${
                                         record.status === 'checked_in' ? 'text-white' : 'text-gray-900'
                                       }`}>
                                         {record.totalHours.toFixed(1)}h
@@ -379,14 +381,14 @@ export function AttendancePage() {
                               ))}
                             </div>
                           ) : (
-                            <div className="text-gray-300">-</div>
+                            <div className="text-gray-300 text-[10px]">-</div>
                           )}
                         </td>
                       );
                     })}
-                    <td className="p-1.5 text-right text-xs font-bold text-gray-900 sticky right-0 bg-white w-[65px] min-w-[65px] max-w-[65px]">
+                    <td className="p-1 text-right text-[11px] font-bold text-gray-900 sticky right-0 bg-white w-[55px] min-w-[55px] max-w-[55px]">
                       <div>{employee.totalHours.toFixed(1)}h</div>
-                      <div className="text-[10px] font-normal text-gray-500">
+                      <div className="text-[9px] font-normal text-gray-500">
                         {employee.daysPresent}d
                       </div>
                     </td>
@@ -398,22 +400,22 @@ export function AttendancePage() {
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow p-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Legend</h3>
-        <div className="flex flex-wrap gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-12 h-8 bg-green-500 animate-pulse rounded"></div>
-            <span className="text-xs text-gray-600">Currently checked in</span>
+      <div className="bg-white rounded-lg shadow p-3">
+        <h3 className="text-xs font-semibold text-gray-900 mb-2">Legend</h3>
+        <div className="flex flex-wrap gap-3">
+          <div className="flex items-center gap-1.5">
+            <div className="w-10 h-6 bg-green-500 animate-pulse rounded"></div>
+            <span className="text-[10px] text-gray-600">Currently checked in</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-12 h-8 bg-gray-200 rounded"></div>
-            <span className="text-xs text-gray-600">Checked out</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-10 h-6 bg-gray-200 rounded"></div>
+            <span className="text-[10px] text-gray-600">Checked out</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-12 h-8 bg-gray-200 rounded flex items-center justify-center">
-              <span className="text-xs font-medium text-orange-600">12:00</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-10 h-6 bg-gray-200 rounded flex items-center justify-center">
+              <span className="text-[9px] font-medium text-orange-600">12:00</span>
             </div>
-            <span className="text-xs text-gray-600">Auto check-out time</span>
+            <span className="text-[10px] text-gray-600">Auto check-out time</span>
           </div>
         </div>
       </div>
