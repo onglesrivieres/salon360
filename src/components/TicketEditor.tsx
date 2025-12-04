@@ -233,11 +233,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   }, [isSelfServiceMode, ticketId]);
 
   useEffect(() => {
-    if (isSelfServiceMode && session?.employee_id && !ticketId && items.length === 0) {
+    if (isSelfServiceMode && session?.employee_id && !ticketId) {
       setLastUsedEmployeeId(session.employee_id);
       setSelectedTechnicianId(session.employee_id);
     }
-  }, [isSelfServiceMode, session, ticketId, items.length]);
+  }, [isSelfServiceMode, session?.employee_id, ticketId]);
 
   async function checkAttendanceAndValidate() {
     if (!session?.employee_id || !selectedStoreId) return;
@@ -1738,9 +1738,14 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                         key={service.store_service_id}
                         type="button"
                         onClick={() => {
+                          const employeeId = selectedTechnicianId || lastUsedEmployeeId;
+                          if (!employeeId) {
+                            showToast('Please wait while loading employee data', 'error');
+                            return;
+                          }
                           setItems([{
                             service_id: service.service_id,
-                            employee_id: selectedTechnicianId || lastUsedEmployeeId,
+                            employee_id: employeeId,
                             qty: '1',
                             price_each: service.price.toString(),
                             tip_customer: '0',
@@ -1759,10 +1764,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     <button
                       type="button"
                       onClick={() => {
+                        const employeeId = selectedTechnicianId || lastUsedEmployeeId;
+                        if (!employeeId) {
+                          showToast('Please wait while loading employee data', 'error');
+                          return;
+                        }
                         setShowCustomService(true);
                         setItems([{
                           service_id: '',
-                          employee_id: selectedTechnicianId || lastUsedEmployeeId,
+                          employee_id: employeeId,
                           qty: '1',
                           price_each: '0',
                           tip_customer: '0',
