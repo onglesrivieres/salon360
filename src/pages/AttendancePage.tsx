@@ -228,6 +228,9 @@ export function AttendancePage() {
 
   const periodRange = `${formatDateEST(parseLocalDate(startDate), { month: 'short', day: 'numeric' })} - ${formatDateEST(parseLocalDate(endDate), { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
+  // Check if this is an individual employee view (not management)
+  const isTechnician = session?.role_permission === 'Technician';
+
   if (session && session.role && !Permissions.endOfDay.canView(session.role)) {
     return (
       <div className="max-w-7xl mx-auto">
@@ -369,7 +372,7 @@ export function AttendancePage() {
                                         })}
                                       </div>
                                     )}
-                                    {record.totalHours && (
+                                    {record.totalHours && !(isTechnician && employee.payType === 'daily') && (
                                       <div className={`text-[9px] font-semibold ${
                                         record.status === 'checked_in' ? 'text-white' : 'text-gray-900'
                                       }`}>
@@ -387,10 +390,22 @@ export function AttendancePage() {
                       );
                     })}
                     <td className="p-1 text-right text-[11px] font-bold text-gray-900 sticky right-0 bg-white w-[55px] min-w-[55px] max-w-[55px]">
-                      <div>{employee.totalHours.toFixed(1)}h</div>
-                      <div className="text-[9px] font-normal text-gray-500">
-                        {employee.daysPresent}d
-                      </div>
+                      {isTechnician ? (
+                        // Individual employee view - show only relevant metric based on pay type
+                        employee.payType === 'daily' ? (
+                          <div>{employee.daysPresent}d</div>
+                        ) : (
+                          <div>{employee.totalHours.toFixed(1)}h</div>
+                        )
+                      ) : (
+                        // Management view - show both metrics
+                        <>
+                          <div>{employee.totalHours.toFixed(1)}h</div>
+                          <div className="text-[9px] font-normal text-gray-500">
+                            {employee.daysPresent}d
+                          </div>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}
