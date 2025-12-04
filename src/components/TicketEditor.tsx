@@ -1607,7 +1607,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             </div>
           )}
 
-          <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+          <div className="border border-gray-200 rounded-lg p-2 bg-gray-50">
             {isEditingOpeningTime ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
@@ -1641,74 +1641,75 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 </div>
               </div>
             ) : !ticketId ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
-                  <label className="text-xs font-medium text-gray-700 flex-shrink-0">
-                    Opening Time
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={convertToESTDatetimeString(formData.opening_time || new Date().toISOString())}
-                    onChange={(e) => {
-                      const utcDateString = convertESTDatetimeStringToUTC(e.target.value);
-                      setFormData({ ...formData, opening_time: utcDateString });
-                    }}
-                    className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    disabled={isReadOnly}
-                  />
-                </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                <label className="text-xs font-medium text-gray-700 flex-shrink-0">
+                  Opening Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={convertToESTDatetimeString(formData.opening_time || new Date().toISOString())}
+                  onChange={(e) => {
+                    const utcDateString = convertESTDatetimeStringToUTC(e.target.value);
+                    setFormData({ ...formData, opening_time: utcDateString });
+                  }}
+                  className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isReadOnly}
+                />
               </div>
             ) : (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                {/* Opening Time */}
+                <div className="flex items-center gap-1.5 flex-1">
                   <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
                   <label className="text-xs font-medium text-gray-700 flex-shrink-0">
                     Opening Time
                   </label>
-                  <p className="text-sm text-gray-900 font-medium">
+                  <p className="text-sm text-gray-900 font-medium truncate">
                     {formData.opening_time ? formatDateTimeEST(formData.opening_time) : 'Not set'}
                   </p>
+                  {!isReadOnly && session && session.role_permission && (
+                    Permissions.tickets.canEdit(session.role_permission, false, false) && !isEditingOpeningTime && (
+                      <button
+                        type="button"
+                        onClick={handleEditOpeningTime}
+                        className="text-blue-600 hover:text-blue-700 p-1 rounded transition-colors ml-auto"
+                        title="Edit opening time"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                    )
+                  )}
                 </div>
-                {!isReadOnly && session && session.role_permission && (
-                  Permissions.tickets.canEdit(session.role_permission, false, false) && !isEditingOpeningTime && (
-                    <button
-                      type="button"
-                      onClick={handleEditOpeningTime}
-                      className="text-blue-600 hover:text-blue-700 p-1 rounded transition-colors"
-                      title="Edit opening time"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  )
-                )}
-              </div>
-            )}
 
-            {(ticket?.completed_at || ticket?.closed_at) && (
-              <div className="mt-3 pt-3 border-t border-gray-300">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                {/* Divider */}
+                {(ticket?.completed_at || ticket?.closed_at) && (
+                  <div className="hidden sm:block w-px h-6 bg-gray-300" />
+                )}
+
+                {/* Completion Time */}
+                {(ticket?.completed_at || ticket?.closed_at) && (
+                  <div className="flex items-center gap-1.5 flex-1">
                     <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
                     <label className="text-xs font-medium text-gray-700 flex-shrink-0">
                       Completion Time
                     </label>
-                    <p className="text-sm text-gray-900 font-medium">
+                    <p className="text-sm text-gray-900 font-medium truncate">
                       {ticket.completed_at ? formatDateTimeEST(ticket.completed_at) : 'Not completed'}
                     </p>
+                    {ticket.completed_at && (
+                      <span
+                        className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ml-auto ${
+                          isCompletionTimeDeviant()
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}
+                      >
+                        {formatCompletionDuration(calculateCompletionDuration())}
+                      </span>
+                    )}
                   </div>
-                  {ticket.completed_at && (
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
-                        isCompletionTimeDeviant()
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}
-                    >
-                      {formatCompletionDuration(calculateCompletionDuration())}
-                    </span>
-                  )}
-                </div>
+                )}
               </div>
             )}
           </div>
