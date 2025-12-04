@@ -513,16 +513,18 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                   ticket.opened_by_role &&
                   ['Technician', 'Spa Expert', 'Supervisor'].includes(ticket.opened_by_role) &&
                   !ticket.reviewed_by_receptionist &&
-                  !ticket.closed_at &&
-                  !ticket.completed_at;
+                  !ticket.closed_at;
 
-                const isOpenTicket = !ticket.closed_at && !ticket.completed_at;
+                const isUnclosedTicket = !ticket.closed_at;
+                const isClosedTicket = !!ticket.closed_at;
 
-                let rowBackgroundClass = 'hover:bg-gray-50';
+                let rowBackgroundClass = 'bg-gray-100 hover:bg-gray-200';
                 if (isSelfServiceTicket) {
                   rowBackgroundClass = 'bg-green-50 hover:bg-green-100';
-                } else if (isOpenTicket) {
+                } else if (isUnclosedTicket) {
                   rowBackgroundClass = 'bg-yellow-50 hover:bg-yellow-100 animate-pulse';
+                } else if (isClosedTicket) {
+                  rowBackgroundClass = 'bg-gray-100 hover:bg-gray-200';
                 }
 
                 return (
@@ -620,20 +622,23 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
             ticket.opened_by_role &&
             ['Technician', 'Spa Expert', 'Supervisor'].includes(ticket.opened_by_role) &&
             !ticket.reviewed_by_receptionist &&
-            !ticket.closed_at &&
-            !ticket.completed_at;
+            !ticket.closed_at;
 
-          const isOpenTicket = !ticket.closed_at && !ticket.completed_at;
+          const isUnclosedTicket = !ticket.closed_at;
+          const isClosedTicket = !!ticket.closed_at;
 
-          let cardBackgroundClass = 'bg-white';
-          let cardHoverClass = 'active:bg-gray-50';
+          let cardBackgroundClass = 'bg-gray-100';
+          let cardHoverClass = 'active:bg-gray-200';
 
           if (isSelfServiceTicket) {
             cardBackgroundClass = 'bg-green-50';
             cardHoverClass = 'active:bg-green-100';
-          } else if (isOpenTicket) {
+          } else if (isUnclosedTicket) {
             cardBackgroundClass = 'bg-yellow-50 animate-pulse';
             cardHoverClass = 'active:bg-yellow-100';
+          } else if (isClosedTicket) {
+            cardBackgroundClass = 'bg-gray-100';
+            cardHoverClass = 'active:bg-gray-200';
           }
 
           return (
