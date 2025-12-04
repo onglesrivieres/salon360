@@ -1230,14 +1230,22 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       await handleSave();
 
       const closerRoles = session?.role || [];
+      const now = new Date().toISOString();
+
+      const updateData: any = {
+        closed_at: now,
+        closed_by: session?.employee_id,
+        closed_by_roles: closerRoles,
+      };
+
+      if (!ticket.completed_at) {
+        updateData.completed_at = now;
+        updateData.completed_by = session?.employee_id;
+      }
 
       const { error } = await supabase
         .from('sale_tickets')
-        .update({
-          closed_at: new Date().toISOString(),
-          closed_by: session?.employee_id,
-          closed_by_roles: closerRoles,
-        })
+        .update(updateData)
         .eq('id', ticketId);
 
       if (error) throw error;
