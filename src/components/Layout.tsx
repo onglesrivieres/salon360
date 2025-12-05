@@ -190,6 +190,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
       const hasOpeningCash = (
         (data.opening_cash_amount || 0) > 0 ||
+        (data.bill_100 || 0) > 0 ||
+        (data.bill_50 || 0) > 0 ||
         (data.bill_20 || 0) > 0 ||
         (data.bill_10 || 0) > 0 ||
         (data.bill_5 || 0) > 0 ||
