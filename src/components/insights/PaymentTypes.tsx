@@ -4,6 +4,7 @@ import { DateRange } from '../../lib/timeFilters';
 import { useCardPaymentAnalysis } from '../../hooks/useSalesData';
 import { TenderTypesChart } from './TenderTypesChart';
 import { CardPaymentTable } from './CardPaymentTable';
+import { getCurrentDateEST } from '../../lib/timezone';
 
 interface PaymentTypesProps {
   dateRange: DateRange;
@@ -40,7 +41,7 @@ export function PaymentTypes({ dateRange }: PaymentTypesProps) {
     return `${startStr} - ${endStr}`;
   };
 
-  const isToday = dateRange.startDate === new Date().toISOString().split('T')[0];
+  const isToday = dateRange.startDate === getCurrentDateEST();
 
   return (
     <div className="space-y-6">

@@ -4,7 +4,7 @@ import { supabase, AttendanceRecord } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/Button';
 import { useToast } from './ui/Toast';
-import { formatTimeEST, formatDateEST } from '../lib/timezone';
+import { formatTimeEST, formatDateEST, getCurrentDateEST } from '../lib/timezone';
 
 interface CheckInOutModalProps {
   onClose: () => void;
@@ -28,7 +28,7 @@ export function CheckInOutModal({ onClose, storeId, onCheckInComplete, onCheckOu
     if (!session?.employee_id) return;
 
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentDateEST();
 
       const { data, error } = await supabase
         .from('attendance_records')

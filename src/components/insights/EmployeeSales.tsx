@@ -3,6 +3,7 @@ import { Printer, Download, MoreVertical, ChevronDown, ChevronLeft, ChevronRight
 import { DateRange } from '../../lib/timeFilters';
 import { useEmployeeSalesData } from '../../hooks/useSalesData';
 import { formatCurrency, formatNumber } from '../../lib/formatters';
+import { getCurrentDateEST } from '../../lib/timezone';
 
 interface EmployeeSalesProps {
   dateRange: DateRange;
@@ -98,7 +99,7 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
       : (bValue as number) - (aValue as number);
   });
 
-  const isToday = dateRange.startDate === new Date().toISOString().split('T')[0];
+  const isToday = dateRange.startDate === getCurrentDateEST();
 
   const InfoTooltip = ({ text }: { text: string }) => (
     <Info className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" title={text} />

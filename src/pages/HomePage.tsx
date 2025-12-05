@@ -81,7 +81,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
           if (payType === 'hourly' || payType === 'daily') {
             // Check if they're checked in today
-            const today = new Date().toISOString().split('T')[0];
+            const today = getCurrentDateEST();
             const { data: attendance } = await supabase
               .from('attendance_records')
               .select('status')

@@ -6,6 +6,7 @@ import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Modal } from '../components/ui/Modal';
+import { getCurrentDateEST } from '../lib/timezone';
 
 export function PendingApprovalsPage() {
   const [tickets, setTickets] = useState<PendingApprovalTicket[]>([]);
@@ -45,7 +46,7 @@ export function PendingApprovalsPage() {
     if (!selectedStoreId) return;
 
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentDateEST();
       const { data, error } = await supabase.rpc('get_approval_statistics', {
         p_store_id: selectedStoreId,
         p_start_date: today,

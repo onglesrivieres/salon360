@@ -40,7 +40,7 @@ function AppContent() {
   // Set default page to tickets for all users
   const [currentPage, setCurrentPage] = useState<Page>('tickets');
   const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split('T')[0]
+    getCurrentDateEST()
   );
 
   // Lock Cashiers to today's date only

@@ -6,6 +6,7 @@ import { formatCurrency, formatNumber } from '../../lib/formatters';
 import { SalesReportChart } from './SalesReportChart';
 import { SalesBreakdownTable } from './SalesBreakdownTable';
 import { TenderTypesTable } from './TenderTypesTable';
+import { getCurrentDateEST } from '../../lib/timezone';
 
 interface SalesReportProps {
   dateRange: DateRange;
@@ -15,7 +16,7 @@ export function SalesReport({ dateRange }: SalesReportProps) {
   const reportData = useSalesReportData(dateRange);
   const [showFilters, setShowFilters] = useState(false);
 
-  const isToday = dateRange.startDate === new Date().toISOString().split('T')[0];
+  const isToday = dateRange.startDate === getCurrentDateEST();
 
   return (
     <div className="space-y-6">
