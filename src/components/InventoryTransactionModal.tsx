@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Package, PackagePlus } from 'lucide-react';
+import { X, Plus, Trash2, Package, PackagePlus, Check } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -7,6 +7,7 @@ import { Select } from './ui/Select';
 import { useToast } from './ui/Toast';
 import { supabase, InventoryItem, Technician, PurchaseUnit, Supplier } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { InventoryItemModal } from './InventoryItemModal';
 
 interface InventoryTransactionModalProps {
   isOpen: boolean;
@@ -56,6 +57,9 @@ export function InventoryTransactionModal({
   const [employees, setEmployees] = useState<Technician[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [purchaseUnits, setPurchaseUnits] = useState<Record<string, PurchaseUnit[]>>({});
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [addingPurchaseUnitForIndex, setAddingPurchaseUnitForIndex] = useState<number | null>(null);
+  const [newPurchaseUnit, setNewPurchaseUnit] = useState({ unit_name: '', multiplier: '' });
 
   useEffect(() => {
     if (isOpen && selectedStoreId) {
@@ -217,6 +221,94 @@ export function InventoryTransactionModal({
       console.error('Error fetching last used purchase unit:', error);
       return null;
     }
+  }
+
+  function handleItemDropdownChange(index: number, value: string) {
+    if (value === '__add_new__') {
+      setShowAddItemModal(true);
+    } else {
+      handleItemChange(index, 'item_id', value);
+    }
+  }
+
+  function handleItemAdded() {
+    fetchInventoryItems();
+    setShowAddItemModal(false);
+  }
+
+  function handlePurchaseUnitDropdownChange(index: number, value: string) {
+    if (value === '__add_new__') {
+      setAddingPurchaseUnitForIndex(index);
+      setNewPurchaseUnit({ unit_name: '', multiplier: '' });
+    } else {
+      handleItemChange(index, 'purchase_unit_id', value);
+    }
+  }
+
+  async function handleAddPurchaseUnit(index: number) {
+    const item = items[index];
+    if (!item.item_id || !selectedStoreId) {
+      showToast('Please select an item first', 'error');
+      return;
+    }
+
+    if (!newPurchaseUnit.unit_name.trim() || !newPurchaseUnit.multiplier) {
+      showToast('Please fill in all fields', 'error');
+      return;
+    }
+
+    const multiplier = parseFloat(newPurchaseUnit.multiplier);
+    if (multiplier <= 0) {
+      showToast('Multiplier must be greater than zero', 'error');
+      return;
+    }
+
+    try {
+      const invItem = inventoryItems.find(i => i.id === item.item_id);
+      if (!invItem?.master_item_id) {
+        showToast('Item does not have a master item ID', 'error');
+        return;
+      }
+
+      const existingUnits = purchaseUnits[invItem.master_item_id] || [];
+      const isFirstUnit = existingUnits.length === 0;
+
+      const { data, error } = await supabase
+        .from('store_product_purchase_units')
+        .insert({
+          store_id: selectedStoreId,
+          master_item_id: invItem.master_item_id,
+          unit_name: newPurchaseUnit.unit_name.trim(),
+          multiplier,
+          is_default: isFirstUnit,
+          display_order: existingUnits.length,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      showToast('Purchase unit added successfully', 'success');
+
+      const updatedUnits = await fetchPurchaseUnitsForItem(invItem.master_item_id);
+      setPurchaseUnits(prev => ({ ...prev, [invItem.master_item_id!]: updatedUnits }));
+
+      handleItemChange(index, 'purchase_unit_id', data.id);
+      setAddingPurchaseUnitForIndex(null);
+      setNewPurchaseUnit({ unit_name: '', multiplier: '' });
+    } catch (error: any) {
+      console.error('Error adding purchase unit:', error);
+      if (error.code === '23505') {
+        showToast('A purchase unit with this name already exists', 'error');
+      } else {
+        showToast('Failed to add purchase unit', 'error');
+      }
+    }
+  }
+
+  function cancelAddPurchaseUnit() {
+    setAddingPurchaseUnitForIndex(null);
+    setNewPurchaseUnit({ unit_name: '', multiplier: '' });
   }
 
   function handleAddItem() {
@@ -430,6 +522,7 @@ export function InventoryTransactionModal({
   }
 
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
@@ -544,11 +637,17 @@ export function InventoryTransactionModal({
                       </label>
                       <Select
                         value={item.item_id}
-                        onChange={(e) => handleItemChange(index, 'item_id', e.target.value)}
+                        onChange={(e) => handleItemDropdownChange(index, e.target.value)}
                         required={index === 0}
                         className="text-sm"
                       >
                         <option value="">Select Item</option>
+                        <option value="__add_new__" className="text-blue-600 font-medium">
+                          + Add New Item
+                        </option>
+                        {inventoryItems.length > 0 && (
+                          <option disabled>──────────</option>
+                        )}
                         {inventoryItems.map((invItem) => (
                           <option key={invItem.id} value={invItem.id}>
                             {invItem.code} - {invItem.name}
@@ -567,19 +666,63 @@ export function InventoryTransactionModal({
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Purchase Unit {index === 0 && <span className="text-red-500">*</span>}
                         </label>
-                        <Select
-                          value={item.purchase_unit_id}
-                          onChange={(e) => handleItemChange(index, 'purchase_unit_id', e.target.value)}
-                          required={index === 0}
-                          className="text-sm"
-                        >
-                          <option value="">Select Unit</option>
-                          {itemPurchaseUnits.map((unit) => (
-                            <option key={unit.id} value={unit.id}>
-                              {unit.unit_name} (x{unit.multiplier})
+                        {addingPurchaseUnitForIndex === index ? (
+                          <div className="flex gap-1">
+                            <Input
+                              type="text"
+                              value={newPurchaseUnit.unit_name}
+                              onChange={(e) => setNewPurchaseUnit({ ...newPurchaseUnit, unit_name: e.target.value })}
+                              placeholder="e.g., Pack of 6"
+                              className="text-sm flex-1"
+                              autoFocus
+                            />
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0.01"
+                              value={newPurchaseUnit.multiplier}
+                              onChange={(e) => setNewPurchaseUnit({ ...newPurchaseUnit, multiplier: e.target.value })}
+                              placeholder="x6"
+                              className="text-sm w-16"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAddPurchaseUnit(index)}
+                              className="text-green-600 hover:text-green-700 p-1"
+                              title="Save"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelAddPurchaseUnit}
+                              className="text-gray-600 hover:text-gray-700 p-1"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <Select
+                            value={item.purchase_unit_id}
+                            onChange={(e) => handlePurchaseUnitDropdownChange(index, e.target.value)}
+                            required={index === 0}
+                            className="text-sm"
+                          >
+                            <option value="">Select Unit</option>
+                            <option value="__add_new__" className="text-blue-600 font-medium">
+                              + Add New Purchase Unit
                             </option>
-                          ))}
-                        </Select>
+                            {itemPurchaseUnits.length > 0 && (
+                              <option disabled>──────────</option>
+                            )}
+                            {itemPurchaseUnits.map((unit) => (
+                              <option key={unit.id} value={unit.id}>
+                                {unit.unit_name} (x{unit.multiplier})
+                              </option>
+                            ))}
+                          </Select>
+                        )}
                       </div>
                     )}
 
@@ -725,16 +868,6 @@ export function InventoryTransactionModal({
                       </div>
                     </div>
                   )}
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
-                    <Input
-                      value={item.notes}
-                      onChange={(e) => handleItemChange(index, 'notes', e.target.value)}
-                      placeholder="Optional"
-                      className="text-sm"
-                    />
-                  </div>
                 </div>
               );
             })}
@@ -763,5 +896,12 @@ export function InventoryTransactionModal({
         </p>
       </form>
     </Modal>
+
+    <InventoryItemModal
+      isOpen={showAddItemModal}
+      onClose={() => setShowAddItemModal(false)}
+      onSuccess={handleItemAdded}
+    />
+    </>
   );
 }
