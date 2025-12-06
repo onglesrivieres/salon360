@@ -125,7 +125,7 @@ export function SupplierModal({ isOpen, onClose, onSuccess }: SupplierModalProps
       if (error.code === '23505') {
         showToast('Supplier name already exists', 'error');
       } else if (error.code === '42501') {
-        showToast('Permission denied. Only Managers and Owners can add suppliers.', 'error');
+        showToast('Permission denied. Only Admins, Managers, and Owners can add suppliers.', 'error');
       } else if (error.message) {
         showToast(`Error: ${error.message}`, 'error');
       } else {
