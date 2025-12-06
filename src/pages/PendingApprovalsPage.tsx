@@ -141,6 +141,21 @@ export function PendingApprovalsPage() {
   async function handleApproveInventory(approval: PendingInventoryApproval) {
     if (!session?.employee_id) return;
 
+    if (approval.requested_by_id === session.employee_id) {
+      await supabase.from('inventory_approval_audit_log').insert({
+        employee_id: session.employee_id,
+        transaction_id: approval.id,
+        store_id: selectedStoreId,
+        action_attempted: 'approve',
+        transaction_type: approval.transaction_type,
+        transaction_number: approval.transaction_number,
+        blocked_reason: 'Self-approval not allowed',
+      });
+
+      showToast('You cannot approve transactions you created', 'error');
+      return;
+    }
+
     try {
       setProcessing(true);
       const userRoles = session.role || [];
@@ -178,7 +193,24 @@ export function PendingApprovalsPage() {
     }
   }
 
-  function handleRejectInventoryClick(approval: PendingInventoryApproval) {
+  async function handleRejectInventoryClick(approval: PendingInventoryApproval) {
+    if (!session?.employee_id) return;
+
+    if (approval.requested_by_id === session.employee_id) {
+      await supabase.from('inventory_approval_audit_log').insert({
+        employee_id: session.employee_id,
+        transaction_id: approval.id,
+        store_id: selectedStoreId,
+        action_attempted: 'reject',
+        transaction_type: approval.transaction_type,
+        transaction_number: approval.transaction_number,
+        blocked_reason: 'Self-rejection not allowed',
+      });
+
+      showToast('You cannot reject transactions you created', 'error');
+      return;
+    }
+
     setSelectedInventory(approval);
     setRejectionReason('');
     setShowInventoryRejectModal(true);
@@ -214,6 +246,10 @@ export function PendingApprovalsPage() {
     } finally {
       setProcessing(false);
     }
+  }
+
+  function isOwnTransaction(approval: PendingInventoryApproval): boolean {
+    return approval.requested_by_id === session?.employee_id;
   }
 
   function getUrgencyLevel(hoursRemaining: number): 'urgent' | 'warning' | 'normal' {
@@ -399,73 +435,90 @@ export function PendingApprovalsPage() {
             </p>
           </div>
           <div className="space-y-3">
-            {inventoryApprovals.map((approval) => (
-              <div
-                key={approval.id}
-                className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      {approval.transaction_type === 'in' ? (
-                        <PackagePlus className="w-5 h-5 text-green-600" />
-                      ) : (
-                        <PackageMinus className="w-5 h-5 text-orange-600" />
-                      )}
-                      <span className="font-semibold text-gray-900">
-                        {approval.transaction_number}
-                      </span>
-                      <Badge variant={approval.transaction_type === 'in' ? 'success' : 'default'}>
-                        {approval.transaction_type.toUpperCase()}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      Requested by: <span className="font-medium">{approval.requested_by_name}</span>
-                      {approval.recipient_name && (
-                        <span> → Recipient: <span className="font-medium">{approval.recipient_name}</span></span>
-                      )}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {approval.item_count} item{approval.item_count !== 1 ? 's' : ''} • Total value: ${approval.total_value?.toFixed(2) || '0.00'}
-                    </p>
-                    {approval.notes && (
-                      <p className="text-sm text-gray-600 mt-1 italic">{approval.notes}</p>
-                    )}
-                    <div className="flex items-center gap-2 mt-2">
-                      {approval.requires_manager_approval && !approval.manager_approved && (
-                        <Badge variant="warning" className="text-xs">
-                          Needs Manager Approval
+            {inventoryApprovals.map((approval) => {
+              const isOwn = isOwnTransaction(approval);
+              return (
+                <div
+                  key={approval.id}
+                  className={`bg-white rounded-lg shadow p-4 border-l-4 ${
+                    isOwn ? 'border-gray-400 opacity-75' : 'border-blue-500'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        {approval.transaction_type === 'in' ? (
+                          <PackagePlus className="w-5 h-5 text-green-600" />
+                        ) : (
+                          <PackageMinus className="w-5 h-5 text-orange-600" />
+                        )}
+                        <span className="font-semibold text-gray-900">
+                          {approval.transaction_number}
+                        </span>
+                        <Badge variant={approval.transaction_type === 'in' ? 'success' : 'default'}>
+                          {approval.transaction_type.toUpperCase()}
                         </Badge>
+                        {isOwn && (
+                          <Badge variant="secondary" className="bg-gray-200 text-gray-700">
+                            Created by you
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Requested by: <span className="font-medium">{approval.requested_by_name}</span>
+                        {approval.recipient_name && (
+                          <span> → Recipient: <span className="font-medium">{approval.recipient_name}</span></span>
+                        )}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {approval.item_count} item{approval.item_count !== 1 ? 's' : ''} • Total value: ${approval.total_value?.toFixed(2) || '0.00'}
+                      </p>
+                      {approval.notes && (
+                        <p className="text-sm text-gray-600 mt-1 italic">{approval.notes}</p>
                       )}
-                      {approval.requires_recipient_approval && !approval.recipient_approved && (
-                        <Badge variant="warning" className="text-xs">
-                          Needs Recipient Approval
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-2 mt-2">
+                        {approval.requires_manager_approval && !approval.manager_approved && (
+                          <Badge variant="warning" className="text-xs">
+                            Needs Manager Approval
+                          </Badge>
+                        )}
+                        {approval.requires_recipient_approval && !approval.recipient_approved && (
+                          <Badge variant="warning" className="text-xs">
+                            Needs Recipient Approval
+                          </Badge>
+                        )}
+                        {isOwn && (
+                          <p className="text-xs text-gray-500 italic">
+                            Self-approval not allowed for audit compliance
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleApproveInventory(approval)}
-                      disabled={processing}
-                    >
-                      <CheckCircle className="w-4 h-4 mr-1" />
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleRejectInventoryClick(approval)}
-                      disabled={processing}
-                    >
-                      <XCircle className="w-4 h-4 mr-1" />
-                      Reject
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleApproveInventory(approval)}
+                        disabled={processing || isOwn}
+                        title={isOwn ? 'You cannot approve transactions you created' : 'Approve transaction'}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleRejectInventoryClick(approval)}
+                        disabled={processing || isOwn}
+                        title={isOwn ? 'You cannot reject transactions you created' : 'Reject transaction'}
+                      >
+                        <XCircle className="w-4 h-4 mr-1" />
+                        Reject
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
