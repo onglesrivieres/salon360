@@ -8,7 +8,6 @@ import { useToast } from './ui/Toast';
 import { supabase, InventoryItem, Technician, PurchaseUnit, Supplier } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { InventoryItemModal } from './InventoryItemModal';
-import { PREDEFINED_UNITS } from '../lib/constants';
 
 interface InventoryTransactionModalProps {
   isOpen: boolean;
@@ -243,67 +242,8 @@ export function InventoryTransactionModal({
     if (value === '__add_new__') {
       setAddingPurchaseUnitForIndex(index);
       setNewPurchaseUnit({ unit_name: '', multiplier: '' });
-    } else if (value.startsWith('__predefined__')) {
-      const unitName = value.replace('__predefined__', '');
-      handlePredefinedUnitSelection(index, unitName);
     } else {
       handleItemChange(index, 'purchase_unit_id', value);
-    }
-  }
-
-  async function handlePredefinedUnitSelection(index: number, unitName: string) {
-    const item = items[index];
-    if (!item.item_id || !selectedStoreId) {
-      showToast('Please select an item first', 'error');
-      return;
-    }
-
-    try {
-      const invItem = inventoryItems.find(i => i.id === item.item_id);
-      if (!invItem?.master_item_id) {
-        showToast('Item does not have a master item ID', 'error');
-        return;
-      }
-
-      const existingUnits = purchaseUnits[invItem.master_item_id] || [];
-
-      const existingUnit = existingUnits.find(
-        u => u.unit_name.toLowerCase() === unitName.toLowerCase()
-      );
-
-      if (existingUnit) {
-        handleItemChange(index, 'purchase_unit_id', existingUnit.id);
-        return;
-      }
-
-      const isFirstUnit = existingUnits.length === 0;
-
-      const { data, error } = await supabase
-        .from('store_product_purchase_units')
-        .insert({
-          store_id: selectedStoreId,
-          master_item_id: invItem.master_item_id,
-          unit_name: unitName,
-          multiplier: 1,
-          is_default: isFirstUnit,
-          display_order: existingUnits.length,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const updatedUnits = await fetchPurchaseUnitsForItem(invItem.master_item_id);
-      setPurchaseUnits(prev => ({ ...prev, [invItem.master_item_id!]: updatedUnits }));
-
-      handleItemChange(index, 'purchase_unit_id', data.id);
-    } catch (error: any) {
-      console.error('Error adding predefined purchase unit:', error);
-      if (error.code === '23505') {
-        showToast('A purchase unit with this name already exists', 'error');
-      } else {
-        showToast('Failed to add purchase unit', 'error');
-      }
     }
   }
 
@@ -791,12 +731,6 @@ export function InventoryTransactionModal({
                             <option value="__add_new__" className="text-blue-600 font-medium">
                               + Add New Purchase Unit
                             </option>
-                            <option disabled>──────────</option>
-                            {PREDEFINED_UNITS.map((unitName) => (
-                              <option key={unitName} value={`__predefined__${unitName}`}>
-                                {unitName}
-                              </option>
-                            ))}
                             {itemPurchaseUnits.length > 0 && (
                               <option disabled>──────────</option>
                             )}

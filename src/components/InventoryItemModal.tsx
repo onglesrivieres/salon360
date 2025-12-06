@@ -10,7 +10,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { SupplierModal } from './SupplierModal';
 import { PurchaseUnitManager } from './PurchaseUnitManager';
 import { Permissions } from '../lib/permissions';
-import { PREDEFINED_UNITS } from '../lib/constants';
 
 interface InventoryItemModalProps {
   isOpen: boolean;
@@ -28,6 +27,17 @@ const CATEGORIES = [
   'Cleaning',
   'PPE',
   'Other',
+];
+
+const UNITS = [
+  'piece',
+  'bottle',
+  'box',
+  'pack',
+  'gallon',
+  'liter',
+  'set',
+  'pair',
 ];
 
 export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: InventoryItemModalProps) {
@@ -356,7 +366,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
               onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
               disabled={isUsingMasterItem}
             >
-              {PREDEFINED_UNITS.map((unit) => (
+              {UNITS.map((unit) => (
                 <option key={unit} value={unit}>
                   {unit}
                 </option>
