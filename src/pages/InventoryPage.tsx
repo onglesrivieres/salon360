@@ -28,9 +28,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { InventoryItemModal } from '../components/InventoryItemModal';
 import { InventoryTransactionModal } from '../components/InventoryTransactionModal';
+import { EmployeeDistributionModal } from '../components/EmployeeDistributionModal';
 import { formatDateTimeEST } from '../lib/timezone';
 
-type Tab = 'items' | 'transactions';
+type Tab = 'items' | 'transactions' | 'lots' | 'distributions';
 type ViewMode = 'grid' | 'table';
 type SortColumn = 'code' | 'supplier' | 'brand' | 'name' | 'category' | 'quantity_on_hand' | 'reorder_level' | 'unit_cost' | 'total_value';
 type SortDirection = 'asc' | 'desc';
@@ -51,6 +52,7 @@ export function InventoryPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [showItemModal, setShowItemModal] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [showDistributionModal, setShowDistributionModal] = useState(false);
   const [transactionType, setTransactionType] = useState<'in' | 'out' | undefined>(undefined);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const { showToast } = useToast();
@@ -60,6 +62,7 @@ export function InventoryPage() {
   const canEditItems = session?.role && Permissions.inventory.canEditItems(session.role);
   const canCreateTransactions =
     session?.role && Permissions.inventory.canCreateTransactions(session.role);
+  const canDistribute = session?.role && Permissions.inventory.canDistribute(session.role);
 
   useEffect(() => {
     if (selectedStoreId) {
@@ -311,10 +314,10 @@ export function InventoryPage() {
       )}
 
       <div className="mb-6 border-b border-gray-200">
-        <div className="flex gap-4">
+        <div className="flex gap-4 overflow-x-auto">
           <button
             onClick={() => setActiveTab('items')}
-            className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'items'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
@@ -327,7 +330,7 @@ export function InventoryPage() {
           </button>
           <button
             onClick={() => setActiveTab('transactions')}
-            className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'transactions'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
@@ -338,6 +341,36 @@ export function InventoryPage() {
               <span>Transactions ({transactions.length})</span>
             </div>
           </button>
+          {canDistribute && (
+            <>
+              <button
+                onClick={() => setActiveTab('lots')}
+                className={`px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === 'lots'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <PackagePlus className="w-4 h-4" />
+                  <span>Lots</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('distributions')}
+                className={`px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === 'distributions'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <PackageMinus className="w-4 h-4" />
+                  <span>Distributions</span>
+                </div>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -806,7 +839,7 @@ export function InventoryPage() {
               )}
             </div>
             {canCreateTransactions && (
-              <div className="flex gap-2 ml-auto">
+              <div className="flex gap-2 ml-auto flex-wrap">
                 <Button
                   onClick={handleOpenInventoryIn}
                   className="bg-green-600 hover:bg-green-700 text-white"
@@ -821,6 +854,15 @@ export function InventoryPage() {
                   <PackageMinus className="w-4 h-4 mr-2" />
                   Inventory Out
                 </Button>
+                {canDistribute && (
+                  <Button
+                    onClick={() => setShowDistributionModal(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <PackagePlus className="w-4 h-4 mr-2" />
+                    Distribute to Employee
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -902,6 +944,32 @@ export function InventoryPage() {
         </div>
       )}
 
+      {activeTab === 'lots' && (
+        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+          <PackagePlus className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">Purchase Lots</h3>
+          <p className="text-gray-500 mb-4">
+            View all purchase lots with FIFO cost tracking
+          </p>
+          <p className="text-sm text-gray-400">
+            Full lot tracking interface coming soon
+          </p>
+        </div>
+      )}
+
+      {activeTab === 'distributions' && (
+        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+          <PackageMinus className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">Employee Distributions</h3>
+          <p className="text-gray-500 mb-4">
+            View distribution history and chain of custody
+          </p>
+          <p className="text-sm text-gray-400">
+            Full distribution tracking interface coming soon
+          </p>
+        </div>
+      )}
+
       <InventoryItemModal
         isOpen={showItemModal}
         onClose={handleItemModalClose}
@@ -914,6 +982,15 @@ export function InventoryPage() {
         onClose={handleTransactionModalClose}
         onSuccess={handleTransactionSuccess}
         initialTransactionType={transactionType}
+      />
+
+      <EmployeeDistributionModal
+        isOpen={showDistributionModal}
+        onClose={() => setShowDistributionModal(false)}
+        onSuccess={() => {
+          fetchItems();
+          fetchTransactions();
+        }}
       />
     </div>
   );

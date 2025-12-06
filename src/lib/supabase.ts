@@ -437,6 +437,148 @@ export interface PendingInventoryApproval {
   total_value: number;
 }
 
+export interface InventoryPurchaseLot {
+  id: string;
+  lot_number: string;
+  store_id: string;
+  master_item_id: string;
+  supplier_id?: string;
+  quantity_received: number;
+  quantity_remaining: number;
+  unit_cost: number;
+  purchase_date: string;
+  expiration_date?: string;
+  batch_number?: string;
+  invoice_reference?: string;
+  notes: string;
+  status: 'active' | 'depleted' | 'expired' | 'archived';
+  created_by_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryPurchaseLotWithDetails extends InventoryPurchaseLot {
+  item?: MasterInventoryItem;
+  item_name?: string;
+  item_code?: string;
+  supplier_name?: string;
+  created_by_name?: string;
+}
+
+export interface EmployeeInventory {
+  id: string;
+  employee_id: string;
+  store_id: string;
+  master_item_id: string;
+  quantity_on_hand: number;
+  total_value: number;
+  last_audit_date?: string;
+  last_audit_variance?: number;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmployeeInventoryWithDetails extends EmployeeInventory {
+  item?: MasterInventoryItem;
+  item_name?: string;
+  item_code?: string;
+  item_category?: string;
+  item_unit?: string;
+  employee_name?: string;
+  average_cost?: number;
+  lot_count?: number;
+}
+
+export interface EmployeeInventoryLot {
+  id: string;
+  employee_id: string;
+  store_id: string;
+  master_item_id: string;
+  lot_id: string;
+  quantity: number;
+  unit_cost: number;
+  distributed_date: string;
+  expected_depletion_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryDistribution {
+  id: string;
+  distribution_number: string;
+  store_id: string;
+  master_item_id: string;
+  lot_id: string;
+  from_type: 'store' | 'employee';
+  from_employee_id?: string;
+  to_employee_id: string;
+  quantity: number;
+  unit_cost: number;
+  distribution_date: string;
+  expected_return_date?: string;
+  actual_return_date?: string;
+  status: 'pending' | 'acknowledged' | 'in_use' | 'returned' | 'consumed' | 'cancelled';
+  condition_notes: string;
+  distributed_by_id: string;
+  acknowledged_by_signature?: string;
+  acknowledged_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryDistributionWithDetails extends InventoryDistribution {
+  item_name?: string;
+  item_code?: string;
+  lot_number?: string;
+  to_employee_name?: string;
+  from_employee_name?: string;
+  distributed_by_name?: string;
+}
+
+export interface InventoryAudit {
+  id: string;
+  audit_number: string;
+  store_id: string;
+  audit_type: 'full_store' | 'employee_specific' | 'spot_check' | 'cycle_count';
+  employee_id?: string;
+  audit_date: string;
+  audited_by_id: string;
+  status: 'scheduled' | 'in_progress' | 'completed' | 'approved';
+  total_variance_value: number;
+  notes: string;
+  approved_by_id?: string;
+  approved_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryAuditWithDetails extends InventoryAudit {
+  employee_name?: string;
+  audited_by_name?: string;
+  approved_by_name?: string;
+  item_count?: number;
+}
+
+export interface InventoryAuditItem {
+  id: string;
+  audit_id: string;
+  master_item_id: string;
+  expected_quantity: number;
+  actual_quantity: number;
+  variance_value: number;
+  unit_cost: number;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryAuditItemWithDetails extends InventoryAuditItem {
+  item_name?: string;
+  item_code?: string;
+  variance?: number;
+}
+
 export interface EndOfDayRecord {
   id: string;
   store_id: string;

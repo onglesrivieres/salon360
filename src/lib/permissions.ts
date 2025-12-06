@@ -175,6 +175,27 @@ export const Permissions = {
     canApprove: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
     },
+    canViewLots: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
+    canCreateLots: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
+    canDistribute: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+    },
+    canViewEmployeeInventory: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+    },
+    canViewOwnInventory: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
+    },
+    canCreateAudit: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+    },
+    canApproveAudit: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
   },
 
   suppliers: {
