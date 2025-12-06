@@ -20,8 +20,8 @@ interface TransactionItemForm {
   item_id: string;
   purchase_unit_id: string;
   purchase_quantity: string;
+  purchase_unit_price: string;
   quantity: string;
-  cost_entry_mode: 'total' | 'per_unit';
   total_cost: string;
   unit_cost: string;
   notes: string;
@@ -46,8 +46,8 @@ export function InventoryTransactionModal({
       item_id: '',
       purchase_unit_id: '',
       purchase_quantity: '',
+      purchase_unit_price: '',
       quantity: '',
-      cost_entry_mode: 'total',
       total_cost: '',
       unit_cost: '',
       notes: ''
@@ -74,8 +74,8 @@ export function InventoryTransactionModal({
       item_id: '',
       purchase_unit_id: '',
       purchase_quantity: '',
+      purchase_unit_price: '',
       quantity: '',
-      cost_entry_mode: 'total',
       total_cost: '',
       unit_cost: '',
       notes: ''
@@ -318,8 +318,8 @@ export function InventoryTransactionModal({
       item_id: '',
       purchase_unit_id: '',
       purchase_quantity: '',
+      purchase_unit_price: '',
       quantity: '',
-      cost_entry_mode: 'total',
       total_cost: '',
       unit_cost: '',
       notes: ''
@@ -370,15 +370,18 @@ export function InventoryTransactionModal({
 
       if (purchaseUnit) {
         const purchaseQty = parseFloat(item.purchase_quantity) || 0;
+        const purchasePrice = parseFloat(item.purchase_unit_price) || 0;
         const stockUnits = purchaseQty * purchaseUnit.multiplier;
+
         newItems[index].quantity = stockUnits.toString();
 
-        if (item.cost_entry_mode === 'total' && item.total_cost && stockUnits > 0) {
-          const totalCost = parseFloat(item.total_cost);
-          newItems[index].unit_cost = (totalCost / stockUnits).toFixed(2);
-        } else if (item.cost_entry_mode === 'per_unit' && item.unit_cost && purchaseQty > 0) {
-          const unitCost = parseFloat(item.unit_cost);
-          newItems[index].total_cost = (unitCost * purchaseQty).toFixed(2);
+        if (purchaseQty > 0 && purchasePrice >= 0) {
+          const totalCost = purchasePrice * purchaseQty;
+          newItems[index].total_cost = totalCost.toFixed(2);
+
+          if (stockUnits > 0) {
+            newItems[index].unit_cost = (totalCost / stockUnits).toFixed(2);
+          }
         }
       }
     }
@@ -477,6 +480,7 @@ export function InventoryTransactionModal({
           unit_cost: parseFloat(item.unit_cost) || 0,
           purchase_unit_id: transactionType === 'in' ? item.purchase_unit_id || null : null,
           purchase_quantity: transactionType === 'in' && item.purchase_quantity ? parseFloat(item.purchase_quantity) : null,
+          purchase_unit_price: transactionType === 'in' && item.purchase_unit_price ? parseFloat(item.purchase_unit_price) : null,
           purchase_unit_multiplier: transactionType === 'in' && purchaseUnit ? purchaseUnit.multiplier : null,
           notes: item.notes.trim(),
           created_at: new Date().toISOString(),
@@ -793,49 +797,27 @@ export function InventoryTransactionModal({
                     <div className="grid grid-cols-12 gap-2">
                       <div className="col-span-3">
                         <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Cost Entry Mode
+                          Purchase Unit Price ($)
                         </label>
-                        <Select
-                          value={item.cost_entry_mode}
-                          onChange={(e) => handleItemChange(index, 'cost_entry_mode', e.target.value as 'total' | 'per_unit')}
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.purchase_unit_price}
+                          onChange={(e) => handleItemChange(index, 'purchase_unit_price', e.target.value)}
+                          placeholder="0.00"
                           className="text-sm"
-                        >
-                          <option value="total">Total Cost</option>
-                          <option value="per_unit">Cost Per Unit</option>
-                        </Select>
+                        />
                       </div>
 
-                      {item.cost_entry_mode === 'total' ? (
-                        <div className="col-span-3">
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Total Cost ($)
-                          </label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={item.total_cost}
-                            onChange={(e) => handleItemChange(index, 'total_cost', e.target.value)}
-                            placeholder="0.00"
-                            className="text-sm"
-                          />
+                      <div className="col-span-3">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Total Cost ($)
+                        </label>
+                        <div className="px-2 py-1.5 bg-blue-50 border border-blue-200 rounded text-sm font-medium text-blue-900">
+                          {item.total_cost || '0.00'}
                         </div>
-                      ) : (
-                        <div className="col-span-3">
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Cost Per {selectedPurchaseUnit.unit_name} ($)
-                          </label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={item.unit_cost}
-                            onChange={(e) => handleItemChange(index, 'unit_cost', e.target.value)}
-                            placeholder="0.00"
-                            className="text-sm"
-                          />
-                        </div>
-                      )}
+                      </div>
 
                       <div className="col-span-3">
                         <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -848,7 +830,7 @@ export function InventoryTransactionModal({
 
                       <div className="col-span-3">
                         <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Cost/Unit ($)
+                          Cost/Stock Unit ($)
                         </label>
                         <div className="px-2 py-1.5 bg-blue-50 border border-blue-200 rounded text-sm font-medium text-blue-900">
                           {item.unit_cost || '0.00'}
@@ -859,8 +841,11 @@ export function InventoryTransactionModal({
 
                   {transactionType === 'in' && item.purchase_quantity && selectedPurchaseUnit && (
                     <div className="text-xs text-gray-600 bg-white p-2 rounded border border-gray-200">
-                      <span className="font-medium">Conversion:</span> {item.purchase_quantity} × {selectedPurchaseUnit.multiplier} = {item.quantity} stock units
-                      {item.unit_cost && ` at $${item.unit_cost} per unit`}
+                      <span className="font-medium">Conversion:</span> {item.purchase_quantity} {selectedPurchaseUnit.unit_name}
+                      {item.purchase_unit_price && ` × $${item.purchase_unit_price}`}
+                      {item.total_cost && ` = $${item.total_cost} total`}
+                      {item.quantity && ` (${item.quantity} stock units`}
+                      {item.unit_cost && ` @ $${item.unit_cost} each)`}
                     </div>
                   )}
 
