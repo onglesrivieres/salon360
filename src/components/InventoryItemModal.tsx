@@ -9,6 +9,7 @@ import { supabase, InventoryItem, MasterInventoryItem, Supplier } from '../lib/s
 import { useAuth } from '../contexts/AuthContext';
 import { previewItemCode, generateItemCode, ensureUniqueCode } from '../lib/inventory-codes';
 import { SupplierModal } from './SupplierModal';
+import { Permissions } from '../lib/permissions';
 
 interface InventoryItemModalProps {
   isOpen: boolean;
@@ -41,7 +42,7 @@ const UNITS = [
 
 export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: InventoryItemModalProps) {
   const { showToast } = useToast();
-  const { selectedStoreId } = useAuth();
+  const { selectedStoreId, session } = useAuth();
   const [saving, setSaving] = useState(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loadingSuppliers, setLoadingSuppliers] = useState(false);
@@ -286,6 +287,8 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
     ? previewItemCode(selectedSupplier.code_prefix, formData.name)
     : '';
 
+  const canCreateSupplier = session ? Permissions.suppliers.canCreate(session.role) : false;
+
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose} title={item ? 'Edit Item' : 'Add Item'} size="lg">
@@ -302,12 +305,12 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
                 disabled={isEditingExistingItem || loadingSuppliers}
               >
                 <option value="">Select Supplier</option>
-                {!isEditingExistingItem && (
+                {!isEditingExistingItem && canCreateSupplier && (
                   <option value="__add_new__" className="text-blue-600 font-medium">
                     + Add New Supplier
                   </option>
                 )}
-                {suppliers.length > 0 && !isEditingExistingItem && (
+                {suppliers.length > 0 && !isEditingExistingItem && canCreateSupplier && (
                   <option disabled>──────────</option>
                 )}
                 {suppliers.map((supplier) => (

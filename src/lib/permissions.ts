@@ -1,5 +1,5 @@
 export type RolePermission = 'Admin' | 'Receptionist' | 'Technician' | 'Supervisor' | 'Cashier';
-export type Role = 'Technician' | 'Receptionist' | 'Supervisor' | 'Manager' | 'Owner' | 'Spa Expert' | 'Cashier';
+export type Role = 'Admin' | 'Technician' | 'Receptionist' | 'Supervisor' | 'Manager' | 'Owner' | 'Spa Expert' | 'Cashier';
 
 export interface PermissionCheck {
   canView: boolean;
@@ -174,6 +174,21 @@ export const Permissions = {
     },
     canApprove: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
+  },
+
+  suppliers: {
+    canView: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
+    canCreate: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
+    canEdit: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
+    canDelete: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Owner']);
     },
   },
 
