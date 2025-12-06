@@ -646,7 +646,7 @@ export function InventoryTransactionModal({
                   className="p-3 bg-gray-50 rounded-lg space-y-3"
                 >
                   <div className="grid grid-cols-12 gap-2 items-start">
-                    <div className="col-span-5">
+                    <div className="col-span-3">
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Item {index === 0 && <span className="text-red-500">*</span>}
                       </label>
@@ -682,7 +682,7 @@ export function InventoryTransactionModal({
                     </div>
 
                     {transactionType === 'in' && item.item_id && (
-                      <div className="col-span-4">
+                      <div className="col-span-3">
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Purchase Unit {index === 0 && <span className="text-red-500">*</span>}
                         </label>
@@ -794,6 +794,23 @@ export function InventoryTransactionModal({
                       </div>
                     )}
 
+                    {transactionType === 'in' && item.item_id && (
+                      <div className="col-span-3">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Purchase Unit Price ($)
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.purchase_unit_price}
+                          onChange={(e) => handleItemChange(index, 'purchase_unit_price', e.target.value)}
+                          placeholder="0.00"
+                          className="text-sm"
+                        />
+                      </div>
+                    )}
+
                     {transactionType === 'out' && (
                       <div className="col-span-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -824,52 +841,6 @@ export function InventoryTransactionModal({
                       )}
                     </div>
                   </div>
-
-                  {transactionType === 'in' && item.item_id && (
-                    <div className="grid grid-cols-12 gap-2">
-                      <div className="col-span-3">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Purchase Unit Price ($)
-                        </label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={item.purchase_unit_price}
-                          onChange={(e) => handleItemChange(index, 'purchase_unit_price', e.target.value)}
-                          placeholder="0.00"
-                          className="text-sm"
-                        />
-                      </div>
-
-                      <div className="col-span-3">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Total Cost ($)
-                        </label>
-                        <div className="px-2 py-1.5 bg-blue-50 border border-blue-200 rounded text-sm font-medium text-blue-900">
-                          {item.total_cost || '0.00'}
-                        </div>
-                      </div>
-
-                      <div className="col-span-3">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Stock Units
-                        </label>
-                        <div className="px-2 py-1.5 bg-blue-50 border border-blue-200 rounded text-sm font-medium text-blue-900">
-                          {item.quantity || '0'}
-                        </div>
-                      </div>
-
-                      <div className="col-span-3">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Cost/Stock Unit ($)
-                        </label>
-                        <div className="px-2 py-1.5 bg-blue-50 border border-blue-200 rounded text-sm font-medium text-blue-900">
-                          {item.unit_cost || '0.00'}
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                   {transactionType === 'in' && item.item_id && (
                     <div className="text-xs text-gray-600 bg-white p-2 rounded border border-gray-200">
