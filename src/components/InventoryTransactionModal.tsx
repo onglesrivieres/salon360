@@ -793,7 +793,7 @@ export function InventoryTransactionModal({
                     </div>
                   </div>
 
-                  {transactionType === 'in' && item.item_id && selectedPurchaseUnit && (
+                  {transactionType === 'in' && item.item_id && item.purchase_unit_id && (
                     <div className="grid grid-cols-12 gap-2">
                       <div className="col-span-3">
                         <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -839,9 +839,9 @@ export function InventoryTransactionModal({
                     </div>
                   )}
 
-                  {transactionType === 'in' && item.purchase_quantity && selectedPurchaseUnit && (
+                  {transactionType === 'in' && item.purchase_quantity && item.purchase_unit_id && (
                     <div className="text-xs text-gray-600 bg-white p-2 rounded border border-gray-200">
-                      <span className="font-medium">Conversion:</span> {item.purchase_quantity} {selectedPurchaseUnit.unit_name}
+                      <span className="font-medium">Conversion:</span> {item.purchase_quantity} {selectedPurchaseUnit?.unit_name || 'units'}
                       {item.purchase_unit_price && ` × $${item.purchase_unit_price}`}
                       {item.total_cost && ` = $${item.total_cost} total`}
                       {item.quantity && ` (${item.quantity} stock units`}
