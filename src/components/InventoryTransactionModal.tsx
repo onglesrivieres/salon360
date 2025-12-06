@@ -607,17 +607,6 @@ export function InventoryTransactionModal({
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Optional transaction notes"
-            rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
         <div className="border-t border-gray-200 pt-4">
           <div className="flex justify-between items-center mb-3">
             <h4 className="text-sm font-semibold text-gray-900">Items</h4>
@@ -669,11 +658,6 @@ export function InventoryTransactionModal({
                           </option>
                         ))}
                       </Select>
-                      {transactionType === 'in' && selectedSupplier && (
-                        <p className="text-xs text-blue-600 mt-1">
-                          Showing {filteredInventoryItems.length} item{filteredInventoryItems.length !== 1 ? 's' : ''} from {selectedSupplier.name}
-                        </p>
-                      )}
                       {item.item_id && transactionType === 'out' && (
                         <p className="text-xs text-gray-500 mt-1">
                           Available: {getAvailableStock(item.item_id)}
@@ -842,20 +826,14 @@ export function InventoryTransactionModal({
                     </div>
                   </div>
 
-                  {transactionType === 'in' && item.item_id && (
+                  {transactionType === 'in' && item.item_id && item.purchase_quantity && selectedPurchaseUnit && (
                     <div className="text-xs text-gray-600 bg-white p-2 rounded border border-gray-200">
                       <span className="font-medium">Conversion:</span>
-                      {item.purchase_quantity && selectedPurchaseUnit ? (
-                        <>
-                          {' '}{item.purchase_quantity} {selectedPurchaseUnit.unit_name}
-                          {item.purchase_unit_price && ` × $${item.purchase_unit_price}`}
-                          {item.total_cost && ` = $${item.total_cost} total`}
-                          {item.quantity && ` (${item.quantity} stock units`}
-                          {item.unit_cost && ` @ $${item.unit_cost} each)`}
-                        </>
-                      ) : (
-                        <span className="text-gray-400"> Select purchase unit and enter quantity to see conversion</span>
-                      )}
+                      {' '}{item.purchase_quantity} {selectedPurchaseUnit.unit_name}
+                      {item.purchase_unit_price && ` × $${item.purchase_unit_price}`}
+                      {item.total_cost && ` = $${item.total_cost} total`}
+                      {item.quantity && ` (${item.quantity} stock units`}
+                      {item.unit_cost && ` @ $${item.unit_cost} each)`}
                     </div>
                   )}
 
@@ -888,6 +866,17 @@ export function InventoryTransactionModal({
             <span>Total Transaction Value:</span>
             <span className="text-lg text-blue-600">${calculateTotalValue().toFixed(2)}</span>
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Optional transaction notes"
+            rows={1}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
 
         <div className="flex gap-3 pt-4">
