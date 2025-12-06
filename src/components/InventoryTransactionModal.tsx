@@ -415,14 +415,26 @@ export function InventoryTransactionModal({
 
     if (transactionType === 'in') {
       const item = newItems[index];
-      const purchaseUnit = item.purchase_unit_id
-        ? Object.values(purchaseUnits).flat().find(u => u.id === item.purchase_unit_id)
-        : null;
 
-      if (purchaseUnit) {
+      // Check if we're in "adding purchase unit" mode with temporary values
+      let multiplier: number | null = null;
+
+      if (item.isAddingPurchaseUnit && item.newPurchaseUnitMultiplier) {
+        // Use temporary multiplier from the form
+        multiplier = parseFloat(item.newPurchaseUnitMultiplier);
+      } else if (item.purchase_unit_id && item.purchase_unit_id !== '__add_new__') {
+        // Use saved purchase unit multiplier
+        const purchaseUnit = Object.values(purchaseUnits).flat().find(u => u.id === item.purchase_unit_id);
+        if (purchaseUnit) {
+          multiplier = purchaseUnit.multiplier;
+        }
+      }
+
+      // Calculate quantity, total_cost, and unit_cost if we have a valid multiplier
+      if (multiplier && multiplier > 0) {
         const purchaseQty = parseFloat(item.purchase_quantity) || 0;
         const purchasePrice = parseFloat(item.purchase_unit_price) || 0;
-        const stockUnits = purchaseQty * purchaseUnit.multiplier;
+        const stockUnits = purchaseQty * multiplier;
 
         newItems[index].quantity = stockUnits.toString();
 
@@ -459,6 +471,79 @@ export function InventoryTransactionModal({
     if (transactionType === 'out' && !recipientId) {
       showToast('Please select a recipient for OUT transaction', 'error');
       return;
+    }
+
+    // Auto-save pending purchase units for IN transactions
+    if (transactionType === 'in') {
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index];
+        if (item.isAddingPurchaseUnit && item.item_id) {
+          const unitName = item.isCustomPurchaseUnit ? item.customPurchaseUnitName.trim() : item.newPurchaseUnitName.trim();
+
+          if (!unitName) {
+            showToast(`Item ${index + 1}: Please enter a purchase unit name or cancel the purchase unit form`, 'error');
+            return;
+          }
+
+          if (!item.newPurchaseUnitMultiplier) {
+            showToast(`Item ${index + 1}: Please enter the purchase unit multiplier (quantity)`, 'error');
+            return;
+          }
+
+          const multiplier = parseFloat(item.newPurchaseUnitMultiplier);
+          if (multiplier <= 0) {
+            showToast(`Item ${index + 1}: Multiplier must be greater than zero`, 'error');
+            return;
+          }
+
+          try {
+            const invItem = inventoryItems.find(i => i.id === item.item_id);
+            if (!invItem?.master_item_id) {
+              showToast(`Item ${index + 1}: Item does not have a master item ID`, 'error');
+              return;
+            }
+
+            const existingUnits = purchaseUnits[invItem.master_item_id] || [];
+            const isFirstUnit = existingUnits.length === 0;
+
+            const { data, error } = await supabase
+              .from('store_product_purchase_units')
+              .insert({
+                store_id: selectedStoreId,
+                master_item_id: invItem.master_item_id,
+                unit_name: unitName,
+                multiplier,
+                is_default: isFirstUnit,
+                display_order: existingUnits.length,
+              })
+              .select()
+              .single();
+
+            if (error) {
+              if (error.code === '23505') {
+                showToast(`Item ${index + 1}: A purchase unit with this name already exists`, 'error');
+              } else {
+                showToast(`Item ${index + 1}: Failed to save purchase unit`, 'error');
+              }
+              return;
+            }
+
+            // Update the item with the newly saved purchase unit
+            const newItems = [...items];
+            newItems[index].purchase_unit_id = data.id;
+            newItems[index].isAddingPurchaseUnit = false;
+            setItems(newItems);
+
+            // Update purchase units cache
+            const updatedUnits = await fetchPurchaseUnitsForItem(invItem.master_item_id);
+            setPurchaseUnits(prev => ({ ...prev, [invItem.master_item_id!]: updatedUnits }));
+          } catch (error: any) {
+            console.error('Error auto-saving purchase unit:', error);
+            showToast(`Item ${index + 1}: Failed to save purchase unit`, 'error');
+            return;
+          }
+        }
+      }
     }
 
     const validItems = items.filter((item) => item.item_id && parseFloat(item.quantity) > 0);
@@ -885,10 +970,10 @@ export function InventoryTransactionModal({
                     </div>
                   </div>
 
-                  {transactionType === 'in' && item.item_id && item.purchase_quantity && selectedPurchaseUnit && (
+                  {transactionType === 'in' && item.item_id && item.purchase_quantity && (selectedPurchaseUnit || (item.isAddingPurchaseUnit && item.newPurchaseUnitMultiplier)) && (
                     <div className="text-xs text-gray-600 bg-white p-2 rounded border border-gray-200">
                       <span className="font-medium">Conversion:</span>
-                      {' '}{item.purchase_quantity} {selectedPurchaseUnit.unit_name}
+                      {' '}{item.purchase_quantity} {selectedPurchaseUnit ? selectedPurchaseUnit.unit_name : (item.isCustomPurchaseUnit ? item.customPurchaseUnitName || 'unit' : item.newPurchaseUnitName || 'unit')}
                       {item.purchase_unit_price && ` × $${item.purchase_unit_price}`}
                       {item.total_cost && ` = $${item.total_cost} total`}
                       {item.quantity && ` (${item.quantity} stock units`}
