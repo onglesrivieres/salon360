@@ -527,6 +527,158 @@ export function InventoryTransactionModal({
     }, 0);
   }
 
+  async function createTransactionWithRetry(maxRetries = 3): Promise<void> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await createTransaction();
+        return;
+      } catch (error: any) {
+        const isDuplicateKeyError = error.code === '23505' ||
+                                    error.message?.includes('duplicate key') ||
+                                    error.message?.includes('unique_transaction_number');
+
+        if (isDuplicateKeyError && attempt < maxRetries) {
+          console.log(`Transaction number conflict detected, retrying (attempt ${attempt + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+          continue;
+        }
+
+        throw error;
+      }
+    }
+  }
+
+  async function createTransaction(): Promise<void> {
+    if (!selectedStoreId || !session?.employee_id) {
+      throw new Error('Missing required data');
+    }
+
+    const savedPurchaseUnitsRef = new Map<number, { id: string; multiplier: number }>();
+
+    for (let index = 0; index < items.length; index++) {
+      const item = items[index];
+      if (item.isAddingPurchaseUnit && item.item_id) {
+        const unitName = item.isCustomPurchaseUnit ? item.customPurchaseUnitName.trim() : item.newPurchaseUnitName.trim();
+
+        if (!unitName || !item.newPurchaseUnitMultiplier) {
+          continue;
+        }
+
+        const multiplier = parseFloat(item.newPurchaseUnitMultiplier);
+        if (multiplier <= 0) {
+          continue;
+        }
+
+        const invItem = inventoryItems.find(i => i.id === item.item_id);
+        if (!invItem?.master_item_id) {
+          continue;
+        }
+
+        const existingUnits = purchaseUnits[invItem.master_item_id] || [];
+        const duplicateUnit = existingUnits.find(
+          u => u.unit_name.toLowerCase() === unitName.toLowerCase()
+        );
+
+        if (duplicateUnit) {
+          savedPurchaseUnitsRef.set(index, { id: duplicateUnit.id, multiplier: duplicateUnit.multiplier });
+        }
+      }
+    }
+
+    const { data: transactionNumber } = await supabase.rpc(
+      'generate_inventory_transaction_number',
+      {
+        p_transaction_type: transactionType,
+        p_store_id: selectedStoreId,
+      }
+    );
+
+    const transactionData = {
+      store_id: selectedStoreId,
+      transaction_type: transactionType,
+      transaction_number: transactionNumber,
+      requested_by_id: session.employee_id,
+      recipient_id: transactionType === 'out' ? recipientId : null,
+      supplier_id: transactionType === 'in' && supplierId ? supplierId : null,
+      invoice_reference: transactionType === 'in' && invoiceReference ? invoiceReference.trim() : null,
+      notes: notes.trim(),
+      status: 'pending',
+      requires_manager_approval: true,
+      requires_recipient_approval: transactionType === 'out',
+      manager_approved: false,
+      recipient_approved: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: transaction, error: transactionError } = await supabase
+      .from('inventory_transactions')
+      .insert(transactionData)
+      .select()
+      .single();
+
+    if (transactionError) throw transactionError;
+
+    const validItems = items.filter((item) => item.item_id && parseFloat(item.quantity) > 0);
+
+    const itemsData = validItems.map((item) => {
+      const inventoryItem = inventoryItems.find((i) => i.id === item.item_id);
+      const originalIndex = items.findIndex(i => i === item);
+
+      let purchaseUnit = null;
+      if (item.purchase_unit_id) {
+        const savedUnit = savedPurchaseUnitsRef.get(originalIndex);
+        if (savedUnit && savedUnit.id === item.purchase_unit_id) {
+          purchaseUnit = savedUnit;
+        } else {
+          purchaseUnit = Object.values(purchaseUnits).flat().find(u => u.id === item.purchase_unit_id);
+        }
+      }
+
+      const itemData = {
+        transaction_id: transaction.id,
+        item_id: item.item_id,
+        master_item_id: inventoryItem?.master_item_id || item.item_id,
+        quantity: parseFloat(item.quantity),
+        unit_cost: parseFloat(item.unit_cost) || 0,
+        purchase_unit_id: transactionType === 'in' ? item.purchase_unit_id || null : null,
+        purchase_quantity: transactionType === 'in' && item.purchase_quantity ? parseFloat(item.purchase_quantity) : null,
+        purchase_unit_price: transactionType === 'in' && item.purchase_unit_price ? parseFloat(item.purchase_unit_price) : null,
+        purchase_unit_multiplier: transactionType === 'in' && purchaseUnit ? purchaseUnit.multiplier : null,
+        notes: item.notes.trim(),
+        created_at: new Date().toISOString(),
+      };
+
+      return itemData;
+    });
+
+    const { error: itemsError } = await supabase
+      .from('inventory_transaction_items')
+      .insert(itemsData);
+
+    if (itemsError) throw itemsError;
+
+    if (transactionType === 'in' && session?.employee_id) {
+      for (const item of validItems) {
+        const inventoryItem = inventoryItems.find((i) => i.id === item.item_id);
+        if (item.purchase_unit_id && inventoryItem?.master_item_id) {
+          await supabase.rpc('update_product_preference', {
+            p_store_id: selectedStoreId,
+            p_master_item_id: inventoryItem.master_item_id,
+            p_purchase_unit_id: item.purchase_unit_id,
+            p_unit_cost: parseFloat(item.unit_cost) || 0,
+            p_employee_id: session.employee_id
+          });
+        }
+      }
+    }
+
+    showToast(
+      `Transaction ${transactionNumber} created and sent for approval`,
+      'success'
+    );
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -678,111 +830,23 @@ export function InventoryTransactionModal({
     try {
       setSaving(true);
 
-      const { data: transactionNumber } = await supabase.rpc(
-        'generate_inventory_transaction_number',
-        {
-          p_transaction_type: transactionType,
-          p_store_id: selectedStoreId,
-        }
-      );
-
-      const transactionData = {
-        store_id: selectedStoreId,
-        transaction_type: transactionType,
-        transaction_number: transactionNumber,
-        requested_by_id: session.employee_id,
-        recipient_id: transactionType === 'out' ? recipientId : null,
-        supplier_id: transactionType === 'in' && supplierId ? supplierId : null,
-        invoice_reference: transactionType === 'in' && invoiceReference ? invoiceReference.trim() : null,
-        notes: notes.trim(),
-        status: 'pending',
-        requires_manager_approval: true,
-        requires_recipient_approval: transactionType === 'out',
-        manager_approved: false,
-        recipient_approved: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      const { data: transaction, error: transactionError } = await supabase
-        .from('inventory_transactions')
-        .insert(transactionData)
-        .select()
-        .single();
-
-      if (transactionError) throw transactionError;
-
-      const itemsData = validItems.map((item, validItemIndex) => {
-        const inventoryItem = inventoryItems.find((i) => i.id === item.item_id);
-
-        // Find the original index to look up in savedPurchaseUnits
-        const originalIndex = updatedItems.findIndex(ui => ui === item);
-
-        // First check locally saved purchase units, then fall back to cache
-        let purchaseUnit = null;
-        if (item.purchase_unit_id) {
-          // Check if this was just saved (in savedPurchaseUnits map)
-          const savedUnit = savedPurchaseUnits.get(originalIndex);
-          if (savedUnit && savedUnit.id === item.purchase_unit_id) {
-            purchaseUnit = savedUnit;
-          } else {
-            // Fall back to cache
-            purchaseUnit = Object.values(purchaseUnits).flat().find(u => u.id === item.purchase_unit_id);
-          }
-        }
-
-        const itemData = {
-          transaction_id: transaction.id,
-          item_id: item.item_id,
-          master_item_id: inventoryItem?.master_item_id || item.item_id,
-          quantity: parseFloat(item.quantity),
-          unit_cost: parseFloat(item.unit_cost) || 0,
-          purchase_unit_id: transactionType === 'in' ? item.purchase_unit_id || null : null,
-          purchase_quantity: transactionType === 'in' && item.purchase_quantity ? parseFloat(item.purchase_quantity) : null,
-          purchase_unit_price: transactionType === 'in' && item.purchase_unit_price ? parseFloat(item.purchase_unit_price) : null,
-          purchase_unit_multiplier: transactionType === 'in' && purchaseUnit ? purchaseUnit.multiplier : null,
-          notes: item.notes.trim(),
-          created_at: new Date().toISOString(),
-        };
-
-        return itemData;
-      });
-
-      const { error: itemsError } = await supabase
-        .from('inventory_transaction_items')
-        .insert(itemsData);
-
-      if (itemsError) throw itemsError;
-
-      if (transactionType === 'in' && session?.employee_id) {
-        for (const item of validItems) {
-          const inventoryItem = inventoryItems.find((i) => i.id === item.item_id);
-          if (item.purchase_unit_id && inventoryItem?.master_item_id) {
-            await supabase.rpc('update_product_preference', {
-              p_store_id: selectedStoreId,
-              p_master_item_id: inventoryItem.master_item_id,
-              p_purchase_unit_id: item.purchase_unit_id,
-              p_unit_cost: parseFloat(item.unit_cost) || 0,
-              p_employee_id: session.employee_id
-            });
-          }
-        }
-      }
-
-      showToast(
-        `Transaction ${transactionNumber} created and sent for approval`,
-        'success'
-      );
+      await createTransactionWithRetry();
       onSuccess();
       onClose();
     } catch (error: any) {
       console.error('Error creating transaction:', error);
 
-      // Provide detailed error message
+      const isDuplicateKeyError = error.code === '23505' ||
+                                  error.message?.includes('duplicate key') ||
+                                  error.message?.includes('unique_transaction_number');
+
       let errorMessage = 'Failed to create transaction';
-      if (error.message) {
+      if (isDuplicateKeyError) {
+        errorMessage = 'Unable to generate unique transaction number after multiple attempts. Please try again.';
+      } else if (error.message) {
         errorMessage += `: ${error.message}`;
       }
+
       if (error.details) {
         console.error('Error details:', error.details);
       }
