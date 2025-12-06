@@ -26,6 +26,12 @@ interface TransactionItemForm {
   total_cost: string;
   unit_cost: string;
   notes: string;
+  // Per-item purchase unit form state
+  isAddingPurchaseUnit: boolean;
+  newPurchaseUnitName: string;
+  newPurchaseUnitMultiplier: string;
+  isCustomPurchaseUnit: boolean;
+  customPurchaseUnitName: string;
 }
 
 export function InventoryTransactionModal({
@@ -51,7 +57,12 @@ export function InventoryTransactionModal({
       quantity: '',
       total_cost: '',
       unit_cost: '',
-      notes: ''
+      notes: '',
+      isAddingPurchaseUnit: false,
+      newPurchaseUnitName: '',
+      newPurchaseUnitMultiplier: '',
+      isCustomPurchaseUnit: false,
+      customPurchaseUnitName: ''
     },
   ]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -59,10 +70,6 @@ export function InventoryTransactionModal({
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [purchaseUnits, setPurchaseUnits] = useState<Record<string, PurchaseUnit[]>>({});
   const [showAddItemModal, setShowAddItemModal] = useState(false);
-  const [addingPurchaseUnitForIndex, setAddingPurchaseUnitForIndex] = useState<number | null>(null);
-  const [newPurchaseUnit, setNewPurchaseUnit] = useState({ unit_name: '', multiplier: '' });
-  const [isCustomUnit, setIsCustomUnit] = useState(false);
-  const [customUnitName, setCustomUnitName] = useState('');
 
   useEffect(() => {
     if (isOpen && selectedStoreId) {
@@ -81,7 +88,12 @@ export function InventoryTransactionModal({
       quantity: '',
       total_cost: '',
       unit_cost: '',
-      notes: ''
+      notes: '',
+      isAddingPurchaseUnit: false,
+      newPurchaseUnitName: '',
+      newPurchaseUnitMultiplier: '',
+      isCustomPurchaseUnit: false,
+      customPurchaseUnitName: ''
     }]);
     setRecipientId('');
     setSupplierId('');
@@ -243,8 +255,13 @@ export function InventoryTransactionModal({
 
   function handlePurchaseUnitDropdownChange(index: number, value: string) {
     if (value === '__add_new__') {
-      setAddingPurchaseUnitForIndex(index);
-      setNewPurchaseUnit({ unit_name: '', multiplier: '' });
+      const newItems = [...items];
+      newItems[index].isAddingPurchaseUnit = true;
+      newItems[index].newPurchaseUnitName = '';
+      newItems[index].newPurchaseUnitMultiplier = '';
+      newItems[index].isCustomPurchaseUnit = false;
+      newItems[index].customPurchaseUnitName = '';
+      setItems(newItems);
     } else {
       handleItemChange(index, 'purchase_unit_id', value);
     }
@@ -257,14 +274,14 @@ export function InventoryTransactionModal({
       return;
     }
 
-    const unitName = isCustomUnit ? customUnitName.trim() : newPurchaseUnit.unit_name.trim();
+    const unitName = item.isCustomPurchaseUnit ? item.customPurchaseUnitName.trim() : item.newPurchaseUnitName.trim();
 
-    if (!unitName || !newPurchaseUnit.multiplier) {
+    if (!unitName || !item.newPurchaseUnitMultiplier) {
       showToast('Please fill in all fields', 'error');
       return;
     }
 
-    const multiplier = parseFloat(newPurchaseUnit.multiplier);
+    const multiplier = parseFloat(item.newPurchaseUnitMultiplier);
     if (multiplier <= 0) {
       showToast('Multiplier must be greater than zero', 'error');
       return;
@@ -300,11 +317,14 @@ export function InventoryTransactionModal({
       const updatedUnits = await fetchPurchaseUnitsForItem(invItem.master_item_id);
       setPurchaseUnits(prev => ({ ...prev, [invItem.master_item_id!]: updatedUnits }));
 
-      handleItemChange(index, 'purchase_unit_id', data.id);
-      setAddingPurchaseUnitForIndex(null);
-      setNewPurchaseUnit({ unit_name: '', multiplier: '' });
-      setIsCustomUnit(false);
-      setCustomUnitName('');
+      const newItems = [...items];
+      newItems[index].purchase_unit_id = data.id;
+      newItems[index].isAddingPurchaseUnit = false;
+      newItems[index].newPurchaseUnitName = '';
+      newItems[index].newPurchaseUnitMultiplier = '';
+      newItems[index].isCustomPurchaseUnit = false;
+      newItems[index].customPurchaseUnitName = '';
+      setItems(newItems);
     } catch (error: any) {
       console.error('Error adding purchase unit:', error);
       if (error.code === '23505') {
@@ -315,11 +335,15 @@ export function InventoryTransactionModal({
     }
   }
 
-  function cancelAddPurchaseUnit() {
-    setAddingPurchaseUnitForIndex(null);
-    setNewPurchaseUnit({ unit_name: '', multiplier: '' });
-    setIsCustomUnit(false);
-    setCustomUnitName('');
+  function cancelAddPurchaseUnit(index: number) {
+    const newItems = [...items];
+    newItems[index].isAddingPurchaseUnit = false;
+    newItems[index].purchase_unit_id = '';
+    newItems[index].newPurchaseUnitName = '';
+    newItems[index].newPurchaseUnitMultiplier = '';
+    newItems[index].isCustomPurchaseUnit = false;
+    newItems[index].customPurchaseUnitName = '';
+    setItems(newItems);
   }
 
   function handleAddItem() {
@@ -331,7 +355,12 @@ export function InventoryTransactionModal({
       quantity: '',
       total_cost: '',
       unit_cost: '',
-      notes: ''
+      notes: '',
+      isAddingPurchaseUnit: false,
+      newPurchaseUnitName: '',
+      newPurchaseUnitMultiplier: '',
+      isCustomPurchaseUnit: false,
+      customPurchaseUnitName: ''
     }]);
   }
 
@@ -356,10 +385,11 @@ export function InventoryTransactionModal({
 
           // Always auto-open "add new purchase unit" mode for every item
           newItems[index].purchase_unit_id = '__add_new__';
-          setAddingPurchaseUnitForIndex(index);
-          setNewPurchaseUnit({ unit_name: '', multiplier: '' });
-          setIsCustomUnit(false);
-          setCustomUnitName('');
+          newItems[index].isAddingPurchaseUnit = true;
+          newItems[index].newPurchaseUnitName = '';
+          newItems[index].newPurchaseUnitMultiplier = '';
+          newItems[index].isCustomPurchaseUnit = false;
+          newItems[index].customPurchaseUnitName = '';
         } else {
           newItems[index].unit_cost = item.unit_cost.toString();
         }
@@ -672,21 +702,23 @@ export function InventoryTransactionModal({
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Purchase Unit {index === 0 && <span className="text-red-500">*</span>}
                         </label>
-                        {addingPurchaseUnitForIndex === index ? (
+                        {item.isAddingPurchaseUnit ? (
                           <div className="space-y-1">
                             <div className="flex gap-1">
                               <Select
-                                value={isCustomUnit ? '__custom__' : newPurchaseUnit.unit_name}
+                                value={item.isCustomPurchaseUnit ? '__custom__' : item.newPurchaseUnitName}
                                 onChange={(e) => {
                                   const value = e.target.value;
+                                  const newItems = [...items];
                                   if (value === '__custom__') {
-                                    setIsCustomUnit(true);
-                                    setNewPurchaseUnit({ ...newPurchaseUnit, unit_name: '' });
+                                    newItems[index].isCustomPurchaseUnit = true;
+                                    newItems[index].newPurchaseUnitName = '';
                                   } else {
-                                    setIsCustomUnit(false);
-                                    setCustomUnitName('');
-                                    setNewPurchaseUnit({ ...newPurchaseUnit, unit_name: value });
+                                    newItems[index].isCustomPurchaseUnit = false;
+                                    newItems[index].customPurchaseUnitName = '';
+                                    newItems[index].newPurchaseUnitName = value;
                                   }
+                                  setItems(newItems);
                                 }}
                                 className="text-sm flex-1"
                                 autoFocus
@@ -706,8 +738,12 @@ export function InventoryTransactionModal({
                                 type="number"
                                 step="0.01"
                                 min="0.01"
-                                value={newPurchaseUnit.multiplier}
-                                onChange={(e) => setNewPurchaseUnit({ ...newPurchaseUnit, multiplier: e.target.value })}
+                                value={item.newPurchaseUnitMultiplier}
+                                onChange={(e) => {
+                                  const newItems = [...items];
+                                  newItems[index].newPurchaseUnitMultiplier = e.target.value;
+                                  setItems(newItems);
+                                }}
                                 placeholder="Qty"
                                 className="text-sm w-20"
                               />
@@ -721,18 +757,22 @@ export function InventoryTransactionModal({
                               </button>
                               <button
                                 type="button"
-                                onClick={cancelAddPurchaseUnit}
+                                onClick={() => cancelAddPurchaseUnit(index)}
                                 className="text-gray-600 hover:text-gray-700 p-1"
                                 title="Cancel"
                               >
                                 <X className="w-4 h-4" />
                               </button>
                             </div>
-                            {isCustomUnit && (
+                            {item.isCustomPurchaseUnit && (
                               <Input
                                 type="text"
-                                value={customUnitName}
-                                onChange={(e) => setCustomUnitName(e.target.value)}
+                                value={item.customPurchaseUnitName}
+                                onChange={(e) => {
+                                  const newItems = [...items];
+                                  newItems[index].customPurchaseUnitName = e.target.value;
+                                  setItems(newItems);
+                                }}
                                 placeholder="Enter custom unit name (e.g., Pack of 6)"
                                 className="text-sm"
                               />
