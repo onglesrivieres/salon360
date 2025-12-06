@@ -310,7 +310,8 @@ export interface ApprovalStatistics {
 export interface Supplier {
   id: string;
   name: string;
-  code_prefix: string;
+  contact?: string;
+  notes?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -342,7 +343,6 @@ export interface ProductPreference {
 
 export interface MasterInventoryItem {
   id: string;
-  code: string;
   name: string;
   description: string;
   category: string;
@@ -370,7 +370,6 @@ export interface StoreInventoryStock {
 
 export interface StoreInventoryWithDetails extends StoreInventoryStock {
   item?: MasterInventoryItem;
-  code?: string;
   name?: string;
   description?: string;
   category?: string;
@@ -384,7 +383,6 @@ export interface StoreInventoryWithDetails extends StoreInventoryStock {
 export interface InventoryItem {
   id: string;
   store_id: string;
-  code: string;
   name: string;
   description: string;
   category: string;
@@ -440,7 +438,6 @@ export interface InventoryTransactionWithDetails extends InventoryTransaction {
 
 export interface InventoryTransactionItemWithDetails extends InventoryTransactionItem {
   item_name?: string;
-  item_code?: string;
   item_unit?: string;
 }
 

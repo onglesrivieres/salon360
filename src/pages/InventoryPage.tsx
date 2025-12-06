@@ -17,8 +17,11 @@ import {
   ChevronDown,
   Filter,
   X,
+  Building2,
+  Power,
+  PowerOff,
 } from 'lucide-react';
-import { supabase, InventoryItem, InventoryTransactionWithDetails, StoreInventoryWithDetails } from '../lib/supabase';
+import { supabase, InventoryItem, InventoryTransactionWithDetails, StoreInventoryWithDetails, Supplier } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
@@ -29,17 +32,19 @@ import { Permissions } from '../lib/permissions';
 import { InventoryItemModal } from '../components/InventoryItemModal';
 import { InventoryTransactionModal } from '../components/InventoryTransactionModal';
 import { EmployeeDistributionModal } from '../components/EmployeeDistributionModal';
+import { SupplierModal } from '../components/SupplierModal';
 import { formatDateTimeEST } from '../lib/timezone';
 
-type Tab = 'items' | 'transactions' | 'lots' | 'distributions';
+type Tab = 'items' | 'transactions' | 'lots' | 'distributions' | 'suppliers';
 type ViewMode = 'grid' | 'table';
-type SortColumn = 'code' | 'supplier' | 'brand' | 'name' | 'category' | 'quantity_on_hand' | 'reorder_level' | 'unit_cost' | 'total_value';
+type SortColumn = 'supplier' | 'brand' | 'name' | 'category' | 'quantity_on_hand' | 'reorder_level' | 'unit_cost' | 'total_value';
 type SortDirection = 'asc' | 'desc';
 
 export function InventoryPage() {
   const [activeTab, setActiveTab] = useState<Tab>('items');
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [transactions, setTransactions] = useState<InventoryTransactionWithDetails[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -53,8 +58,10 @@ export function InventoryPage() {
   const [showItemModal, setShowItemModal] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showDistributionModal, setShowDistributionModal] = useState(false);
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [transactionType, setTransactionType] = useState<'in' | 'out' | undefined>(undefined);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const { showToast } = useToast();
   const { selectedStoreId, session } = useAuth();
 
@@ -63,11 +70,14 @@ export function InventoryPage() {
   const canCreateTransactions =
     session?.role && Permissions.inventory.canCreateTransactions(session.role);
   const canDistribute = session?.role && Permissions.inventory.canDistribute(session.role);
+  const canViewSuppliers = session?.role && Permissions.suppliers.canView(session.role);
+  const canEditSuppliers = session?.role && Permissions.suppliers.canEdit(session.role);
 
   useEffect(() => {
     if (selectedStoreId) {
       fetchItems();
       fetchTransactions();
+      fetchSuppliers();
     }
   }, [selectedStoreId]);
 
@@ -85,7 +95,6 @@ export function InventoryPage() {
           *,
           item:master_inventory_items (
             id,
-            code,
             name,
             description,
             category,
@@ -107,7 +116,6 @@ export function InventoryPage() {
         .map((stock: any) => ({
           id: stock.id,
           store_id: stock.store_id,
-          code: stock.item.code,
           name: stock.item.name,
           description: stock.item.description,
           category: stock.item.category,
@@ -163,6 +171,40 @@ export function InventoryPage() {
     } catch (error) {
       console.error('Error fetching transactions:', error);
       showToast('Failed to load transactions', 'error');
+    }
+  }
+
+  async function fetchSuppliers() {
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setSuppliers(data || []);
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+      showToast('Failed to load suppliers', 'error');
+    }
+  }
+
+  async function handleToggleSupplier(supplier: Supplier) {
+    try {
+      const { error } = await supabase
+        .from('suppliers')
+        .update({
+          is_active: !supplier.is_active,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', supplier.id);
+
+      if (error) throw error;
+      showToast(`Supplier ${supplier.is_active ? 'deactivated' : 'activated'} successfully`, 'success');
+      fetchSuppliers();
+    } catch (error) {
+      console.error('Error updating supplier:', error);
+      showToast('Failed to update supplier', 'error');
     }
   }
 
@@ -237,7 +279,6 @@ export function InventoryPage() {
   const filteredItems = items.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.supplier && item.supplier.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (item.brand && item.brand.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = !categoryFilter || item.category === categoryFilter;
@@ -277,7 +318,7 @@ export function InventoryPage() {
   });
 
   const categories = Array.from(new Set(items.map((item) => item.category))).sort();
-  const suppliers = Array.from(new Set(items.map((item) => item.supplier).filter(Boolean))).sort();
+  const supplierNames = Array.from(new Set(items.map((item) => item.supplier).filter(Boolean))).sort();
   const brands = Array.from(new Set(items.map((item) => item.brand).filter(Boolean))).sort();
   const lowStockItems = items.filter((item) => item.quantity_on_hand <= item.reorder_level);
 
@@ -371,6 +412,21 @@ export function InventoryPage() {
               </button>
             </>
           )}
+          {canViewSuppliers && (
+            <button
+              onClick={() => setActiveTab('suppliers')}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'suppliers'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                <span>Suppliers</span>
+              </div>
+            </button>
+          )}
         </div>
       </div>
 
@@ -451,7 +507,7 @@ export function InventoryPage() {
                             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
                             <option value="">All Suppliers</option>
-                            {suppliers.map((supplier) => (
+                            {supplierNames.map((supplier) => (
                               <option key={supplier} value={supplier}>
                                 {supplier}
                               </option>
@@ -548,7 +604,6 @@ export function InventoryPage() {
                           <Package className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
                           <div>
                             <h3 className="font-semibold text-gray-900">{item.name}</h3>
-                            <p className="text-sm text-gray-500">{item.code}</p>
                             {item.brand && (
                               <p className="text-xs text-gray-500 mt-0.5">Brand: {item.brand}</p>
                             )}
@@ -970,6 +1025,143 @@ export function InventoryPage() {
         </div>
       )}
 
+      {activeTab === 'suppliers' && (
+        <div>
+          <div className="mb-4 flex flex-col sm:flex-row gap-3 justify-between">
+            <div className="flex-1 relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search suppliers..."
+                className="pl-10"
+              />
+            </div>
+            {canEditSuppliers && (
+              <Button
+                onClick={() => {
+                  setSelectedSupplier(null);
+                  setShowSupplierModal(true);
+                }}
+                className="whitespace-nowrap"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add Supplier
+              </Button>
+            )}
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-gray-500">Loading suppliers...</p>
+              </div>
+            ) : suppliers.filter((s) =>
+                s.name.toLowerCase().includes(searchQuery.toLowerCase())
+              ).length === 0 ? (
+              <div className="text-center py-12">
+                <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                  {searchQuery ? 'No suppliers found' : 'No suppliers yet'}
+                </h3>
+                <p className="text-gray-500">
+                  {searchQuery
+                    ? 'Try adjusting your search'
+                    : 'Add your first supplier to get started'}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Contact
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Notes
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {suppliers
+                      .filter((s) =>
+                        s.name.toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                      .map((supplier) => (
+                        <tr key={supplier.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {supplier.name}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-600">
+                              {supplier.contact || '-'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-600 max-w-xs truncate">
+                              {supplier.notes || '-'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge variant={supplier.is_active ? 'success' : 'secondary'}>
+                              {supplier.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex items-center justify-end gap-2">
+                              {canEditSuppliers && (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedSupplier(supplier);
+                                      setShowSupplierModal(true);
+                                    }}
+                                    className="text-blue-600 hover:text-blue-900"
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleToggleSupplier(supplier)}
+                                    className={`${
+                                      supplier.is_active
+                                        ? 'text-red-600 hover:text-red-900'
+                                        : 'text-green-600 hover:text-green-900'
+                                    }`}
+                                    title={supplier.is_active ? 'Deactivate' : 'Activate'}
+                                  >
+                                    {supplier.is_active ? (
+                                      <PowerOff className="w-4 h-4" />
+                                    ) : (
+                                      <Power className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <InventoryItemModal
         isOpen={showItemModal}
         onClose={handleItemModalClose}
@@ -991,6 +1183,18 @@ export function InventoryPage() {
           fetchItems();
           fetchTransactions();
         }}
+      />
+
+      <SupplierModal
+        isOpen={showSupplierModal}
+        onClose={() => {
+          setShowSupplierModal(false);
+          setSelectedSupplier(null);
+        }}
+        onSuccess={() => {
+          fetchSuppliers();
+        }}
+        supplier={selectedSupplier}
       />
     </div>
   );

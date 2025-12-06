@@ -7,7 +7,6 @@ import { Select } from './ui/Select';
 import { useToast } from './ui/Toast';
 import { supabase, InventoryItem, MasterInventoryItem, Supplier } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { previewItemCode, generateItemCode, ensureUniqueCode } from '../lib/inventory-codes';
 import { SupplierModal } from './SupplierModal';
 import { PurchaseUnitManager } from './PurchaseUnitManager';
 import { Permissions } from '../lib/permissions';
@@ -83,7 +82,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
       if (item.master_item_id) {
         setExistingMasterItem({
           id: item.master_item_id,
-          code: item.code,
           name: item.name,
           description: item.description,
           category: item.category,
@@ -140,9 +138,8 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
     }
   }
 
-  function handleSupplierAdded(supplierName: string) {
+  function handleSupplierAdded() {
     fetchSuppliers();
-    setFormData({ ...formData, supplier: supplierName });
     setShowSupplierModal(false);
   }
 
@@ -214,18 +211,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         if (stockError) throw stockError;
         showToast('Item added to store successfully', 'success');
       } else {
-        const selectedSupplier = suppliers.find(s => s.name === formData.supplier);
-        if (!selectedSupplier) {
-          showToast('Invalid supplier selected', 'error');
-          setSaving(false);
-          return;
-        }
-
-        const baseCode = generateItemCode(selectedSupplier.code_prefix, formData.name);
-        const uniqueCode = await ensureUniqueCode(baseCode);
-
         const masterItemData = {
-          code: uniqueCode,
           name: formData.name.trim(),
           description: formData.description.trim(),
           category: formData.category,
@@ -263,9 +249,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
     } catch (error: any) {
       console.error('Error saving item:', error);
 
-      if (error.code === '23505') {
-        showToast('Item code already exists', 'error');
-      } else if (error.code === '23503') {
+      if (error.code === '23503') {
         showToast('Invalid reference. Please refresh and try again.', 'error');
       } else if (error.code === '42501') {
         showToast('Permission denied. Please check your role permissions.', 'error');
@@ -282,11 +266,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
   const isEditingExistingItem = !!item;
   const isUsingMasterItem = !!existingMasterItem && !item;
   const isNewMasterItem = !existingMasterItem && !item;
-
-  const selectedSupplier = suppliers.find(s => s.name === formData.supplier);
-  const codePreview = selectedSupplier && formData.name
-    ? previewItemCode(selectedSupplier.code_prefix, formData.name)
-    : '';
 
   const canCreateSupplier = session ? Permissions.suppliers.canCreate(session.role) : false;
 
@@ -347,31 +326,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             disabled={isUsingMasterItem}
           />
         </div>
-
-        {!isEditingExistingItem && codePreview && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Item Code (Auto-generated)
-            </label>
-            <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg font-mono text-sm text-gray-700">
-              {codePreview}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Code format: Supplier prefix + Item name (first 4 characters)
-            </p>
-          </div>
-        )}
-
-        {isEditingExistingItem && item && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Item Code
-            </label>
-            <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg font-mono text-sm text-gray-700">
-              {item.code}
-            </div>
-          </div>
-        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">

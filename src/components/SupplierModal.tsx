@@ -1,32 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { useToast } from './ui/Toast';
-import { supabase } from '../lib/supabase';
+import { supabase, Supplier } from '../lib/supabase';
 
 interface SupplierModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (supplierName: string) => void;
+  onSuccess: () => void;
+  supplier?: Supplier | null;
 }
 
-function generateCodePrefix(name: string): string {
-  const cleaned = name
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '');
-
-  let prefix = cleaned.slice(0, 4);
-
-  if (prefix.length < 4) {
-    prefix = prefix.padEnd(4, 'X');
-  }
-
-  return prefix;
-}
-
-export function SupplierModal({ isOpen, onClose, onSuccess }: SupplierModalProps) {
+export function SupplierModal({ isOpen, onClose, onSuccess, supplier }: SupplierModalProps) {
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -34,6 +20,22 @@ export function SupplierModal({ isOpen, onClose, onSuccess }: SupplierModalProps
     contact: '',
     notes: '',
   });
+
+  useEffect(() => {
+    if (supplier && isOpen) {
+      setFormData({
+        name: supplier.name,
+        contact: supplier.contact || '',
+        notes: supplier.notes || '',
+      });
+    } else if (!supplier && isOpen) {
+      setFormData({
+        name: '',
+        contact: '',
+        notes: '',
+      });
+    }
+  }, [supplier, isOpen]);
 
   function handleClose() {
     setFormData({
@@ -61,87 +63,111 @@ export function SupplierModal({ isOpen, onClose, onSuccess }: SupplierModalProps
       setSaving(true);
 
       const supplierName = formData.name.trim();
-      let codePrefix = generateCodePrefix(supplierName);
 
-      const { data: existingSupplier } = await supabase
-        .from('suppliers')
-        .select('id')
-        .eq('name', supplierName)
-        .maybeSingle();
+      if (supplier) {
+        const oldName = supplier.name;
+        const nameChanged = oldName !== supplierName;
 
-      if (existingSupplier) {
-        showToast('A supplier with this name already exists', 'error');
-        setSaving(false);
-        return;
-      }
-
-      let attempts = 0;
-      const maxAttempts = 10;
-      let supplierCreated = false;
-
-      while (attempts < maxAttempts && !supplierCreated) {
-        const { data: existingPrefix } = await supabase
-          .from('suppliers')
-          .select('id')
-          .eq('code_prefix', codePrefix)
-          .maybeSingle();
-
-        if (!existingPrefix) {
-          const { error: insertError } = await supabase
+        if (nameChanged) {
+          const { data: existingSupplier } = await supabase
             .from('suppliers')
-            .insert({
-              name: supplierName,
-              code_prefix: codePrefix,
-              is_active: true,
-            });
+            .select('id')
+            .eq('name', supplierName)
+            .neq('id', supplier.id)
+            .maybeSingle();
 
-          if (insertError) {
-            if (insertError.code === '23505') {
-              attempts++;
-              const randomSuffix = Math.floor(Math.random() * 100).toString().padStart(2, '0');
-              codePrefix = (supplierName.slice(0, 2) + randomSuffix).toUpperCase().padEnd(4, 'X');
-              continue;
-            }
-            throw insertError;
+          if (existingSupplier) {
+            showToast('A supplier with this name already exists', 'error');
+            setSaving(false);
+            return;
           }
 
-          supplierCreated = true;
-          showToast('Supplier added successfully', 'success');
-          onSuccess(supplierName);
-          handleClose();
-        } else {
-          attempts++;
-          const randomSuffix = Math.floor(Math.random() * 100).toString().padStart(2, '0');
-          codePrefix = (supplierName.slice(0, 2) + randomSuffix).toUpperCase().padEnd(4, 'X');
+          const { data: itemCount } = await supabase
+            .from('master_inventory_items')
+            .select('id', { count: 'exact', head: true })
+            .eq('supplier', oldName);
+
+          if (itemCount && (itemCount as any).count > 0) {
+            const confirmed = confirm(
+              `This supplier has ${(itemCount as any).count} item(s). Changing the name will update all associated items. Continue?`
+            );
+
+            if (!confirmed) {
+              setSaving(false);
+              return;
+            }
+
+            await supabase
+              .from('master_inventory_items')
+              .update({ supplier: supplierName })
+              .eq('supplier', oldName);
+          }
         }
+
+        const { error: updateError } = await supabase
+          .from('suppliers')
+          .update({
+            name: supplierName,
+            contact: formData.contact.trim() || null,
+            notes: formData.notes.trim() || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', supplier.id);
+
+        if (updateError) throw updateError;
+        showToast('Supplier updated successfully', 'success');
+      } else {
+        const { data: existingSupplier } = await supabase
+          .from('suppliers')
+          .select('id')
+          .eq('name', supplierName)
+          .maybeSingle();
+
+        if (existingSupplier) {
+          showToast('A supplier with this name already exists', 'error');
+          setSaving(false);
+          return;
+        }
+
+        const { error: insertError } = await supabase
+          .from('suppliers')
+          .insert({
+            name: supplierName,
+            contact: formData.contact.trim() || null,
+            notes: formData.notes.trim() || null,
+            is_active: true,
+          });
+
+        if (insertError) throw insertError;
+        showToast('Supplier added successfully', 'success');
       }
 
-      if (!supplierCreated) {
-        throw new Error('Failed to generate unique code prefix after multiple attempts');
-      }
+      onSuccess();
+      handleClose();
     } catch (error: any) {
-      console.error('Error creating supplier:', error);
+      console.error('Error saving supplier:', error);
 
       if (error.code === '23505') {
         showToast('Supplier name already exists', 'error');
       } else if (error.code === '42501') {
-        showToast('Permission denied. Only Admins, Managers, and Owners can add suppliers.', 'error');
+        showToast('Permission denied. Only Admins, Managers, and Owners can manage suppliers.', 'error');
       } else if (error.message) {
         showToast(`Error: ${error.message}`, 'error');
       } else {
-        showToast('Failed to add supplier', 'error');
+        showToast('Failed to save supplier', 'error');
       }
     } finally {
       setSaving(false);
     }
   }
 
-  const codePreview = formData.name.trim()
-    ? generateCodePrefix(formData.name)
-    : '';
-
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Add New Supplier" size="md">
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={supplier ? 'Edit Supplier' : 'Add New Supplier'}
+      size="md"
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -155,20 +181,6 @@ export function SupplierModal({ isOpen, onClose, onSuccess }: SupplierModalProps
             autoFocus
           />
         </div>
-
-        {codePreview && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Code Prefix (Auto-generated)
-            </label>
-            <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg font-mono text-sm text-gray-700">
-              {codePreview}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              This prefix will be used to generate item codes for this supplier
-            </p>
-          </div>
-        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -194,7 +206,7 @@ export function SupplierModal({ isOpen, onClose, onSuccess }: SupplierModalProps
 
         <div className="flex gap-3 pt-4">
           <Button type="submit" disabled={saving} className="flex-1">
-            {saving ? 'Adding...' : 'Add Supplier'}
+            {saving ? 'Saving...' : supplier ? 'Update Supplier' : 'Add Supplier'}
           </Button>
           <Button type="button" variant="secondary" onClick={handleClose} disabled={saving}>
             Cancel
