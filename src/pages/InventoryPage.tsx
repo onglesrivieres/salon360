@@ -43,10 +43,7 @@ export function InventoryPage() {
   const [supplierFilter, setSupplierFilter] = useState('');
   const [brandFilter, setBrandFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    const saved = localStorage.getItem('inventoryViewMode');
-    return (saved === 'table' || saved === 'grid') ? saved : 'grid';
-  });
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [showItemModal, setShowItemModal] = useState(false);
@@ -204,7 +201,6 @@ export function InventoryPage() {
 
   function toggleViewMode(mode: ViewMode) {
     setViewMode(mode);
-    localStorage.setItem('inventoryViewMode', mode);
   }
 
   function handleSort(column: SortColumn) {
