@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { SupplierModal } from './SupplierModal';
 import { PurchaseUnitManager } from './PurchaseUnitManager';
 import { Permissions } from '../lib/permissions';
+import { UNITS, CATEGORIES } from '../lib/inventory-constants';
 
 interface InventoryItemModalProps {
   isOpen: boolean;
@@ -17,28 +18,6 @@ interface InventoryItemModalProps {
   item?: InventoryItem | null;
   onSuccess: () => void;
 }
-
-const CATEGORIES = [
-  'Polish',
-  'Tools',
-  'Supplies',
-  'Equipment',
-  'Furniture',
-  'Cleaning',
-  'PPE',
-  'Other',
-];
-
-const UNITS = [
-  'piece',
-  'bottle',
-  'box',
-  'pack',
-  'gallon',
-  'liter',
-  'set',
-  'pair',
-];
 
 export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: InventoryItemModalProps) {
   const { showToast } = useToast();

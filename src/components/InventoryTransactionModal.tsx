@@ -8,6 +8,7 @@ import { useToast } from './ui/Toast';
 import { supabase, InventoryItem, Technician, PurchaseUnit, Supplier } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { InventoryItemModal } from './InventoryItemModal';
+import { UNITS } from '../lib/inventory-constants';
 
 interface InventoryTransactionModalProps {
   isOpen: boolean;
@@ -60,6 +61,8 @@ export function InventoryTransactionModal({
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [addingPurchaseUnitForIndex, setAddingPurchaseUnitForIndex] = useState<number | null>(null);
   const [newPurchaseUnit, setNewPurchaseUnit] = useState({ unit_name: '', multiplier: '' });
+  const [isCustomUnit, setIsCustomUnit] = useState(false);
+  const [customUnitName, setCustomUnitName] = useState('');
 
   useEffect(() => {
     if (isOpen && selectedStoreId) {
@@ -254,7 +257,9 @@ export function InventoryTransactionModal({
       return;
     }
 
-    if (!newPurchaseUnit.unit_name.trim() || !newPurchaseUnit.multiplier) {
+    const unitName = isCustomUnit ? customUnitName.trim() : newPurchaseUnit.unit_name.trim();
+
+    if (!unitName || !newPurchaseUnit.multiplier) {
       showToast('Please fill in all fields', 'error');
       return;
     }
@@ -280,7 +285,7 @@ export function InventoryTransactionModal({
         .insert({
           store_id: selectedStoreId,
           master_item_id: invItem.master_item_id,
-          unit_name: newPurchaseUnit.unit_name.trim(),
+          unit_name: unitName,
           multiplier,
           is_default: isFirstUnit,
           display_order: existingUnits.length,
@@ -298,6 +303,8 @@ export function InventoryTransactionModal({
       handleItemChange(index, 'purchase_unit_id', data.id);
       setAddingPurchaseUnitForIndex(null);
       setNewPurchaseUnit({ unit_name: '', multiplier: '' });
+      setIsCustomUnit(false);
+      setCustomUnitName('');
     } catch (error: any) {
       console.error('Error adding purchase unit:', error);
       if (error.code === '23505') {
@@ -311,6 +318,8 @@ export function InventoryTransactionModal({
   function cancelAddPurchaseUnit() {
     setAddingPurchaseUnitForIndex(null);
     setNewPurchaseUnit({ unit_name: '', multiplier: '' });
+    setIsCustomUnit(false);
+    setCustomUnitName('');
   }
 
   function handleAddItem() {
@@ -343,19 +352,12 @@ export function InventoryTransactionModal({
         setPurchaseUnits(prev => ({ ...prev, [item.master_item_id!]: units }));
 
         if (transactionType === 'in') {
-          const preference = await getLastUsedPurchaseUnit(item.master_item_id);
-          const defaultUnit = units.find(u => u.is_default);
-          const preferredUnit = preference?.last_used_purchase_unit_id
-            ? units.find(u => u.id === preference.last_used_purchase_unit_id)
-            : defaultUnit;
-
-          if (preferredUnit) {
-            newItems[index].purchase_unit_id = preferredUnit.id;
-            newItems[index].unit_cost = (preference?.last_purchase_cost || item.unit_cost).toString();
-          } else if (units.length > 0) {
-            newItems[index].purchase_unit_id = units[0].id;
-            newItems[index].unit_cost = item.unit_cost.toString();
-          }
+          newItems[index].unit_cost = item.unit_cost.toString();
+          newItems[index].purchase_unit_id = '__add_new__';
+          setAddingPurchaseUnitForIndex(index);
+          setNewPurchaseUnit({ unit_name: '', multiplier: '' });
+          setIsCustomUnit(false);
+          setCustomUnitName('');
         } else {
           newItems[index].unit_cost = item.unit_cost.toString();
         }
@@ -685,40 +687,70 @@ export function InventoryTransactionModal({
                           Purchase Unit {index === 0 && <span className="text-red-500">*</span>}
                         </label>
                         {addingPurchaseUnitForIndex === index ? (
-                          <div className="flex gap-1">
-                            <Input
-                              type="text"
-                              value={newPurchaseUnit.unit_name}
-                              onChange={(e) => setNewPurchaseUnit({ ...newPurchaseUnit, unit_name: e.target.value })}
-                              placeholder="e.g., Pack of 6"
-                              className="text-sm flex-1"
-                              autoFocus
-                            />
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0.01"
-                              value={newPurchaseUnit.multiplier}
-                              onChange={(e) => setNewPurchaseUnit({ ...newPurchaseUnit, multiplier: e.target.value })}
-                              placeholder="x6"
-                              className="text-sm w-16"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleAddPurchaseUnit(index)}
-                              className="text-green-600 hover:text-green-700 p-1"
-                              title="Save"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={cancelAddPurchaseUnit}
-                              className="text-gray-600 hover:text-gray-700 p-1"
-                              title="Cancel"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
+                          <div className="space-y-1">
+                            <div className="flex gap-1">
+                              <Select
+                                value={isCustomUnit ? '__custom__' : newPurchaseUnit.unit_name}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '__custom__') {
+                                    setIsCustomUnit(true);
+                                    setNewPurchaseUnit({ ...newPurchaseUnit, unit_name: '' });
+                                  } else {
+                                    setIsCustomUnit(false);
+                                    setCustomUnitName('');
+                                    setNewPurchaseUnit({ ...newPurchaseUnit, unit_name: value });
+                                  }
+                                }}
+                                className="text-sm flex-1"
+                                autoFocus
+                              >
+                                <option value="">Select Unit Type</option>
+                                {UNITS.map((unit) => (
+                                  <option key={unit} value={unit}>
+                                    {unit}
+                                  </option>
+                                ))}
+                                <option disabled>──────────</option>
+                                <option value="__custom__" className="text-blue-600 font-medium">
+                                  Custom
+                                </option>
+                              </Select>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                value={newPurchaseUnit.multiplier}
+                                onChange={(e) => setNewPurchaseUnit({ ...newPurchaseUnit, multiplier: e.target.value })}
+                                placeholder="Qty"
+                                className="text-sm w-20"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleAddPurchaseUnit(index)}
+                                className="text-green-600 hover:text-green-700 p-1"
+                                title="Save"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={cancelAddPurchaseUnit}
+                                className="text-gray-600 hover:text-gray-700 p-1"
+                                title="Cancel"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                            {isCustomUnit && (
+                              <Input
+                                type="text"
+                                value={customUnitName}
+                                onChange={(e) => setCustomUnitName(e.target.value)}
+                                placeholder="Enter custom unit name (e.g., Pack of 6)"
+                                className="text-sm"
+                              />
+                            )}
                           </div>
                         ) : (
                           <Select
