@@ -473,6 +473,10 @@ export function InventoryTransactionModal({
       return;
     }
 
+    // Track newly saved purchase units locally to avoid state sync issues
+    const savedPurchaseUnits = new Map<number, { id: string; multiplier: number }>();
+    let updatedItems = [...items];
+
     // Auto-save pending purchase units for IN transactions
     if (transactionType === 'in') {
       for (let index = 0; index < items.length; index++) {
@@ -523,30 +527,39 @@ export function InventoryTransactionModal({
               if (error.code === '23505') {
                 showToast(`Item ${index + 1}: A purchase unit with this name already exists`, 'error');
               } else {
-                showToast(`Item ${index + 1}: Failed to save purchase unit`, 'error');
+                console.error(`Error saving purchase unit for item ${index + 1}:`, error);
+                showToast(`Item ${index + 1}: Failed to save purchase unit - ${error.message}`, 'error');
               }
               return;
             }
 
-            // Update the item with the newly saved purchase unit
-            const newItems = [...items];
-            newItems[index].purchase_unit_id = data.id;
-            newItems[index].isAddingPurchaseUnit = false;
-            setItems(newItems);
+            // Store locally for immediate use
+            savedPurchaseUnits.set(index, { id: data.id, multiplier: data.multiplier });
+
+            // Update the item in the local array
+            updatedItems[index] = {
+              ...updatedItems[index],
+              purchase_unit_id: data.id,
+              isAddingPurchaseUnit: false,
+            };
 
             // Update purchase units cache
             const updatedUnits = await fetchPurchaseUnitsForItem(invItem.master_item_id);
             setPurchaseUnits(prev => ({ ...prev, [invItem.master_item_id!]: updatedUnits }));
           } catch (error: any) {
             console.error('Error auto-saving purchase unit:', error);
-            showToast(`Item ${index + 1}: Failed to save purchase unit`, 'error');
+            showToast(`Item ${index + 1}: Failed to save purchase unit - ${error.message || 'Unknown error'}`, 'error');
             return;
           }
         }
       }
+
+      // Update state with all saved purchase units at once
+      setItems(updatedItems);
     }
 
-    const validItems = items.filter((item) => item.item_id && parseFloat(item.quantity) > 0);
+    // Use updatedItems instead of items to ensure we have the latest purchase_unit_id values
+    const validItems = updatedItems.filter((item) => item.item_id && parseFloat(item.quantity) > 0);
     if (validItems.length === 0) {
       showToast('Please add at least one item with quantity', 'error');
       return;
@@ -602,13 +615,26 @@ export function InventoryTransactionModal({
 
       if (transactionError) throw transactionError;
 
-      const itemsData = validItems.map((item) => {
+      const itemsData = validItems.map((item, validItemIndex) => {
         const inventoryItem = inventoryItems.find((i) => i.id === item.item_id);
-        const purchaseUnit = item.purchase_unit_id
-          ? Object.values(purchaseUnits).flat().find(u => u.id === item.purchase_unit_id)
-          : null;
 
-        return {
+        // Find the original index to look up in savedPurchaseUnits
+        const originalIndex = updatedItems.findIndex(ui => ui === item);
+
+        // First check locally saved purchase units, then fall back to cache
+        let purchaseUnit = null;
+        if (item.purchase_unit_id) {
+          // Check if this was just saved (in savedPurchaseUnits map)
+          const savedUnit = savedPurchaseUnits.get(originalIndex);
+          if (savedUnit && savedUnit.id === item.purchase_unit_id) {
+            purchaseUnit = savedUnit;
+          } else {
+            // Fall back to cache
+            purchaseUnit = Object.values(purchaseUnits).flat().find(u => u.id === item.purchase_unit_id);
+          }
+        }
+
+        const itemData = {
           transaction_id: transaction.id,
           item_id: item.item_id,
           master_item_id: inventoryItem?.master_item_id || item.item_id,
@@ -621,6 +647,8 @@ export function InventoryTransactionModal({
           notes: item.notes.trim(),
           created_at: new Date().toISOString(),
         };
+
+        return itemData;
       });
 
       const { error: itemsError } = await supabase
@@ -652,7 +680,20 @@ export function InventoryTransactionModal({
       onClose();
     } catch (error: any) {
       console.error('Error creating transaction:', error);
-      showToast('Failed to create transaction', 'error');
+
+      // Provide detailed error message
+      let errorMessage = 'Failed to create transaction';
+      if (error.message) {
+        errorMessage += `: ${error.message}`;
+      }
+      if (error.details) {
+        console.error('Error details:', error.details);
+      }
+      if (error.hint) {
+        console.error('Error hint:', error.hint);
+      }
+
+      showToast(errorMessage, 'error');
     } finally {
       setSaving(false);
     }
