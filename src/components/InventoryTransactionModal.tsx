@@ -354,23 +354,12 @@ export function InventoryTransactionModal({
         if (transactionType === 'in') {
           newItems[index].unit_cost = item.unit_cost.toString();
 
-          // Only auto-open "add new purchase unit" mode if NO existing units
-          if (units.length === 0) {
-            newItems[index].purchase_unit_id = '__add_new__';
-            setAddingPurchaseUnitForIndex(index);
-            setNewPurchaseUnit({ unit_name: '', multiplier: '' });
-            setIsCustomUnit(false);
-            setCustomUnitName('');
-          } else {
-            // Auto-select the default purchase unit if one exists
-            const defaultUnit = units.find(u => u.is_default);
-            if (defaultUnit) {
-              newItems[index].purchase_unit_id = defaultUnit.id;
-            } else {
-              // Leave blank for manual selection
-              newItems[index].purchase_unit_id = '';
-            }
-          }
+          // Always auto-open "add new purchase unit" mode for every item
+          newItems[index].purchase_unit_id = '__add_new__';
+          setAddingPurchaseUnitForIndex(index);
+          setNewPurchaseUnit({ unit_name: '', multiplier: '' });
+          setIsCustomUnit(false);
+          setCustomUnitName('');
         } else {
           newItems[index].unit_cost = item.unit_cost.toString();
         }
