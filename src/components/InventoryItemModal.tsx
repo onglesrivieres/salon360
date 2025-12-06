@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Plus } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -8,6 +8,7 @@ import { useToast } from './ui/Toast';
 import { supabase, InventoryItem, MasterInventoryItem, Supplier } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { previewItemCode, generateItemCode, ensureUniqueCode } from '../lib/inventory-codes';
+import { SupplierModal } from './SupplierModal';
 
 interface InventoryItemModalProps {
   isOpen: boolean;
@@ -45,6 +46,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loadingSuppliers, setLoadingSuppliers] = useState(false);
   const [existingMasterItem, setExistingMasterItem] = useState<MasterInventoryItem | null>(null);
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [formData, setFormData] = useState({
     supplier: '',
     brand: '',
@@ -126,6 +128,20 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
     } finally {
       setLoadingSuppliers(false);
     }
+  }
+
+  function handleSupplierDropdownChange(value: string) {
+    if (value === '__add_new__') {
+      setShowSupplierModal(true);
+    } else {
+      setFormData({ ...formData, supplier: value });
+    }
+  }
+
+  function handleSupplierAdded(supplierName: string) {
+    fetchSuppliers();
+    setFormData({ ...formData, supplier: supplierName });
+    setShowSupplierModal(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -271,27 +287,36 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
     : '';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={item ? 'Edit Item' : 'Add Item'} size="lg">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Supplier <span className="text-red-500">*</span>
-            </label>
-            <Select
-              value={formData.supplier}
-              onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-              required
-              disabled={isEditingExistingItem || loadingSuppliers}
-            >
-              <option value="">Select Supplier</option>
-              {suppliers.map((supplier) => (
-                <option key={supplier.id} value={supplier.name}>
-                  {supplier.name}
-                </option>
-              ))}
-            </Select>
-          </div>
+    <>
+      <Modal isOpen={isOpen} onClose={onClose} title={item ? 'Edit Item' : 'Add Item'} size="lg">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Supplier <span className="text-red-500">*</span>
+              </label>
+              <Select
+                value={formData.supplier}
+                onChange={(e) => handleSupplierDropdownChange(e.target.value)}
+                required
+                disabled={isEditingExistingItem || loadingSuppliers}
+              >
+                <option value="">Select Supplier</option>
+                {!isEditingExistingItem && (
+                  <option value="__add_new__" className="text-blue-600 font-medium">
+                    + Add New Supplier
+                  </option>
+                )}
+                {suppliers.length > 0 && !isEditingExistingItem && (
+                  <option disabled>──────────</option>
+                )}
+                {suppliers.map((supplier) => (
+                  <option key={supplier.id} value={supplier.name}>
+                    {supplier.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -453,5 +478,12 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         </div>
       </form>
     </Modal>
+
+    <SupplierModal
+      isOpen={showSupplierModal}
+      onClose={() => setShowSupplierModal(false)}
+      onSuccess={handleSupplierAdded}
+    />
+    </>
   );
 }
