@@ -97,13 +97,14 @@ export function InventoryTransactionModal({
           *,
           item:master_inventory_items (
             id,
-            code,
             name,
             description,
             category,
             unit,
             unit_cost,
             reorder_level,
+            brand,
+            supplier,
             is_active
           )
         `)
@@ -117,7 +118,6 @@ export function InventoryTransactionModal({
         .map((stock: any) => ({
           id: stock.id,
           store_id: stock.store_id,
-          code: stock.item.code,
           name: stock.item.name,
           description: stock.item.description,
           category: stock.item.category,
@@ -125,6 +125,8 @@ export function InventoryTransactionModal({
           quantity_on_hand: stock.quantity_on_hand,
           reorder_level: stock.reorder_level_override ?? stock.item.reorder_level,
           unit_cost: stock.unit_cost_override ?? stock.item.unit_cost,
+          brand: stock.item.brand,
+          supplier: stock.item.supplier,
           is_active: stock.item.is_active,
           created_at: stock.created_at,
           updated_at: stock.updated_at,
@@ -625,6 +627,13 @@ export function InventoryTransactionModal({
               const itemPurchaseUnits = invItem?.master_item_id ? purchaseUnits[invItem.master_item_id] || [] : [];
               const selectedPurchaseUnit = itemPurchaseUnits.find(u => u.id === item.purchase_unit_id);
 
+              const selectedSupplier = suppliers.find(s => s.id === supplierId);
+              const filteredInventoryItems = transactionType === 'in' && selectedSupplier
+                ? inventoryItems.filter(invItem =>
+                    invItem.supplier?.toLowerCase() === selectedSupplier.name.toLowerCase()
+                  )
+                : inventoryItems;
+
               return (
                 <div
                   key={index}
@@ -645,15 +654,20 @@ export function InventoryTransactionModal({
                         <option value="__add_new__" className="text-blue-600 font-medium">
                           + Add New Item
                         </option>
-                        {inventoryItems.length > 0 && (
+                        {filteredInventoryItems.length > 0 && (
                           <option disabled>──────────</option>
                         )}
-                        {inventoryItems.map((invItem) => (
+                        {filteredInventoryItems.map((invItem) => (
                           <option key={invItem.id} value={invItem.id}>
-                            {invItem.code} - {invItem.name}
+                            {invItem.name}{invItem.brand ? ` - ${invItem.brand}` : ''}
                           </option>
                         ))}
                       </Select>
+                      {transactionType === 'in' && selectedSupplier && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          Showing {filteredInventoryItems.length} item{filteredInventoryItems.length !== 1 ? 's' : ''} from {selectedSupplier.name}
+                        </p>
+                      )}
                       {item.item_id && transactionType === 'out' && (
                         <p className="text-xs text-gray-500 mt-1">
                           Available: {getAvailableStock(item.item_id)}
