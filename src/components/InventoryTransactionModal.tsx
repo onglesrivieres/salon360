@@ -527,27 +527,6 @@ export function InventoryTransactionModal({
     }, 0);
   }
 
-  async function createTransactionWithRetry(maxRetries = 3): Promise<void> {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        await createTransaction();
-        return;
-      } catch (error: any) {
-        const isDuplicateKeyError = error.code === '23505' ||
-                                    error.message?.includes('duplicate key') ||
-                                    error.message?.includes('unique_transaction_number');
-
-        if (isDuplicateKeyError && attempt < maxRetries) {
-          console.log(`Transaction number conflict detected, retrying (attempt ${attempt + 1}/${maxRetries})...`);
-          await new Promise(resolve => setTimeout(resolve, 100 * attempt));
-          continue;
-        }
-
-        throw error;
-      }
-    }
-  }
-
   async function createTransaction(): Promise<void> {
     if (!selectedStoreId || !session?.employee_id) {
       throw new Error('Missing required data');
@@ -585,39 +564,27 @@ export function InventoryTransactionModal({
       }
     }
 
-    const { data: transactionNumber } = await supabase.rpc(
-      'generate_inventory_transaction_number',
+    const { data: transactionResult, error: transactionError } = await supabase.rpc(
+      'create_inventory_transaction_atomic',
       {
-        p_transaction_type: transactionType,
         p_store_id: selectedStoreId,
+        p_transaction_type: transactionType,
+        p_requested_by_id: session.employee_id,
+        p_recipient_id: transactionType === 'out' ? recipientId : null,
+        p_supplier_id: transactionType === 'in' && supplierId ? supplierId : null,
+        p_invoice_reference: transactionType === 'in' && invoiceReference ? invoiceReference.trim() : null,
+        p_notes: notes.trim(),
+        p_requires_manager_approval: true,
+        p_requires_recipient_approval: transactionType === 'out',
       }
     );
 
-    const transactionData = {
-      store_id: selectedStoreId,
-      transaction_type: transactionType,
-      transaction_number: transactionNumber,
-      requested_by_id: session.employee_id,
-      recipient_id: transactionType === 'out' ? recipientId : null,
-      supplier_id: transactionType === 'in' && supplierId ? supplierId : null,
-      invoice_reference: transactionType === 'in' && invoiceReference ? invoiceReference.trim() : null,
-      notes: notes.trim(),
-      status: 'pending',
-      requires_manager_approval: true,
-      requires_recipient_approval: transactionType === 'out',
-      manager_approved: false,
-      recipient_approved: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data: transaction, error: transactionError } = await supabase
-      .from('inventory_transactions')
-      .insert(transactionData)
-      .select()
-      .single();
-
     if (transactionError) throw transactionError;
+    if (!transactionResult || transactionResult.length === 0) {
+      throw new Error('Failed to create transaction');
+    }
+
+    const transaction = transactionResult[0];
 
     const validItems = items.filter((item) => item.item_id && parseFloat(item.quantity) > 0);
 
@@ -635,8 +602,7 @@ export function InventoryTransactionModal({
         }
       }
 
-      const itemData = {
-        transaction_id: transaction.id,
+      return {
         item_id: item.item_id,
         master_item_id: inventoryItem?.master_item_id || item.item_id,
         quantity: parseFloat(item.quantity),
@@ -646,17 +612,21 @@ export function InventoryTransactionModal({
         purchase_unit_price: transactionType === 'in' && item.purchase_unit_price ? parseFloat(item.purchase_unit_price) : null,
         purchase_unit_multiplier: transactionType === 'in' && purchaseUnit ? purchaseUnit.multiplier : null,
         notes: item.notes.trim(),
-        created_at: new Date().toISOString(),
       };
-
-      return itemData;
     });
 
-    const { error: itemsError } = await supabase
-      .from('inventory_transaction_items')
-      .insert(itemsData);
+    const { data: itemsResult, error: itemsError } = await supabase.rpc(
+      'insert_transaction_items_batch',
+      {
+        p_transaction_id: transaction.id,
+        p_items: itemsData,
+      }
+    );
 
     if (itemsError) throw itemsError;
+    if (!itemsResult || itemsResult.length === 0 || !itemsResult[0].success) {
+      throw new Error(itemsResult?.[0]?.message || 'Failed to insert transaction items');
+    }
 
     if (transactionType === 'in' && session?.employee_id) {
       for (const item of validItems) {
@@ -674,7 +644,7 @@ export function InventoryTransactionModal({
     }
 
     showToast(
-      `Transaction ${transactionNumber} created and sent for approval`,
+      `Transaction ${transaction.transaction_number} created and sent for approval`,
       'success'
     );
   }
@@ -830,20 +800,14 @@ export function InventoryTransactionModal({
     try {
       setSaving(true);
 
-      await createTransactionWithRetry();
+      await createTransaction();
       onSuccess();
       onClose();
     } catch (error: any) {
       console.error('Error creating transaction:', error);
 
-      const isDuplicateKeyError = error.code === '23505' ||
-                                  error.message?.includes('duplicate key') ||
-                                  error.message?.includes('unique_transaction_number');
-
       let errorMessage = 'Failed to create transaction';
-      if (isDuplicateKeyError) {
-        errorMessage = 'Unable to generate unique transaction number after multiple attempts. Please try again.';
-      } else if (error.message) {
+      if (error.message) {
         errorMessage += `: ${error.message}`;
       }
 
