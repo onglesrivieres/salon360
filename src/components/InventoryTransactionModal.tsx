@@ -324,6 +324,23 @@ export function InventoryTransactionModal({
       newItems[index].newPurchaseUnitMultiplier = '';
       newItems[index].isCustomPurchaseUnit = false;
       newItems[index].customPurchaseUnitName = '';
+
+      // Recalculate quantity, total_cost, and unit_cost now that we have a valid purchase unit
+      const purchaseQty = parseFloat(newItems[index].purchase_quantity) || 0;
+      const purchasePrice = parseFloat(newItems[index].purchase_unit_price) || 0;
+      const stockUnits = purchaseQty * multiplier;
+
+      newItems[index].quantity = stockUnits.toString();
+
+      if (purchaseQty > 0 && purchasePrice >= 0) {
+        const totalCost = purchasePrice * purchaseQty;
+        newItems[index].total_cost = totalCost.toFixed(2);
+
+        if (stockUnits > 0) {
+          newItems[index].unit_cost = (totalCost / stockUnits).toFixed(2);
+        }
+      }
+
       setItems(newItems);
     } catch (error: any) {
       console.error('Error adding purchase unit:', error);
