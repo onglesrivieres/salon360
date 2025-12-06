@@ -5,7 +5,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { useToast } from './ui/Toast';
-import { supabase, InventoryItem, Technician } from '../lib/supabase';
+import { supabase, InventoryItem, Technician, PurchaseUnit, Supplier } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
 interface InventoryTransactionModalProps {
@@ -17,7 +17,11 @@ interface InventoryTransactionModalProps {
 
 interface TransactionItemForm {
   item_id: string;
+  purchase_unit_id: string;
+  purchase_quantity: string;
   quantity: string;
+  cost_entry_mode: 'total' | 'per_unit';
+  total_cost: string;
   unit_cost: string;
   notes: string;
 }
@@ -32,24 +36,49 @@ export function InventoryTransactionModal({
   const { selectedStoreId, session } = useAuth();
   const [saving, setSaving] = useState(false);
   const [transactionType, setTransactionType] = useState<'in' | 'out'>(initialTransactionType || 'in');
+  const [supplierId, setSupplierId] = useState('');
   const [recipientId, setRecipientId] = useState('');
+  const [invoiceReference, setInvoiceReference] = useState('');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<TransactionItemForm[]>([
-    { item_id: '', quantity: '', unit_cost: '', notes: '' },
+    {
+      item_id: '',
+      purchase_unit_id: '',
+      purchase_quantity: '',
+      quantity: '',
+      cost_entry_mode: 'total',
+      total_cost: '',
+      unit_cost: '',
+      notes: ''
+    },
   ]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [employees, setEmployees] = useState<Technician[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [purchaseUnits, setPurchaseUnits] = useState<Record<string, PurchaseUnit[]>>({});
 
   useEffect(() => {
     if (isOpen && selectedStoreId) {
       fetchInventoryItems();
       fetchEmployees();
+      fetchSuppliers();
     }
   }, [isOpen, selectedStoreId]);
 
   useEffect(() => {
-    setItems([{ item_id: '', quantity: '', unit_cost: '', notes: '' }]);
+    setItems([{
+      item_id: '',
+      purchase_unit_id: '',
+      purchase_quantity: '',
+      quantity: '',
+      cost_entry_mode: 'total',
+      total_cost: '',
+      unit_cost: '',
+      notes: ''
+    }]);
     setRecipientId('');
+    setSupplierId('');
+    setInvoiceReference('');
     setNotes('');
     setTransactionType(initialTransactionType || 'in');
   }, [isOpen, initialTransactionType]);
@@ -137,8 +166,70 @@ export function InventoryTransactionModal({
     }
   }
 
+  async function fetchSuppliers() {
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setSuppliers(data || []);
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+    }
+  }
+
+  async function fetchPurchaseUnitsForItem(masterItemId: string) {
+    if (!selectedStoreId || !masterItemId) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('store_product_purchase_units')
+        .select('*')
+        .eq('store_id', selectedStoreId)
+        .eq('master_item_id', masterItemId)
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching purchase units:', error);
+      return [];
+    }
+  }
+
+  async function getLastUsedPurchaseUnit(masterItemId: string) {
+    if (!selectedStoreId || !masterItemId) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('store_product_preferences')
+        .select('last_used_purchase_unit_id, last_purchase_cost')
+        .eq('store_id', selectedStoreId)
+        .eq('master_item_id', masterItemId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching last used purchase unit:', error);
+      return null;
+    }
+  }
+
   function handleAddItem() {
-    setItems([...items, { item_id: '', quantity: '', unit_cost: '', notes: '' }]);
+    setItems([...items, {
+      item_id: '',
+      purchase_unit_id: '',
+      purchase_quantity: '',
+      quantity: '',
+      cost_entry_mode: 'total',
+      total_cost: '',
+      unit_cost: '',
+      notes: ''
+    }]);
   }
 
   function handleRemoveItem(index: number) {
@@ -147,14 +238,54 @@ export function InventoryTransactionModal({
     }
   }
 
-  function handleItemChange(index: number, field: keyof TransactionItemForm, value: string) {
+  async function handleItemChange(index: number, field: keyof TransactionItemForm, value: string) {
     const newItems = [...items];
     newItems[index][field] = value;
 
     if (field === 'item_id' && value) {
       const item = inventoryItems.find((i) => i.id === value);
-      if (item) {
-        newItems[index].unit_cost = item.unit_cost.toString();
+      if (item && item.master_item_id) {
+        const units = await fetchPurchaseUnitsForItem(item.master_item_id);
+        setPurchaseUnits(prev => ({ ...prev, [item.master_item_id!]: units }));
+
+        if (transactionType === 'in') {
+          const preference = await getLastUsedPurchaseUnit(item.master_item_id);
+          const defaultUnit = units.find(u => u.is_default);
+          const preferredUnit = preference?.last_used_purchase_unit_id
+            ? units.find(u => u.id === preference.last_used_purchase_unit_id)
+            : defaultUnit;
+
+          if (preferredUnit) {
+            newItems[index].purchase_unit_id = preferredUnit.id;
+            newItems[index].unit_cost = (preference?.last_purchase_cost || item.unit_cost).toString();
+          } else if (units.length > 0) {
+            newItems[index].purchase_unit_id = units[0].id;
+            newItems[index].unit_cost = item.unit_cost.toString();
+          }
+        } else {
+          newItems[index].unit_cost = item.unit_cost.toString();
+        }
+      }
+    }
+
+    if (transactionType === 'in') {
+      const item = newItems[index];
+      const purchaseUnit = item.purchase_unit_id
+        ? Object.values(purchaseUnits).flat().find(u => u.id === item.purchase_unit_id)
+        : null;
+
+      if (purchaseUnit) {
+        const purchaseQty = parseFloat(item.purchase_quantity) || 0;
+        const stockUnits = purchaseQty * purchaseUnit.multiplier;
+        newItems[index].quantity = stockUnits.toString();
+
+        if (item.cost_entry_mode === 'total' && item.total_cost && stockUnits > 0) {
+          const totalCost = parseFloat(item.total_cost);
+          newItems[index].unit_cost = (totalCost / stockUnits).toFixed(2);
+        } else if (item.cost_entry_mode === 'per_unit' && item.unit_cost && purchaseQty > 0) {
+          const unitCost = parseFloat(item.unit_cost);
+          newItems[index].total_cost = (unitCost * purchaseQty).toFixed(2);
+        }
       }
     }
 
@@ -218,6 +349,8 @@ export function InventoryTransactionModal({
         transaction_number: transactionNumber,
         requested_by_id: session.employee_id,
         recipient_id: transactionType === 'out' ? recipientId : null,
+        supplier_id: transactionType === 'in' && supplierId ? supplierId : null,
+        invoice_reference: transactionType === 'in' && invoiceReference ? invoiceReference.trim() : null,
         notes: notes.trim(),
         status: 'pending',
         requires_manager_approval: true,
@@ -238,12 +371,19 @@ export function InventoryTransactionModal({
 
       const itemsData = validItems.map((item) => {
         const inventoryItem = inventoryItems.find((i) => i.id === item.item_id);
+        const purchaseUnit = item.purchase_unit_id
+          ? Object.values(purchaseUnits).flat().find(u => u.id === item.purchase_unit_id)
+          : null;
+
         return {
           transaction_id: transaction.id,
           item_id: item.item_id,
           master_item_id: inventoryItem?.master_item_id || item.item_id,
           quantity: parseFloat(item.quantity),
           unit_cost: parseFloat(item.unit_cost) || 0,
+          purchase_unit_id: transactionType === 'in' ? item.purchase_unit_id || null : null,
+          purchase_quantity: transactionType === 'in' && item.purchase_quantity ? parseFloat(item.purchase_quantity) : null,
+          purchase_unit_multiplier: transactionType === 'in' && purchaseUnit ? purchaseUnit.multiplier : null,
           notes: item.notes.trim(),
           created_at: new Date().toISOString(),
         };
@@ -254,6 +394,21 @@ export function InventoryTransactionModal({
         .insert(itemsData);
 
       if (itemsError) throw itemsError;
+
+      if (transactionType === 'in' && session?.employee_id) {
+        for (const item of validItems) {
+          const inventoryItem = inventoryItems.find((i) => i.id === item.item_id);
+          if (item.purchase_unit_id && inventoryItem?.master_item_id) {
+            await supabase.rpc('update_product_preference', {
+              p_store_id: selectedStoreId,
+              p_master_item_id: inventoryItem.master_item_id,
+              p_purchase_unit_id: item.purchase_unit_id,
+              p_unit_cost: parseFloat(item.unit_cost) || 0,
+              p_employee_id: session.employee_id
+            });
+          }
+        }
+      }
 
       showToast(
         `Transaction ${transactionNumber} created and sent for approval`,
@@ -298,6 +453,25 @@ export function InventoryTransactionModal({
             </div>
           )}
 
+          {transactionType === 'in' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Supplier
+              </label>
+              <Select
+                value={supplierId}
+                onChange={(e) => setSupplierId(e.target.value)}
+              >
+                <option value="">Select Supplier (Optional)</option>
+                {suppliers.map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+
           {transactionType === 'out' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -318,6 +492,19 @@ export function InventoryTransactionModal({
             </div>
           )}
         </div>
+
+        {transactionType === 'in' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Invoice/PO Reference
+            </label>
+            <Input
+              value={invoiceReference}
+              onChange={(e) => setInvoiceReference(e.target.value)}
+              placeholder="e.g., INV-2024-001 or PO-1234"
+            />
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
@@ -340,89 +527,217 @@ export function InventoryTransactionModal({
           </div>
 
           <div className="space-y-3 max-h-96 overflow-y-auto">
-            {items.map((item, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-12 gap-2 items-start p-3 bg-gray-50 rounded-lg"
-              >
-                <div className="col-span-4">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Item {index === 0 && <span className="text-red-500">*</span>}
-                  </label>
-                  <Select
-                    value={item.item_id}
-                    onChange={(e) => handleItemChange(index, 'item_id', e.target.value)}
-                    required={index === 0}
-                    className="text-sm"
-                  >
-                    <option value="">Select Item</option>
-                    {inventoryItems.map((invItem) => (
-                      <option key={invItem.id} value={invItem.id}>
-                        {invItem.code} - {invItem.name}
-                      </option>
-                    ))}
-                  </Select>
-                  {item.item_id && transactionType === 'out' && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Available: {getAvailableStock(item.item_id)}
-                    </p>
+            {items.map((item, index) => {
+              const invItem = inventoryItems.find(i => i.id === item.item_id);
+              const itemPurchaseUnits = invItem?.master_item_id ? purchaseUnits[invItem.master_item_id] || [] : [];
+              const selectedPurchaseUnit = itemPurchaseUnits.find(u => u.id === item.purchase_unit_id);
+
+              return (
+                <div
+                  key={index}
+                  className="p-3 bg-gray-50 rounded-lg space-y-3"
+                >
+                  <div className="grid grid-cols-12 gap-2 items-start">
+                    <div className="col-span-5">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Item {index === 0 && <span className="text-red-500">*</span>}
+                      </label>
+                      <Select
+                        value={item.item_id}
+                        onChange={(e) => handleItemChange(index, 'item_id', e.target.value)}
+                        required={index === 0}
+                        className="text-sm"
+                      >
+                        <option value="">Select Item</option>
+                        {inventoryItems.map((invItem) => (
+                          <option key={invItem.id} value={invItem.id}>
+                            {invItem.code} - {invItem.name}
+                          </option>
+                        ))}
+                      </Select>
+                      {item.item_id && transactionType === 'out' && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Available: {getAvailableStock(item.item_id)}
+                        </p>
+                      )}
+                    </div>
+
+                    {transactionType === 'in' && item.item_id && (
+                      <div className="col-span-4">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Purchase Unit {index === 0 && <span className="text-red-500">*</span>}
+                        </label>
+                        <Select
+                          value={item.purchase_unit_id}
+                          onChange={(e) => handleItemChange(index, 'purchase_unit_id', e.target.value)}
+                          required={index === 0}
+                          className="text-sm"
+                        >
+                          <option value="">Select Unit</option>
+                          {itemPurchaseUnits.map((unit) => (
+                            <option key={unit.id} value={unit.id}>
+                              {unit.unit_name} (x{unit.multiplier})
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    )}
+
+                    {transactionType === 'in' && item.item_id && (
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Qty {index === 0 && <span className="text-red-500">*</span>}
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.purchase_quantity}
+                          onChange={(e) => handleItemChange(index, 'purchase_quantity', e.target.value)}
+                          placeholder="0"
+                          required={index === 0}
+                          className="text-sm"
+                        />
+                      </div>
+                    )}
+
+                    {transactionType === 'out' && (
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Quantity {index === 0 && <span className="text-red-500">*</span>}
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.quantity}
+                          onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                          placeholder="0"
+                          required={index === 0}
+                          className="text-sm"
+                        />
+                      </div>
+                    )}
+
+                    <div className="col-span-1 pt-6">
+                      {items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(index)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {transactionType === 'in' && item.item_id && selectedPurchaseUnit && (
+                    <div className="grid grid-cols-12 gap-2">
+                      <div className="col-span-3">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Cost Entry Mode
+                        </label>
+                        <Select
+                          value={item.cost_entry_mode}
+                          onChange={(e) => handleItemChange(index, 'cost_entry_mode', e.target.value as 'total' | 'per_unit')}
+                          className="text-sm"
+                        >
+                          <option value="total">Total Cost</option>
+                          <option value="per_unit">Cost Per Unit</option>
+                        </Select>
+                      </div>
+
+                      {item.cost_entry_mode === 'total' ? (
+                        <div className="col-span-3">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Total Cost ($)
+                          </label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={item.total_cost}
+                            onChange={(e) => handleItemChange(index, 'total_cost', e.target.value)}
+                            placeholder="0.00"
+                            className="text-sm"
+                          />
+                        </div>
+                      ) : (
+                        <div className="col-span-3">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Cost Per {selectedPurchaseUnit.unit_name} ($)
+                          </label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={item.unit_cost}
+                            onChange={(e) => handleItemChange(index, 'unit_cost', e.target.value)}
+                            placeholder="0.00"
+                            className="text-sm"
+                          />
+                        </div>
+                      )}
+
+                      <div className="col-span-3">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Stock Units
+                        </label>
+                        <div className="px-2 py-1.5 bg-blue-50 border border-blue-200 rounded text-sm font-medium text-blue-900">
+                          {item.quantity || '0'}
+                        </div>
+                      </div>
+
+                      <div className="col-span-3">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Cost/Unit ($)
+                        </label>
+                        <div className="px-2 py-1.5 bg-blue-50 border border-blue-200 rounded text-sm font-medium text-blue-900">
+                          {item.unit_cost || '0.00'}
+                        </div>
+                      </div>
+                    </div>
                   )}
-                </div>
 
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Quantity {index === 0 && <span className="text-red-500">*</span>}
-                  </label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={item.quantity}
-                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                    placeholder="0"
-                    required={index === 0}
-                    className="text-sm"
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Unit Cost
-                  </label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={item.unit_cost}
-                    onChange={(e) => handleItemChange(index, 'unit_cost', e.target.value)}
-                    placeholder="0.00"
-                    className="text-sm"
-                  />
-                </div>
-
-                <div className="col-span-3">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
-                  <Input
-                    value={item.notes}
-                    onChange={(e) => handleItemChange(index, 'notes', e.target.value)}
-                    placeholder="Optional"
-                    className="text-sm"
-                  />
-                </div>
-
-                <div className="col-span-1 pt-6">
-                  {items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(index)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  {transactionType === 'in' && item.purchase_quantity && selectedPurchaseUnit && (
+                    <div className="text-xs text-gray-600 bg-white p-2 rounded border border-gray-200">
+                      <span className="font-medium">Conversion:</span> {item.purchase_quantity} × {selectedPurchaseUnit.multiplier} = {item.quantity} stock units
+                      {item.unit_cost && ` at $${item.unit_cost} per unit`}
+                    </div>
                   )}
+
+                  {transactionType === 'out' && (
+                    <div className="grid grid-cols-12 gap-2">
+                      <div className="col-span-3">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Unit Cost
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.unit_cost}
+                          onChange={(e) => handleItemChange(index, 'unit_cost', e.target.value)}
+                          placeholder="0.00"
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                    <Input
+                      value={item.notes}
+                      onChange={(e) => handleItemChange(index, 'notes', e.target.value)}
+                      placeholder="Optional"
+                      className="text-sm"
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

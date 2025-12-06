@@ -9,6 +9,7 @@ import { supabase, InventoryItem, MasterInventoryItem, Supplier } from '../lib/s
 import { useAuth } from '../contexts/AuthContext';
 import { previewItemCode, generateItemCode, ensureUniqueCode } from '../lib/inventory-codes';
 import { SupplierModal } from './SupplierModal';
+import { PurchaseUnitManager } from './PurchaseUnitManager';
 import { Permissions } from '../lib/permissions';
 
 interface InventoryItemModalProps {
@@ -470,6 +471,13 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             Store-specific quantity. Use transactions to adjust stock.
           </p>
         </div>
+
+        {(item?.master_item_id || existingMasterItem) && (
+          <PurchaseUnitManager
+            masterItemId={item?.master_item_id || existingMasterItem?.id || ''}
+            isOpen={isOpen}
+          />
+        )}
 
         <div className="flex gap-3 pt-4">
           <Button type="submit" disabled={saving} className="flex-1">

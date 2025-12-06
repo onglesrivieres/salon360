@@ -316,6 +316,30 @@ export interface Supplier {
   updated_at: string;
 }
 
+export interface PurchaseUnit {
+  id: string;
+  store_id: string;
+  master_item_id: string;
+  unit_name: string;
+  multiplier: number;
+  is_default: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductPreference {
+  id: string;
+  store_id: string;
+  master_item_id: string;
+  last_used_purchase_unit_id?: string;
+  last_purchase_cost: number;
+  last_used_at: string;
+  updated_by_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface MasterInventoryItem {
   id: string;
   code: string;
