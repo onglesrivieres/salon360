@@ -295,6 +295,44 @@ export function InventoryTransactionModal({
       }
 
       const existingUnits = purchaseUnits[invItem.master_item_id] || [];
+
+      // Check for duplicate unit name (case-insensitive)
+      const duplicateUnit = existingUnits.find(
+        u => u.unit_name.toLowerCase() === unitName.toLowerCase()
+      );
+
+      if (duplicateUnit) {
+        // Unit already exists - use it instead of creating duplicate
+        showToast(`Using existing purchase unit: ${duplicateUnit.unit_name}`, 'success');
+
+        const newItems = [...items];
+        newItems[index].purchase_unit_id = duplicateUnit.id;
+        newItems[index].isAddingPurchaseUnit = false;
+        newItems[index].newPurchaseUnitName = '';
+        newItems[index].newPurchaseUnitMultiplier = '';
+        newItems[index].isCustomPurchaseUnit = false;
+        newItems[index].customPurchaseUnitName = '';
+
+        // Recalculate with existing unit's multiplier
+        const purchaseQty = parseFloat(newItems[index].purchase_quantity) || 0;
+        const purchasePrice = parseFloat(newItems[index].purchase_unit_price) || 0;
+        const stockUnits = purchaseQty * duplicateUnit.multiplier;
+
+        newItems[index].quantity = stockUnits.toString();
+
+        if (purchaseQty > 0 && purchasePrice >= 0) {
+          const totalCost = purchasePrice * purchaseQty;
+          newItems[index].total_cost = totalCost.toFixed(2);
+
+          if (stockUnits > 0) {
+            newItems[index].unit_cost = (totalCost / stockUnits).toFixed(2);
+          }
+        }
+
+        setItems(newItems);
+        return;
+      }
+
       const isFirstUnit = existingUnits.length === 0;
 
       const { data, error } = await supabase
@@ -400,13 +438,42 @@ export function InventoryTransactionModal({
         if (transactionType === 'in') {
           newItems[index].unit_cost = item.unit_cost.toString();
 
-          // Always auto-open "add new purchase unit" mode for every item
-          newItems[index].purchase_unit_id = '__add_new__';
-          newItems[index].isAddingPurchaseUnit = true;
-          newItems[index].newPurchaseUnitName = '';
-          newItems[index].newPurchaseUnitMultiplier = '';
-          newItems[index].isCustomPurchaseUnit = false;
-          newItems[index].customPurchaseUnitName = '';
+          // Smart purchase unit selection logic
+          if (units.length === 0) {
+            // No purchase units exist - auto-open "add new" mode
+            newItems[index].purchase_unit_id = '__add_new__';
+            newItems[index].isAddingPurchaseUnit = true;
+            newItems[index].newPurchaseUnitName = '';
+            newItems[index].newPurchaseUnitMultiplier = '';
+            newItems[index].isCustomPurchaseUnit = false;
+            newItems[index].customPurchaseUnitName = '';
+          } else {
+            // Purchase units exist - try to select the last used one
+            const preference = await getLastUsedPurchaseUnit(item.master_item_id);
+
+            if (preference?.last_used_purchase_unit_id) {
+              // Check if the preferred unit still exists
+              const preferredUnit = units.find(u => u.id === preference.last_used_purchase_unit_id);
+              if (preferredUnit) {
+                newItems[index].purchase_unit_id = preferredUnit.id;
+              } else {
+                // Fallback to default unit
+                const defaultUnit = units.find(u => u.is_default);
+                newItems[index].purchase_unit_id = defaultUnit?.id || units[0].id;
+              }
+            } else {
+              // No preference - select default or first unit
+              const defaultUnit = units.find(u => u.is_default);
+              newItems[index].purchase_unit_id = defaultUnit?.id || units[0].id;
+            }
+
+            // Reset add purchase unit state
+            newItems[index].isAddingPurchaseUnit = false;
+            newItems[index].newPurchaseUnitName = '';
+            newItems[index].newPurchaseUnitMultiplier = '';
+            newItems[index].isCustomPurchaseUnit = false;
+            newItems[index].customPurchaseUnitName = '';
+          }
         } else {
           newItems[index].unit_cost = item.unit_cost.toString();
         }
@@ -508,38 +575,68 @@ export function InventoryTransactionModal({
             }
 
             const existingUnits = purchaseUnits[invItem.master_item_id] || [];
-            const isFirstUnit = existingUnits.length === 0;
 
-            const { data, error } = await supabase
-              .from('store_product_purchase_units')
-              .insert({
-                store_id: selectedStoreId,
-                master_item_id: invItem.master_item_id,
-                unit_name: unitName,
-                multiplier,
-                is_default: isFirstUnit,
-                display_order: existingUnits.length,
-              })
-              .select()
-              .single();
+            // Check for duplicate unit name (case-insensitive)
+            const duplicateUnit = existingUnits.find(
+              u => u.unit_name.toLowerCase() === unitName.toLowerCase()
+            );
 
-            if (error) {
-              if (error.code === '23505') {
-                showToast(`Item ${index + 1}: A purchase unit with this name already exists`, 'error');
+            let purchaseUnitData;
+
+            if (duplicateUnit) {
+              // Unit already exists - reuse it
+              purchaseUnitData = { id: duplicateUnit.id, multiplier: duplicateUnit.multiplier };
+            } else {
+              // Create new unit
+              const isFirstUnit = existingUnits.length === 0;
+
+              const { data, error } = await supabase
+                .from('store_product_purchase_units')
+                .insert({
+                  store_id: selectedStoreId,
+                  master_item_id: invItem.master_item_id,
+                  unit_name: unitName,
+                  multiplier,
+                  is_default: isFirstUnit,
+                  display_order: existingUnits.length,
+                })
+                .select()
+                .single();
+
+              if (error) {
+                if (error.code === '23505') {
+                  // Duplicate error - fetch the existing unit instead
+                  const { data: existingUnit } = await supabase
+                    .from('store_product_purchase_units')
+                    .select('*')
+                    .eq('store_id', selectedStoreId)
+                    .eq('master_item_id', invItem.master_item_id)
+                    .ilike('unit_name', unitName)
+                    .maybeSingle();
+
+                  if (existingUnit) {
+                    purchaseUnitData = { id: existingUnit.id, multiplier: existingUnit.multiplier };
+                  } else {
+                    showToast(`Item ${index + 1}: A purchase unit with this name already exists`, 'error');
+                    return;
+                  }
+                } else {
+                  console.error(`Error saving purchase unit for item ${index + 1}:`, error);
+                  showToast(`Item ${index + 1}: Failed to save purchase unit - ${error.message}`, 'error');
+                  return;
+                }
               } else {
-                console.error(`Error saving purchase unit for item ${index + 1}:`, error);
-                showToast(`Item ${index + 1}: Failed to save purchase unit - ${error.message}`, 'error');
+                purchaseUnitData = { id: data.id, multiplier: data.multiplier };
               }
-              return;
             }
 
             // Store locally for immediate use
-            savedPurchaseUnits.set(index, { id: data.id, multiplier: data.multiplier });
+            savedPurchaseUnits.set(index, { id: purchaseUnitData.id, multiplier: purchaseUnitData.multiplier });
 
             // Update the item in the local array
             updatedItems[index] = {
               ...updatedItems[index],
-              purchase_unit_id: data.id,
+              purchase_unit_id: purchaseUnitData.id,
               isAddingPurchaseUnit: false,
             };
 
@@ -844,9 +941,19 @@ export function InventoryTransactionModal({
                       <div className="col-span-3">
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Purchase Unit {index === 0 && <span className="text-red-500">*</span>}
+                          {itemPurchaseUnits.length > 0 && (
+                            <span className="ml-1 text-gray-500 font-normal">
+                              ({itemPurchaseUnits.length} available)
+                            </span>
+                          )}
                         </label>
                         {item.isAddingPurchaseUnit ? (
                           <div className="space-y-1">
+                            {itemPurchaseUnits.length > 0 && (
+                              <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                Existing: {itemPurchaseUnits.map(u => `${u.unit_name} (x${u.multiplier})`).join(', ')}
+                              </div>
+                            )}
                             <div className="flex gap-1">
                               <Select
                                 value={item.isCustomPurchaseUnit ? '__custom__' : item.newPurchaseUnitName}
@@ -908,17 +1015,22 @@ export function InventoryTransactionModal({
                               </button>
                             </div>
                             {item.isCustomPurchaseUnit && (
-                              <Input
-                                type="text"
-                                value={item.customPurchaseUnitName}
-                                onChange={(e) => {
-                                  const newItems = [...items];
-                                  newItems[index].customPurchaseUnitName = e.target.value;
-                                  setItems(newItems);
-                                }}
-                                placeholder="Enter custom unit name (e.g., Pack of 6)"
-                                className="text-sm"
-                              />
+                              <div className="space-y-1">
+                                <Input
+                                  type="text"
+                                  value={item.customPurchaseUnitName}
+                                  onChange={(e) => {
+                                    const newItems = [...items];
+                                    newItems[index].customPurchaseUnitName = e.target.value;
+                                    setItems(newItems);
+                                  }}
+                                  placeholder="Enter custom unit name (e.g., Pack of 6)"
+                                  className="text-sm"
+                                />
+                                <p className="text-xs text-gray-500">
+                                  Tip: If name matches existing unit, it will be reused
+                                </p>
+                              </div>
                             )}
                           </div>
                         ) : (
