@@ -35,7 +35,7 @@ export function PurchaseUnitManager({ masterItemId, isOpen }: PurchaseUnitManage
         .from('store_product_purchase_units')
         .select('*')
         .eq('store_id', selectedStoreId)
-        .eq('master_item_id', masterItemId)
+        .eq('item_id', masterItemId)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -66,7 +66,7 @@ export function PurchaseUnitManager({ masterItemId, isOpen }: PurchaseUnitManage
         .from('store_product_purchase_units')
         .insert({
           store_id: selectedStoreId,
-          master_item_id: masterItemId,
+          item_id: masterItemId,
           unit_name: formData.unit_name.trim(),
           multiplier,
           is_default: isFirstUnit,

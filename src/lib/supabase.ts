@@ -320,7 +320,7 @@ export interface Supplier {
 export interface PurchaseUnit {
   id: string;
   store_id: string;
-  master_item_id: string;
+  item_id: string;
   unit_name: string;
   multiplier: number;
   is_default: boolean;
@@ -332,52 +332,13 @@ export interface PurchaseUnit {
 export interface ProductPreference {
   id: string;
   store_id: string;
-  master_item_id: string;
+  item_id: string;
   last_used_purchase_unit_id?: string;
   last_purchase_cost: number;
   last_used_at: string;
   updated_by_id?: string;
   created_at: string;
   updated_at: string;
-}
-
-export interface MasterInventoryItem {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  unit: string;
-  unit_cost: number;
-  reorder_level: number;
-  brand?: string;
-  supplier: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface StoreInventoryStock {
-  id: string;
-  store_id: string;
-  item_id: string;
-  quantity_on_hand: number;
-  unit_cost_override?: number;
-  reorder_level_override?: number;
-  last_counted_at?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface StoreInventoryWithDetails extends StoreInventoryStock {
-  item?: MasterInventoryItem;
-  name?: string;
-  description?: string;
-  category?: string;
-  unit?: string;
-  unit_cost?: number;
-  reorder_level?: number;
-  is_low_stock?: boolean;
-  is_active?: boolean;
 }
 
 export interface InventoryItem {
@@ -395,7 +356,6 @@ export interface InventoryItem {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  master_item_id?: string;
 }
 
 export interface InventoryTransaction {
@@ -519,7 +479,7 @@ export interface InventoryPurchaseLot {
   id: string;
   lot_number: string;
   store_id: string;
-  master_item_id: string;
+  item_id: string;
   supplier_id?: string;
   quantity_received: number;
   quantity_remaining: number;
@@ -536,9 +496,8 @@ export interface InventoryPurchaseLot {
 }
 
 export interface InventoryPurchaseLotWithDetails extends InventoryPurchaseLot {
-  item?: MasterInventoryItem;
+  item?: InventoryItem;
   item_name?: string;
-  item_code?: string;
   supplier_name?: string;
   created_by_name?: string;
 }

@@ -93,48 +93,15 @@ export function InventoryPage() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('store_inventory_stock')
-        .select(`
-          *,
-          item:master_inventory_items (
-            id,
-            name,
-            description,
-            category,
-            unit,
-            unit_cost,
-            reorder_level,
-            brand,
-            supplier,
-            is_active
-          )
-        `)
+        .from('inventory_items')
+        .select('*')
         .eq('store_id', selectedStoreId)
+        .eq('is_active', true)
         .order('created_at');
 
       if (error) throw error;
 
-      const mappedItems = (data || [])
-        .filter((stock: any) => stock.item?.is_active)
-        .map((stock: any) => ({
-          id: stock.id,
-          store_id: stock.store_id,
-          name: stock.item.name,
-          description: stock.item.description,
-          category: stock.item.category,
-          unit: stock.item.unit,
-          quantity_on_hand: stock.quantity_on_hand,
-          reorder_level: stock.reorder_level_override ?? stock.item.reorder_level,
-          unit_cost: stock.unit_cost_override ?? stock.item.unit_cost,
-          brand: stock.item.brand,
-          supplier: stock.item.supplier,
-          is_active: stock.item.is_active,
-          created_at: stock.created_at,
-          updated_at: stock.updated_at,
-          master_item_id: stock.item.id,
-        }));
-
-      setItems(mappedItems);
+      setItems(data || []);
     } catch (error) {
       console.error('Error fetching items:', error);
       showToast('Failed to load inventory items', 'error');

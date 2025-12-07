@@ -5,7 +5,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { useToast } from './ui/Toast';
-import { supabase, InventoryItem, MasterInventoryItem, Supplier } from '../lib/supabase';
+import { supabase, InventoryItem, Supplier } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { SupplierModal } from './SupplierModal';
 import { PurchaseUnitManager } from './PurchaseUnitManager';
@@ -27,7 +27,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
   const [saving, setSaving] = useState(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loadingSuppliers, setLoadingSuppliers] = useState(false);
-  const [existingMasterItem, setExistingMasterItem] = useState<MasterInventoryItem | null>(null);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [formData, setFormData] = useState({
     supplier: '',
@@ -61,22 +60,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         category: item.category,
         reorder_level: item.reorder_level.toString(),
       });
-      if (item.master_item_id) {
-        setExistingMasterItem({
-          id: item.master_item_id,
-          name: item.name,
-          description: item.description,
-          category: item.category,
-          unit: item.unit,
-          unit_cost: item.unit_cost,
-          reorder_level: item.reorder_level,
-          brand: item.brand,
-          supplier: item.supplier,
-          is_active: item.is_active,
-          created_at: item.created_at,
-          updated_at: item.updated_at,
-        });
-      }
     } else {
       setFormData({
         supplier: '',
@@ -86,7 +69,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         category: '',
         reorder_level: '0',
       });
-      setExistingMasterItem(null);
     }
     setTransactionCount(0);
   }, [item, isOpen]);
@@ -158,82 +140,44 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
     try {
       setSaving(true);
 
-      let masterItemId: string;
-
-      if (item && item.master_item_id) {
-        masterItemId = item.master_item_id;
-
+      if (item) {
+        // Update existing item
         const { error: updateError } = await supabase
-          .from('store_inventory_stock')
+          .from('inventory_items')
           .update({
-            reorder_level_override: parseFloat(formData.reorder_level) || null,
+            name: formData.name.trim(),
+            description: formData.description.trim(),
+            category: formData.category,
+            brand: formData.brand.trim() || null,
+            supplier: formData.supplier,
+            reorder_level: parseFloat(formData.reorder_level) || 0,
             updated_at: new Date().toISOString(),
           })
           .eq('id', item.id);
 
         if (updateError) throw updateError;
         showToast('Item updated successfully', 'success');
-      } else if (existingMasterItem) {
-        masterItemId = existingMasterItem.id;
-
-        const { data: existingStock } = await supabase
-          .from('store_inventory_stock')
-          .select('id')
-          .eq('store_id', selectedStoreId)
-          .eq('item_id', masterItemId)
-          .maybeSingle();
-
-        if (existingStock) {
-          showToast('This item already exists in this store', 'error');
-          setSaving(false);
-          return;
-        }
-
-        const { error: stockError } = await supabase
-          .from('store_inventory_stock')
-          .insert({
-            store_id: selectedStoreId,
-            item_id: masterItemId,
-            quantity_on_hand: 0,
-            reorder_level_override:
-              parseFloat(formData.reorder_level) !== existingMasterItem.reorder_level
-                ? parseFloat(formData.reorder_level)
-                : null,
-          });
-
-        if (stockError) throw stockError;
-        showToast('Item added to store successfully', 'success');
       } else {
-        const masterItemData = {
+        // Create new item
+        const itemData = {
+          store_id: selectedStoreId,
           name: formData.name.trim(),
           description: formData.description.trim(),
           category: formData.category,
           unit: 'piece',
           unit_cost: 0,
+          quantity_on_hand: 0,
           reorder_level: parseFloat(formData.reorder_level) || 0,
           brand: formData.brand.trim() || null,
           supplier: formData.supplier,
           is_active: true,
         };
 
-        const { data: newMasterItem, error: masterError } = await supabase
-          .from('master_inventory_items')
-          .insert(masterItemData)
-          .select()
-          .single();
+        const { error: insertError } = await supabase
+          .from('inventory_items')
+          .insert(itemData);
 
-        if (masterError) throw masterError;
-        masterItemId = newMasterItem.id;
-
-        const { error: stockError } = await supabase
-          .from('store_inventory_stock')
-          .insert({
-            store_id: selectedStoreId,
-            item_id: masterItemId,
-            quantity_on_hand: 0,
-          });
-
-        if (stockError) throw stockError;
+        if (insertError) throw insertError;
         showToast('New item created successfully', 'success');
       }
 
@@ -257,8 +201,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
   }
 
   const isEditingExistingItem = !!item;
-  const isUsingMasterItem = !!existingMasterItem && !item;
-  const isNewMasterItem = !existingMasterItem && !item;
 
   const canCreateSupplier = session ? Permissions.suppliers.canCreate(session.role) : false;
 

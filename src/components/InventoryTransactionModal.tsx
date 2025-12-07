@@ -107,48 +107,15 @@ export function InventoryTransactionModal({
 
     try {
       const { data, error } = await supabase
-        .from('store_inventory_stock')
-        .select(`
-          *,
-          item:master_inventory_items (
-            id,
-            name,
-            description,
-            category,
-            unit,
-            unit_cost,
-            reorder_level,
-            brand,
-            supplier,
-            is_active
-          )
-        `)
+        .from('inventory_items')
+        .select('*')
         .eq('store_id', selectedStoreId)
+        .eq('is_active', true)
         .order('created_at');
 
       if (error) throw error;
 
-      const mappedItems = (data || [])
-        .filter((stock: any) => stock.item?.is_active)
-        .map((stock: any) => ({
-          id: stock.id,
-          store_id: stock.store_id,
-          name: stock.item.name,
-          description: stock.item.description,
-          category: stock.item.category,
-          unit: stock.item.unit,
-          quantity_on_hand: stock.quantity_on_hand,
-          reorder_level: stock.reorder_level_override ?? stock.item.reorder_level,
-          unit_cost: stock.unit_cost_override ?? stock.item.unit_cost,
-          brand: stock.item.brand,
-          supplier: stock.item.supplier,
-          is_active: stock.item.is_active,
-          created_at: stock.created_at,
-          updated_at: stock.updated_at,
-          master_item_id: stock.item.id,
-        }));
-
-      setInventoryItems(mappedItems);
+      setInventoryItems(data || []);
     } catch (error) {
       console.error('Error fetching inventory items:', error);
     }
@@ -210,7 +177,7 @@ export function InventoryTransactionModal({
         .from('store_product_purchase_units')
         .select('*')
         .eq('store_id', selectedStoreId)
-        .eq('master_item_id', masterItemId)
+        .eq('item_id',masterItemId)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -229,7 +196,7 @@ export function InventoryTransactionModal({
         .from('store_product_preferences')
         .select('last_used_purchase_unit_id, last_purchase_cost')
         .eq('store_id', selectedStoreId)
-        .eq('master_item_id', masterItemId)
+        .eq('item_id',masterItemId)
         .maybeSingle();
 
       if (error) throw error;
@@ -289,12 +256,12 @@ export function InventoryTransactionModal({
 
     try {
       const invItem = inventoryItems.find(i => i.id === item.item_id);
-      if (!invItem?.master_item_id) {
+      if (!invItem?.id) {
         showToast('Item does not have a master item ID', 'error');
         return;
       }
 
-      const existingUnits = purchaseUnits[invItem.master_item_id] || [];
+      const existingUnits = purchaseUnits[invItem.id] || [];
 
       // Check for duplicate unit name (case-insensitive)
       const duplicateUnit = existingUnits.find(
@@ -339,7 +306,7 @@ export function InventoryTransactionModal({
         .from('store_product_purchase_units')
         .insert({
           store_id: selectedStoreId,
-          master_item_id: invItem.master_item_id,
+          item_id:invItem.master_item_id,
           unit_name: unitName,
           multiplier,
           is_default: isFirstUnit,
@@ -353,7 +320,7 @@ export function InventoryTransactionModal({
       showToast('Purchase unit added successfully', 'success');
 
       const updatedUnits = await fetchPurchaseUnitsForItem(invItem.master_item_id);
-      setPurchaseUnits(prev => ({ ...prev, [invItem.master_item_id!]: updatedUnits }));
+      setPurchaseUnits(prev => ({ ...prev, [invItem.id!]: updatedUnits }));
 
       const newItems = [...items];
       newItems[index].purchase_unit_id = data.id;
@@ -549,11 +516,11 @@ export function InventoryTransactionModal({
         }
 
         const invItem = inventoryItems.find(i => i.id === item.item_id);
-        if (!invItem?.master_item_id) {
+        if (!invItem?.id) {
           continue;
         }
 
-        const existingUnits = purchaseUnits[invItem.master_item_id] || [];
+        const existingUnits = purchaseUnits[invItem.id] || [];
         const duplicateUnit = existingUnits.find(
           u => u.unit_name.toLowerCase() === unitName.toLowerCase()
         );
@@ -604,7 +571,7 @@ export function InventoryTransactionModal({
 
       return {
         item_id: item.item_id,
-        master_item_id: inventoryItem?.master_item_id || item.item_id,
+        master_item_id: inventoryItem?.id || item.item_id,
         quantity: parseFloat(item.quantity),
         unit_cost: parseFloat(item.unit_cost) || 0,
         purchase_unit_id: transactionType === 'in' ? item.purchase_unit_id || null : null,
@@ -631,10 +598,10 @@ export function InventoryTransactionModal({
     if (transactionType === 'in' && session?.employee_id) {
       for (const item of validItems) {
         const inventoryItem = inventoryItems.find((i) => i.id === item.item_id);
-        if (item.purchase_unit_id && inventoryItem?.master_item_id) {
+        if (item.purchase_unit_id && inventoryItem?.id) {
           await supabase.rpc('update_product_preference', {
             p_store_id: selectedStoreId,
-            p_master_item_id: inventoryItem.master_item_id,
+            p_item_id: inventoryItem.master_item_id,
             p_purchase_unit_id: item.purchase_unit_id,
             p_unit_cost: parseFloat(item.unit_cost) || 0,
             p_employee_id: session.employee_id
@@ -691,12 +658,12 @@ export function InventoryTransactionModal({
 
           try {
             const invItem = inventoryItems.find(i => i.id === item.item_id);
-            if (!invItem?.master_item_id) {
+            if (!invItem?.id) {
               showToast(`Item ${index + 1}: Item does not have a master item ID`, 'error');
               return;
             }
 
-            const existingUnits = purchaseUnits[invItem.master_item_id] || [];
+            const existingUnits = purchaseUnits[invItem.id] || [];
 
             // Check for duplicate unit name (case-insensitive)
             const duplicateUnit = existingUnits.find(
@@ -716,7 +683,7 @@ export function InventoryTransactionModal({
                 .from('store_product_purchase_units')
                 .insert({
                   store_id: selectedStoreId,
-                  master_item_id: invItem.master_item_id,
+                  item_id:invItem.master_item_id,
                   unit_name: unitName,
                   multiplier,
                   is_default: isFirstUnit,
@@ -732,7 +699,7 @@ export function InventoryTransactionModal({
                     .from('store_product_purchase_units')
                     .select('*')
                     .eq('store_id', selectedStoreId)
-                    .eq('master_item_id', invItem.master_item_id)
+                    .eq('item_id',invItem.master_item_id)
                     .ilike('unit_name', unitName)
                     .maybeSingle();
 
@@ -764,7 +731,7 @@ export function InventoryTransactionModal({
 
             // Update purchase units cache
             const updatedUnits = await fetchPurchaseUnitsForItem(invItem.master_item_id);
-            setPurchaseUnits(prev => ({ ...prev, [invItem.master_item_id!]: updatedUnits }));
+            setPurchaseUnits(prev => ({ ...prev, [invItem.id!]: updatedUnits }));
           } catch (error: any) {
             console.error('Error auto-saving purchase unit:', error);
             showToast(`Item ${index + 1}: Failed to save purchase unit - ${error.message || 'Unknown error'}`, 'error');
@@ -919,7 +886,7 @@ export function InventoryTransactionModal({
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {items.map((item, index) => {
               const invItem = inventoryItems.find(i => i.id === item.item_id);
-              const itemPurchaseUnits = invItem?.master_item_id ? purchaseUnits[invItem.master_item_id] || [] : [];
+              const itemPurchaseUnits = invItem?.id ? purchaseUnits[invItem.id] || [] : [];
               const selectedPurchaseUnit = itemPurchaseUnits.find(u => u.id === item.purchase_unit_id);
 
               const selectedSupplier = suppliers.find(s => s.id === supplierId);
