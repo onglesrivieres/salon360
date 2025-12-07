@@ -7,9 +7,10 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  headerActions?: React.ReactNode;
 }
 
-export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, size = 'md', headerActions }: ModalProps) {
   if (!isOpen) return null;
 
   const sizeStyles = {
@@ -27,11 +28,16 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className={`bg-white rounded-lg shadow-xl w-full ${sizeStyles[size]} max-h-[90vh] overflow-y-auto`}>
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-4">
             <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+            {headerActions && (
+              <div className="flex items-center gap-2">
+                {headerActions}
+              </div>
+            )}
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+              className="text-gray-400 hover:text-gray-600 transition-colors p-1 ml-auto"
             >
               <X className="w-5 h-5" />
             </button>

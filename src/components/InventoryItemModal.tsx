@@ -264,9 +264,13 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} title={item ? 'Edit Item' : 'Add Item'} size="lg">
-        {item && (
-          <div className="absolute top-4 right-12 flex items-center gap-2">
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={item ? 'Edit Item' : 'Add Item'}
+        size="lg"
+        headerActions={
+          item ? (
             <Button
               type="button"
               variant="secondary"
@@ -283,8 +287,9 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
                 </span>
               )}
             </Button>
-          </div>
-        )}
+          ) : undefined
+        }
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
