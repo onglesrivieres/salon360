@@ -21,7 +21,7 @@ import {
   Power,
   PowerOff,
 } from 'lucide-react';
-import { supabase, InventoryItem, InventoryTransactionWithDetails, StoreInventoryWithDetails, Supplier } from '../lib/supabase';
+import { supabase, InventoryItem, InventoryTransactionWithDetails, Supplier } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';

@@ -506,7 +506,7 @@ export interface EmployeeInventory {
   id: string;
   employee_id: string;
   store_id: string;
-  master_item_id: string;
+  item_id: string;
   quantity_on_hand: number;
   total_value: number;
   last_audit_date?: string;
@@ -531,9 +531,8 @@ export interface EmployeeInventoryLotDetail {
 }
 
 export interface EmployeeInventoryWithDetails extends EmployeeInventory {
-  item?: MasterInventoryItem;
+  item?: InventoryItem;
   item_name?: string;
-  item_code?: string;
   item_category?: string;
   item_unit?: string;
   employee_name?: string;
@@ -546,7 +545,7 @@ export interface EmployeeInventoryLot {
   id: string;
   employee_id: string;
   store_id: string;
-  master_item_id: string;
+  item_id: string;
   lot_id: string;
   quantity: number;
   unit_cost: number;
@@ -560,7 +559,7 @@ export interface InventoryDistribution {
   id: string;
   distribution_number: string;
   store_id: string;
-  master_item_id: string;
+  item_id: string;
   lot_id: string;
   from_type: 'store' | 'employee';
   from_employee_id?: string;
@@ -581,7 +580,6 @@ export interface InventoryDistribution {
 
 export interface InventoryDistributionWithDetails extends InventoryDistribution {
   item_name?: string;
-  item_code?: string;
   lot_number?: string;
   to_employee_name?: string;
   from_employee_name?: string;
@@ -615,7 +613,7 @@ export interface InventoryAuditWithDetails extends InventoryAudit {
 export interface InventoryAuditItem {
   id: string;
   audit_id: string;
-  master_item_id: string;
+  item_id: string;
   expected_quantity: number;
   actual_quantity: number;
   variance_value: number;
@@ -627,7 +625,6 @@ export interface InventoryAuditItem {
 
 export interface InventoryAuditItemWithDetails extends InventoryAuditItem {
   item_name?: string;
-  item_code?: string;
   variance?: number;
 }
 

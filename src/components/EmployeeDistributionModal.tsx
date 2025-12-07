@@ -39,7 +39,7 @@ export function EmployeeDistributionModal({
 
   useEffect(() => {
     if (itemId) {
-      const item = inventoryItems.find((i) => i.master_item_id === itemId);
+      const item = inventoryItems.find((i) => i.id === itemId);
       setAvailableQuantity(item?.quantity_on_hand || 0);
     } else {
       setAvailableQuantity(0);
@@ -59,37 +59,16 @@ export function EmployeeDistributionModal({
 
     try {
       const { data, error } = await supabase
-        .from('store_inventory_stock')
-        .select(`
-          *,
-          item:master_inventory_items (
-            id,
-            code,
-            name,
-            category,
-            unit,
-            is_active
-          )
-        `)
+        .from('inventory_items')
+        .select('*')
         .eq('store_id', selectedStoreId)
+        .eq('is_active', true)
+        .gt('quantity_on_hand', 0)
         .order('created_at');
 
       if (error) throw error;
 
-      const mappedItems = (data || [])
-        .filter((stock: any) => stock.item?.is_active && stock.quantity_on_hand > 0)
-        .map((stock: any) => ({
-          id: stock.id,
-          store_id: stock.store_id,
-          code: stock.item.code,
-          name: stock.item.name,
-          category: stock.item.category,
-          unit: stock.item.unit,
-          quantity_on_hand: stock.quantity_on_hand,
-          master_item_id: stock.item.id,
-        })) as InventoryItem[];
-
-      setInventoryItems(mappedItems);
+      setInventoryItems(data || []);
     } catch (error) {
       console.error('Error fetching inventory items:', error);
     }
@@ -157,7 +136,7 @@ export function EmployeeDistributionModal({
 
       const { data, error } = await supabase.rpc('distribute_to_employee', {
         p_store_id: selectedStoreId,
-        p_master_item_id: itemId,
+        p_item_id: itemId,
         p_to_employee_id: employeeId,
         p_quantity: qty,
         p_distributed_by_id: session.employee_id,
@@ -189,7 +168,7 @@ export function EmployeeDistributionModal({
     }
   }
 
-  const selectedItem = inventoryItems.find((i) => i.master_item_id === itemId);
+  const selectedItem = inventoryItems.find((i) => i.id === itemId);
 
   return (
     <Modal
@@ -220,8 +199,8 @@ export function EmployeeDistributionModal({
           >
             <option value="">Select Item</option>
             {inventoryItems.map((item) => (
-              <option key={item.master_item_id} value={item.master_item_id}>
-                {item.code} - {item.name} (Available: {item.quantity_on_hand} {item.unit})
+              <option key={item.id} value={item.id}>
+                {item.name} (Available: {item.quantity_on_hand} {item.unit})
               </option>
             ))}
           </Select>
