@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Package, PackagePlus, Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Plus, Trash2, Check } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -306,7 +306,7 @@ export function InventoryTransactionModal({
         .from('store_product_purchase_units')
         .insert({
           store_id: selectedStoreId,
-          item_id:invItem.master_item_id,
+          item_id: invItem.id,
           unit_name: unitName,
           multiplier,
           is_default: isFirstUnit,
@@ -319,7 +319,7 @@ export function InventoryTransactionModal({
 
       showToast('Purchase unit added successfully', 'success');
 
-      const updatedUnits = await fetchPurchaseUnitsForItem(invItem.master_item_id);
+      const updatedUnits = await fetchPurchaseUnitsForItem(invItem.id);
       setPurchaseUnits(prev => ({ ...prev, [invItem.id!]: updatedUnits }));
 
       const newItems = [...items];
@@ -398,9 +398,9 @@ export function InventoryTransactionModal({
 
     if (field === 'item_id' && value) {
       const item = inventoryItems.find((i) => i.id === value);
-      if (item && item.master_item_id) {
-        const units = await fetchPurchaseUnitsForItem(item.master_item_id);
-        setPurchaseUnits(prev => ({ ...prev, [item.master_item_id!]: units }));
+      if (item && item.id) {
+        const units = await fetchPurchaseUnitsForItem(item.id);
+        setPurchaseUnits(prev => ({ ...prev, [item.id!]: units }));
 
         if (transactionType === 'in') {
           newItems[index].unit_cost = item.unit_cost.toString();
@@ -416,7 +416,7 @@ export function InventoryTransactionModal({
             newItems[index].customPurchaseUnitName = '';
           } else {
             // Purchase units exist - try to select the last used one
-            const preference = await getLastUsedPurchaseUnit(item.master_item_id);
+            const preference = await getLastUsedPurchaseUnit(item.id);
 
             if (preference?.last_used_purchase_unit_id) {
               // Check if the preferred unit still exists
@@ -571,7 +571,6 @@ export function InventoryTransactionModal({
 
       return {
         item_id: item.item_id,
-        master_item_id: inventoryItem?.id || item.item_id,
         quantity: parseFloat(item.quantity),
         unit_cost: parseFloat(item.unit_cost) || 0,
         purchase_unit_id: transactionType === 'in' ? item.purchase_unit_id || null : null,
@@ -601,7 +600,7 @@ export function InventoryTransactionModal({
         if (item.purchase_unit_id && inventoryItem?.id) {
           await supabase.rpc('update_product_preference', {
             p_store_id: selectedStoreId,
-            p_item_id: inventoryItem.master_item_id,
+            p_item_id: inventoryItem.id,
             p_purchase_unit_id: item.purchase_unit_id,
             p_unit_cost: parseFloat(item.unit_cost) || 0,
             p_employee_id: session.employee_id
@@ -683,7 +682,7 @@ export function InventoryTransactionModal({
                 .from('store_product_purchase_units')
                 .insert({
                   store_id: selectedStoreId,
-                  item_id:invItem.master_item_id,
+                  item_id: invItem.id,
                   unit_name: unitName,
                   multiplier,
                   is_default: isFirstUnit,
@@ -699,7 +698,7 @@ export function InventoryTransactionModal({
                     .from('store_product_purchase_units')
                     .select('*')
                     .eq('store_id', selectedStoreId)
-                    .eq('item_id',invItem.master_item_id)
+                    .eq('item_id', invItem.id)
                     .ilike('unit_name', unitName)
                     .maybeSingle();
 
@@ -730,7 +729,7 @@ export function InventoryTransactionModal({
             };
 
             // Update purchase units cache
-            const updatedUnits = await fetchPurchaseUnitsForItem(invItem.master_item_id);
+            const updatedUnits = await fetchPurchaseUnitsForItem(invItem.id);
             setPurchaseUnits(prev => ({ ...prev, [invItem.id!]: updatedUnits }));
           } catch (error: any) {
             console.error('Error auto-saving purchase unit:', error);

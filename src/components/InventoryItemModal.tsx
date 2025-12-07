@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Plus, ArrowUpDown, Info } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowUpDown, Info } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -269,7 +269,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
               value={formData.brand}
               onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
               placeholder="e.g., OPI"
-              disabled={isUsingMasterItem}
             />
           </div>
         </div>
@@ -283,7 +282,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="e.g., Base Gel"
             required
-            disabled={isUsingMasterItem}
           />
         </div>
 
@@ -295,7 +293,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             value={formData.category}
             onChange={(e) => setFormData({ ...formData, category: e.target.value })}
             required
-            disabled={isUsingMasterItem}
           >
             <option value="">Select Category</option>
             {CATEGORIES.map((cat) => (
@@ -313,7 +310,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             placeholder="Optional description"
             rows={2}
-            disabled={isUsingMasterItem}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
           />
         </div>
@@ -321,9 +317,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Reorder Level (Purchase Units)
-            {isUsingMasterItem && (
-              <span className="text-xs text-gray-500 ml-1">(override)</span>
-            )}
           </label>
           <Input
             type="number"
@@ -339,10 +332,10 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           </p>
         </div>
 
-        {(item?.master_item_id || existingMasterItem) && (
+        {item && (
           <>
             <PurchaseUnitManager
-              masterItemId={item?.master_item_id || existingMasterItem?.id || ''}
+              masterItemId={item.id}
               isOpen={isOpen}
             />
 
@@ -366,7 +359,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
 
         <div className="flex gap-3 pt-4">
           <Button type="submit" disabled={saving} className="flex-1">
-            {saving ? 'Saving...' : item ? 'Update' : isUsingMasterItem ? 'Add to Store' : 'Create Item'}
+            {saving ? 'Saving...' : item ? 'Update' : 'Create Item'}
           </Button>
           <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
             Cancel

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Package,
   Plus,
@@ -24,7 +24,6 @@ import {
 import { supabase, InventoryItem, InventoryTransactionWithDetails, Supplier } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
 import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -592,8 +591,8 @@ export function InventoryPage() {
 
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="secondary">{item.category}</Badge>
-                        <Badge variant="secondary">{item.supplier}</Badge>
+                        <Badge variant="default">{item.category}</Badge>
+                        <Badge variant="default">{item.supplier}</Badge>
                         {isLowStock && (
                           <Badge variant="warning" className="flex items-center gap-1">
                             <AlertTriangle className="w-3 h-3" />
@@ -752,7 +751,7 @@ export function InventoryPage() {
                           {item.name}
                         </td>
                         <td className="px-4 py-3 text-sm text-center">
-                          <Badge variant="secondary">{item.category}</Badge>
+                          <Badge variant="default">{item.category}</Badge>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-900">
                           {item.supplier}
@@ -952,7 +951,7 @@ export function InventoryPage() {
                         </Badge>
                       )}
                       {transaction.status === 'rejected' && (
-                        <Badge variant="error" className="flex items-center gap-1">
+                        <Badge variant="danger" className="flex items-center gap-1">
                           <XCircle className="w-3 h-3" />
                           Rejected
                         </Badge>
@@ -1090,7 +1089,7 @@ export function InventoryPage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge variant={supplier.is_active ? 'success' : 'secondary'}>
+                            <Badge variant={supplier.is_active ? 'success' : 'default'}>
                               {supplier.is_active ? 'Active' : 'Inactive'}
                             </Badge>
                           </td>
