@@ -139,7 +139,26 @@ export function PendingApprovalsPage() {
   }
 
   async function handleApproveInventory(approval: PendingInventoryApproval) {
-    if (!session?.employee_id) return;
+    if (!session?.employee_id) {
+      console.error('❌ No session.employee_id found');
+      return;
+    }
+
+    console.log('=== APPROVAL DEBUG START ===');
+    console.log('📋 Session Data:', {
+      employee_id: session.employee_id,
+      display_name: session.display_name,
+      role: session.role,
+      full_session: session,
+    });
+    console.log('📦 Approval Data:', {
+      id: approval.id,
+      transaction_number: approval.transaction_number,
+      requested_by_id: approval.requested_by_id,
+      recipient_id: approval.recipient_id,
+      requires_manager_approval: approval.requires_manager_approval,
+      requires_recipient_approval: approval.requires_recipient_approval,
+    });
 
     if (approval.requested_by_id === session.employee_id) {
       await supabase.from('inventory_approval_audit_log').insert({
@@ -158,9 +177,57 @@ export function PendingApprovalsPage() {
 
     try {
       setProcessing(true);
+
+      console.log('🔍 Step 1: Validating employee exists in database...');
+      const { data: employeeData, error: employeeError } = await supabase
+        .from('employees')
+        .select('id, display_name, role, status')
+        .eq('id', session.employee_id)
+        .maybeSingle();
+
+      if (employeeError) {
+        console.error('❌ Employee validation query error:', employeeError);
+        throw new Error(`Employee validation failed: ${employeeError.message}`);
+      }
+
+      if (!employeeData) {
+        console.error('❌ Employee not found in database:', session.employee_id);
+        showToast('Your employee record could not be verified. Please log out and log back in.', 'error');
+        return;
+      }
+
+      console.log('✅ Employee validated:', employeeData);
+
+      console.log('🔍 Step 2: Verifying employee has correct store assignment...');
+      const { data: storeAssignment, error: storeError } = await supabase
+        .from('employee_stores')
+        .select('*')
+        .eq('employee_id', session.employee_id)
+        .eq('store_id', selectedStoreId)
+        .maybeSingle();
+
+      if (storeError) {
+        console.error('❌ Store assignment validation error:', storeError);
+      } else {
+        console.log('✅ Store assignment:', storeAssignment ? 'Found' : 'Not found');
+      }
+
       const userRoles = session.role || [];
       const isManager = userRoles.some((role) => ['Manager', 'Owner'].includes(role));
       const isRecipient = approval.recipient_id && session.employee_id === approval.recipient_id;
+
+      console.log('🔐 Authorization Check:', {
+        userRoles,
+        isManager,
+        isRecipient,
+        canApprove: isManager || isRecipient,
+      });
+
+      if (!isManager && !isRecipient) {
+        console.error('❌ User is neither manager nor recipient');
+        showToast('You do not have permission to approve this transaction', 'error');
+        return;
+      }
 
       const updates: any = { updated_at: new Date().toISOString() };
 
@@ -168,26 +235,64 @@ export function PendingApprovalsPage() {
         updates.manager_approved = true;
         updates.manager_approved_at = new Date().toISOString();
         updates.manager_approved_by_id = session.employee_id;
+        console.log('✅ Adding manager approval fields');
       }
 
       if (isRecipient) {
         updates.recipient_approved = true;
         updates.recipient_approved_at = new Date().toISOString();
         updates.recipient_approved_by_id = session.employee_id;
+        console.log('✅ Adding recipient approval fields');
       }
 
-      const { error } = await supabase
+      console.log('📝 Update object to be sent:', JSON.stringify(updates, null, 2));
+      console.log('🎯 Updating transaction ID:', approval.id);
+
+      console.log('🔍 Step 3: Executing database update...');
+      const { data: updateData, error } = await supabase
         .from('inventory_transactions')
         .update(updates)
-        .eq('id', approval.id);
+        .eq('id', approval.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Database update error:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+          full_error: error,
+        });
+        throw error;
+      }
+
+      console.log('✅ Update successful:', updateData);
+      console.log('=== APPROVAL DEBUG END ===');
 
       showToast('Inventory transaction approved', 'success');
       fetchInventoryApprovals();
-    } catch (error) {
-      console.error('Error approving inventory:', error);
-      showToast('Failed to approve transaction', 'error');
+    } catch (error: any) {
+      console.error('💥 APPROVAL FAILED:', {
+        error_message: error?.message,
+        error_code: error?.code,
+        error_details: error?.details,
+        error_hint: error?.hint,
+        full_error: error,
+      });
+
+      let errorMessage = 'Failed to approve transaction';
+
+      if (error?.code === '23503') {
+        errorMessage = 'Employee verification failed. Please log out and log back in.';
+      } else if (error?.code === '42501') {
+        errorMessage = 'Insufficient permissions to approve this transaction';
+      } else if (error?.code) {
+        errorMessage = `Database error (${error.code}): ${error.message}`;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      showToast(errorMessage, 'error');
     } finally {
       setProcessing(false);
     }
