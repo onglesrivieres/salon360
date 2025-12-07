@@ -502,6 +502,7 @@ export interface PendingInventoryApproval {
   transaction_type: 'in' | 'out';
   requested_by_id: string;
   requested_by_name: string;
+  recipient_id: string | null;
   recipient_name: string;
   notes: string;
   status: string;

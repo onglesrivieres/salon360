@@ -160,7 +160,7 @@ export function PendingApprovalsPage() {
       setProcessing(true);
       const userRoles = session.role || [];
       const isManager = userRoles.some((role) => ['Manager', 'Owner'].includes(role));
-      const isRecipient = approval.recipient_name && session.employee_id === approval.id;
+      const isRecipient = approval.recipient_id && session.employee_id === approval.recipient_id;
 
       const updates: any = { updated_at: new Date().toISOString() };
 
