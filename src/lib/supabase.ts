@@ -556,6 +556,20 @@ export interface EmployeeInventory {
   updated_at: string;
 }
 
+export interface EmployeeInventoryLotDetail {
+  id: string;
+  lot_id: string;
+  lot_number: string;
+  quantity: number;
+  unit_cost: number;
+  distributed_date: string;
+  purchase_date: string;
+  invoice_reference?: string;
+  supplier_name?: string;
+  status: string;
+  quantity_received: number;
+}
+
 export interface EmployeeInventoryWithDetails extends EmployeeInventory {
   item?: MasterInventoryItem;
   item_name?: string;
@@ -565,6 +579,7 @@ export interface EmployeeInventoryWithDetails extends EmployeeInventory {
   employee_name?: string;
   average_cost?: number;
   lot_count?: number;
+  lots?: EmployeeInventoryLotDetail[];
 }
 
 export interface EmployeeInventoryLot {
