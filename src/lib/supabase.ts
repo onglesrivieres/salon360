@@ -439,6 +439,61 @@ export interface InventoryTransactionWithDetails extends InventoryTransaction {
 export interface InventoryTransactionItemWithDetails extends InventoryTransactionItem {
   item_name?: string;
   item_unit?: string;
+  purchase_unit_name?: string;
+  purchase_quantity?: number;
+  purchase_unit_price?: number;
+}
+
+export interface ItemTransactionHistory {
+  transaction_id: string;
+  transaction_number: string;
+  transaction_type: 'in' | 'out';
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  purchase_unit_name: string;
+  purchase_quantity: number;
+  purchase_unit_price: number;
+  quantity: number;
+  unit_cost: number;
+  notes: string;
+}
+
+export interface TransactionDetail {
+  id: string;
+  transaction_number: string;
+  transaction_type: 'in' | 'out';
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  requested_by_id: string;
+  requested_by_name: string;
+  recipient_id?: string;
+  recipient_name?: string;
+  supplier_id?: string;
+  supplier_name?: string;
+  invoice_reference?: string;
+  notes: string;
+  requires_recipient_approval: boolean;
+  requires_manager_approval: boolean;
+  recipient_approved: boolean;
+  recipient_approved_at?: string;
+  recipient_approved_by_name?: string;
+  manager_approved: boolean;
+  manager_approved_at?: string;
+  manager_approved_by_name?: string;
+  rejection_reason?: string;
+  items: TransactionDetailItem[];
+}
+
+export interface TransactionDetailItem {
+  id: string;
+  item_id: string;
+  item_name: string;
+  purchase_unit_name?: string;
+  purchase_quantity?: number;
+  purchase_unit_price?: number;
+  quantity: number;
+  unit_cost: number;
+  notes: string;
 }
 
 export interface PendingInventoryApproval {

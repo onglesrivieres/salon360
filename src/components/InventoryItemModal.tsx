@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, ArrowUpDown, Info } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -9,8 +9,10 @@ import { supabase, InventoryItem, MasterInventoryItem, Supplier } from '../lib/s
 import { useAuth } from '../contexts/AuthContext';
 import { SupplierModal } from './SupplierModal';
 import { PurchaseUnitManager } from './PurchaseUnitManager';
+import { ItemTransactionHistoryModal } from './ItemTransactionHistoryModal';
+import { TransactionDetailModal } from './TransactionDetailModal';
 import { Permissions } from '../lib/permissions';
-import { UNITS, CATEGORIES } from '../lib/inventory-constants';
+import { CATEGORIES } from '../lib/inventory-constants';
 
 interface InventoryItemModalProps {
   isOpen: boolean;
@@ -33,17 +35,21 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
     name: '',
     description: '',
     category: '',
-    unit: 'piece',
-    quantity_on_hand: '0',
     reorder_level: '0',
-    unit_cost: '0',
   });
+  const [transactionCount, setTransactionCount] = useState<number>(0);
+  const [loadingTransactionCount, setLoadingTransactionCount] = useState(false);
+  const [showTransactionHistory, setShowTransactionHistory] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       fetchSuppliers();
+      if (item) {
+        fetchTransactionCount();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, item]);
 
   useEffect(() => {
     if (item) {
@@ -53,10 +59,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         name: item.name,
         description: item.description || '',
         category: item.category,
-        unit: item.unit,
-        quantity_on_hand: item.quantity_on_hand.toString(),
         reorder_level: item.reorder_level.toString(),
-        unit_cost: item.unit_cost.toString(),
       });
       if (item.master_item_id) {
         setExistingMasterItem({
@@ -81,13 +84,11 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         name: '',
         description: '',
         category: '',
-        unit: 'piece',
-        quantity_on_hand: '0',
         reorder_level: '0',
-        unit_cost: '0',
       });
       setExistingMasterItem(null);
     }
+    setTransactionCount(0);
   }, [item, isOpen]);
 
   async function fetchSuppliers() {
@@ -106,6 +107,25 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
       showToast('Failed to load suppliers', 'error');
     } finally {
       setLoadingSuppliers(false);
+    }
+  }
+
+  async function fetchTransactionCount() {
+    if (!item?.id) return;
+
+    try {
+      setLoadingTransactionCount(true);
+      const { count, error } = await supabase
+        .from('inventory_transaction_items')
+        .select('*', { count: 'exact', head: true })
+        .eq('item_id', item.id);
+
+      if (error) throw error;
+      setTransactionCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching transaction count:', error);
+    } finally {
+      setLoadingTransactionCount(false);
     }
   }
 
@@ -146,8 +166,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         const { error: updateError } = await supabase
           .from('store_inventory_stock')
           .update({
-            quantity_on_hand: parseFloat(formData.quantity_on_hand) || 0,
-            unit_cost_override: parseFloat(formData.unit_cost) || null,
             reorder_level_override: parseFloat(formData.reorder_level) || null,
             updated_at: new Date().toISOString(),
           })
@@ -176,11 +194,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           .insert({
             store_id: selectedStoreId,
             item_id: masterItemId,
-            quantity_on_hand: parseFloat(formData.quantity_on_hand) || 0,
-            unit_cost_override:
-              parseFloat(formData.unit_cost) !== existingMasterItem.unit_cost
-                ? parseFloat(formData.unit_cost)
-                : null,
+            quantity_on_hand: 0,
             reorder_level_override:
               parseFloat(formData.reorder_level) !== existingMasterItem.reorder_level
                 ? parseFloat(formData.reorder_level)
@@ -194,8 +208,8 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           name: formData.name.trim(),
           description: formData.description.trim(),
           category: formData.category,
-          unit: formData.unit,
-          unit_cost: parseFloat(formData.unit_cost) || 0,
+          unit: 'piece',
+          unit_cost: 0,
           reorder_level: parseFloat(formData.reorder_level) || 0,
           brand: formData.brand.trim() || null,
           supplier: formData.supplier,
@@ -216,7 +230,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           .insert({
             store_id: selectedStoreId,
             item_id: masterItemId,
-            quantity_on_hand: parseFloat(formData.quantity_on_hand) || 0,
+            quantity_on_hand: 0,
           });
 
         if (stockError) throw stockError;
@@ -251,6 +265,26 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose} title={item ? 'Edit Item' : 'Add Item'} size="lg">
+        {item && (
+          <div className="absolute top-4 right-12 flex items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowTransactionHistory(true)}
+              disabled={loadingTransactionCount}
+              className="flex items-center gap-2"
+            >
+              <ArrowUpDown className="w-4 h-4" />
+              View Transactions
+              {transactionCount > 0 && (
+                <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                  {transactionCount}
+                </span>
+              )}
+            </Button>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -337,79 +371,50 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
-            <Select
-              value={formData.unit}
-              onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-              disabled={isUsingMasterItem}
-            >
-              {UNITS.map((unit) => (
-                <option key={unit} value={unit}>
-                  {unit}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Unit Cost ($)
-              {isUsingMasterItem && (
-                <span className="text-xs text-gray-500 ml-1">(override)</span>
-              )}
-            </label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.unit_cost}
-              onChange={(e) => setFormData({ ...formData, unit_cost: e.target.value })}
-              placeholder="0.00"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Reorder Level
-              {isUsingMasterItem && (
-                <span className="text-xs text-gray-500 ml-1">(override)</span>
-              )}
-            </label>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.reorder_level}
-              onChange={(e) => setFormData({ ...formData, reorder_level: e.target.value })}
-              placeholder="0"
-            />
-          </div>
-        </div>
-
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            {isEditingExistingItem ? 'Current Quantity' : 'Initial Quantity'}
+            Reorder Level (Purchase Units)
+            {isUsingMasterItem && (
+              <span className="text-xs text-gray-500 ml-1">(override)</span>
+            )}
           </label>
           <Input
             type="number"
-            step="0.01"
+            step="1"
             min="0"
-            value={formData.quantity_on_hand}
-            onChange={(e) => setFormData({ ...formData, quantity_on_hand: e.target.value })}
+            value={formData.reorder_level}
+            onChange={(e) => setFormData({ ...formData, reorder_level: e.target.value })}
             placeholder="0"
           />
-          <p className="text-xs text-gray-500 mt-1">
-            Store-specific quantity. Use transactions to adjust stock.
+          <p className="text-xs text-gray-500 mt-1 flex items-start gap-1">
+            <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+            <span>Reorder when stock falls below this many purchase units (e.g., "2" means reorder when below 2 cases)</span>
           </p>
         </div>
 
         {(item?.master_item_id || existingMasterItem) && (
-          <PurchaseUnitManager
-            masterItemId={item?.master_item_id || existingMasterItem?.id || ''}
-            isOpen={isOpen}
-          />
+          <>
+            <PurchaseUnitManager
+              masterItemId={item?.master_item_id || existingMasterItem?.id || ''}
+              isOpen={isOpen}
+            />
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-2">
+                <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <h4 className="font-medium text-blue-900 mb-2">Store Units for Distribution Tracking</h4>
+                  <p className="text-sm text-blue-800 mb-2">
+                    Each purchase unit breaks down into smaller store units for employee distribution and theft prevention.
+                  </p>
+                  <p className="text-sm text-blue-800">
+                    <span className="font-medium">Example:</span> A "Case of 24" purchase unit equals 24 "bottles" in store units.
+                    Employees are tracked at the bottle level for precise accountability.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
         <div className="flex gap-3 pt-4">
@@ -423,11 +428,34 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
       </form>
     </Modal>
 
-    <SupplierModal
-      isOpen={showSupplierModal}
-      onClose={() => setShowSupplierModal(false)}
-      onSuccess={handleSupplierAdded}
-    />
+      <SupplierModal
+        isOpen={showSupplierModal}
+        onClose={() => setShowSupplierModal(false)}
+        onSuccess={handleSupplierAdded}
+      />
+
+      {item && (
+        <>
+          <ItemTransactionHistoryModal
+            isOpen={showTransactionHistory}
+            onClose={() => setShowTransactionHistory(false)}
+            item={item}
+            onViewTransactionDetail={(transactionId) => {
+              setSelectedTransactionId(transactionId);
+              setShowTransactionHistory(false);
+            }}
+          />
+
+          <TransactionDetailModal
+            isOpen={!!selectedTransactionId}
+            onClose={() => {
+              setSelectedTransactionId(null);
+              setShowTransactionHistory(true);
+            }}
+            transactionId={selectedTransactionId || ''}
+          />
+        </>
+      )}
     </>
   );
 }
