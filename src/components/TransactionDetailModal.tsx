@@ -32,11 +32,11 @@ export function TransactionDetailModal({ isOpen, onClose, transactionId }: Trans
         .from('inventory_transactions')
         .select(`
           *,
-          requested_by:employees!inventory_transactions_requested_by_id_fkey(name),
-          recipient:employees!inventory_transactions_recipient_id_fkey(name),
+          requested_by:employees!inventory_transactions_requested_by_id_fkey(display_name),
+          recipient:employees!inventory_transactions_recipient_id_fkey(display_name),
           supplier:suppliers(name),
-          recipient_approved_by:employees!inventory_transactions_recipient_approved_by_id_fkey(name),
-          manager_approved_by:employees!inventory_transactions_manager_approved_by_id_fkey(name)
+          recipient_approved_by:employees!inventory_transactions_recipient_approved_by_id_fkey(display_name),
+          manager_approved_by:employees!inventory_transactions_manager_approved_by_id_fkey(display_name)
         `)
         .eq('id', transactionId)
         .maybeSingle();
@@ -52,12 +52,22 @@ export function TransactionDetailModal({ isOpen, onClose, transactionId }: Trans
         .from('inventory_transaction_items')
         .select(`
           *,
-          store_inventory_stock(name),
-          store_product_purchase_units(unit_name, unit_multiplier)
+          purchase_unit:store_product_purchase_units(unit_name, multiplier)
         `)
         .eq('transaction_id', transactionId);
 
       if (itemsError) throw itemsError;
+
+      const masterItemIds = [...new Set(itemsData.map((item: any) => item.master_item_id).filter(Boolean))];
+
+      const { data: masterItemsData, error: masterItemsError } = await supabase
+        .from('master_inventory_items')
+        .select('id, name, unit')
+        .in('id', masterItemIds);
+
+      if (masterItemsError) throw masterItemsError;
+
+      const masterItemsMap = new Map(masterItemsData.map((item: any) => [item.id, item]));
 
       const detail: TransactionDetail = {
         id: transactionData.id,
@@ -66,9 +76,9 @@ export function TransactionDetailModal({ isOpen, onClose, transactionId }: Trans
         status: transactionData.status,
         created_at: transactionData.created_at,
         requested_by_id: transactionData.requested_by_id,
-        requested_by_name: transactionData.requested_by?.name || 'Unknown',
+        requested_by_name: transactionData.requested_by?.display_name || 'Unknown',
         recipient_id: transactionData.recipient_id,
-        recipient_name: transactionData.recipient?.name,
+        recipient_name: transactionData.recipient?.display_name,
         supplier_id: transactionData.supplier_id,
         supplier_name: transactionData.supplier?.name,
         invoice_reference: transactionData.invoice_reference,
@@ -77,22 +87,25 @@ export function TransactionDetailModal({ isOpen, onClose, transactionId }: Trans
         requires_manager_approval: transactionData.requires_manager_approval,
         recipient_approved: transactionData.recipient_approved,
         recipient_approved_at: transactionData.recipient_approved_at,
-        recipient_approved_by_name: transactionData.recipient_approved_by?.name,
+        recipient_approved_by_name: transactionData.recipient_approved_by?.display_name,
         manager_approved: transactionData.manager_approved,
         manager_approved_at: transactionData.manager_approved_at,
-        manager_approved_by_name: transactionData.manager_approved_by?.name,
+        manager_approved_by_name: transactionData.manager_approved_by?.display_name,
         rejection_reason: transactionData.rejection_reason,
-        items: (itemsData || []).map((item: any) => ({
-          id: item.id,
-          item_id: item.item_id,
-          item_name: item.store_inventory_stock?.name || 'Unknown Item',
-          purchase_unit_name: item.store_product_purchase_units?.unit_name,
-          purchase_quantity: item.purchase_quantity,
-          purchase_unit_price: item.purchase_unit_price,
-          quantity: item.quantity,
-          unit_cost: item.unit_cost,
-          notes: item.notes || '',
-        })),
+        items: (itemsData || []).map((item: any) => {
+          const masterItem = masterItemsMap.get(item.master_item_id);
+          return {
+            id: item.id,
+            item_id: item.item_id,
+            item_name: masterItem?.name || 'Unknown Item',
+            purchase_unit_name: item.purchase_unit?.unit_name,
+            purchase_quantity: item.purchase_quantity,
+            purchase_unit_price: item.purchase_unit_price,
+            quantity: item.quantity,
+            unit_cost: item.unit_cost,
+            notes: item.notes || '',
+          };
+        }),
       };
 
       setTransaction(detail);

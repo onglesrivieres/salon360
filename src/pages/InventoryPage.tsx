@@ -33,6 +33,7 @@ import { InventoryItemModal } from '../components/InventoryItemModal';
 import { InventoryTransactionModal } from '../components/InventoryTransactionModal';
 import { EmployeeDistributionModal } from '../components/EmployeeDistributionModal';
 import { SupplierModal } from '../components/SupplierModal';
+import { TransactionDetailModal } from '../components/TransactionDetailModal';
 import { formatDateTimeEST } from '../lib/timezone';
 
 type Tab = 'items' | 'transactions' | 'lots' | 'distributions' | 'suppliers';
@@ -59,9 +60,11 @@ export function InventoryPage() {
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showDistributionModal, setShowDistributionModal] = useState(false);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
+  const [showTransactionDetailModal, setShowTransactionDetailModal] = useState(false);
   const [transactionType, setTransactionType] = useState<'in' | 'out' | undefined>(undefined);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const { showToast } = useToast();
   const { selectedStoreId, session } = useAuth();
 
@@ -931,7 +934,11 @@ export function InventoryPage() {
               {filteredTransactions.map((transaction) => (
                 <div
                   key={transaction.id}
-                  className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  onClick={() => {
+                    setSelectedTransactionId(transaction.id);
+                    setShowTransactionDetailModal(true);
+                  }}
+                  className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <div className="flex items-center gap-3">
@@ -1195,6 +1202,15 @@ export function InventoryPage() {
           fetchSuppliers();
         }}
         supplier={selectedSupplier}
+      />
+
+      <TransactionDetailModal
+        isOpen={showTransactionDetailModal}
+        onClose={() => {
+          setShowTransactionDetailModal(false);
+          setSelectedTransactionId(null);
+        }}
+        transactionId={selectedTransactionId || ''}
       />
     </div>
   );
