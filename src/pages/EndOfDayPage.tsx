@@ -227,8 +227,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     .filter(t => t.status === 'approved')
     .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
 
-  const netCashCollected = closingCashTotal - openingCashTotal - totalCashOut + totalCashIn;
-  const cashVariance = netCashCollected - expectedCash;
+  const netCashCollected = expectedCash + totalCashIn - totalCashOut;
+  const actualCashChange = closingCashTotal - openingCashTotal;
+  const cashVariance = actualCashChange - netCashCollected;
   const isBalanced = Math.abs(cashVariance) < 0.01;
   const isOpeningCashRecorded = eodRecord && (
     eodRecord.opening_cash_amount > 0 ||
@@ -242,6 +243,19 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     eodRecord.coin_25 > 0 ||
     eodRecord.coin_10 > 0 ||
     eodRecord.coin_5 > 0
+  );
+  const isClosingCashRecorded = eodRecord && (
+    eodRecord.closing_cash_amount > 0 ||
+    eodRecord.closing_bill_100 > 0 ||
+    eodRecord.closing_bill_50 > 0 ||
+    eodRecord.closing_bill_20 > 0 ||
+    eodRecord.closing_bill_10 > 0 ||
+    eodRecord.closing_bill_5 > 0 ||
+    eodRecord.closing_bill_2 > 0 ||
+    eodRecord.closing_bill_1 > 0 ||
+    eodRecord.closing_coin_25 > 0 ||
+    eodRecord.closing_coin_10 > 0 ||
+    eodRecord.closing_coin_5 > 0
   );
 
   async function handleOpeningSubmit(denominations: CashDenominations) {
@@ -633,26 +647,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <DollarSign className="w-4 h-4 text-blue-600" />
-                <h3 className="text-sm font-semibold text-gray-900">Closing Cash</h3>
-              </div>
-              <div className="text-center py-3">
-                <p className="text-xs text-gray-600 mb-1">Total Amount</p>
-                <p className="text-2xl font-bold text-blue-600 mb-3">${closingCashTotal.toFixed(2)}</p>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIsClosingModalOpen(true)}
-                  className="w-full"
-                >
-                  <Edit className="w-3 h-3 mr-1" />
-                  Count Bills
-                </Button>
-              </div>
-            </div>
-
             <div className="bg-gray-50 rounded-lg shadow p-4">
               <div className="flex items-center gap-2 mb-3">
                 <DollarSign className="w-4 h-4 text-gray-700" />
@@ -701,6 +695,32 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                   <Plus className="w-3 h-3 mr-1" />
                   Add Transaction
                 </Button>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <DollarSign className="w-4 h-4 text-blue-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Closing Cash</h3>
+              </div>
+              <div className="text-center py-3">
+                <p className="text-xs text-gray-600 mb-1">Total Amount</p>
+                <p className="text-2xl font-bold text-blue-600 mb-3">${closingCashTotal.toFixed(2)}</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsClosingModalOpen(true)}
+                  className="w-full"
+                >
+                  <Edit className="w-3 h-3 mr-1" />
+                  Count Bills
+                </Button>
+                {isClosingCashRecorded && (
+                  <div className="mt-2 flex items-center justify-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded">
+                    <CheckCircle className="w-3 h-3" />
+                    Recorded
+                  </div>
+                )}
               </div>
             </div>
           </div>
