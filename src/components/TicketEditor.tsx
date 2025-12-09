@@ -378,14 +378,25 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               *,
               service:store_services!ticket_items_store_service_id_fkey(*),
               employee:employees!ticket_items_employee_id_fkey(*)
-            ),
-            approver:employees!sale_tickets_approved_by_fkey(id, display_name, employee_code)
+            )
           `
           )
           .eq('id', ticketId)
           .single();
 
         if (ticketError) throw ticketError;
+
+        if (ticketData.approved_by) {
+          const { data: approverData } = await supabase
+            .from('employees')
+            .select('id, display_name, employee_code')
+            .eq('id', ticketData.approved_by)
+            .maybeSingle();
+
+          if (approverData) {
+            (ticketData as any).approver = approverData;
+          }
+        }
 
         setTicket(ticketData);
 
@@ -445,6 +456,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         }));
       }
     } catch (error) {
+      console.error('Error loading ticket data:', error);
       showToast('Failed to load data', 'error');
     } finally {
       setLoading(false);
