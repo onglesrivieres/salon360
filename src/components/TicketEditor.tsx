@@ -62,7 +62,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const isSelfServiceMode = !ticketId && session?.role_permission && Permissions.tickets.isSelfServiceRole(session.role_permission);
 
   const canEditAsSelfService = ticketId && ticket?.opened_by_role &&
-    ['Technician', 'Spa Expert', 'Supervisor'].includes(ticket.opened_by_role) &&
+    ['Supervisor'].includes(ticket.opened_by_role) &&
     session?.employee_id === ticket.created_by &&
     session?.role_permission &&
     Permissions.tickets.canEditSelfServiceTicket(
@@ -89,6 +89,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   );
 
   const canClose = session && session.role_permission && Permissions.tickets.canClose(session.role_permission);
+
+  const canMarkCompleted = session && session.role_permission && Permissions.tickets.canMarkCompleted(session.role_permission);
 
   const canReopen = session && session.role_permission && Permissions.tickets.canReopen(session.role_permission);
 
@@ -1249,6 +1251,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   }
 
   async function handleMarkCompleted() {
+    if (!canMarkCompleted) {
+      showToast('You do not have permission to mark tickets as completed', 'error');
+      return;
+    }
+
     if (!ticketId || !ticket) return;
 
     if (ticket.closed_at) {
@@ -1497,9 +1504,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     Self-Service Mode
                   </p>
                   <p className="text-xs text-green-700">
-                    • You can only create tickets for yourself<br/>
-                    • A receptionist or manager will review your ticket<br/>
-                    • You cannot edit after saving
+                    • You can only create new tickets for yourself<br/>
+                    • You cannot edit, complete, or close tickets after creation<br/>
+                    • Only receptionists and managers can modify tickets
                   </p>
                 </div>
               </div>
@@ -1508,7 +1515,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
           {isReadOnly &&
            ticket?.opened_by_role &&
-           ['Technician', 'Spa Expert', 'Supervisor'].includes(ticket.opened_by_role) &&
+           ['Technician', 'Spa Expert'].includes(ticket.opened_by_role) &&
            session?.employee_id === ticket.created_by && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <div className="flex items-start gap-2">
@@ -1516,7 +1523,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 <div className="flex-1">
                   <p className="text-sm font-medium text-blue-900">View Only</p>
                   <p className="text-xs text-blue-700 mt-1">
-                    You cannot edit tickets after saving. A receptionist or manager can make changes if needed.
+                    You can only view this ticket. You cannot edit, complete, or close it. Contact a receptionist or manager for any changes.
                   </p>
                 </div>
               </div>
@@ -2068,7 +2075,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   >
                     {saving ? 'Saving...' : 'Save'}
                   </button>
-                  {ticketId && !ticket?.completed_at && (
+                  {ticketId && !ticket?.completed_at && canMarkCompleted && (
                     <button
                       onClick={handleMarkCompleted}
                       disabled={saving}

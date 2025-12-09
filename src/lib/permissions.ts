@@ -38,7 +38,12 @@ export const Permissions = {
       currentEmployeeId: string,
       ticketCreatedBy?: string
     ): boolean => {
-      const isSelfServiceRole = hasAnyRole(roles, ['Technician', 'Spa Expert', 'Supervisor']);
+      // Technicians and Spa Experts cannot edit tickets at all, even their own
+      if (hasAnyRole(roles, ['Technician', 'Spa Expert'])) {
+        return false;
+      }
+      // Supervisors can edit their own self-service tickets
+      const isSelfServiceRole = hasAnyRole(roles, ['Supervisor']);
       if (!isSelfServiceRole || !ticketCreatedBy) {
         return false;
       }
@@ -52,7 +57,7 @@ export const Permissions = {
     canEditNotes: (roles: Role[] | RolePermission, isClosed: boolean): boolean => {
       if (hasAnyRole(roles, ['Admin', 'Owner'])) return true;
       if (hasAnyRole(roles, ['Receptionist', 'Supervisor', 'Manager', 'Cashier'])) return !isClosed;
-      if (hasAnyRole(roles, ['Technician', 'Spa Expert'])) return !isClosed;
+      // Technicians and Spa Experts cannot edit notes
       return false;
     },
     canDelete: (roles: Role[] | RolePermission): boolean => {
@@ -62,6 +67,10 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
     },
     canClose: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+    },
+    canMarkCompleted: (roles: Role[] | RolePermission): boolean => {
+      // Only roles that can close tickets can also mark them as completed
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
     },
     canReopen: (roles: Role[] | RolePermission): boolean => {
