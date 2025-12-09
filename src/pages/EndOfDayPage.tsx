@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Download, Printer, Plus, Save, DollarSign, AlertCircle, CheckCircle, Edit } from 'lucide-react';
-import { supabase, EndOfDayRecord } from '../lib/supabase';
+import { Calendar, Download, Printer, Plus, Save, DollarSign, AlertCircle, CheckCircle, Edit, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { supabase, EndOfDayRecord, CashTransaction, PendingCashTransactionApproval, CashTransactionType } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { TicketEditor } from '../components/TicketEditor';
 import { CashCountModal } from '../components/CashCountModal';
+import { CashTransactionModal, TransactionData } from '../components/CashTransactionModal';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { getCurrentDateEST } from '../lib/timezone';
@@ -67,6 +68,11 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   const [isOpeningModalOpen, setIsOpeningModalOpen] = useState(false);
   const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
+
+  const [cashInTransactions, setCashInTransactions] = useState<CashTransaction[]>([]);
+  const [cashOutTransactions, setCashOutTransactions] = useState<CashTransaction[]>([]);
+  const [isCashInModalOpen, setIsCashInModalOpen] = useState(false);
+  const [isCashOutModalOpen, setIsCashOutModalOpen] = useState(false);
 
   useEffect(() => {
     loadEODData();
@@ -162,11 +168,36 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       console.log('Total cash from tickets:', totalCash);
       setExpectedCash(totalCash);
+
+      await loadCashTransactions();
     } catch (error) {
       showToast('Failed to load EOD data', 'error');
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadCashTransactions() {
+    if (!selectedStoreId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('cash_transactions')
+        .select('*')
+        .eq('store_id', selectedStoreId)
+        .eq('date', selectedDate)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const cashIn = (data || []).filter(t => t.transaction_type === 'cash_in');
+      const cashOut = (data || []).filter(t => t.transaction_type === 'cash_out');
+
+      setCashInTransactions(cashIn);
+      setCashOutTransactions(cashOut);
+    } catch (error) {
+      console.error('Failed to load cash transactions:', error);
     }
   }
 
@@ -187,8 +218,16 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
   const openingCashTotal = calculateTotal(openingDenominations);
   const closingCashTotal = calculateTotal(closingDenominations);
-  const totalCashOut = 0; // TODO: Future implementation for tracking cash removed from till
-  const netCashCollected = closingCashTotal - openingCashTotal;
+
+  const totalCashIn = cashInTransactions
+    .filter(t => t.status === 'approved')
+    .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
+
+  const totalCashOut = cashOutTransactions
+    .filter(t => t.status === 'approved')
+    .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
+
+  const netCashCollected = closingCashTotal - openingCashTotal - totalCashOut + totalCashIn;
   const cashVariance = netCashCollected - expectedCash;
   const isBalanced = Math.abs(cashVariance) < 0.01;
   const isOpeningCashRecorded = eodRecord && (
@@ -386,13 +425,34 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       ['  10¢ Coins', `${closingDenominations.coin_10} x $0.10`],
       ['  5¢ Coins', `${closingDenominations.coin_5} x $0.05`],
       ['', ''],
+      ['Total Cash In (Approved)', totalCashIn.toFixed(2)],
+      ['Total Cash Out (Approved)', totalCashOut.toFixed(2)],
+      ['', ''],
       ['Net Cash Collected', netCashCollected.toFixed(2)],
       ['Expected Cash from Tickets', expectedCash.toFixed(2)],
       ['Cash Variance', cashVariance.toFixed(2)],
       ['Status', isBalanced ? 'BALANCED' : 'UNBALANCED'],
     ];
 
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    if (cashInTransactions.length > 0) {
+      rows.push(['', '']);
+      rows.push(['Cash In Transactions', '']);
+      rows.push(['Status', 'Amount', 'Description', 'Category']);
+      cashInTransactions.forEach(t => {
+        rows.push([t.status, t.amount.toFixed(2), t.description, t.category || '']);
+      });
+    }
+
+    if (cashOutTransactions.length > 0) {
+      rows.push(['', '']);
+      rows.push(['Cash Out Transactions', '']);
+      rows.push(['Status', 'Amount', 'Description', 'Category']);
+      cashOutTransactions.forEach(t => {
+        rows.push([t.status, t.amount.toFixed(2), t.description, t.category || '']);
+      });
+    }
+
+    const csv = rows.map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -437,6 +497,41 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   function openNewTicket() {
     setEditingTicketId(null);
     setIsEditorOpen(true);
+  }
+
+  async function handleCashTransactionSubmit(transactionType: CashTransactionType, data: TransactionData) {
+    if (!selectedStoreId || !session?.employee_id) {
+      showToast('Missing required information', 'error');
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const { error } = await supabase
+        .from('cash_transactions')
+        .insert({
+          store_id: selectedStoreId,
+          date: selectedDate,
+          transaction_type: transactionType,
+          amount: data.amount,
+          description: data.description,
+          category: data.category,
+          created_by_id: session.employee_id,
+          status: 'pending_approval',
+          requires_manager_approval: true,
+        });
+
+      if (error) throw error;
+
+      showToast('Transaction submitted for manager approval', 'success');
+      await loadCashTransactions();
+    } catch (error) {
+      showToast('Failed to save transaction', 'error');
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -504,7 +599,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <div className={`bg-white rounded-lg shadow p-4 ${!isOpeningCashRecorded ? 'ring-2 ring-amber-400' : ''}`}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -557,12 +652,52 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                 </Button>
               </div>
             </div>
+
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <ArrowDownLeft className="w-4 h-4 text-green-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Cash In</h3>
+              </div>
+              <div className="text-center py-3">
+                <p className="text-xs text-gray-600 mb-1">Total Amount</p>
+                <p className="text-2xl font-bold text-green-600 mb-3">${totalCashIn.toFixed(2)}</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsCashInModalOpen(true)}
+                  className="w-full"
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add Transaction
+                </Button>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <ArrowUpRight className="w-4 h-4 text-red-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Cash Out</h3>
+              </div>
+              <div className="text-center py-3">
+                <p className="text-xs text-gray-600 mb-1">Total Amount</p>
+                <p className="text-2xl font-bold text-red-600 mb-3">${totalCashOut.toFixed(2)}</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsCashOutModalOpen(true)}
+                  className="w-full"
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add Transaction
+                </Button>
+              </div>
+            </div>
           </div>
 
           <div className="bg-white rounded-lg shadow mb-4">
             <div className="p-4">
               <h3 className="text-base font-semibold text-gray-900 mb-4">Cash Reconciliation Summary</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="bg-green-50 rounded-lg p-3">
                   <p className="text-xs text-green-700 mb-1">Opening Cash</p>
                   <p className="text-lg font-bold text-green-700">${openingCashTotal.toFixed(2)}</p>
@@ -571,9 +706,13 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                   <p className="text-xs text-blue-700 mb-1">Total Cash in Till</p>
                   <p className="text-lg font-bold text-blue-700">${closingCashTotal.toFixed(2)}</p>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-700 mb-1">Total Cash Out</p>
-                  <p className="text-lg font-bold text-gray-900">${totalCashOut.toFixed(2)}</p>
+                <div className="bg-green-50 rounded-lg p-3">
+                  <p className="text-xs text-green-700 mb-1">Total Cash In</p>
+                  <p className="text-lg font-bold text-green-700">${totalCashIn.toFixed(2)}</p>
+                </div>
+                <div className="bg-red-50 rounded-lg p-3">
+                  <p className="text-xs text-red-700 mb-1">Total Cash Out</p>
+                  <p className="text-lg font-bold text-red-700">${totalCashOut.toFixed(2)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-xs text-gray-700 mb-1">Expected from Tickets</p>
@@ -680,6 +819,20 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         initialDenominations={closingDenominations}
         onSubmit={handleClosingSubmit}
         colorScheme="blue"
+      />
+
+      <CashTransactionModal
+        isOpen={isCashInModalOpen}
+        onClose={() => setIsCashInModalOpen(false)}
+        onSubmit={(data) => handleCashTransactionSubmit('cash_in', data)}
+        transactionType="cash_in"
+      />
+
+      <CashTransactionModal
+        isOpen={isCashOutModalOpen}
+        onClose={() => setIsCashOutModalOpen(false)}
+        onSubmit={(data) => handleCashTransactionSubmit('cash_out', data)}
+        transactionType="cash_out"
       />
     </div>
   );

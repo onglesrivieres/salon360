@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus } from 'lucide-react';
-import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval } from '../lib/supabase';
+import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign } from 'lucide-react';
+import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
@@ -11,11 +11,14 @@ import { getCurrentDateEST } from '../lib/timezone';
 export function PendingApprovalsPage() {
   const [tickets, setTickets] = useState<PendingApprovalTicket[]>([]);
   const [inventoryApprovals, setInventoryApprovals] = useState<PendingInventoryApproval[]>([]);
+  const [cashTransactionApprovals, setCashTransactionApprovals] = useState<PendingCashTransactionApproval[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<PendingApprovalTicket | null>(null);
   const [selectedInventory, setSelectedInventory] = useState<PendingInventoryApproval | null>(null);
+  const [selectedCashTransaction, setSelectedCashTransaction] = useState<PendingCashTransactionApproval | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showInventoryRejectModal, setShowInventoryRejectModal] = useState(false);
+  const [showCashTransactionRejectModal, setShowCashTransactionRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
   const [approvalStats, setApprovalStats] = useState<ApprovalStatistics | null>(null);
@@ -26,6 +29,7 @@ export function PendingApprovalsPage() {
     if (session?.employee_id) {
       fetchPendingApprovals();
       fetchInventoryApprovals();
+      fetchCashTransactionApprovals();
       fetchApprovalStats();
     }
   }, [session?.employee_id, selectedStoreId]);
@@ -35,6 +39,7 @@ export function PendingApprovalsPage() {
       if (session?.employee_id) {
         fetchPendingApprovals();
         fetchInventoryApprovals();
+        fetchCashTransactionApprovals();
         fetchApprovalStats();
       }
     }, 30000);
@@ -135,6 +140,29 @@ export function PendingApprovalsPage() {
       setInventoryApprovals(data || []);
     } catch (error) {
       console.error('Error fetching inventory approvals:', error);
+    }
+  }
+
+  async function fetchCashTransactionApprovals() {
+    if (!selectedStoreId) return;
+
+    const userRoles = session?.role || [];
+    const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
+
+    if (!isManagement) {
+      setCashTransactionApprovals([]);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('get_pending_cash_transaction_approvals', {
+        p_store_id: selectedStoreId,
+      });
+
+      if (error) throw error;
+      setCashTransactionApprovals(data || []);
+    } catch (error) {
+      console.error('Error fetching cash transaction approvals:', error);
     }
   }
 
@@ -355,6 +383,100 @@ export function PendingApprovalsPage() {
 
   function isOwnTransaction(approval: PendingInventoryApproval): boolean {
     return approval.requested_by_id === session?.employee_id;
+  }
+
+  async function handleApproveCashTransaction(approval: PendingCashTransactionApproval) {
+    if (!session?.employee_id) {
+      showToast('Session expired. Please log in again.', 'error');
+      return;
+    }
+
+    if (approval.created_by_id === session.employee_id) {
+      showToast('You cannot approve transactions you created', 'error');
+      return;
+    }
+
+    const userRoles = session?.role || [];
+    const isManager = userRoles.some((role) => ['Manager', 'Owner'].includes(role));
+
+    if (!isManager) {
+      showToast('You do not have permission to approve cash transactions', 'error');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+
+      const { error } = await supabase
+        .from('cash_transactions')
+        .update({
+          status: 'approved',
+          manager_approved: true,
+          manager_approved_by_id: session.employee_id,
+          manager_approved_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', approval.transaction_id);
+
+      if (error) throw error;
+
+      showToast('Cash transaction approved', 'success');
+      fetchCashTransactionApprovals();
+    } catch (error: any) {
+      console.error('Error approving cash transaction:', error);
+      showToast(error.message || 'Failed to approve transaction', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  function handleRejectCashTransactionClick(approval: PendingCashTransactionApproval) {
+    if (!session?.employee_id) return;
+
+    if (approval.created_by_id === session.employee_id) {
+      showToast('You cannot reject transactions you created', 'error');
+      return;
+    }
+
+    setSelectedCashTransaction(approval);
+    setRejectionReason('');
+    setShowCashTransactionRejectModal(true);
+  }
+
+  async function handleRejectCashTransaction() {
+    if (!selectedCashTransaction || !rejectionReason.trim()) {
+      showToast('Please provide a rejection reason', 'error');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+
+      const { error } = await supabase
+        .from('cash_transactions')
+        .update({
+          status: 'rejected',
+          rejection_reason: rejectionReason.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', selectedCashTransaction.transaction_id);
+
+      if (error) throw error;
+
+      showToast('Cash transaction rejected', 'success');
+      setShowCashTransactionRejectModal(false);
+      setSelectedCashTransaction(null);
+      fetchCashTransactionApprovals();
+    } catch (error) {
+      console.error('Error rejecting cash transaction:', error);
+      showToast('Failed to reject transaction', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  function isOwnCashTransaction(approval: PendingCashTransactionApproval): boolean {
+    return approval.created_by_id === session?.employee_id;
   }
 
   function getUrgencyLevel(hoursRemaining: number): 'urgent' | 'warning' | 'normal' {
@@ -628,7 +750,98 @@ export function PendingApprovalsPage() {
         </div>
       )}
 
-      {tickets.length === 0 && inventoryApprovals.length === 0 ? (
+      {cashTransactionApprovals.length > 0 && (
+        <div className="mb-6">
+          <div className="mb-3">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <DollarSign className="w-5 h-5" />
+              Pending Cash Transaction Approvals ({cashTransactionApprovals.length})
+            </h3>
+            <p className="text-sm text-gray-600">
+              Review and approve cash in/out transactions
+            </p>
+          </div>
+          <div className="space-y-3">
+            {cashTransactionApprovals.map((approval) => {
+              const isOwn = isOwnCashTransaction(approval);
+              return (
+                <div
+                  key={approval.transaction_id}
+                  className={`bg-white rounded-lg shadow p-4 border-l-4 ${
+                    isOwn ? 'border-gray-400 opacity-75' :
+                    approval.transaction_type === 'cash_in' ? 'border-green-500' : 'border-red-500'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        {approval.transaction_type === 'cash_in' ? (
+                          <ArrowDownLeft className="w-5 h-5 text-green-600" />
+                        ) : (
+                          <ArrowUpRight className="w-5 h-5 text-red-600" />
+                        )}
+                        <span className="font-semibold text-gray-900">
+                          ${approval.amount.toFixed(2)}
+                        </span>
+                        <Badge variant={approval.transaction_type === 'cash_in' ? 'success' : 'error'}>
+                          {approval.transaction_type === 'cash_in' ? 'CASH IN' : 'CASH OUT'}
+                        </Badge>
+                        {isOwn && (
+                          <Badge variant="secondary" className="bg-gray-200 text-gray-700">
+                            Created by you
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 mb-1">
+                        Created by: <span className="font-medium">{approval.created_by_name}</span>
+                      </p>
+                      <p className="text-sm text-gray-900 mb-1">
+                        <span className="font-medium">Description:</span> {approval.description}
+                      </p>
+                      {approval.category && (
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Category:</span> {approval.category}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-2">
+                        Date: {new Date(approval.date).toLocaleDateString()}
+                      </p>
+                      {isOwn && (
+                        <p className="text-xs text-gray-500 italic mt-1">
+                          Self-approval not allowed for audit compliance
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleApproveCashTransaction(approval)}
+                        disabled={processing || isOwn}
+                        title={isOwn ? 'You cannot approve transactions you created' : 'Approve transaction'}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleRejectCashTransactionClick(approval)}
+                        disabled={processing || isOwn}
+                        title={isOwn ? 'You cannot reject transactions you created' : 'Reject transaction'}
+                      >
+                        <XCircle className="w-4 h-4 mr-1" />
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {tickets.length === 0 && inventoryApprovals.length === 0 && cashTransactionApprovals.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
           <p className="text-lg font-medium text-gray-900 mb-1">All caught up!</p>
@@ -797,6 +1010,37 @@ export function PendingApprovalsPage() {
           <div>
             <p className="text-gray-700 mb-3">
               Rejecting transaction <strong>{selectedInventory.transaction_number}</strong> will prevent inventory quantities from being updated.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Reason for Rejection <span className="text-red-600">*</span>
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Please explain why you are rejecting this transaction..."
+                disabled={processing}
+              />
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={showCashTransactionRejectModal}
+        onClose={() => !processing && setShowCashTransactionRejectModal(false)}
+        title="Reject Cash Transaction"
+        onConfirm={handleRejectCashTransaction}
+        confirmText={processing ? 'Rejecting...' : 'Reject Transaction'}
+        confirmVariant="danger"
+        cancelText="Cancel"
+      >
+        {selectedCashTransaction && (
+          <div>
+            <p className="text-gray-700 mb-3">
+              Rejecting this {selectedCashTransaction.transaction_type === 'cash_in' ? 'cash in' : 'cash out'} transaction of <strong>${selectedCashTransaction.amount.toFixed(2)}</strong> will prevent it from being recorded in the cash reconciliation.
             </p>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">

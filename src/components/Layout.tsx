@@ -76,6 +76,36 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inventory_transactions',
+          filter: `store_id=eq.${selectedStoreId}`,
+        },
+        (payload) => {
+          // Refresh count when inventory transactions are updated
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            fetchPendingApprovalsCount();
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cash_transactions',
+          filter: `store_id=eq.${selectedStoreId}`,
+        },
+        (payload) => {
+          // Refresh count when cash transactions are updated
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            fetchPendingApprovalsCount();
+          }
+        }
+      )
       .subscribe();
 
     return () => {
@@ -212,6 +242,10 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     if (!session?.employee_id || !selectedStoreId) return;
 
     try {
+      let ticketCount = 0;
+      let inventoryCount = 0;
+      let cashTransactionCount = 0;
+
       // Determine which function to call based on role
       const isTechnicianOrSupervisor = session.role_permission === 'Technician' || session.role_permission === 'Supervisor';
 
@@ -222,7 +256,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         });
 
         if (error) throw error;
-        setPendingApprovalsCount(data?.length || 0);
+        ticketCount = data?.length || 0;
       } else {
         // For Receptionist, Manager, Owner - use management function
         const { data, error } = await supabase.rpc('get_pending_approvals_for_management', {
@@ -230,8 +264,35 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         });
 
         if (error) throw error;
-        setPendingApprovalsCount(data?.length || 0);
+        ticketCount = data?.length || 0;
       }
+
+      // Fetch inventory approvals for all roles
+      const { data: inventoryData, error: inventoryError } = await supabase.rpc('get_pending_inventory_approvals', {
+        p_employee_id: session.employee_id,
+        p_store_id: selectedStoreId,
+      });
+
+      if (!inventoryError) {
+        inventoryCount = inventoryData?.length || 0;
+      }
+
+      // Fetch cash transaction approvals for managers and owners only
+      const userRoles = session?.role || [];
+      const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
+
+      if (isManagement) {
+        const { data: cashData, error: cashError } = await supabase.rpc('get_pending_cash_transaction_approvals', {
+          p_store_id: selectedStoreId,
+        });
+
+        if (!cashError) {
+          cashTransactionCount = cashData?.length || 0;
+        }
+      }
+
+      const totalCount = ticketCount + inventoryCount + cashTransactionCount;
+      setPendingApprovalsCount(totalCount);
     } catch (error) {
       console.error('Error fetching pending approvals count:', error);
     }

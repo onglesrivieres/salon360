@@ -661,3 +661,43 @@ export interface EndOfDayRecord {
   created_at: string;
   updated_at: string;
 }
+
+export type CashTransactionType = 'cash_in' | 'cash_out';
+export type CashTransactionStatus = 'pending_approval' | 'approved' | 'rejected';
+
+export interface CashTransaction {
+  id: string;
+  store_id: string;
+  date: string;
+  transaction_type: CashTransactionType;
+  amount: number;
+  description: string;
+  category?: string;
+  created_by_id: string;
+  status: CashTransactionStatus;
+  requires_manager_approval: boolean;
+  manager_approved: boolean;
+  manager_approved_by_id?: string;
+  manager_approved_at?: string;
+  rejection_reason?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CashTransactionWithDetails extends CashTransaction {
+  created_by_name?: string;
+  manager_approved_by_name?: string;
+}
+
+export interface PendingCashTransactionApproval {
+  transaction_id: string;
+  transaction_type: CashTransactionType;
+  amount: number;
+  description: string;
+  category?: string;
+  date: string;
+  created_by_name: string;
+  created_by_id: string;
+  created_at: string;
+  requires_manager_approval: boolean;
+}
