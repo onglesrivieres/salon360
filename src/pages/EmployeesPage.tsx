@@ -114,16 +114,8 @@ export function EmployeesPage() {
 
       setEmployeeStoresMap(storesMap);
 
-      const filteredByStore = selectedStoreId
-        ? allEmployees.filter(emp =>
-            !storesMap[emp.id] ||
-            storesMap[emp.id].length === 0 ||
-            storesMap[emp.id].includes(selectedStoreId)
-          )
-        : allEmployees;
-
-      setEmployees(filteredByStore);
-      setFilteredEmployees(filteredByStore);
+      setEmployees(allEmployees);
+      setFilteredEmployees(allEmployees);
     } catch (error) {
       showToast(t('messages.failed'), 'error');
     } finally {
