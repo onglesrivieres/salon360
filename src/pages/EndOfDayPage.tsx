@@ -725,11 +725,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
           <div className="bg-white rounded-lg shadow mb-4">
             <div className="p-4">
-              <div className={`p-4 rounded-lg border-2 ${
-                isBalanced
-                  ? 'bg-green-50 border-green-200'
-                  : 'bg-red-50 border-red-200'
-              }`}>
+              <div className="p-4 rounded-lg border-2 bg-white border-gray-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {isBalanced ? (
@@ -738,29 +734,14 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                       <AlertCircle className="w-6 h-6 text-red-600" />
                     )}
                     <div>
-                      <p className={`text-sm font-semibold ${
-                        isBalanced ? 'text-green-900' : 'text-red-900'
-                      }`}>
+                      <p className="text-sm font-semibold text-gray-900">
                         Net Cash Collected
-                      </p>
-                      <p className={`text-xs ${
-                        isBalanced ? 'text-green-700' : 'text-red-700'
-                      }`}>
-                        Variance: ${cashVariance.toFixed(2)}
-                        {!isBalanced && (cashVariance > 0 ? ' (Over)' : ' (Short)')}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`text-2xl font-bold ${
-                      isBalanced ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <p className="text-2xl font-bold text-gray-900">
                       ${netCashCollected.toFixed(2)}
-                    </p>
-                    <p className={`text-xs ${
-                      isBalanced ? 'text-green-700' : 'text-red-700'
-                    }`}>
-                      {isBalanced ? 'Balanced' : cashVariance > 0 ? 'Overage' : 'Shortage'}
                     </p>
                   </div>
                 </div>
