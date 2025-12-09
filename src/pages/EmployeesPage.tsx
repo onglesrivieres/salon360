@@ -373,7 +373,7 @@ export function EmployeesPage() {
                       </div>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      <Badge variant={employee.status === 'Active' ? 'success' : 'default'}>
+                      <Badge variant={employee.status === 'Active' ? 'success' : 'danger'}>
                         {employee.status}
                       </Badge>
                     </td>
