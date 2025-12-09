@@ -599,7 +599,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
             <div className={`bg-white rounded-lg shadow p-4 ${!isOpeningCashRecorded ? 'ring-2 ring-amber-400' : ''}`}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -653,6 +653,17 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               </div>
             </div>
 
+            <div className="bg-gray-50 rounded-lg shadow p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <DollarSign className="w-4 h-4 text-gray-700" />
+                <h3 className="text-sm font-semibold text-gray-900">Expected from Tickets</h3>
+              </div>
+              <div className="text-center py-3">
+                <p className="text-xs text-gray-600 mb-1">Total Amount</p>
+                <p className="text-2xl font-bold text-gray-900 mb-3">${expectedCash.toFixed(2)}</p>
+              </div>
+            </div>
+
             <div className="bg-white rounded-lg shadow p-4">
               <div className="flex items-center gap-2 mb-3">
                 <ArrowDownLeft className="w-4 h-4 text-green-600" />
@@ -696,31 +707,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
           <div className="bg-white rounded-lg shadow mb-4">
             <div className="p-4">
-              <h3 className="text-base font-semibold text-gray-900 mb-4">Cash Reconciliation Summary</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                <div className="bg-green-50 rounded-lg p-3">
-                  <p className="text-xs text-green-700 mb-1">Opening Cash</p>
-                  <p className="text-lg font-bold text-green-700">${openingCashTotal.toFixed(2)}</p>
-                </div>
-                <div className="bg-blue-50 rounded-lg p-3">
-                  <p className="text-xs text-blue-700 mb-1">Total Cash in Till</p>
-                  <p className="text-lg font-bold text-blue-700">${closingCashTotal.toFixed(2)}</p>
-                </div>
-                <div className="bg-green-50 rounded-lg p-3">
-                  <p className="text-xs text-green-700 mb-1">Total Cash In</p>
-                  <p className="text-lg font-bold text-green-700">${totalCashIn.toFixed(2)}</p>
-                </div>
-                <div className="bg-red-50 rounded-lg p-3">
-                  <p className="text-xs text-red-700 mb-1">Total Cash Out</p>
-                  <p className="text-lg font-bold text-red-700">${totalCashOut.toFixed(2)}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-700 mb-1">Expected from Tickets</p>
-                  <p className="text-lg font-bold text-gray-900">${expectedCash.toFixed(2)}</p>
-                </div>
-              </div>
-
-              <div className={`mt-4 p-4 rounded-lg border-2 ${
+              <div className={`p-4 rounded-lg border-2 ${
                 isBalanced
                   ? 'bg-green-50 border-green-200'
                   : 'bg-red-50 border-red-200'
