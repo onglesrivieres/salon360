@@ -327,7 +327,6 @@ export function EmployeesPage() {
               { value: 'Receptionist', label: t('emp.receptionist') },
               { value: 'Supervisor', label: t('emp.supervisor') },
               { value: 'Manager', label: t('emp.manager') },
-              { value: 'Owner', label: t('emp.owner') },
             ]}
           />
         </div>
