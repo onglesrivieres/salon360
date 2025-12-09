@@ -727,17 +727,10 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             <div className="p-4">
               <div className="p-4 rounded-lg border-2 bg-white border-gray-200">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {isBalanced ? (
-                      <CheckCircle className="w-6 h-6 text-green-600" />
-                    ) : (
-                      <AlertCircle className="w-6 h-6 text-red-600" />
-                    )}
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        Net Cash Collected
-                      </p>
-                    </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      Net Cash Collected
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-gray-900">
