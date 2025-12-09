@@ -615,22 +615,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
             <div className={`bg-white rounded-lg shadow p-4 ${!isOpeningCashRecorded ? 'ring-2 ring-amber-400' : ''}`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-green-600" />
-                  <h3 className="text-sm font-semibold text-gray-900">Opening Cash</h3>
-                </div>
-                {isOpeningCashRecorded ? (
-                  <span className="flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded">
-                    <CheckCircle className="w-3 h-3" />
-                    Recorded
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded">
-                    <AlertCircle className="w-3 h-3" />
-                    Required
-                  </span>
-                )}
+              <div className="flex items-center gap-2 mb-3">
+                <DollarSign className="w-4 h-4 text-green-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Opening Cash</h3>
               </div>
               <div className="text-center py-3">
                 <p className="text-xs text-gray-600 mb-1">Total Amount</p>
@@ -644,6 +631,17 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                   <Edit className="w-3 h-3 mr-1" />
                   {isOpeningCashRecorded ? 'Edit Count' : 'Count Bills'}
                 </Button>
+                {isOpeningCashRecorded ? (
+                  <div className="mt-2 flex items-center justify-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded">
+                    <CheckCircle className="w-3 h-3" />
+                    Recorded
+                  </div>
+                ) : (
+                  <div className="mt-2 flex items-center justify-center gap-1 text-xs font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded">
+                    <AlertCircle className="w-3 h-3" />
+                    Required
+                  </div>
+                )}
               </div>
             </div>
 
