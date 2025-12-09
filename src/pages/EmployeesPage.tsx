@@ -55,6 +55,13 @@ export function EmployeesPage() {
   useEffect(() => {
     let filtered = employees;
 
+    if (selectedStoreId) {
+      filtered = filtered.filter((e) => {
+        const assignedStores = employeeStoresMap[e.id] || [];
+        return assignedStores.length === 0 || assignedStores.includes(selectedStoreId);
+      });
+    }
+
     if (searchTerm) {
       filtered = filtered.filter(
         (e) =>
@@ -71,7 +78,7 @@ export function EmployeesPage() {
     }
 
     setFilteredEmployees(filtered);
-  }, [employees, searchTerm, filterStatus, filterRole]);
+  }, [employees, searchTerm, filterStatus, filterRole, selectedStoreId, employeeStoresMap]);
 
   async function fetchStores() {
     try {
