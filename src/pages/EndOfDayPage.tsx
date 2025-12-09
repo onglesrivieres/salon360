@@ -187,6 +187,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
   const openingCashTotal = calculateTotal(openingDenominations);
   const closingCashTotal = calculateTotal(closingDenominations);
+  const totalCashOut = 0; // TODO: Future implementation for tracking cash removed from till
   const netCashCollected = closingCashTotal - openingCashTotal;
   const cashVariance = netCashCollected - expectedCash;
   const isBalanced = Math.abs(cashVariance) < 0.01;
@@ -571,8 +572,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                   <p className="text-lg font-bold text-blue-700">${closingCashTotal.toFixed(2)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-700 mb-1">Net Cash Collected</p>
-                  <p className="text-lg font-bold text-gray-900">${netCashCollected.toFixed(2)}</p>
+                  <p className="text-xs text-gray-700 mb-1">Total Cash Out</p>
+                  <p className="text-lg font-bold text-gray-900">${totalCashOut.toFixed(2)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-xs text-gray-700 mb-1">Expected from Tickets</p>
@@ -596,7 +597,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                       <p className={`text-sm font-semibold ${
                         isBalanced ? 'text-green-900' : 'text-red-900'
                       }`}>
-                        {isBalanced ? 'Cash Balanced' : 'Cash Discrepancy Detected'}
+                        Net Cash Collected
                       </p>
                       <p className={`text-xs ${
                         isBalanced ? 'text-green-700' : 'text-red-700'
@@ -610,12 +611,12 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                     <p className={`text-2xl font-bold ${
                       isBalanced ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      ${Math.abs(cashVariance).toFixed(2)}
+                      ${netCashCollected.toFixed(2)}
                     </p>
                     <p className={`text-xs ${
                       isBalanced ? 'text-green-700' : 'text-red-700'
                     }`}>
-                      {isBalanced ? 'Perfect!' : cashVariance > 0 ? 'Overage' : 'Shortage'}
+                      {isBalanced ? 'Balanced' : cashVariance > 0 ? 'Overage' : 'Shortage'}
                     </p>
                   </div>
                 </div>
@@ -629,7 +630,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={3}
+                  rows={1}
                   placeholder="Add any notes about cash discrepancies or other observations..."
                 />
               </div>
