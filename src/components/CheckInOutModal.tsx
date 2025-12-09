@@ -73,9 +73,19 @@ export function CheckInOutModal({ onClose, storeId, onCheckInComplete, onCheckOu
 
       if (error) throw error;
 
+      // Automatically join the ready queue after check-in
+      const { error: queueError } = await supabase.rpc('join_ready_queue', {
+        p_employee_id: session.employee_id,
+        p_store_id: storeId
+      });
+
+      if (queueError) {
+        console.error('Failed to join queue:', queueError);
+      }
+
       const checkInTime = formatTimeEST(new Date());
 
-      showToast(`Welcome to work, ${displayName}! Checked in at ${checkInTime}`, 'success');
+      showToast(`Welcome to work, ${displayName}! Checked in at ${checkInTime} and added to the ready queue.`, 'success');
 
       setTimeout(() => {
         onCheckInComplete?.();
@@ -115,6 +125,17 @@ export function CheckInOutModal({ onClose, storeId, onCheckInComplete, onCheckOu
       if (!data) {
         showToast('No active check-in found', 'error');
         return;
+      }
+
+      // Remove from ready queue after checkout
+      const { error: deleteError } = await supabase
+        .from('technician_ready_queue')
+        .delete()
+        .eq('employee_id', session.employee_id)
+        .eq('store_id', storeId);
+
+      if (deleteError) {
+        console.error('Failed to remove from queue:', deleteError);
       }
 
       const checkOutTime = formatTimeEST(new Date());
@@ -222,7 +243,7 @@ export function CheckInOutModal({ onClose, storeId, onCheckInComplete, onCheckOu
                   <div>
                     <p className="text-sm font-medium text-blue-900 mb-1">Clock in now</p>
                     <p className="text-xs text-blue-700">
-                      Your check-in time will be recorded and you'll be redirected to the main app.
+                      Your check-in time will be recorded and you'll be automatically added to the ready queue.
                     </p>
                   </div>
                 </div>
