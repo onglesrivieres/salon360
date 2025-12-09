@@ -104,7 +104,7 @@ export function EmployeesPage() {
       if (error) throw error;
 
       const allEmployees = (data || []).filter(emp =>
-        emp.role.includes('Technician') || emp.role.includes('Receptionist') || emp.role.includes('Supervisor') || emp.role.includes('Spa Expert')
+        emp.role.includes('Technician') || emp.role.includes('Receptionist') || emp.role.includes('Supervisor') || emp.role.includes('Spa Expert') || emp.role.includes('Manager')
       );
 
       const { data: employeeStoresData } = await supabase
