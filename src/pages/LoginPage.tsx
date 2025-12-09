@@ -92,7 +92,7 @@ export function LoginPage({ selectedAction, onCheckOutComplete, onBack }: LoginP
     try {
       const { data: employee, error: empError } = await supabase
         .from('employees')
-        .select('pay_type, display_name')
+        .select('pay_type, display_name, attendance_display')
         .eq('id', session.employee_id)
         .maybeSingle();
 
@@ -100,6 +100,11 @@ export function LoginPage({ selectedAction, onCheckOutComplete, onBack }: LoginP
 
       const payType = employee?.pay_type || 'hourly';
       const displayName = employee?.display_name || session.display_name || 'Employee';
+
+      if (employee && employee.attendance_display === false) {
+        showToast('Attendance tracking is not enabled for your account', 'error');
+        return;
+      }
 
       if (payType === 'daily') {
         showToast(`${displayName}, you don't need to check in/out. You're paid daily!`, 'info');

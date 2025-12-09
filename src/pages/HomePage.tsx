@@ -187,6 +187,17 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
   const handleCheckInOut = async (employeeId: string, storeId: string, displayName: string, payType: string, action: 'checkin' | 'checkout') => {
     try {
+      const { data: employee } = await supabase
+        .from('employees')
+        .select('attendance_display')
+        .eq('id', employeeId)
+        .maybeSingle();
+
+      if (employee && employee.attendance_display === false) {
+        setPinError('Attendance tracking is not enabled for your account');
+        return;
+      }
+
       const today = getCurrentDateEST();
       console.log('Check-in/out flow:', { employeeId, storeId, displayName, today, action });
 
