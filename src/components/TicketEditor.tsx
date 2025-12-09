@@ -378,7 +378,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               *,
               service:store_services!ticket_items_store_service_id_fkey(*),
               employee:employees!ticket_items_employee_id_fkey(*)
-            )
+            ),
+            approver:employees!sale_tickets_approved_by_fkey(id, display_name, employee_code)
           `
           )
           .eq('id', ticketId)
@@ -1346,7 +1347,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         return (
           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
             <CheckCircle className="w-3 h-3 mr-1" />
-            Approved
+            {ticket.approved_by ? 'Approved' : 'Auto-Approved'}
           </span>
         );
       case 'auto_approved':
@@ -1516,11 +1517,13 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-green-900">
-                    {ticket?.approval_status === 'approved' ? 'Ticket Approved' : 'Ticket Auto-Approved'}
+                    {ticket?.approved_by ? 'Ticket Approved' : 'Auto-Approved by System'}
                   </p>
                   {ticket?.approved_at && (
                     <p className="text-xs text-green-700 mt-1">
-                      {ticket.approval_status === 'approved' ? 'Approved' : 'Auto-approved'} on {new Date(ticket.approved_at).toLocaleString()}
+                      {ticket.approved_by && (ticket as any).approver?.display_name
+                        ? `Approved by ${(ticket as any).approver.display_name} on ${new Date(ticket.approved_at).toLocaleString()}`
+                        : `Auto-approved on ${new Date(ticket.approved_at).toLocaleString()}`}
                     </p>
                   )}
                 </div>

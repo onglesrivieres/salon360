@@ -178,7 +178,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
             <CheckCircle className="w-3 h-3 mr-1" />
-            Approved
+            {ticket.approved_by ? 'Approved' : 'Auto'}
           </span>
         );
       case 'auto_approved':
