@@ -298,16 +298,13 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     return tooFast || tooSlow;
   }
 
-  function getCompletionStatus(ticket: any): 'on_time' | 'moderate_deviation' | 'extreme_deviation' | 'unknown' {
-    // Only check status for closed tickets
-    if (!ticket.closed_at) return 'unknown';
+  function getCompletionStatus(ticket: any): 'on_time' | 'deviant' | 'unknown' {
+    // Only check status for closed tickets with completed_at timestamp
+    if (!ticket.closed_at || !ticket.completed_at) return 'unknown';
 
-    // Get the first ticket item
+    // Get the first ticket item to determine expected service duration
     if (!ticket.ticket_items || ticket.ticket_items.length === 0) return 'unknown';
     const firstItem = ticket.ticket_items[0];
-
-    // Check if we have timing data
-    if (!firstItem.started_at || !firstItem.completed_at) return 'unknown';
 
     // Get expected duration from service
     const service = firstItem.service;
@@ -316,30 +313,22 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     // If no expected duration (custom service or missing data), return unknown
     if (!expectedDuration || expectedDuration === 0) return 'unknown';
 
-    // Calculate actual duration in minutes
-    const startTime = new Date(firstItem.started_at);
-    const endTime = new Date(firstItem.completed_at);
+    // Calculate actual duration from ticket open to completion (matches TicketEditor logic)
+    const startTime = new Date(ticket.opened_at);
+    const endTime = new Date(ticket.completed_at);
     const actualDurationMs = endTime.getTime() - startTime.getTime();
     const actualDurationMin = Math.floor(actualDurationMs / 1000 / 60);
 
-    // Calculate deviation percentage
-    const lowerBound = expectedDuration * 0.9;  // 90%
-    const upperBound = expectedDuration * 1.1;  // 110%
-    const extremeLowerBound = expectedDuration * 0.7;  // 70%
-    const extremeUpperBound = expectedDuration * 1.3;  // 130%
+    // Check if deviant (too fast or too slow) - matches TicketEditor thresholds
+    const tooFast = actualDurationMin <= expectedDuration * 0.7;  // 70% or less
+    const tooSlow = actualDurationMin >= expectedDuration * 1.3;  // 130% or more
 
-    // Check if within 10% range (on time)
-    if (actualDurationMin >= lowerBound && actualDurationMin <= upperBound) {
-      return 'on_time';
+    if (tooFast || tooSlow) {
+      return 'deviant';
     }
 
-    // Check if extreme deviation (beyond 30%)
-    if (actualDurationMin < extremeLowerBound || actualDurationMin > extremeUpperBound) {
-      return 'extreme_deviation';
-    }
-
-    // Otherwise it's moderate deviation (between 10% and 30%)
-    return 'moderate_deviation';
+    // Otherwise it's on time
+    return 'on_time';
   }
 
   function formatDuration(openedAt: string): string {
@@ -608,31 +597,13 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                         {ticket.closed_at ? (
                           (() => {
                             const status = getCompletionStatus(ticket);
-                            if (status === 'on_time') {
-                              return (
-                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  Closed
-                                </div>
-                              );
-                            } else if (status === 'moderate_deviation') {
-                              return (
-                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  Closed
-                                </div>
-                              );
-                            } else if (status === 'extreme_deviation') {
-                              return (
-                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                  Closed
-                                </div>
-                              );
-                            } else {
-                              return (
-                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  Closed
-                                </div>
-                              );
-                            }
+                            return (
+                              <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                status === 'deviant' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
+                              }`}>
+                                Closed
+                              </div>
+                            );
                           })()
                         ) : ticket.completed_at ? (
                           <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
@@ -734,31 +705,13 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                   {ticket.closed_at ? (
                     (() => {
                       const status = getCompletionStatus(ticket);
-                      if (status === 'on_time') {
-                        return (
-                          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Closed
-                          </div>
-                        );
-                      } else if (status === 'moderate_deviation') {
-                        return (
-                          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Closed
-                          </div>
-                        );
-                      } else if (status === 'extreme_deviation') {
-                        return (
-                          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                            Closed
-                          </div>
-                        );
-                      } else {
-                        return (
-                          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Closed
-                          </div>
-                        );
-                      }
+                      return (
+                        <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          status === 'deviant' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
+                        }`}>
+                          Closed
+                        </div>
+                      );
                     })()
                   ) : ticket.completed_at ? (
                     <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
