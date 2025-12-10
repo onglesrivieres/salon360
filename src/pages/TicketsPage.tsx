@@ -609,21 +609,29 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                           (() => {
                             const status = getCompletionStatus(ticket);
                             if (status === 'on_time') {
-                              return <Badge variant="success">Closed</Badge>;
+                              return (
+                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  Closed
+                                </div>
+                              );
                             } else if (status === 'moderate_deviation') {
                               return (
-                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                   Closed
                                 </div>
                               );
                             } else if (status === 'extreme_deviation') {
                               return (
-                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                                   Closed
                                 </div>
                               );
                             } else {
-                              return <Badge variant="success">Closed</Badge>;
+                              return (
+                                <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  Closed
+                                </div>
+                              );
                             }
                           })()
                         ) : ticket.completed_at ? (
@@ -727,21 +735,29 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                     (() => {
                       const status = getCompletionStatus(ticket);
                       if (status === 'on_time') {
-                        return <Badge variant="success">Closed</Badge>;
+                        return (
+                          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Closed
+                          </div>
+                        );
                       } else if (status === 'moderate_deviation') {
                         return (
-                          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             Closed
                           </div>
                         );
                       } else if (status === 'extreme_deviation') {
                         return (
-                          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                             Closed
                           </div>
                         );
                       } else {
-                        return <Badge variant="success">Closed</Badge>;
+                        return (
+                          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Closed
+                          </div>
+                        );
                       }
                     })()
                   ) : ticket.completed_at ? (
