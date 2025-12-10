@@ -90,19 +90,19 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                       >
                         {hasTips ? (
                           <div className="space-y-0.5">
-                            <div className="flex flex-col items-center">
-                              <span className="text-[9px] text-gray-500">Cash</span>
-                              <span className={`text-[10px] ${dayData.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
+                            <div className="text-left">
+                              <span className="text-[9px] text-gray-500">Cash: </span>
+                              <span className={`text-[9px] ${dayData.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
                                 ${dayData.tips_cash.toFixed(0)}
                               </span>
                             </div>
-                            <div className="flex flex-col items-center">
-                              <span className="text-[9px] text-gray-500">Card</span>
-                              <span className={`text-[10px] ${dayData.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
+                            <div className="text-left">
+                              <span className="text-[9px] text-gray-500">Card: </span>
+                              <span className={`text-[9px] ${dayData.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
                                 ${dayData.tips_card.toFixed(0)}
                               </span>
                             </div>
-                            <div className="flex flex-col items-center pt-0.5 border-t border-gray-200">
+                            <div className="text-center pt-0.5 border-t border-gray-200">
                               <span className="font-bold text-gray-900 text-[11px]">
                                 ${dayData.tips_total.toFixed(0)}
                               </span>
@@ -116,19 +116,19 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                   })}
                   <td className="border border-gray-300 bg-blue-50 px-1 py-0.5 text-center">
                     <div className="space-y-0.5">
-                      <div className="flex flex-col items-center">
-                        <span className="text-[9px] text-gray-500">Cash</span>
-                        <span className={`text-[10px] ${summary.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
+                      <div className="text-left">
+                        <span className="text-[9px] text-gray-500">Cash: </span>
+                        <span className={`text-[9px] ${summary.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
                           ${summary.tips_cash.toFixed(0)}
                         </span>
                       </div>
-                      <div className="flex flex-col items-center">
-                        <span className="text-[9px] text-gray-500">Card</span>
-                        <span className={`text-[10px] ${summary.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
+                      <div className="text-left">
+                        <span className="text-[9px] text-gray-500">Card: </span>
+                        <span className={`text-[9px] ${summary.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
                           ${summary.tips_card.toFixed(0)}
                         </span>
                       </div>
-                      <div className="flex flex-col items-center pt-0.5 border-t border-gray-900">
+                      <div className="text-center pt-0.5 border-t border-gray-900">
                         <span className="font-bold text-gray-900 text-[11px]">
                           ${summary.tips_total.toFixed(0)}
                         </span>
