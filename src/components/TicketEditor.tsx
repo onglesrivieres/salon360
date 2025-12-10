@@ -152,17 +152,20 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     return firstItem.service.duration_min || 0;
   };
 
-  const isCompletionTimeDeviant = (): boolean => {
+  const getCompletionTimeStatus = (): 'on_time' | 'moderate_deviation' | 'extreme_deviation' | 'unknown' => {
     const serviceDuration = getServiceDuration();
-    if (serviceDuration === 0 || !ticket?.completed_at) return false;
+    if (serviceDuration === 0 || !ticket?.completed_at) return 'unknown';
 
     const actualDuration = calculateCompletionDuration();
-    if (actualDuration === 0) return false;
+    if (actualDuration === 0) return 'unknown';
 
-    const tooFast = actualDuration <= serviceDuration * 0.7;
-    const tooSlow = actualDuration >= serviceDuration * 1.3;
+    const percentage = (actualDuration / serviceDuration) * 100;
 
-    return tooFast || tooSlow;
+    if (percentage < 70) return 'extreme_deviation';
+    if (percentage < 90) return 'moderate_deviation';
+    if (percentage <= 110) return 'on_time';
+    if (percentage <= 130) return 'moderate_deviation';
+    return 'extreme_deviation';
   };
 
   const canEmployeePerformService = (employeeId: string, serviceId: string): boolean => {
@@ -1643,9 +1646,13 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     {ticket.completed_at && (
                       <span
                         className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ml-auto ${
-                          isCompletionTimeDeviant()
+                          getCompletionTimeStatus() === 'on_time'
+                            ? 'bg-green-100 text-green-800'
+                            : getCompletionTimeStatus() === 'moderate_deviation'
                             ? 'bg-amber-100 text-amber-800'
-                            : 'bg-green-100 text-green-800'
+                            : getCompletionTimeStatus() === 'extreme_deviation'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-800'
                         }`}
                       >
                         {formatCompletionDuration(calculateCompletionDuration())}

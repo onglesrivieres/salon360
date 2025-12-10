@@ -298,7 +298,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     return tooFast || tooSlow;
   }
 
-  function getCompletionStatus(ticket: any): 'on_time' | 'deviant' | 'unknown' {
+  function getCompletionStatus(ticket: any): 'on_time' | 'moderate_deviation' | 'extreme_deviation' | 'unknown' {
     // Only check status for closed tickets with completed_at timestamp
     if (!ticket.closed_at || !ticket.completed_at) return 'unknown';
 
@@ -319,16 +319,13 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     const actualDurationMs = endTime.getTime() - startTime.getTime();
     const actualDurationMin = Math.floor(actualDurationMs / 1000 / 60);
 
-    // Check if deviant (too fast or too slow) - matches TicketEditor thresholds
-    const tooFast = actualDurationMin <= expectedDuration * 0.7;  // 70% or less
-    const tooSlow = actualDurationMin >= expectedDuration * 1.3;  // 130% or more
+    const percentage = (actualDurationMin / expectedDuration) * 100;
 
-    if (tooFast || tooSlow) {
-      return 'deviant';
-    }
-
-    // Otherwise it's on time
-    return 'on_time';
+    if (percentage < 70) return 'extreme_deviation';
+    if (percentage < 90) return 'moderate_deviation';
+    if (percentage <= 110) return 'on_time';
+    if (percentage <= 130) return 'moderate_deviation';
+    return 'extreme_deviation';
   }
 
   function formatDuration(openedAt: string): string {
@@ -599,7 +596,13 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                             const status = getCompletionStatus(ticket);
                             return (
                               <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                status === 'deviant' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
+                                status === 'on_time'
+                                  ? 'bg-green-100 text-green-800'
+                                  : status === 'moderate_deviation'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : status === 'extreme_deviation'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-gray-100 text-gray-800'
                               }`}>
                                 Closed
                               </div>
@@ -707,7 +710,13 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                       const status = getCompletionStatus(ticket);
                       return (
                         <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          status === 'deviant' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
+                          status === 'on_time'
+                            ? 'bg-green-100 text-green-800'
+                            : status === 'moderate_deviation'
+                            ? 'bg-amber-100 text-amber-800'
+                            : status === 'extreme_deviation'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-800'
                         }`}>
                           Closed
                         </div>
