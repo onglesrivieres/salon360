@@ -617,7 +617,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             <div className={`bg-white rounded-lg shadow p-4 ${!isOpeningCashRecorded ? 'ring-2 ring-amber-400' : ''}`}>
               <div className="flex items-center gap-2 mb-3">
                 <DollarSign className="w-4 h-4 text-green-600" />
-                <h3 className="text-sm font-semibold text-gray-900">Opening Cash</h3>
+                <h3 className="text-sm font-semibold text-gray-900">Opening</h3>
               </div>
               <div className="text-center py-3">
                 <p className="text-xs text-gray-600 mb-1">Total Amount</p>
@@ -648,7 +648,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             <div className="bg-gray-50 rounded-lg shadow p-4">
               <div className="flex items-center gap-2 mb-3">
                 <DollarSign className="w-4 h-4 text-gray-700" />
-                <h3 className="text-sm font-semibold text-gray-900">Expected from Tickets</h3>
+                <h3 className="text-sm font-semibold text-gray-900">From Tickets</h3>
               </div>
               <div className="text-center py-3">
                 <p className="text-xs text-gray-600 mb-1">Total Amount</p>
@@ -699,7 +699,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             <div className="bg-white rounded-lg shadow p-4">
               <div className="flex items-center gap-2 mb-3">
                 <DollarSign className="w-4 h-4 text-blue-600" />
-                <h3 className="text-sm font-semibold text-gray-900">Closing Cash</h3>
+                <h3 className="text-sm font-semibold text-gray-900">Closing</h3>
               </div>
               <div className="text-center py-3">
                 <p className="text-xs text-gray-600 mb-1">Total Amount</p>
