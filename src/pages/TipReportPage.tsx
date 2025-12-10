@@ -672,8 +672,13 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                               className="border border-gray-200 bg-gray-50 rounded p-1 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
                             >
                               <div className="mb-0.5">
-                                <div className="text-[8px] text-gray-500 truncate mb-0.5">
-                                  {openTime.replace(/\s/g, '')}
+                                <div className="flex justify-between items-center text-[8px] text-gray-500 mb-0.5">
+                                  <span className="truncate">
+                                    {openTime.replace(/\s/g, '')}
+                                  </span>
+                                  <span className="ml-1 flex-shrink-0">
+                                    {item.duration_min} min
+                                  </span>
                                 </div>
                                 <div className="text-[9px] font-semibold text-gray-900">
                                   {item.service_code}
