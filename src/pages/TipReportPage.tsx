@@ -626,15 +626,15 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                       <div className="space-y-0.5">
                         {showDetails ? (
                           <>
-                            <div className="text-[9px]">
-                              <span className="text-gray-600">Cash: </span>
-                              <span className={summary.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}>
+                            <div className="flex justify-between items-center">
+                              <span className="text-[9px] text-gray-600">T. (Cash)</span>
+                              <span className={`text-[9px] ${summary.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
                                 ${summary.tips_cash.toFixed(2)}
                               </span>
                             </div>
-                            <div className="text-[9px]">
-                              <span className="text-gray-600">Card: </span>
-                              <span className={summary.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}>
+                            <div className="flex justify-between items-center">
+                              <span className="text-[9px] text-gray-600">T. (Card)</span>
+                              <span className={`text-[9px] ${summary.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
                                 ${summary.tips_card.toFixed(2)}
                               </span>
                             </div>
@@ -682,15 +682,15 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                               {showDetails ? (
                                 <div className="space-y-0">
                                   <div className="flex justify-between items-center">
-                                    <span className="text-[8px] text-gray-600">T. (Cash)</span>
-                                    <span className={`text-[8px] ${item.tip_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
-                                      ${item.tip_cash.toFixed(2)}
+                                    <span className="text-[8px] text-gray-600">T. (given)</span>
+                                    <span className={`text-[8px] ${item.tip_customer === 0 ? 'text-gray-900' : 'font-semibold text-gray-900'}`}>
+                                      ${item.tip_customer.toFixed(2)}
                                     </span>
                                   </div>
                                   <div className="flex justify-between items-center">
-                                    <span className="text-[8px] text-gray-600">T. (Card)</span>
-                                    <span className={`text-[8px] ${item.tip_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
-                                      ${item.tip_card.toFixed(2)}
+                                    <span className="text-[8px] text-gray-600">T. (paired)</span>
+                                    <span className={`text-[8px] ${item.tip_receptionist === 0 ? 'text-gray-900' : 'font-semibold text-orange-600'}`}>
+                                      ${item.tip_receptionist.toFixed(2)}
                                     </span>
                                   </div>
                                 </div>
