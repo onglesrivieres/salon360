@@ -90,13 +90,13 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                       >
                         {hasTips ? (
                           <div className="space-y-0.5">
-                            <div className="text-left">
+                            <div className="text-center">
                               <span className="text-[9px] text-gray-500">Cash: </span>
                               <span className={`text-[9px] ${dayData.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
                                 ${dayData.tips_cash.toFixed(0)}
                               </span>
                             </div>
-                            <div className="text-left">
+                            <div className="text-center">
                               <span className="text-[9px] text-gray-500">Card: </span>
                               <span className={`text-[9px] ${dayData.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
                                 ${dayData.tips_card.toFixed(0)}
@@ -116,13 +116,13 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                   })}
                   <td className="border border-gray-300 bg-blue-50 px-1 py-0.5 text-center">
                     <div className="space-y-0.5">
-                      <div className="text-left">
+                      <div className="text-center">
                         <span className="text-[9px] text-gray-500">Cash: </span>
                         <span className={`text-[9px] ${summary.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
                           ${summary.tips_cash.toFixed(0)}
                         </span>
                       </div>
-                      <div className="text-left">
+                      <div className="text-center">
                         <span className="text-[9px] text-gray-500">Card: </span>
                         <span className={`text-[9px] ${summary.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
                           ${summary.tips_card.toFixed(0)}
