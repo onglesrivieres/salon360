@@ -671,7 +671,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                   className="w-full"
                 >
                   <Plus className="w-3 h-3 mr-1" />
-                  Add Transaction
+                  Deposit Cash
                 </Button>
               </div>
             </div>
@@ -691,7 +691,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                   className="w-full"
                 >
                   <Plus className="w-3 h-3 mr-1" />
-                  Add Transaction
+                  Withdraw Cash
                 </Button>
               </div>
             </div>
