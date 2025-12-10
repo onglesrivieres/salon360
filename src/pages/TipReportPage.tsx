@@ -34,6 +34,7 @@ interface ServiceItemDetail {
   payment_method: string;
   opened_at: string;
   closed_at: string | null;
+  ticket_completed_at: string | null;
   duration_min: number;
   started_at: string | null;
   completed_at: string | null;
@@ -257,6 +258,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           payment_method,
           opened_at,
           closed_at,
+          completed_at,
           ticket_items${isTechnician ? '!inner' : ''} (
             id,
             store_service_id,
@@ -356,6 +358,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             payment_method: (ticket as any).payment_method || '',
             opened_at: (ticket as any).opened_at,
             closed_at: ticket.closed_at,
+            ticket_completed_at: (ticket as any).completed_at || null,
             duration_min: item.service?.duration_min || 0,
             started_at: item.started_at || null,
             completed_at: item.completed_at || null,
@@ -479,18 +482,35 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   }
 
   function calculateItemCompletionDuration(item: ServiceItemDetail): number {
-    if (!item.started_at || !item.completed_at) return 0;
+    if (item.started_at && item.completed_at) {
+      const started = new Date(item.started_at);
+      const completed = new Date(item.completed_at);
+      const durationMinutes = Math.floor((completed.getTime() - started.getTime()) / (1000 * 60));
+      return Math.max(0, durationMinutes);
+    }
 
-    const started = new Date(item.started_at);
-    const completed = new Date(item.completed_at);
-    const durationMinutes = Math.floor((completed.getTime() - started.getTime()) / (1000 * 60));
+    if (item.opened_at && item.ticket_completed_at) {
+      const opened = new Date(item.opened_at);
+      const ticketCompleted = new Date(item.ticket_completed_at);
+      const durationMinutes = Math.floor((ticketCompleted.getTime() - opened.getTime()) / (1000 * 60));
+      return Math.max(0, durationMinutes);
+    }
 
-    return Math.max(0, durationMinutes);
+    if (item.opened_at && item.closed_at) {
+      const opened = new Date(item.opened_at);
+      const closed = new Date(item.closed_at);
+      const durationMinutes = Math.floor((closed.getTime() - opened.getTime()) / (1000 * 60));
+      return Math.max(0, durationMinutes);
+    }
+
+    return 0;
   }
 
   function getItemCompletionStatus(item: ServiceItemDetail): 'on_time' | 'moderate_deviation' | 'extreme_deviation' | 'unknown' {
     const expectedDuration = item.duration_min;
-    if (expectedDuration === 0 || !item.completed_at) return 'unknown';
+    const hasCompletionData = item.completed_at || item.ticket_completed_at || item.closed_at;
+
+    if (expectedDuration === 0 || !hasCompletionData) return 'unknown';
 
     const actualDuration = calculateItemCompletionDuration(item);
     if (actualDuration === 0) return 'unknown';
@@ -718,7 +738,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                         ? 'text-amber-800'
                                         : completionStatus === 'extreme_deviation'
                                         ? 'text-red-800'
-                                        : 'text-gray-800'
+                                        : 'text-gray-500'
                                     }`}
                                   >
                                     {completionDuration > 0 ? `${completionDuration}min` : `${item.duration_min}min`}
