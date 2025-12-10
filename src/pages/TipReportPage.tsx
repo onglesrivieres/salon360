@@ -35,6 +35,8 @@ interface ServiceItemDetail {
   opened_at: string;
   closed_at: string | null;
   duration_min: number;
+  started_at: string | null;
+  completed_at: string | null;
 }
 
 interface TipReportPageProps {
@@ -266,6 +268,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             tip_customer_cash,
             tip_customer_card,
             tip_receptionist,
+            started_at,
+            completed_at,
             service:store_services!ticket_items_store_service_id_fkey(code, name, duration_min),
             employee:employees!ticket_items_employee_id_fkey(
               id,
@@ -353,6 +357,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             opened_at: (ticket as any).opened_at,
             closed_at: ticket.closed_at,
             duration_min: item.service?.duration_min || 0,
+            started_at: item.started_at || null,
+            completed_at: item.completed_at || null,
           });
         }
       }
@@ -470,6 +476,32 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
   function getMaxDate(): string {
     return getCurrentDateEST();
+  }
+
+  function calculateItemCompletionDuration(item: ServiceItemDetail): number {
+    if (!item.started_at || !item.completed_at) return 0;
+
+    const started = new Date(item.started_at);
+    const completed = new Date(item.completed_at);
+    const durationMinutes = Math.floor((completed.getTime() - started.getTime()) / (1000 * 60));
+
+    return Math.max(0, durationMinutes);
+  }
+
+  function getItemCompletionStatus(item: ServiceItemDetail): 'on_time' | 'moderate_deviation' | 'extreme_deviation' | 'unknown' {
+    const expectedDuration = item.duration_min;
+    if (expectedDuration === 0 || !item.completed_at) return 'unknown';
+
+    const actualDuration = calculateItemCompletionDuration(item);
+    if (actualDuration === 0) return 'unknown';
+
+    const percentage = (actualDuration / expectedDuration) * 100;
+
+    if (percentage < 70) return 'extreme_deviation';
+    if (percentage < 90) return 'moderate_deviation';
+    if (percentage <= 110) return 'on_time';
+    if (percentage <= 130) return 'moderate_deviation';
+    return 'extreme_deviation';
   }
 
   function openTicketEditor(ticketId: string) {
@@ -664,6 +696,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                         {summary.items.map((item, index) => {
                           const openTime = formatTimeEST(item.opened_at);
                           const totalTip = item.tip_customer + item.tip_receptionist;
+                          const completionDuration = calculateItemCompletionDuration(item);
+                          const completionStatus = getItemCompletionStatus(item);
 
                           return (
                             <div
@@ -676,8 +710,18 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                   <span className="truncate">
                                     {openTime.replace(/\s/g, '')}
                                   </span>
-                                  <span className="ml-1 flex-shrink-0">
-                                    {item.duration_min} min
+                                  <span
+                                    className={`ml-1 flex-shrink-0 font-semibold ${
+                                      completionStatus === 'on_time'
+                                        ? 'text-green-800'
+                                        : completionStatus === 'moderate_deviation'
+                                        ? 'text-amber-800'
+                                        : completionStatus === 'extreme_deviation'
+                                        ? 'text-red-800'
+                                        : 'text-gray-800'
+                                    }`}
+                                  >
+                                    {completionDuration > 0 ? `${completionDuration}min` : `${item.duration_min}min`}
                                   </span>
                                 </div>
                                 <div className="text-[9px] font-semibold text-gray-900">
