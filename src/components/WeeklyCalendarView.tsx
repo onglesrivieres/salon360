@@ -32,7 +32,7 @@ function getWeekDates(startDate: string): string[] {
 
 function formatDateHeader(dateStr: string): { day: string; date: string } {
   const d = new Date(dateStr + 'T00:00:00');
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const day = days[d.getDay()];
   const date = `${d.getMonth() + 1}/${d.getDate()}`;
   return { day, date };
