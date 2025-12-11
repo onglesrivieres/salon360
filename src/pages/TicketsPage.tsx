@@ -253,9 +253,15 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   }, [tickets, approvalFilter, paymentMethodFilter, technicianFilter]);
 
   function getMinDate(): string {
+    const canViewUnlimitedHistory = session?.role ? Permissions.tickets.canViewAll(session.role) : false;
+
+    if (canViewUnlimitedHistory) {
+      return '2000-01-01';
+    }
+
     const today = getCurrentDateEST();
     const date = new Date(today);
-    date.setDate(date.getDate() - 7);
+    date.setDate(date.getDate() - 14);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
