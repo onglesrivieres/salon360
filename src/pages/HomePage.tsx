@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ClipboardCheck, UserCheck, FileText } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { PinModal } from '../components/PinModal';
+import { StoreSelectionModal } from '../components/StoreSelectionModal';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { VersionNotification } from '../components/VersionNotification';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +33,11 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     pay_type: string;
   } | null>(null);
   const [hasNewVersion, setHasNewVersion] = useState(false);
+  const [showStoreSelection, setShowStoreSelection] = useState(false);
+  const [availableStoreIds, setAvailableStoreIds] = useState<string[]>([]);
+  const [storeSelectionContext, setStoreSelectionContext] = useState<'checkin' | 'checkout' | 'ready' | 'general'>('general');
+  const [pendingEmployeeId, setPendingEmployeeId] = useState<string | null>(null);
+  const [selectedStoreName, setSelectedStoreName] = useState<string>('');
 
   useEffect(() => {
     initializeVersionCheck();
@@ -169,10 +175,20 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
       setShowPinModal(false);
 
-      if (selectedAction === 'checkin' || selectedAction === 'checkout') {
-        await handleCheckInOut(session.employee_id, storeId, displayName, payType, selectedAction);
-      } else if (selectedAction === 'ready') {
-        await handleReady(session.employee_id, storeId);
+      if (selectedAction === 'checkin' || selectedAction === 'checkout' || selectedAction === 'ready') {
+        if (hasMultipleStores) {
+          const storeIds = employeeStores.map(s => s.id || s.store_id);
+          setAvailableStoreIds(storeIds);
+          setStoreSelectionContext(selectedAction);
+          setPendingEmployeeId(session.employee_id);
+          setShowStoreSelection(true);
+        } else {
+          if (selectedAction === 'checkin' || selectedAction === 'checkout') {
+            await handleCheckInOut(session.employee_id, storeId, displayName, payType, selectedAction);
+          } else if (selectedAction === 'ready') {
+            await handleReady(session.employee_id, storeId);
+          }
+        }
       } else if (selectedAction === 'report') {
         const storeIds = employeeStores.map(s => s.id || s.store_id);
         onActionSelected('report', session, storeId, hasMultipleStores, storeIds);
@@ -185,7 +201,46 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     }
   };
 
-  const handleCheckInOut = async (employeeId: string, storeId: string, displayName: string, payType: string, action: 'checkin' | 'checkout') => {
+  const handleStoreSelected = async (storeId: string) => {
+    if (!authenticatedSession || !selectedAction) return;
+
+    setShowStoreSelection(false);
+    setIsLoading(true);
+
+    try {
+      const { data: store } = await supabase
+        .from('stores')
+        .select('name')
+        .eq('id', storeId)
+        .maybeSingle();
+
+      const storeName = store?.name || 'Store';
+      setSelectedStoreName(storeName);
+
+      authenticatedSession.store_id = storeId;
+      setAuthenticatedSession(authenticatedSession);
+
+      if (selectedAction === 'checkin' || selectedAction === 'checkout') {
+        await handleCheckInOut(
+          authenticatedSession.employee_id,
+          storeId,
+          authenticatedSession.display_name,
+          authenticatedSession.pay_type,
+          selectedAction,
+          storeName
+        );
+      } else if (selectedAction === 'ready') {
+        await handleReady(authenticatedSession.employee_id, storeId, storeName);
+      }
+    } catch (error) {
+      console.error('Error handling store selection:', error);
+      setPinError('Failed to process store selection. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCheckInOut = async (employeeId: string, storeId: string, displayName: string, payType: string, action: 'checkin' | 'checkout', storeName?: string) => {
     try {
       const { data: employee } = await supabase
         .from('employees')
@@ -249,7 +304,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           console.error('Failed to join queue:', queueError || queueResult?.message);
         }
 
-        setSuccessMessage(`${t('home.welcome')} ${displayName}! ${t('home.checkedIn')}`);
+        const storeMessage = storeName ? ` at ${storeName}` : '';
+        setSuccessMessage(`${t('home.welcome')} ${displayName}! ${t('home.checkedIn')}${storeMessage}`);
         setShowSuccessModal(true);
       } else if (action === 'checkout') {
         // For check-out: find any active check-in regardless of date
@@ -304,7 +360,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           console.error('Failed to remove from queue:', deleteError);
         }
 
-        setSuccessMessage(`${t('home.goodbye')} ${displayName}! ${t('home.checkedOut')}`);
+        const storeMessage = storeName ? ` from ${storeName}` : '';
+        setSuccessMessage(`${t('home.goodbye')} ${displayName}! ${t('home.checkedOut')}${storeMessage}`);
         setShowSuccessModal(true);
       }
     } catch (error: any) {
@@ -313,7 +370,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     }
   };
 
-  const handleReady = async (employeeId: string, storeId: string) => {
+  const handleReady = async (employeeId: string, storeId: string, storeName?: string) => {
     try {
       const { data: inQueue, error: checkError } = await supabase.rpc('check_queue_status', {
         p_employee_id: employeeId,
@@ -339,7 +396,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           return;
         }
 
-        setSuccessMessage(t('home.joinedQueue'));
+        const storeMessage = storeName ? ` at ${storeName}` : '';
+        setSuccessMessage(`${t('home.joinedQueue')}${storeMessage}`);
         setShowSuccessModal(true);
       }
     } catch (error: any) {
@@ -567,6 +625,14 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           </button>
         </div>
       </Modal>
+
+      <StoreSelectionModal
+        isOpen={showStoreSelection}
+        storeIds={availableStoreIds}
+        onSelect={handleStoreSelected}
+        context={storeSelectionContext}
+        employeeId={pendingEmployeeId || undefined}
+      />
     </div>
   );
 }
