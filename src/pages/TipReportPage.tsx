@@ -38,6 +38,8 @@ interface ServiceItemDetail {
   duration_min: number;
   started_at: string | null;
   completed_at: string | null;
+  store_code: string;
+  store_name: string;
 }
 
 interface TipReportPageProps {
@@ -99,6 +101,47 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       const canViewAll = session?.role_permission ? Permissions.endOfDay.canViewAll(session.role_permission) : false;
       const isTechnician = !canViewAll;
 
+      let storeIds: string[] = [];
+
+      if (isTechnician && session?.employee_id) {
+        const { data: employeeStores, error: employeeStoresError } = await supabase
+          .from('employee_stores')
+          .select('store_id')
+          .eq('employee_id', session.employee_id);
+
+        if (!employeeStoresError && employeeStores && employeeStores.length > 0) {
+          storeIds = employeeStores.map(es => es.store_id);
+        }
+      } else if (canViewAll) {
+        const { data: tickets, error: ticketsError } = await supabase
+          .from('sale_tickets')
+          .select('ticket_items!inner(employee_id)')
+          .gte('ticket_date', weekStart)
+          .lte('ticket_date', weekEnd);
+
+        if (!ticketsError && tickets) {
+          const employeeIds = new Set<string>();
+          for (const ticket of tickets) {
+            for (const item of (ticket as any).ticket_items || []) {
+              if (item.employee_id) {
+                employeeIds.add(item.employee_id);
+              }
+            }
+          }
+
+          if (employeeIds.size > 0) {
+            const { data: employeeStores, error: employeeStoresError } = await supabase
+              .from('employee_stores')
+              .select('store_id')
+              .in('employee_id', Array.from(employeeIds));
+
+            if (!employeeStoresError && employeeStores && employeeStores.length > 0) {
+              storeIds = Array.from(new Set(employeeStores.map(es => es.store_id)));
+            }
+          }
+        }
+      }
+
       let query = supabase
         .from('sale_tickets')
         .select(
@@ -121,7 +164,9 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         .gte('ticket_date', weekStart)
         .lte('ticket_date', weekEnd);
 
-      if (selectedStoreId) {
+      if (storeIds.length > 0) {
+        query = query.in('store_id', storeIds);
+      } else if (selectedStoreId) {
         query = query.eq('store_id', selectedStoreId);
       }
 
@@ -249,6 +294,46 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         setShowDetails(true);
       }
 
+      let storeIds: string[] = [];
+
+      if (isTechnician && session?.employee_id) {
+        const { data: employeeStores, error: employeeStoresError } = await supabase
+          .from('employee_stores')
+          .select('store_id')
+          .eq('employee_id', session.employee_id);
+
+        if (!employeeStoresError && employeeStores && employeeStores.length > 0) {
+          storeIds = employeeStores.map(es => es.store_id);
+        }
+      } else if (canViewAll) {
+        const { data: tickets, error: ticketsError } = await supabase
+          .from('sale_tickets')
+          .select('ticket_items!inner(employee_id)')
+          .eq('ticket_date', selectedDate);
+
+        if (!ticketsError && tickets) {
+          const employeeIds = new Set<string>();
+          for (const ticket of tickets) {
+            for (const item of (ticket as any).ticket_items || []) {
+              if (item.employee_id) {
+                employeeIds.add(item.employee_id);
+              }
+            }
+          }
+
+          if (employeeIds.size > 0) {
+            const { data: employeeStores, error: employeeStoresError } = await supabase
+              .from('employee_stores')
+              .select('store_id')
+              .in('employee_id', Array.from(employeeIds));
+
+            if (!employeeStoresError && employeeStores && employeeStores.length > 0) {
+              storeIds = Array.from(new Set(employeeStores.map(es => es.store_id)));
+            }
+          }
+        }
+      }
+
       let query = supabase
         .from('sale_tickets')
         .select(
@@ -259,6 +344,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           opened_at,
           closed_at,
           completed_at,
+          store:stores!sale_tickets_store_id_fkey(id, name, code),
           ticket_items${isTechnician ? '!inner' : ''} (
             id,
             store_service_id,
@@ -282,7 +368,9 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         )
         .eq('ticket_date', selectedDate);
 
-      if (selectedStoreId) {
+      if (storeIds.length > 0) {
+        query = query.in('store_id', storeIds);
+      } else if (selectedStoreId) {
         query = query.eq('store_id', selectedStoreId);
       }
 
@@ -362,6 +450,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             duration_min: item.service?.duration_min || 0,
             started_at: item.started_at || null,
             completed_at: item.completed_at || null,
+            store_code: (ticket as any).store?.code || '',
+            store_name: (ticket as any).store?.name || '',
           });
         }
       }
@@ -733,9 +823,16 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                             >
                               <div className="mb-0.5">
                                 <div className="flex justify-between items-center text-[8px] text-gray-500 mb-0.5">
-                                  <span className="truncate">
-                                    {openTime.replace(/\s/g, '')}
-                                  </span>
+                                  <div className="flex items-center gap-0.5 truncate">
+                                    <span className="truncate">
+                                      {openTime.replace(/\s/g, '')}
+                                    </span>
+                                    {item.store_code && (
+                                      <span className="text-[7px] text-gray-400">
+                                        [{item.store_code}]
+                                      </span>
+                                    )}
+                                  </div>
                                   <span
                                     className={`ml-1 flex-shrink-0 font-semibold ${
                                       completionStatus === 'on_time'
