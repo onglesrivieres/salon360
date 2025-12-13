@@ -64,6 +64,14 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     tips_card: 0,
   });
 
+  function abbreviateStoreName(storeCode: string): string {
+    const code = storeCode.toLowerCase();
+    if (code === 'maily') return 'M';
+    if (code === 'charlesbourg') return 'C';
+    if (code === 'rivieres') return 'R';
+    return storeCode;
+  }
+
   useEffect(() => {
     if (viewMode === 'weekly') {
       fetchWeeklyData();
@@ -774,7 +782,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                     </span>
                                     {item.store_code && (
                                       <span className="text-[7px] text-gray-400">
-                                        [{item.store_code}]
+                                        [{abbreviateStoreName(item.store_code)}]
                                       </span>
                                     )}
                                   </div>
