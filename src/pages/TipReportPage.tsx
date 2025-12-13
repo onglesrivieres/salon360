@@ -112,34 +112,6 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         if (!employeeStoresError && employeeStores && employeeStores.length > 0) {
           storeIds = employeeStores.map(es => es.store_id);
         }
-      } else if (canViewAll) {
-        const { data: tickets, error: ticketsError } = await supabase
-          .from('sale_tickets')
-          .select('ticket_items!inner(employee_id)')
-          .gte('ticket_date', weekStart)
-          .lte('ticket_date', weekEnd);
-
-        if (!ticketsError && tickets) {
-          const employeeIds = new Set<string>();
-          for (const ticket of tickets) {
-            for (const item of (ticket as any).ticket_items || []) {
-              if (item.employee_id) {
-                employeeIds.add(item.employee_id);
-              }
-            }
-          }
-
-          if (employeeIds.size > 0) {
-            const { data: employeeStores, error: employeeStoresError } = await supabase
-              .from('employee_stores')
-              .select('store_id')
-              .in('employee_id', Array.from(employeeIds));
-
-            if (!employeeStoresError && employeeStores && employeeStores.length > 0) {
-              storeIds = Array.from(new Set(employeeStores.map(es => es.store_id)));
-            }
-          }
-        }
       }
 
       let query = supabase
@@ -304,33 +276,6 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
         if (!employeeStoresError && employeeStores && employeeStores.length > 0) {
           storeIds = employeeStores.map(es => es.store_id);
-        }
-      } else if (canViewAll) {
-        const { data: tickets, error: ticketsError } = await supabase
-          .from('sale_tickets')
-          .select('ticket_items!inner(employee_id)')
-          .eq('ticket_date', selectedDate);
-
-        if (!ticketsError && tickets) {
-          const employeeIds = new Set<string>();
-          for (const ticket of tickets) {
-            for (const item of (ticket as any).ticket_items || []) {
-              if (item.employee_id) {
-                employeeIds.add(item.employee_id);
-              }
-            }
-          }
-
-          if (employeeIds.size > 0) {
-            const { data: employeeStores, error: employeeStoresError } = await supabase
-              .from('employee_stores')
-              .select('store_id')
-              .in('employee_id', Array.from(employeeIds));
-
-            if (!employeeStoresError && employeeStores && employeeStores.length > 0) {
-              storeIds = Array.from(new Set(employeeStores.map(es => es.store_id)));
-            }
-          }
         }
       }
 
