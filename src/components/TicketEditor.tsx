@@ -1704,18 +1704,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
               </button>
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, customer_type: 'Requested' })}
-                className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
-                  formData.customer_type === 'Requested'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
-                }`}
-                disabled={isTicketClosed || isReadOnly}
-              >
-                Requested
-              </button>
-              <button
-                type="button"
                 onClick={() => setFormData({ ...formData, customer_type: 'Assigned' })}
                 className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
                   formData.customer_type === 'Assigned'
@@ -1725,6 +1713,18 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 disabled={isTicketClosed || isReadOnly}
               >
                 Assigned
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, customer_type: 'Requested' })}
+                className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
+                  formData.customer_type === 'Requested'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
+                }`}
+                disabled={isTicketClosed || isReadOnly}
+              >
+                Requested
               </button>
             </div>
           </div>
