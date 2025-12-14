@@ -255,7 +255,7 @@ export function getPermissionMessage(
 }
 
 export function canAccessPage(
-  page: 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'configuration',
+  page: 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'settings' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'configuration',
   roles: Role[] | RolePermission
 ): boolean {
   switch (page) {
@@ -270,6 +270,8 @@ export function canAccessPage(
     case 'services':
       return Permissions.services.canView(roles);
     case 'profile':
+      return true;
+    case 'settings':
       return true;
     case 'attendance':
       return Permissions.attendance.canView(roles);
