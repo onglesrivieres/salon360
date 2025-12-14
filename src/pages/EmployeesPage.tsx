@@ -14,6 +14,15 @@ import { resetPIN } from '../lib/auth';
 import { Permissions } from '../lib/permissions';
 import { getDefaultSchedule, getThreeLetterDayName, formatScheduleDisplay } from '../lib/schedule-utils';
 
+function abbreviateStoreName(storeCode: string): string {
+  const codeMap: Record<string, string> = {
+    'OM': 'M',
+    'OC': 'C',
+    'OR': 'R',
+  };
+  return codeMap[storeCode.toUpperCase()] || storeCode.substring(0, 1).toUpperCase();
+}
+
 export function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
@@ -356,7 +365,10 @@ export function EmployeesPage() {
               {filteredEmployees.map((employee) => {
                 const assignedStores = employeeStoresMap[employee.id] || [];
                 const storeNames = assignedStores
-                  .map(storeId => stores.find(s => s.id === storeId)?.code)
+                  .map(storeId => {
+                    const code = stores.find(s => s.id === storeId)?.code;
+                    return code ? abbreviateStoreName(code) : null;
+                  })
                   .filter(Boolean)
                   .join(', ');
 
