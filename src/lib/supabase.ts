@@ -289,6 +289,7 @@ export interface PendingApprovalTicket {
   customer_phone: string;
   total: number;
   closed_by_name: string;
+  completed_by_name?: string;
   hours_remaining: number;
   service_name: string;
   tip_customer: number;

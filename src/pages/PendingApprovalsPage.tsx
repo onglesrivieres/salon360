@@ -891,8 +891,7 @@ export function PendingApprovalsPage() {
                       )}
                     </div>
                     <p className="text-sm text-gray-600">
-                      Customer: <span className="font-medium">{ticket.customer_name}</span>
-                      {ticket.customer_phone && <span className="text-gray-400"> • {ticket.customer_phone}</span>}
+                      Completed by: <span className="font-medium">{ticket.completed_by_name || 'N/A'}</span>
                     </p>
                     <p className="text-sm text-gray-600">
                       Closed by: <span className="font-medium">{ticket.closed_by_name}</span>
