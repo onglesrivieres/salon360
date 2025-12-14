@@ -476,6 +476,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     { id: 'inventory' as const, label: 'Inventory', icon: Package, hidden: !showInventory },
     { id: 'services' as const, label: t('nav.services'), icon: Briefcase },
     { id: 'insights' as const, label: 'Insights', icon: TrendingUp },
+    { id: 'configuration' as const, label: 'Configuration', icon: Settings },
+    { id: 'settings' as const, label: t('nav.settings'), icon: Settings },
   ];
 
   const navItems = allNavItems.filter(item => !item.hidden);
@@ -560,28 +562,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   <span className="text-xs font-medium text-gray-700">{googleRating.rating} ({googleRating.reviews})</span>
                 </div>
               )}
-              {session && (
-                <>
-                  {session.role && Permissions.configuration.canView(session.role) && (
-                    <button
-                      onClick={() => onNavigate('configuration')}
-                      className="hidden md:flex items-center gap-2 px-2 py-1 text-xs text-gray-700 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
-                      title="Configuration"
-                    >
-                      <Settings className="w-3 h-3" />
-                      Configuration
-                    </button>
-                  )}
-                  <button
-                    onClick={() => onNavigate('settings')}
-                    className="hidden md:flex items-center gap-2 px-2 py-1 text-xs text-gray-700 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
-                    title={t('nav.settings')}
-                  >
-                    <Settings className="w-3 h-3" />
-                    {t('nav.settings')}
-                  </button>
-                </>
-              )}
               <button
                 onClick={logout}
                 className="flex items-center gap-2 px-2 py-1 text-xs text-red-700 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
@@ -650,34 +630,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                 );
               })}
             </ul>
-            <div className="md:hidden mt-4 pt-4 border-t border-gray-200 px-2">
-              {session && (
-                <>
-                  {session.role && Permissions.configuration.canView(session.role) && (
-                    <button
-                      onClick={() => {
-                        onNavigate('configuration');
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <Settings className="w-4 h-4" />
-                      <span>Configuration</span>
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      onNavigate('settings');
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <Settings className="w-4 h-4" />
-                    <span>{t('nav.settings')}</span>
-                  </button>
-                </>
-              )}
-            </div>
           </nav>
         </aside>
 
