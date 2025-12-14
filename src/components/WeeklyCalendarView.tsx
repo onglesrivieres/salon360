@@ -13,11 +13,12 @@ interface WeeklyCalendarViewProps {
 }
 
 function abbreviateStoreName(storeCode: string): string {
-  const code = storeCode.toLowerCase();
-  if (code === 'maily') return 'M';
-  if (code === 'charlesbourg') return 'C';
-  if (code === 'rivieres') return 'R';
-  return storeCode.substring(0, 1).toUpperCase();
+  const codeMap: Record<string, string> = {
+    'OM': 'M',
+    'OC': 'C',
+    'OR': 'R',
+  };
+  return codeMap[storeCode.toUpperCase()] || storeCode.substring(0, 1).toUpperCase();
 }
 
 function getWeekStartDate(date: string): string {
