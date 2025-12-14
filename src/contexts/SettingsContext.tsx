@@ -61,7 +61,19 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
       const settingsMap = new Map<string, boolean | string | number>();
       data?.forEach((setting) => {
-        settingsMap.set(setting.setting_key, setting.setting_value);
+        // The setting_value comes from JSONB, so it's already the correct type
+        // Supabase client automatically parses JSONB to JavaScript types
+        let value: boolean | string | number = setting.setting_value;
+
+        // Handle edge cases where value might be wrapped
+        if (typeof value === 'object' && value !== null) {
+          // If it's an object with a value property, unwrap it
+          if ('value' in value) {
+            value = (value as any).value;
+          }
+        }
+
+        settingsMap.set(setting.setting_key, value);
       });
 
       setSettings(settingsMap);

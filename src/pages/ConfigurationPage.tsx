@@ -12,11 +12,11 @@ interface AppSetting {
   id: string;
   store_id: string;
   setting_key: string;
-  setting_value: boolean;
+  setting_value: boolean | string | number;
   category: string;
   display_name: string;
   description: string;
-  default_value: boolean;
+  default_value: boolean | string | number;
   is_critical: boolean;
   requires_restart: boolean;
   dependencies: Array<{ key: string; type: string; label: string }>;
@@ -30,6 +30,26 @@ interface ValidationIssue {
   setting: string;
   requires?: string;
   message: string;
+}
+
+function formatMinutes(minutes: number): string {
+  if (minutes < 60) {
+    return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+  } else if (minutes < 1440) {
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (remainingMinutes === 0) {
+      return `${hours} hour${hours !== 1 ? 's' : ''}`;
+    }
+    return `${hours} hour${hours !== 1 ? 's' : ''}, ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''}`;
+  } else {
+    const days = Math.floor(minutes / 1440);
+    const remainingHours = Math.floor((minutes % 1440) / 60);
+    if (remainingHours === 0) {
+      return `${days} day${days !== 1 ? 's' : ''}`;
+    }
+    return `${days} day${days !== 1 ? 's' : ''}, ${remainingHours} hour${remainingHours !== 1 ? 's' : ''}`;
+  }
 }
 
 export function ConfigurationPage() {
@@ -47,7 +67,7 @@ export function ConfigurationPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingChange, setPendingChange] = useState<{
     setting: AppSetting;
-    newValue: boolean;
+    newValue: boolean | string | number;
   } | null>(null);
 
   const [showWizard, setShowWizard] = useState(false);
@@ -181,7 +201,29 @@ export function ConfigurationPage() {
     }
   }
 
-  async function updateSetting(setting: AppSetting, newValue: boolean) {
+  function handleNumericChange(setting: AppSetting, newValue: number) {
+    if (!canManageSettings) {
+      showToast('You do not have permission to change settings', 'error');
+      return;
+    }
+
+    // Validate range for auto_approval_minutes
+    if (setting.setting_key === 'auto_approval_minutes') {
+      if (newValue < 10 || newValue > 10080) {
+        showToast('Value must be between 10 minutes and 10080 minutes (7 days)', 'error');
+        return;
+      }
+    }
+
+    if (setting.is_critical) {
+      setPendingChange({ setting, newValue });
+      setShowConfirmModal(true);
+    } else {
+      updateSetting(setting, newValue);
+    }
+  }
+
+  async function updateSetting(setting: AppSetting, newValue: boolean | string | number) {
     try {
       const { error: updateError } = await supabase
         .from('app_settings')
@@ -405,18 +447,68 @@ export function ConfigurationPage() {
                           isEnabled={setting.setting_value}
                         />
                       </div>
-                      <button
-                        onClick={() => handleToggleClick(setting, !setting.setting_value)}
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                          setting.setting_value ? 'bg-blue-600' : 'bg-gray-200'
-                        }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            setting.setting_value ? 'translate-x-5' : 'translate-x-0'
+                      {typeof setting.setting_value === 'number' ? (
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={setting.setting_value}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value, 10);
+                                if (!isNaN(value)) {
+                                  handleNumericChange(setting, value);
+                                }
+                              }}
+                              min={setting.setting_key === 'auto_approval_minutes' ? 10 : undefined}
+                              max={setting.setting_key === 'auto_approval_minutes' ? 10080 : undefined}
+                              className="w-28 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-600">minutes</span>
+                          </div>
+                          {setting.setting_key === 'auto_approval_minutes' && (
+                            <>
+                              <span className="text-xs text-gray-500">
+                                {formatMinutes(setting.setting_value as number)}
+                              </span>
+                              <div className="flex flex-wrap gap-1 justify-end">
+                                {[
+                                  { label: '30m', value: 30 },
+                                  { label: '1h', value: 60 },
+                                  { label: '24h', value: 1440 },
+                                  { label: '48h', value: 2880 },
+                                  { label: '3d', value: 4320 },
+                                  { label: '7d', value: 10080 },
+                                ].map((preset) => (
+                                  <button
+                                    key={preset.value}
+                                    onClick={() => handleNumericChange(setting, preset.value)}
+                                    className={`text-xs px-2 py-1 rounded transition-colors ${
+                                      setting.setting_value === preset.value
+                                        ? 'bg-blue-100 text-blue-700 font-medium'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    }`}
+                                  >
+                                    {preset.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleClick(setting, !setting.setting_value)}
+                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                            setting.setting_value ? 'bg-blue-600' : 'bg-gray-200'
                           }`}
-                        />
-                      </button>
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                              setting.setting_value ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

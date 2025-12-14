@@ -11,8 +11,8 @@ interface CriticalSettingConfirmationModalProps {
   settingDescription: string;
   helpText: string;
   requiresRestart: boolean;
-  currentValue: boolean;
-  newValue: boolean;
+  currentValue: boolean | string | number;
+  newValue: boolean | string | number;
 }
 
 export function CriticalSettingConfirmationModal({
@@ -39,8 +39,16 @@ export function CriticalSettingConfirmationModal({
     onClose();
   }
 
-  const action = newValue ? 'enable' : 'disable';
-  const actionPast = newValue ? 'enabled' : 'disabled';
+  const isBoolean = typeof currentValue === 'boolean' && typeof newValue === 'boolean';
+  const action = isBoolean ? (newValue ? 'enable' : 'disable') : 'change';
+  const actionPast = isBoolean ? (newValue ? 'enabled' : 'disabled') : 'changed';
+
+  function formatValue(value: boolean | string | number): string {
+    if (typeof value === 'boolean') {
+      return value ? 'Enabled' : 'Disabled';
+    }
+    return String(value);
+  }
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="">
@@ -73,22 +81,24 @@ export function CriticalSettingConfirmationModal({
                 <p className="text-sm text-gray-600 mt-1">{settingDescription}</p>
               </div>
               <div className="flex flex-col items-end gap-1">
-                <span className="text-xs font-medium text-gray-500">Status</span>
+                <span className="text-xs font-medium text-gray-500">
+                  {isBoolean ? 'Status' : 'Value'}
+                </span>
                 <div className="flex items-center gap-2">
                   <span className={`text-xs px-2 py-1 rounded ${
-                    currentValue
+                    isBoolean && currentValue
                       ? 'bg-green-100 text-green-800'
                       : 'bg-gray-100 text-gray-800'
                   }`}>
-                    {currentValue ? 'Enabled' : 'Disabled'}
+                    {formatValue(currentValue)}
                   </span>
                   <span className="text-gray-400">→</span>
                   <span className={`text-xs px-2 py-1 rounded ${
-                    newValue
+                    isBoolean && newValue
                       ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
+                      : 'bg-blue-100 text-blue-800'
                   }`}>
-                    {newValue ? 'Enabled' : 'Disabled'}
+                    {formatValue(newValue)}
                   </span>
                 </div>
               </div>
