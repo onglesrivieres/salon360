@@ -52,6 +52,17 @@ function formatMinutes(minutes: number): string {
   }
 }
 
+function getDynamicDisplayName(setting: AppSetting, allSettings: AppSetting[]): string {
+  if (setting.setting_key === 'auto_approve_after_48_hours') {
+    const managerMinutesSetting = allSettings.find(s => s.setting_key === 'auto_approval_minutes_manager');
+    if (managerMinutesSetting && typeof managerMinutesSetting.setting_value === 'number') {
+      const timeStr = formatMinutes(managerMinutesSetting.setting_value);
+      return `Auto-Approve After ${timeStr.charAt(0).toUpperCase() + timeStr.slice(1)}`;
+    }
+  }
+  return setting.display_name;
+}
+
 export function ConfigurationPage() {
   const { showToast } = useToast();
   const { selectedStoreId, session } = useAuth();
@@ -207,8 +218,8 @@ export function ConfigurationPage() {
       return;
     }
 
-    // Validate range for auto_approval_minutes
-    if (setting.setting_key === 'auto_approval_minutes') {
+    // Validate range for auto_approval_minutes and auto_approval_minutes_manager
+    if (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') {
       if (newValue < 10 || newValue > 10080) {
         showToast('Value must be between 10 minutes and 10080 minutes (7 days)', 'error');
         return;
@@ -420,7 +431,7 @@ export function ConfigurationPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-medium text-gray-900">
-                            {setting.display_name}
+                            {getDynamicDisplayName(setting, settings)}
                           </h4>
                           {setting.is_critical && (
                             <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full font-medium">
@@ -459,13 +470,13 @@ export function ConfigurationPage() {
                                   handleNumericChange(setting, value);
                                 }
                               }}
-                              min={setting.setting_key === 'auto_approval_minutes' ? 10 : undefined}
-                              max={setting.setting_key === 'auto_approval_minutes' ? 10080 : undefined}
+                              min={(setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10 : undefined}
+                              max={(setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10080 : undefined}
                               className="w-28 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                             <span className="text-sm text-gray-600">minutes</span>
                           </div>
-                          {setting.setting_key === 'auto_approval_minutes' && (
+                          {(setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') && (
                             <>
                               <span className="text-xs text-gray-500">
                                 {formatMinutes(setting.setting_value as number)}
