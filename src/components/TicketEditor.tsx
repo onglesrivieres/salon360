@@ -16,6 +16,7 @@ import { Select } from './ui/Select';
 import { Modal } from './ui/Modal';
 import { useToast } from './ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { Permissions } from '../lib/permissions';
 import { formatDateTimeEST, convertToESTDatetimeString, convertESTDatetimeStringToUTC } from '../lib/timezone';
 import { getDayOfWeek, getFullDayName } from '../lib/schedule-utils';
@@ -56,6 +57,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const [showActivityModal, setShowActivityModal] = useState(false);
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
+  const { getSettingBoolean } = useSettings();
+
+  const enableCashPayments = getSettingBoolean('enable_cash_payments', true);
+  const enableCardPayments = getSettingBoolean('enable_card_payments', true);
+  const enableGiftCardPayments = getSettingBoolean('enable_gift_card_payments', true);
+  const enableMixedPayments = getSettingBoolean('enable_mixed_payment_methods', true);
+  const requireCustomerName = getSettingBoolean('require_customer_name_on_tickets', false);
+  const requireCustomerPhone = getSettingBoolean('require_customer_phone_on_tickets', false);
+  const requireEmployeeCheckin = getSettingBoolean('require_employee_checkin_before_tickets', true);
 
   const isApproved = ticket?.approval_status === 'approved' || ticket?.approval_status === 'auto_approved';
 
@@ -1154,8 +1164,18 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       return;
     }
 
-    if (!formData.payment_method || !['Cash', 'Card', 'Mixed'].includes(formData.payment_method)) {
-      showToast('Please select a payment method (Cash, Card, or Mixed) before closing the ticket', 'error');
+    if (requireCustomerName && (!formData.customer_name || formData.customer_name.trim() === '')) {
+      showToast('Customer name is required to close this ticket', 'error');
+      return;
+    }
+
+    if (requireCustomerPhone && (!formData.customer_phone || formData.customer_phone.trim() === '')) {
+      showToast('Customer phone number is required to close this ticket', 'error');
+      return;
+    }
+
+    if (!formData.payment_method || !['Cash', 'Card', 'Mixed', 'Gift Card'].includes(formData.payment_method)) {
+      showToast('Please select a payment method before closing the ticket', 'error');
       return;
     }
 
@@ -1936,77 +1956,83 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 Payment Method <span className="text-red-600">*</span>
               </label>
               <div className="grid grid-cols-3 gap-2 mb-2.5">
-                <button
-                  type="button"
-                  onClick={() => handlePaymentMethodClick('Cash')}
-                  disabled={isTicketClosed || isReadOnly}
-                  className={`relative p-2.5 rounded-lg border-2 transition-all duration-200 ${
-                    formData.payment_method === 'Cash'
-                      ? 'border-green-500 bg-green-50 shadow-md'
-                      : 'border-gray-300 bg-white hover:border-green-400 hover:bg-green-50'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  <div className="flex flex-col items-center gap-1.5">
-                    <Banknote className={`w-6 h-6 ${formData.payment_method === 'Cash' ? 'text-green-600' : 'text-gray-600'}`} />
-                    <span className={`text-xs font-semibold ${formData.payment_method === 'Cash' ? 'text-green-700' : 'text-gray-700'}`}>
-                      Cash
-                    </span>
-                  </div>
-                  {formData.payment_method === 'Cash' && (
-                    <div className="absolute top-2 right-2">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
+                {enableCashPayments && (
+                  <button
+                    type="button"
+                    onClick={() => handlePaymentMethodClick('Cash')}
+                    disabled={isTicketClosed || isReadOnly}
+                    className={`relative p-2.5 rounded-lg border-2 transition-all duration-200 ${
+                      formData.payment_method === 'Cash'
+                        ? 'border-green-500 bg-green-50 shadow-md'
+                        : 'border-gray-300 bg-white hover:border-green-400 hover:bg-green-50'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    <div className="flex flex-col items-center gap-1.5">
+                      <Banknote className={`w-6 h-6 ${formData.payment_method === 'Cash' ? 'text-green-600' : 'text-gray-600'}`} />
+                      <span className={`text-xs font-semibold ${formData.payment_method === 'Cash' ? 'text-green-700' : 'text-gray-700'}`}>
+                        Cash
+                      </span>
                     </div>
-                  )}
-                </button>
+                    {formData.payment_method === 'Cash' && (
+                      <div className="absolute top-2 right-2">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      </div>
+                    )}
+                  </button>
+                )}
 
-                <button
-                  type="button"
-                  onClick={() => handlePaymentMethodClick('Card')}
-                  disabled={isTicketClosed || isReadOnly}
-                  className={`relative p-2.5 rounded-lg border-2 transition-all duration-200 ${
-                    formData.payment_method === 'Card'
-                      ? 'border-blue-500 bg-blue-50 shadow-md'
-                      : 'border-gray-300 bg-white hover:border-blue-400 hover:bg-blue-50'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  <div className="flex flex-col items-center gap-1.5">
-                    <CreditCard className={`w-6 h-6 ${formData.payment_method === 'Card' ? 'text-blue-600' : 'text-gray-600'}`} />
-                    <span className={`text-xs font-semibold ${formData.payment_method === 'Card' ? 'text-blue-700' : 'text-gray-700'}`}>
-                      Card
-                    </span>
-                  </div>
-                  {formData.payment_method === 'Card' && (
-                    <div className="absolute top-2 right-2">
-                      <CheckCircle className="w-5 h-5 text-blue-600" />
+                {enableCardPayments && (
+                  <button
+                    type="button"
+                    onClick={() => handlePaymentMethodClick('Card')}
+                    disabled={isTicketClosed || isReadOnly}
+                    className={`relative p-2.5 rounded-lg border-2 transition-all duration-200 ${
+                      formData.payment_method === 'Card'
+                        ? 'border-blue-500 bg-blue-50 shadow-md'
+                        : 'border-gray-300 bg-white hover:border-blue-400 hover:bg-blue-50'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    <div className="flex flex-col items-center gap-1.5">
+                      <CreditCard className={`w-6 h-6 ${formData.payment_method === 'Card' ? 'text-blue-600' : 'text-gray-600'}`} />
+                      <span className={`text-xs font-semibold ${formData.payment_method === 'Card' ? 'text-blue-700' : 'text-gray-700'}`}>
+                        Card
+                      </span>
                     </div>
-                  )}
-                </button>
+                    {formData.payment_method === 'Card' && (
+                      <div className="absolute top-2 right-2">
+                        <CheckCircle className="w-5 h-5 text-blue-600" />
+                      </div>
+                    )}
+                  </button>
+                )}
 
-                <button
-                  type="button"
-                  onClick={() => handlePaymentMethodClick('Mixed')}
-                  disabled={isTicketClosed || isReadOnly}
-                  className={`relative p-2.5 rounded-lg border-2 transition-all duration-200 ${
-                    formData.payment_method === 'Mixed'
-                      ? 'border-teal-500 bg-teal-50 shadow-md'
-                      : 'border-gray-300 bg-white hover:border-teal-400 hover:bg-teal-50'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div className="flex gap-1">
-                      <Banknote className={`w-5 h-5 ${formData.payment_method === 'Mixed' ? 'text-teal-600' : 'text-gray-600'}`} />
-                      <CreditCard className={`w-5 h-5 ${formData.payment_method === 'Mixed' ? 'text-teal-600' : 'text-gray-600'}`} />
+                {enableMixedPayments && (
+                  <button
+                    type="button"
+                    onClick={() => handlePaymentMethodClick('Mixed')}
+                    disabled={isTicketClosed || isReadOnly}
+                    className={`relative p-2.5 rounded-lg border-2 transition-all duration-200 ${
+                      formData.payment_method === 'Mixed'
+                        ? 'border-teal-500 bg-teal-50 shadow-md'
+                        : 'border-gray-300 bg-white hover:border-teal-400 hover:bg-teal-50'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className="flex gap-1">
+                        <Banknote className={`w-5 h-5 ${formData.payment_method === 'Mixed' ? 'text-teal-600' : 'text-gray-600'}`} />
+                        <CreditCard className={`w-5 h-5 ${formData.payment_method === 'Mixed' ? 'text-teal-600' : 'text-gray-600'}`} />
+                      </div>
+                      <span className={`text-xs font-semibold ${formData.payment_method === 'Mixed' ? 'text-teal-700' : 'text-gray-700'}`}>
+                        Mixed
+                      </span>
                     </div>
-                    <span className={`text-xs font-semibold ${formData.payment_method === 'Mixed' ? 'text-teal-700' : 'text-gray-700'}`}>
-                      Mixed
-                    </span>
-                  </div>
-                  {formData.payment_method === 'Mixed' && (
-                    <div className="absolute top-2 right-2">
-                      <CheckCircle className="w-5 h-5 text-teal-600" />
-                    </div>
-                  )}
-                </button>
+                    {formData.payment_method === 'Mixed' && (
+                      <div className="absolute top-2 right-2">
+                        <CheckCircle className="w-5 h-5 text-teal-600" />
+                      </div>
+                    )}
+                  </button>
+                )}
               </div>
 
               {formData.payment_method && (

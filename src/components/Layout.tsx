@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package, List, RefreshCw, Circle, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
 import { supabase, Store, TechnicianWithQueue } from '../lib/supabase';
 import { NotificationBadge } from './ui/NotificationBadge';
@@ -18,6 +19,7 @@ interface LayoutProps {
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const { session, selectedStoreId, selectStore, logout, t } = useAuth();
+  const { getSettingBoolean } = useSettings();
   const [currentStore, setCurrentStore] = useState<Store | null>(null);
   const [allStores, setAllStores] = useState<Store[]>([]);
   const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
@@ -455,22 +457,35 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
   const googleRating = getGoogleRating();
 
-  const navItems = [
+  const showInventory = getSettingBoolean('enable_inventory_module', true);
+  const showVersionNotifications = getSettingBoolean('show_version_notifications', true);
+  const showPendingApprovalBadge = getSettingBoolean('show_pending_approval_badge', true);
+  const enableReadyQueue = getSettingBoolean('enable_ready_queue', true);
+  const showQueueButtonInHeader = getSettingBoolean('show_queue_button_in_header', true);
+  const showOpeningCashBanner = getSettingBoolean('show_opening_cash_missing_banner', true);
+  const requireOpeningCash = getSettingBoolean('require_opening_cash_count', false);
+
+  const allNavItems = [
     { id: 'home' as const, label: 'Home', icon: Home },
     { id: 'tickets' as const, label: t('nav.tickets'), icon: Receipt },
-    { id: 'approvals' as const, label: 'Approvals', icon: CheckCircle, badge: pendingApprovalsCount },
+    { id: 'approvals' as const, label: 'Approvals', icon: CheckCircle, badge: showPendingApprovalBadge ? pendingApprovalsCount : 0 },
     { id: 'tipreport' as const, label: 'Tip Report', icon: Coins },
     { id: 'eod' as const, label: 'End of Day', icon: DollarSign },
     { id: 'attendance' as const, label: 'Attendance', icon: Calendar },
     { id: 'technicians' as const, label: t('nav.employees'), icon: Users },
-    { id: 'inventory' as const, label: 'Inventory', icon: Package },
+    { id: 'inventory' as const, label: 'Inventory', icon: Package, hidden: !showInventory },
     { id: 'services' as const, label: t('nav.services'), icon: Briefcase },
     { id: 'insights' as const, label: 'Insights', icon: TrendingUp },
   ];
 
+  const navItems = allNavItems.filter(item => !item.hidden);
+
+  const shouldShowQueueButton = enableReadyQueue && showQueueButtonInHeader;
+  const shouldShowOpeningCashBanner = showOpeningCashBanner && requireOpeningCash && isOpeningCashMissing;
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {hasNewVersion && <VersionNotification onRefresh={handleRefresh} />}
+      {hasNewVersion && showVersionNotifications && <VersionNotification onRefresh={handleRefresh} />}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="px-3 py-2 md:px-4">
           <div className="flex items-center justify-between">
@@ -514,7 +529,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   {currentStore.name}
                 </span>
               ) : null}
-              {session && session.role && canAccessPage('tickets', session.role) && (
+              {session && session.role && canAccessPage('tickets', session.role) && shouldShowQueueButton && (
                 <button
                   onClick={handleOpenQueueModal}
                   className="inline-flex items-center gap-2 px-3 py-1.5 border-2 border-blue-600 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors"
@@ -580,7 +595,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         </div>
       </header>
 
-      {isOpeningCashMissing && (
+      {shouldShowOpeningCashBanner && (
         <div className="bg-amber-500 text-white px-3 py-2 md:px-4 md:py-3 border-b border-amber-600">
           <div className="flex items-center justify-between gap-2 max-w-7xl mx-auto">
             <div className="flex items-center gap-2 flex-1">
