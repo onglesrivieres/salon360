@@ -1379,13 +1379,22 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     if (!ticket?.approval_status) return null;
 
     switch (ticket.approval_status) {
-      case 'pending_approval':
+      case 'pending_approval': {
+        const timeRemaining = getTimeUntilDeadline();
         return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-            <Clock className="w-3 h-3 mr-1" />
-            Pending Approval
-          </span>
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+              <Clock className="w-3 h-3 mr-1" />
+              Pending Approval
+            </span>
+            {timeRemaining && (
+              <span className="text-[10px] text-gray-500">
+                {timeRemaining === 'Expired' ? 'Auto-approval pending...' : `Auto-approves in ${timeRemaining}`}
+              </span>
+            )}
+          </div>
         );
+      }
       case 'approved':
         return (
           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
