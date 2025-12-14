@@ -1217,6 +1217,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       showToast('Ticket closed successfully. Approval workflow initiated.', 'success');
       onClose();
     } catch (error) {
+      console.error('Error closing ticket:', error);
       showToast('Failed to close ticket', 'error');
     }
   }
