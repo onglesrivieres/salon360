@@ -131,3 +131,11 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- Drop and recreate the trigger to use the updated function
+DROP TRIGGER IF EXISTS trigger_set_approval_deadline ON public.sale_tickets;
+
+CREATE TRIGGER trigger_set_approval_deadline
+  BEFORE UPDATE ON public.sale_tickets
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_approval_deadline();
