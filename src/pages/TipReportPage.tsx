@@ -141,15 +141,18 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         // Technician: get their own stores
         storeIds = employeeStoreMap.get(session.employee_id) || [];
       } else if (canViewAll && selectedStoreId) {
-        // Admin/Manager: for multi-store employees, include all their stores
+        // Admin/Manager: for multi-store employees assigned to selected store, include all their stores
         // For single-store employees, only include the selected store
         const relevantStores = new Set<string>([selectedStoreId]);
 
-        // Add all stores for multi-store employees
+        // Add all stores for multi-store employees who are assigned to the selected store
         for (const empId of multiStoreEmployees) {
           const empStores = employeeStoreMap.get(empId) || [];
-          for (const storeId of empStores) {
-            relevantStores.add(storeId);
+          // Only include this multi-store employee if they're assigned to the selected store
+          if (empStores.includes(selectedStoreId)) {
+            for (const storeId of empStores) {
+              relevantStores.add(storeId);
+            }
           }
         }
 
@@ -213,12 +216,16 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           }
 
           // For admin/manager viewing a specific store:
-          // Only show single-store employees from the selected store
-          // But show multi-store employees from all their stores
-          if (canViewAll && selectedStoreId && ticketStoreId !== selectedStoreId) {
-            // This ticket is from a different store than selected
-            // Only include it if the employee is multi-store
-            if (!multiStoreEmployees.has(techId)) {
+          // Only show employees who are assigned to the selected store
+          if (canViewAll && selectedStoreId) {
+            const empStores = employeeStoreMap.get(techId) || [];
+            // Skip this employee if they're not assigned to the selected store
+            if (!empStores.includes(selectedStoreId)) {
+              continue;
+            }
+
+            // If this ticket is from a different store, only include if employee is multi-store
+            if (ticketStoreId !== selectedStoreId && !multiStoreEmployees.has(techId)) {
               continue;
             }
           }
@@ -383,15 +390,18 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         // Technician: get their own stores
         storeIds = employeeStoreMap.get(session.employee_id) || [];
       } else if (canViewAll && selectedStoreId) {
-        // Admin/Manager: for multi-store employees, include all their stores
+        // Admin/Manager: for multi-store employees assigned to selected store, include all their stores
         // For single-store employees, only include the selected store
         const relevantStores = new Set<string>([selectedStoreId]);
 
-        // Add all stores for multi-store employees
+        // Add all stores for multi-store employees who are assigned to the selected store
         for (const empId of multiStoreEmployees) {
           const empStores = employeeStoreMap.get(empId) || [];
-          for (const storeId of empStores) {
-            relevantStores.add(storeId);
+          // Only include this multi-store employee if they're assigned to the selected store
+          if (empStores.includes(selectedStoreId)) {
+            for (const storeId of empStores) {
+              relevantStores.add(storeId);
+            }
           }
         }
 
@@ -467,12 +477,16 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           }
 
           // For admin/manager viewing a specific store:
-          // Only show single-store employees from the selected store
-          // But show multi-store employees from all their stores
-          if (canViewAll && selectedStoreId && ticketStoreId !== selectedStoreId) {
-            // This ticket is from a different store than selected
-            // Only include it if the employee is multi-store
-            if (!multiStoreEmployees.has(techId)) {
+          // Only show employees who are assigned to the selected store
+          if (canViewAll && selectedStoreId) {
+            const empStores = employeeStoreMap.get(techId) || [];
+            // Skip this employee if they're not assigned to the selected store
+            if (!empStores.includes(selectedStoreId)) {
+              continue;
+            }
+
+            // If this ticket is from a different store, only include if employee is multi-store
+            if (ticketStoreId !== selectedStoreId && !multiStoreEmployees.has(techId)) {
               continue;
             }
           }
