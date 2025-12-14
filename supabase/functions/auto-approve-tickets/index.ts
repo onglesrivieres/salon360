@@ -14,21 +14,29 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  const startTime = Date.now();
+  
   try {
-    // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Call the auto-approval function
-    const { data, error } = await supabase.rpc('auto_approve_expired_tickets');
+    console.log(`[${new Date().toISOString()}] Starting auto-approval process...`);
+
+    const { data, error } = await supabase.rpc('auto_approve_with_monitoring', {
+      p_source: 'edge_function'
+    });
+
+    const duration = Date.now() - startTime;
 
     if (error) {
-      console.error('Error auto-approving tickets:', error);
+      console.error(`[${new Date().toISOString()}] Error auto-approving tickets:`, error);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: error.message 
+          error: error.message,
+          duration_ms: duration,
+          timestamp: new Date().toISOString()
         }),
         {
           status: 500,
@@ -40,19 +48,18 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Log activity for auto-approved tickets
-    const { error: logError } = await supabase.rpc('log_auto_approval_activity');
+    const ticketsApproved = data?.count ?? 0;
+    console.log(`[${new Date().toISOString()}] Auto-approval completed: ${ticketsApproved} ticket(s) approved in ${duration}ms`);
     
-    if (logError) {
-      console.error('Error logging auto-approval activity:', logError);
+    if (ticketsApproved > 0) {
+      console.log(`[${new Date().toISOString()}] Stores processed:`, data?.stores_processed);
     }
-
-    console.log('Auto-approval result:', data);
 
     return new Response(
       JSON.stringify({
         success: true,
         result: data,
+        duration_ms: duration,
         timestamp: new Date().toISOString(),
       }),
       {
@@ -63,11 +70,14 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error) {
-    console.error('Unexpected error:', error);
+    const duration = Date.now() - startTime;
+    console.error(`[${new Date().toISOString()}] Unexpected error:`, error);
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message 
+        error: error.message,
+        duration_ms: duration,
+        timestamp: new Date().toISOString()
       }),
       {
         status: 500,
