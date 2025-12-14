@@ -109,17 +109,51 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       const canViewAll = session?.role_permission ? Permissions.endOfDay.canViewAll(session.role_permission) : false;
       const isTechnician = !canViewAll;
 
+      // Get all employee-store relationships
+      const { data: allEmployeeStores, error: allEmployeeStoresError } = await supabase
+        .from('employee_stores')
+        .select('employee_id, store_id');
+
+      if (allEmployeeStoresError) {
+        throw allEmployeeStoresError;
+      }
+
+      // Build a map of employee to their assigned stores
+      const employeeStoreMap = new Map<string, string[]>();
+      for (const es of allEmployeeStores || []) {
+        if (!employeeStoreMap.has(es.employee_id)) {
+          employeeStoreMap.set(es.employee_id, []);
+        }
+        employeeStoreMap.get(es.employee_id)!.push(es.store_id);
+      }
+
+      // Identify multi-store employees
+      const multiStoreEmployees = new Set<string>();
+      for (const [empId, stores] of employeeStoreMap.entries()) {
+        if (stores.length > 1) {
+          multiStoreEmployees.add(empId);
+        }
+      }
+
       let storeIds: string[] = [];
 
       if (isTechnician && session?.employee_id) {
-        const { data: employeeStores, error: employeeStoresError } = await supabase
-          .from('employee_stores')
-          .select('store_id')
-          .eq('employee_id', session.employee_id);
+        // Technician: get their own stores
+        storeIds = employeeStoreMap.get(session.employee_id) || [];
+      } else if (canViewAll && selectedStoreId) {
+        // Admin/Manager: for multi-store employees, include all their stores
+        // For single-store employees, only include the selected store
+        const relevantStores = new Set<string>([selectedStoreId]);
 
-        if (!employeeStoresError && employeeStores && employeeStores.length > 0) {
-          storeIds = employeeStores.map(es => es.store_id);
+        // Add all stores for multi-store employees
+        for (const empId of multiStoreEmployees) {
+          const empStores = employeeStoreMap.get(empId) || [];
+          for (const storeId of empStores) {
+            relevantStores.add(storeId);
+          }
         }
+
+        storeIds = Array.from(relevantStores);
       }
 
       let query = supabase
@@ -128,6 +162,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           `
           id,
           ticket_date,
+          store_id,
           ticket_items${isTechnician ? '!inner' : ''} (
             id,
             employee_id,
@@ -162,6 +197,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
       for (const ticket of tickets || []) {
         const ticketDate = (ticket as any).ticket_date;
+        const ticketStoreId = (ticket as any).store_id;
 
         for (const item of (ticket as any).ticket_items || []) {
           const techId = item.employee_id;
@@ -171,6 +207,17 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
           if (isTechnician && session?.employee_id && techId !== session.employee_id) {
             continue;
+          }
+
+          // For admin/manager viewing a specific store:
+          // Only show single-store employees from the selected store
+          // But show multi-store employees from all their stores
+          if (canViewAll && selectedStoreId && ticketStoreId !== selectedStoreId) {
+            // This ticket is from a different store than selected
+            // Only include it if the employee is multi-store
+            if (!multiStoreEmployees.has(techId)) {
+              continue;
+            }
           }
 
           if (!dataMap.has(techId)) {
@@ -274,17 +321,51 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         setShowDetails(true);
       }
 
+      // Get all employee-store relationships
+      const { data: allEmployeeStores, error: allEmployeeStoresError } = await supabase
+        .from('employee_stores')
+        .select('employee_id, store_id');
+
+      if (allEmployeeStoresError) {
+        throw allEmployeeStoresError;
+      }
+
+      // Build a map of employee to their assigned stores
+      const employeeStoreMap = new Map<string, string[]>();
+      for (const es of allEmployeeStores || []) {
+        if (!employeeStoreMap.has(es.employee_id)) {
+          employeeStoreMap.set(es.employee_id, []);
+        }
+        employeeStoreMap.get(es.employee_id)!.push(es.store_id);
+      }
+
+      // Identify multi-store employees
+      const multiStoreEmployees = new Set<string>();
+      for (const [empId, stores] of employeeStoreMap.entries()) {
+        if (stores.length > 1) {
+          multiStoreEmployees.add(empId);
+        }
+      }
+
       let storeIds: string[] = [];
 
       if (isTechnician && session?.employee_id) {
-        const { data: employeeStores, error: employeeStoresError } = await supabase
-          .from('employee_stores')
-          .select('store_id')
-          .eq('employee_id', session.employee_id);
+        // Technician: get their own stores
+        storeIds = employeeStoreMap.get(session.employee_id) || [];
+      } else if (canViewAll && selectedStoreId) {
+        // Admin/Manager: for multi-store employees, include all their stores
+        // For single-store employees, only include the selected store
+        const relevantStores = new Set<string>([selectedStoreId]);
 
-        if (!employeeStoresError && employeeStores && employeeStores.length > 0) {
-          storeIds = employeeStores.map(es => es.store_id);
+        // Add all stores for multi-store employees
+        for (const empId of multiStoreEmployees) {
+          const empStores = employeeStoreMap.get(empId) || [];
+          for (const storeId of empStores) {
+            relevantStores.add(storeId);
+          }
         }
+
+        storeIds = Array.from(relevantStores);
       }
 
       let query = supabase
@@ -297,6 +378,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           opened_at,
           closed_at,
           completed_at,
+          store_id,
           store:stores!sale_tickets_store_id_fkey(id, name, code),
           ticket_items${isTechnician ? '!inner' : ''} (
             id,
@@ -341,6 +423,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       let totalTipsCard = 0;
 
       for (const ticket of tickets || []) {
+        const ticketStoreId = (ticket as any).store_id;
+
         for (const item of (ticket as any).ticket_items || []) {
           const itemRevenue = (parseFloat(item.qty) || 0) * (parseFloat(item.price_each) || 0) + (parseFloat(item.addon_price) || 0);
           const techId = item.employee_id;
@@ -350,6 +434,17 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
           if (isTechnician && session?.employee_id && techId !== session.employee_id) {
             continue;
+          }
+
+          // For admin/manager viewing a specific store:
+          // Only show single-store employees from the selected store
+          // But show multi-store employees from all their stores
+          if (canViewAll && selectedStoreId && ticketStoreId !== selectedStoreId) {
+            // This ticket is from a different store than selected
+            // Only include it if the employee is multi-store
+            if (!multiStoreEmployees.has(techId)) {
+              continue;
+            }
           }
 
           if (!technicianMap.has(techId)) {
