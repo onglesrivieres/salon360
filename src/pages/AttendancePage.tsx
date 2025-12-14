@@ -13,6 +13,7 @@ interface AttendanceSession {
   checkOutTime?: string;
   totalHours?: number;
   status: string;
+  storeCode: string;
 }
 
 interface AttendanceSummary {
@@ -65,6 +66,15 @@ export function AttendancePage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function getStoreCodeAbbreviation(storeCode: string): string {
+    const codeMap: Record<string, string> = {
+      'OM': 'M',
+      'OC': 'C',
+      'OR': 'R'
+    };
+    return codeMap[storeCode] || storeCode;
   }
 
   function getDateRange() {
@@ -143,7 +153,8 @@ export function AttendancePage() {
         checkInTime: record.check_in_time,
         checkOutTime: record.check_out_time,
         totalHours: record.total_hours,
-        status: record.status
+        status: record.status,
+        storeCode: record.store_code
       });
 
       if (record.total_hours) {
@@ -179,7 +190,7 @@ export function AttendancePage() {
     const summary = processAttendanceData();
     const { startDate, endDate } = getDateRange();
 
-    const headers = ['Employee', 'Date', 'Check In', 'Check Out', 'Hours', 'Status'];
+    const headers = ['Employee', 'Date', 'Store', 'Check In', 'Check Out', 'Hours', 'Status'];
     const rows: string[][] = [];
 
     Object.values(summary).forEach((employee) => {
@@ -190,10 +201,12 @@ export function AttendancePage() {
             ? formatTimeEST(record.checkOutTime)
             : '';
           const hours = record.totalHours ? record.totalHours.toFixed(2) : '';
+          const store = getStoreCodeAbbreviation(record.storeCode);
 
           rows.push([
             employee.employeeName,
           date,
+          store,
           checkIn,
           checkOut,
           hours,
@@ -369,7 +382,7 @@ export function AttendancePage() {
                                       <div className={`text-[9px] font-semibold ${
                                         record.status === 'checked_in' ? 'text-white' : 'text-gray-900'
                                       }`}>
-                                        {record.totalHours.toFixed(1)}h
+                                        {record.totalHours.toFixed(1)}h <span className="text-[8px] text-gray-500">[{getStoreCodeAbbreviation(record.storeCode)}]</span>
                                       </div>
                                     )}
                                   </div>

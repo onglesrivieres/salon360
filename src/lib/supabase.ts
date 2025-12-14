@@ -266,6 +266,7 @@ export interface StoreAttendance {
   total_hours?: number;
   status: string;
   pay_type: string;
+  store_code: string;
 }
 
 export interface AttendanceComment {
