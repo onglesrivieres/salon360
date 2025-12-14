@@ -205,7 +205,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   };
 
   const [formData, setFormData] = useState({
-    customer_type: '' as '' | 'Appointment' | 'Requested' | 'Assigned',
+    customer_type: 'Assigned' as '' | 'Appointment' | 'Requested' | 'Assigned',
     customer_name: '',
     customer_phone: '',
     payment_method: '' as '' | 'Cash' | 'Card' | 'Mixed',
