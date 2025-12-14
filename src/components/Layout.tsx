@@ -477,7 +477,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     { id: 'services' as const, label: t('nav.services'), icon: Briefcase },
     { id: 'insights' as const, label: 'Insights', icon: TrendingUp },
     { id: 'configuration' as const, label: 'Configuration', icon: Settings },
-    { id: 'settings' as const, label: t('nav.settings'), icon: Settings },
   ];
 
   const navItems = allNavItems.filter(item => !item.hidden);
@@ -561,6 +560,16 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                   <span className="text-xs font-medium text-gray-700">{googleRating.rating} ({googleRating.reviews})</span>
                 </div>
+              )}
+              {session && session.role && canAccessPage('settings', session.role) && (
+                <button
+                  onClick={() => onNavigate('settings')}
+                  className="flex items-center gap-2 px-2 py-1 text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
+                  title={t('nav.settings')}
+                >
+                  <Settings className="w-4 h-4" />
+                  <span className="hidden md:inline">{t('nav.settings')}</span>
+                </button>
               )}
               <button
                 onClick={logout}
