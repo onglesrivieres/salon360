@@ -51,7 +51,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   const [summaries, setSummaries] = useState<TechnicianSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'detail' | 'weekly'>('detail');
-  const [weeklyData, setWeeklyData] = useState<Map<string, Map<string, { tips_cash: number; tips_card: number; tips_total: number }>>>(new Map());
+  const [weeklyData, setWeeklyData] = useState<Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>>>>(new Map());
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(true);
@@ -163,6 +163,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           id,
           ticket_date,
           store_id,
+          store:stores!sale_tickets_store_id_fkey(id, name, code),
           ticket_items${isTechnician ? '!inner' : ''} (
             id,
             employee_id,
@@ -193,11 +194,13 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
       if (ticketsError) throw ticketsError;
 
-      const dataMap = new Map<string, Map<string, { tips_cash: number; tips_card: number; tips_total: number }>>();
+      // Build intermediate data structure: employee -> date -> store -> tips
+      const dataMap = new Map<string, Map<string, Map<string, { store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>>>();
 
       for (const ticket of tickets || []) {
         const ticketDate = (ticket as any).ticket_date;
         const ticketStoreId = (ticket as any).store_id;
+        const storeCode = (ticket as any).store?.code || '';
 
         for (const item of (ticket as any).ticket_items || []) {
           const techId = item.employee_id;
@@ -226,10 +229,21 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
           const techMap = dataMap.get(techId)!;
           if (!techMap.has(ticketDate)) {
-            techMap.set(ticketDate, { tips_cash: 0, tips_card: 0, tips_total: 0 });
+            techMap.set(ticketDate, new Map());
           }
 
-          const dayData = techMap.get(ticketDate)!;
+          const dateMap = techMap.get(ticketDate)!;
+          if (!dateMap.has(ticketStoreId)) {
+            dateMap.set(ticketStoreId, {
+              store_id: ticketStoreId,
+              store_code: storeCode,
+              tips_cash: 0,
+              tips_card: 0,
+              tips_total: 0,
+            });
+          }
+
+          const storeData = dateMap.get(ticketStoreId)!;
           const tipCustomerCash = item.tip_customer_cash || 0;
           const tipCustomerCard = item.tip_customer_card || 0;
           const tipReceptionist = item.tip_receptionist || 0;
@@ -237,9 +251,9 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           const tipCard = tipCustomerCard + tipReceptionist;
           const tipTotal = tipCash + tipCard;
 
-          dayData.tips_cash += tipCash;
-          dayData.tips_card += tipCard;
-          dayData.tips_total += tipTotal;
+          storeData.tips_cash += tipCash;
+          storeData.tips_card += tipCard;
+          storeData.tips_total += tipTotal;
         }
       }
 
@@ -252,8 +266,22 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         }
       }
 
+      // Convert intermediate structure to final structure with arrays
+      const finalData = new Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>>>();
+
+      for (const [techId, dateMap] of dataMap.entries()) {
+        const techDateMap = new Map<string, Array<{ store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>>();
+
+        for (const [date, storeMap] of dateMap.entries()) {
+          const storesArray = Array.from(storeMap.values());
+          techDateMap.set(date, storesArray);
+        }
+
+        finalData.set(techId, techDateMap);
+      }
+
       const sortedData = new Map(
-        Array.from(dataMap.entries()).sort((a, b) => {
+        Array.from(finalData.entries()).sort((a, b) => {
           const nameA = techNames.get(a[0]) || '';
           const nameB = techNames.get(b[0]) || '';
           return nameA.localeCompare(nameB);
@@ -269,10 +297,12 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         let totalCard = 0;
         let totalTips = 0;
 
-        for (const dayData of dayMap.values()) {
-          totalCash += dayData.tips_cash;
-          totalCard += dayData.tips_card;
-          totalTips += dayData.tips_total;
+        for (const storesArray of dayMap.values()) {
+          for (const storeData of storesArray) {
+            totalCash += storeData.tips_cash;
+            totalCard += storeData.tips_card;
+            totalTips += storeData.tips_total;
+          }
         }
 
         technicianMap.set(techId, {
