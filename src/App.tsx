@@ -15,11 +15,12 @@ const AttendancePage = lazy(() => import('./pages/AttendancePage').then(m => ({ 
 const EmployeesPage = lazy(() => import('./pages/EmployeesPage').then(m => ({ default: m.EmployeesPage })));
 const ServicesPage = lazy(() => import('./pages/ServicesPage').then(m => ({ default: m.ServicesPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const ConfigurationPage = lazy(() => import('./pages/ConfigurationPage').then(m => ({ default: m.ConfigurationPage })));
 const PendingApprovalsPage = lazy(() => import('./pages/PendingApprovalsPage').then(m => ({ default: m.PendingApprovalsPage })));
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
 const InsightsPage = lazy(() => import('./pages/InsightsPage').then(m => ({ default: m.InsightsPage })));
 
-type Page = 'tickets' | 'eod' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'approvals' | 'inventory' | 'insights';
+type Page = 'tickets' | 'eod' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'configuration' | 'approvals' | 'inventory' | 'insights';
 
 function AppContent() {
   const { isAuthenticated, selectedStoreId, selectStore, session, login } = useAuth();
@@ -179,6 +180,7 @@ function AppContent() {
           {currentPage === 'services' && <ServicesPage />}
           {currentPage === 'insights' && <InsightsPage />}
           {currentPage === 'settings' && <SettingsPage />}
+          {currentPage === 'configuration' && <ConfigurationPage />}
         </Suspense>
       </Layout>
 

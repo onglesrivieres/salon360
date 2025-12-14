@@ -12,8 +12,8 @@ import { getCurrentDateEST } from '../lib/timezone';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentPage: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals' | 'inventory' | 'insights';
-  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'attendance' | 'approvals' | 'inventory' | 'insights') => void;
+  currentPage: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'configuration' | 'attendance' | 'approvals' | 'inventory' | 'insights';
+  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'configuration' | 'attendance' | 'approvals' | 'inventory' | 'insights') => void;
 }
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
@@ -546,14 +546,26 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                 </div>
               )}
               {session && (
-                <button
-                  onClick={() => onNavigate('settings')}
-                  className="hidden md:flex items-center gap-2 px-2 py-1 text-xs text-gray-700 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
-                  title={t('nav.settings')}
-                >
-                  <Settings className="w-3 h-3" />
-                  {t('nav.settings')}
-                </button>
+                <>
+                  {session.role && Permissions.configuration.canView(session.role) && (
+                    <button
+                      onClick={() => onNavigate('configuration')}
+                      className="hidden md:flex items-center gap-2 px-2 py-1 text-xs text-gray-700 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
+                      title="Configuration"
+                    >
+                      <Settings className="w-3 h-3" />
+                      Configuration
+                    </button>
+                  )}
+                  <button
+                    onClick={() => onNavigate('settings')}
+                    className="hidden md:flex items-center gap-2 px-2 py-1 text-xs text-gray-700 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
+                    title={t('nav.settings')}
+                  >
+                    <Settings className="w-3 h-3" />
+                    {t('nav.settings')}
+                  </button>
+                </>
               )}
               <button
                 onClick={logout}
@@ -625,16 +637,30 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             </ul>
             <div className="md:hidden mt-4 pt-4 border-t border-gray-200 px-2">
               {session && (
-                <button
-                  onClick={() => {
-                    onNavigate('settings');
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  <Settings className="w-4 h-4" />
-                  <span>{t('nav.settings')}</span>
-                </button>
+                <>
+                  {session.role && Permissions.configuration.canView(session.role) && (
+                    <button
+                      onClick={() => {
+                        onNavigate('configuration');
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span>Configuration</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      onNavigate('settings');
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span>{t('nav.settings')}</span>
+                  </button>
+                </>
               )}
             </div>
           </nav>
