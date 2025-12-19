@@ -860,6 +860,8 @@ export function PendingApprovalsPage() {
           {tickets.map((ticket) => {
             const urgency = getUrgencyLevel(ticket.hours_remaining);
             const timeRemaining = formatTimeRemaining(ticket.hours_remaining);
+            const totalTips = ticket.tip_customer + ticket.tip_receptionist;
+            const isHighTip = totalTips > 20;
 
             return (
               <div
@@ -874,7 +876,7 @@ export function PendingApprovalsPage() {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <Badge variant={urgency === 'urgent' ? 'error' : urgency === 'warning' ? 'warning' : 'default'}>
                         {urgency === 'urgent' ? (
                           <AlertTriangle className="w-3 h-3 mr-1" />
@@ -889,6 +891,12 @@ export function PendingApprovalsPage() {
                           Requires Management
                         </Badge>
                       )}
+                      {isHighTip && (
+                        <Badge variant="error" className="bg-orange-100 text-orange-800 border-orange-300">
+                          <DollarSign className="w-3 h-3 mr-1" />
+                          High Tips: ${totalTips.toFixed(2)}
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-gray-600">
                       Completed by: <span className="font-medium">{ticket.completed_by_name || 'N/A'}</span>
@@ -897,7 +905,9 @@ export function PendingApprovalsPage() {
                       Closed by: <span className="font-medium">{ticket.closed_by_name}</span>
                     </p>
                     {ticket.reason && (
-                      <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                      <p className={`text-xs mt-1 flex items-center gap-1 ${
+                        isHighTip ? 'text-orange-600 font-medium' : 'text-blue-600'
+                      }`}>
                         <AlertCircle className="w-3 h-3" />
                         {ticket.reason}
                       </p>
@@ -905,7 +915,7 @@ export function PendingApprovalsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 p-3 bg-gray-50 rounded-lg mb-3">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-3 p-3 bg-gray-50 rounded-lg mb-3">
                   <div>
                     <p className="text-xs text-gray-500">Service</p>
                     <p className="text-sm font-semibold text-gray-900">{ticket.service_name}</p>
@@ -930,6 +940,14 @@ export function PendingApprovalsPage() {
                     <p className="text-xs text-gray-500">Tip (Receptionist)</p>
                     <p className="text-sm font-semibold text-green-600">
                       ${ticket.tip_receptionist.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className={isHighTip ? 'bg-orange-50 rounded px-2 -mx-2' : ''}>
+                    <p className={`text-xs font-medium ${isHighTip ? 'text-orange-700' : 'text-gray-500'}`}>
+                      Total Tips
+                    </p>
+                    <p className={`text-sm font-bold ${isHighTip ? 'text-orange-700' : 'text-gray-900'}`}>
+                      ${totalTips.toFixed(2)}
                     </p>
                   </div>
                 </div>
