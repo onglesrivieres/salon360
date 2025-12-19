@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Modal } from './ui/Modal';
-import { Lock } from 'lucide-react';
+import { Lock, Delete, X } from 'lucide-react';
 
 interface PinModalProps {
   isOpen: boolean;
@@ -76,6 +76,45 @@ export function PinModal({ isOpen, onClose, onSubmit, title = 'Enter PIN', isLoa
     }
   };
 
+  const handleNumberPadClick = (value: string) => {
+    if (isLoading) return;
+
+    const firstEmptyIndex = pin.findIndex(digit => !digit);
+    if (firstEmptyIndex === -1) return;
+
+    const newPin = [...pin];
+    newPin[firstEmptyIndex] = value;
+    setPin(newPin);
+
+    if (firstEmptyIndex < 3) {
+      inputRefs[firstEmptyIndex + 1].current?.focus();
+    } else {
+      inputRefs[3].current?.focus();
+      if (newPin.every(digit => digit !== '')) {
+        onSubmit(newPin.join(''));
+      }
+    }
+  };
+
+  const handleBackspace = () => {
+    if (isLoading) return;
+
+    const lastFilledIndex = [...pin].reverse().findIndex(digit => digit !== '');
+    if (lastFilledIndex === -1) return;
+
+    const actualIndex = 3 - lastFilledIndex;
+    const newPin = [...pin];
+    newPin[actualIndex] = '';
+    setPin(newPin);
+    inputRefs[actualIndex].current?.focus();
+  };
+
+  const handleClear = () => {
+    if (isLoading) return;
+    setPin(['', '', '', '']);
+    inputRefs[0].current?.focus();
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <div className="text-center py-4">
@@ -110,6 +149,45 @@ export function PinModal({ isOpen, onClose, onSubmit, title = 'Enter PIN', isLoa
         {isLoading && (
           <p className="text-gray-500 text-sm">Verifying...</p>
         )}
+
+        {/* On-Screen Number Pad */}
+        <div className="max-w-xs mx-auto mt-6 mb-4">
+          <div className="grid grid-cols-3 gap-3">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+              <button
+                key={num}
+                onClick={() => handleNumberPadClick(num.toString())}
+                disabled={isLoading}
+                className="w-16 h-16 text-xl font-semibold bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transform"
+              >
+                {num}
+              </button>
+            ))}
+            <button
+              onClick={handleClear}
+              disabled={isLoading}
+              className="w-16 h-16 bg-red-100 hover:bg-red-200 active:bg-red-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center active:scale-95 transform"
+              title="Clear All"
+            >
+              <X className="w-6 h-6 text-red-700" />
+            </button>
+            <button
+              onClick={() => handleNumberPadClick('0')}
+              disabled={isLoading}
+              className="w-16 h-16 text-xl font-semibold bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transform"
+            >
+              0
+            </button>
+            <button
+              onClick={handleBackspace}
+              disabled={isLoading}
+              className="w-16 h-16 bg-yellow-100 hover:bg-yellow-200 active:bg-yellow-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center active:scale-95 transform"
+              title="Backspace"
+            >
+              <Delete className="w-6 h-6 text-yellow-700" />
+            </button>
+          </div>
+        </div>
 
         <button
           onClick={onClose}
