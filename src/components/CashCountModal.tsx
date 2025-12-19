@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
-import { Input } from './ui/Input';
+import { NumericInput } from './ui/NumericInput';
 
 interface CashDenominations {
   bill_100: number;
@@ -100,12 +100,12 @@ export function CashCountModal({
     return (
       <div className="flex items-center gap-3">
         <label className="text-xs text-gray-700 w-20 whitespace-nowrap flex-shrink-0">{label}</label>
-        <Input
-          type="number"
+        <NumericInput
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="w-6 text-center text-xs py-1 flex-shrink-0"
           min="0"
+          step="1"
         />
         <span className="text-xs font-semibold text-gray-900 w-24 text-right whitespace-nowrap flex-shrink-0">
           ${itemTotal.toFixed(2)}

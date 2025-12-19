@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, PackagePlus, AlertCircle } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
-import { Input } from './ui/Input';
+import { NumericInput } from './ui/NumericInput';
 import { Select } from './ui/Select';
 import { useToast } from './ui/Toast';
 import { supabase, InventoryItem, Technician } from '../lib/supabase';
@@ -233,8 +233,7 @@ export function EmployeeDistributionModal({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Quantity <span className="text-red-500">*</span>
           </label>
-          <Input
-            type="number"
+          <NumericInput
             step="0.01"
             min="0.01"
             max={availableQuantity}

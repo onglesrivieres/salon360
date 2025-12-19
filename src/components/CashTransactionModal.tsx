@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
-import { Input } from './ui/Input';
+import { NumericInput } from './ui/NumericInput';
 import { CashTransactionType } from '../lib/supabase';
 
 interface CashTransactionModalProps {
@@ -82,9 +82,8 @@ export function CashTransactionModal({
           <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
             Amount *
           </label>
-          <Input
+          <NumericInput
             id="amount"
-            type="number"
             step="0.01"
             min="0.01"
             value={amount}

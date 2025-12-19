@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, Check, X, Star } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
+import { NumericInput } from './ui/NumericInput';
 import { useToast } from './ui/Toast';
 import { supabase, PurchaseUnit } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -225,8 +226,7 @@ export function PurchaseUnitManager({ masterItemId, isOpen }: PurchaseUnitManage
                     placeholder="e.g., Pack of 6"
                     className="flex-1 text-sm"
                   />
-                  <Input
-                    type="number"
+                  <NumericInput
                     step="0.01"
                     min="0.01"
                     value={formData.multiplier}
@@ -312,8 +312,7 @@ export function PurchaseUnitManager({ masterItemId, isOpen }: PurchaseUnitManage
                 className="flex-1 text-sm"
                 autoFocus
               />
-              <Input
-                type="number"
+              <NumericInput
                 step="0.01"
                 min="0.01"
                 value={formData.multiplier}

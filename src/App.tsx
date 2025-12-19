@@ -3,6 +3,8 @@ import { Layout } from './components/Layout';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { NumericKeypadProvider } from './contexts/NumericKeypadContext';
+import { NumericKeypad } from './components/NumericKeypad';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { TicketsPage } from './pages/TicketsPage';
@@ -202,7 +204,10 @@ function App() {
     <ToastProvider>
       <AuthProvider>
         <SettingsProvider>
-          <AppContent />
+          <NumericKeypadProvider>
+            <AppContent />
+            <NumericKeypad />
+          </NumericKeypadProvider>
         </SettingsProvider>
       </AuthProvider>
     </ToastProvider>

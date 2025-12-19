@@ -3,6 +3,7 @@ import { ArrowUpDown, Info } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
+import { NumericInput } from './ui/NumericInput';
 import { Select } from './ui/Select';
 import { useToast } from './ui/Toast';
 import { supabase, InventoryItem, Supplier } from '../lib/supabase';
@@ -318,8 +319,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Reorder Level (Purchase Units)
           </label>
-          <Input
-            type="number"
+          <NumericInput
             step="1"
             min="0"
             value={formData.reorder_level}

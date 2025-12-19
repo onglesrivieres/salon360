@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, AlertCircle, Search, RefreshCw, Copy, CheckCircle2, Loader2, AlertTriangle, Shield } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { NumericInput } from '../components/ui/NumericInput';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -461,9 +462,8 @@ export function ConfigurationPage() {
                       {typeof setting.setting_value === 'number' ? (
                         <div className="flex flex-col items-end gap-2">
                           <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              value={setting.setting_value}
+                            <NumericInput
+                              value={setting.setting_value.toString()}
                               onChange={(e) => {
                                 const value = parseInt(e.target.value, 10);
                                 if (!isNaN(value)) {
@@ -472,7 +472,8 @@ export function ConfigurationPage() {
                               }}
                               min={(setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10 : undefined}
                               max={(setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10080 : undefined}
-                              className="w-28 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              step="1"
+                              className="w-28 px-3 py-2"
                             />
                             <span className="text-sm text-gray-600">minutes</span>
                           </div>
