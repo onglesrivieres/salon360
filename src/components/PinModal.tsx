@@ -13,6 +13,8 @@ interface PinModalProps {
 
 export function PinModal({ isOpen, onClose, onSubmit, title = 'Enter PIN', isLoading = false, error }: PinModalProps) {
   const [pin, setPin] = useState(['', '', '', '']);
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+  const [currentPosition, setCurrentPosition] = useState(0);
   const inputRefs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -21,18 +23,41 @@ export function PinModal({ isOpen, onClose, onSubmit, title = 'Enter PIN', isLoa
   ];
 
   useEffect(() => {
+    const checkMobileDevice = () => {
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isMobile = /iphone|ipad|ipod|android|webos|blackberry|windows phone/.test(userAgent);
+      const isTablet = /ipad|android(?!.*mobile)/.test(userAgent) ||
+                       (navigator.maxTouchPoints > 1 && /macintosh/.test(userAgent));
+      setIsMobileDevice(isMobile || isTablet);
+    };
+
+    checkMobileDevice();
+  }, []);
+
+  useEffect(() => {
     if (isOpen) {
       setPin(['', '', '', '']);
-      setTimeout(() => inputRefs[0].current?.focus(), 100);
+      setCurrentPosition(0);
+      if (!isMobileDevice) {
+        setTimeout(() => inputRefs[0].current?.focus(), 100);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, isMobileDevice]);
 
   useEffect(() => {
     if (error) {
       setPin(['', '', '', '']);
-      setTimeout(() => inputRefs[0].current?.focus(), 100);
+      setCurrentPosition(0);
+      if (!isMobileDevice) {
+        setTimeout(() => inputRefs[0].current?.focus(), 100);
+      }
     }
-  }, [error]);
+  }, [error, isMobileDevice]);
+
+  useEffect(() => {
+    const firstEmptyIndex = pin.findIndex(digit => !digit);
+    setCurrentPosition(firstEmptyIndex === -1 ? 3 : firstEmptyIndex);
+  }, [pin]);
 
   const handleChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
@@ -86,13 +111,16 @@ export function PinModal({ isOpen, onClose, onSubmit, title = 'Enter PIN', isLoa
     newPin[firstEmptyIndex] = value;
     setPin(newPin);
 
-    if (firstEmptyIndex < 3) {
-      inputRefs[firstEmptyIndex + 1].current?.focus();
-    } else {
-      inputRefs[3].current?.focus();
-      if (newPin.every(digit => digit !== '')) {
-        onSubmit(newPin.join(''));
+    if (!isMobileDevice) {
+      if (firstEmptyIndex < 3) {
+        inputRefs[firstEmptyIndex + 1].current?.focus();
+      } else {
+        inputRefs[3].current?.focus();
       }
+    }
+
+    if (newPin.every(digit => digit !== '')) {
+      onSubmit(newPin.join(''));
     }
   };
 
@@ -106,13 +134,19 @@ export function PinModal({ isOpen, onClose, onSubmit, title = 'Enter PIN', isLoa
     const newPin = [...pin];
     newPin[actualIndex] = '';
     setPin(newPin);
-    inputRefs[actualIndex].current?.focus();
+
+    if (!isMobileDevice) {
+      inputRefs[actualIndex].current?.focus();
+    }
   };
 
   const handleClear = () => {
     if (isLoading) return;
     setPin(['', '', '', '']);
-    inputRefs[0].current?.focus();
+
+    if (!isMobileDevice) {
+      inputRefs[0].current?.focus();
+    }
   };
 
   return (
@@ -130,14 +164,21 @@ export function PinModal({ isOpen, onClose, onSubmit, title = 'Enter PIN', isLoa
               key={index}
               ref={inputRefs[index]}
               type="password"
-              inputMode="numeric"
+              inputMode={isMobileDevice ? "none" : "numeric"}
               maxLength={1}
               value={digit}
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
               onPaste={handlePaste}
               disabled={isLoading}
-              className="w-14 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+              readOnly={isMobileDevice}
+              className={`w-14 h-14 text-center text-2xl font-bold border-2 rounded-lg focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed transition-all ${
+                isMobileDevice && currentPosition === index
+                  ? 'border-blue-600 bg-blue-50'
+                  : isMobileDevice
+                  ? 'border-gray-300'
+                  : 'border-gray-300 focus:border-blue-600'
+              }`}
             />
           ))}
         </div>
