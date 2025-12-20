@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useNumericKeypad } from '../../contexts/NumericKeypadContext';
 
 interface NumericInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type' | 'onChange'> {
@@ -23,10 +23,19 @@ export function NumericInput({
 }: NumericInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { openKeypad } = useNumericKeypad();
-  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const [shouldUseKeypad, setShouldUseKeypad] = useState(() => window.innerWidth <= 1366);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setShouldUseKeypad(window.innerWidth <= 1366);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    if (useKeypad && isTouchDevice && !disabled && !readOnly) {
+    if (useKeypad && shouldUseKeypad && !disabled && !readOnly) {
       e.preventDefault();
       e.target.blur();
 
@@ -97,6 +106,13 @@ export function NumericInput({
     }
   };
 
+  const handleClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    if (useKeypad && shouldUseKeypad && !disabled && !readOnly) {
+      e.preventDefault();
+      e.currentTarget.blur();
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e);
   };
@@ -107,6 +123,8 @@ export function NumericInput({
     }
   };
 
+  const isKeypadActive = useKeypad && shouldUseKeypad && !disabled && !readOnly;
+
   return (
     <input
       ref={inputRef}
@@ -114,13 +132,15 @@ export function NumericInput({
       value={value}
       onChange={handleChange}
       onFocus={handleFocus}
+      onClick={handleClick}
       onBlur={handleBlur}
       className={`w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0 disabled:bg-gray-100 disabled:cursor-not-allowed ${className}`}
       min={min}
       max={max}
       step={step}
       disabled={disabled}
-      readOnly={readOnly}
+      readOnly={isKeypadActive || readOnly}
+      inputMode={isKeypadActive ? 'none' : 'decimal'}
       {...props}
     />
   );
