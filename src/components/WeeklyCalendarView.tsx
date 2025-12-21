@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Info } from 'lucide-react';
 
 interface WeeklyCalendarViewProps {
   selectedDate: string;
@@ -50,6 +51,7 @@ function formatDateHeader(dateStr: string): { day: string; date: string } {
 export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: WeeklyCalendarViewProps) {
   const weekStart = getWeekStartDate(selectedDate);
   const weekDates = getWeekDates(weekStart);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   return (
     <div className="overflow-x-auto -mx-4 sm:mx-0">
@@ -72,8 +74,22 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                   </th>
                 );
               })}
-              <th className="border border-gray-300 bg-blue-100 px-1 py-1 text-center font-semibold w-[72px] sm:w-20">
-                <div className="font-bold text-[10px] sm:text-xs">Total</div>
+              <th className="border border-gray-300 bg-blue-100 px-1 py-1 text-center font-semibold w-[72px] sm:w-20 relative">
+                <div className="flex items-center justify-center gap-1">
+                  <div className="font-bold text-[10px] sm:text-xs">Weekly Total</div>
+                  <div
+                    className="relative"
+                    onMouseEnter={() => setShowTooltip(true)}
+                    onMouseLeave={() => setShowTooltip(false)}
+                  >
+                    <Info className="w-3 h-3 text-blue-600 cursor-help" />
+                    {showTooltip && (
+                      <div className="absolute top-full right-0 mt-1 w-48 p-2 bg-gray-900 text-white text-[10px] rounded shadow-lg z-20">
+                        Sum of all 7 days (Mon-Sun) in this week
+                      </div>
+                    )}
+                  </div>
+                </div>
               </th>
             </tr>
           </thead>
@@ -108,18 +124,18 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                                   <div className="text-center">
                                     <span className="text-[9px] text-gray-500">Cash: </span>
                                     <span className={`text-[9px] ${storeData.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
-                                      ${storeData.tips_cash.toFixed(0)}
+                                      ${storeData.tips_cash.toFixed(2)}
                                     </span>
                                   </div>
                                   <div className="text-center">
                                     <span className="text-[9px] text-gray-500">Card: </span>
                                     <span className={`text-[9px] ${storeData.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
-                                      ${storeData.tips_card.toFixed(0)}
+                                      ${storeData.tips_card.toFixed(2)}
                                     </span>
                                   </div>
                                   <div className="text-center pt-0.5 border-t border-gray-200 flex items-center justify-center gap-1">
                                     <span className="font-bold text-gray-900 text-[11px]">
-                                      ${storeData.tips_total.toFixed(0)}
+                                      ${storeData.tips_total.toFixed(2)}
                                     </span>
                                     {storeData.store_code && (
                                       <span className="text-[8px] text-gray-500 font-medium">
@@ -139,7 +155,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                   })}
                   <td className="border border-gray-300 bg-blue-50 px-1 py-0.5 text-center">
                     {(() => {
-                      // Aggregate tips by store across all days
+                      // Aggregate tips by store across all days - ALWAYS use techData for consistency
                       const storeAggregates = new Map<string, { store_code: string; tips_cash: number; tips_card: number; tips_total: number }>();
 
                       for (const storesArray of techData?.values() || []) {
@@ -173,18 +189,18 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                                 <div className="text-center">
                                   <span className="text-[9px] text-gray-500">Cash: </span>
                                   <span className={`text-[9px] ${storeAgg.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
-                                    ${storeAgg.tips_cash.toFixed(0)}
+                                    ${storeAgg.tips_cash.toFixed(2)}
                                   </span>
                                 </div>
                                 <div className="text-center">
                                   <span className="text-[9px] text-gray-500">Card: </span>
                                   <span className={`text-[9px] ${storeAgg.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
-                                    ${storeAgg.tips_card.toFixed(0)}
+                                    ${storeAgg.tips_card.toFixed(2)}
                                   </span>
                                 </div>
                                 <div className="text-center pt-0.5 border-t border-gray-900 flex items-center justify-center gap-1">
                                   <span className="font-bold text-gray-900 text-[11px]">
-                                    ${storeAgg.tips_total.toFixed(0)}
+                                    ${storeAgg.tips_total.toFixed(2)}
                                   </span>
                                   {storeAgg.store_code && (
                                     <span className="text-[8px] text-gray-600 font-medium">
@@ -200,19 +216,19 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                         <div className="space-y-0.5">
                           <div className="text-center">
                             <span className="text-[9px] text-gray-500">Cash: </span>
-                            <span className={`text-[9px] ${summary.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
-                              ${summary.tips_cash.toFixed(0)}
+                            <span className={`text-[9px] ${storesList[0]?.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
+                              ${(storesList[0]?.tips_cash || 0).toFixed(2)}
                             </span>
                           </div>
                           <div className="text-center">
                             <span className="text-[9px] text-gray-500">Card: </span>
-                            <span className={`text-[9px] ${summary.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
-                              ${summary.tips_card.toFixed(0)}
+                            <span className={`text-[9px] ${storesList[0]?.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
+                              ${(storesList[0]?.tips_card || 0).toFixed(2)}
                             </span>
                           </div>
                           <div className="text-center pt-0.5 border-t border-gray-900">
                             <span className="font-bold text-gray-900 text-[11px]">
-                              ${summary.tips_total.toFixed(0)}
+                              ${(storesList[0]?.tips_total || 0).toFixed(2)}
                             </span>
                           </div>
                         </div>

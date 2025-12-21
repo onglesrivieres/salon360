@@ -862,7 +862,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                   <div className="p-1">
                     <div className="mb-1 pb-1 border-b border-gray-200 space-y-0.5">
                       <p className="text-[9px] font-medium text-gray-500 uppercase tracking-wide">
-                        Summary
+                        Daily Total
                       </p>
                       <div className="space-y-0.5">
                         {showDetails ? (
