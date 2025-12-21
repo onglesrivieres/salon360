@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit2, Calendar, CheckCircle, Clock, AlertCircle, Filter, X } from 'lucide-react';
+import { Plus, Edit2, Calendar, CheckCircle, Clock, AlertCircle, Filter, X, XCircle, DollarSign } from 'lucide-react';
 import { supabase, SaleTicket } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { Modal } from '../components/ui/Modal';
 import { useToast } from '../components/ui/Toast';
 import { TicketEditor } from '../components/TicketEditor';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,6 +25,10 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
   const [technicianFilter, setTechnicianFilter] = useState<string>('all');
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [selectedTicketForApproval, setSelectedTicketForApproval] = useState<SaleTicket | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [processing, setProcessing] = useState(false);
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
@@ -367,6 +372,130 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     setTechnicianFilter('all');
   }
 
+  function getTotalTips(ticket: any): number {
+    if (!ticket.ticket_items || ticket.ticket_items.length === 0) return 0;
+    return ticket.ticket_items.reduce((total: number, item: any) => {
+      return total + (item?.tip_customer_cash || 0) + (item?.tip_customer_card || 0) + (item?.tip_receptionist || 0);
+    }, 0);
+  }
+
+  function canApproveTicket(ticket: SaleTicket): boolean {
+    if (!session?.employee_id || !session?.role) return false;
+    if (!Permissions.tickets.canApprove(session.role)) return false;
+    if (ticket.approval_status !== 'pending_approval') return false;
+
+    // Check if the current employee worked on this ticket
+    const isTechnician = session.role.some((role: string) => ['Technician', 'Spa Expert'].includes(role));
+    if (isTechnician && ticket.ticket_items) {
+      return ticket.ticket_items.some((item: any) => item.employee_id === session.employee_id);
+    }
+
+    return true;
+  }
+
+  async function handleApproveTicket(ticket: SaleTicket, event: React.MouseEvent) {
+    event.stopPropagation(); // Prevent opening the editor
+
+    if (!session?.employee_id) {
+      showToast('Session expired. Please log in again.', 'error');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      const { data, error } = await supabase.rpc('approve_ticket', {
+        p_ticket_id: ticket.id,
+        p_employee_id: session.employee_id,
+      });
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; message: string };
+      if (!result.success) {
+        showToast(result.message, 'error');
+        return;
+      }
+
+      await supabase.from('ticket_activity_log').insert([{
+        ticket_id: ticket.id,
+        employee_id: session.employee_id,
+        action: 'approved',
+        description: `${session.display_name} approved ticket`,
+        changes: {
+          approval_status: 'approved',
+          ticket_no: ticket.ticket_no,
+        },
+      }]);
+
+      showToast('Ticket approved successfully', 'success');
+      fetchTickets();
+    } catch (error: any) {
+      console.error('Error approving ticket:', error);
+      showToast(error.message || 'Failed to approve ticket', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  function handleRejectTicketClick(ticket: SaleTicket, event: React.MouseEvent) {
+    event.stopPropagation(); // Prevent opening the editor
+    setSelectedTicketForApproval(ticket);
+    setRejectionReason('');
+    setShowRejectModal(true);
+  }
+
+  async function handleRejectTicket() {
+    if (!selectedTicketForApproval || !rejectionReason.trim()) {
+      showToast('Please provide a rejection reason', 'error');
+      return;
+    }
+
+    if (!session?.employee_id) {
+      showToast('Session expired. Please log in again.', 'error');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      const { data, error } = await supabase.rpc('reject_ticket', {
+        p_ticket_id: selectedTicketForApproval.id,
+        p_employee_id: session.employee_id,
+        p_rejection_reason: rejectionReason,
+      });
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; message: string };
+      if (!result.success) {
+        showToast(result.message, 'error');
+        return;
+      }
+
+      await supabase.from('ticket_activity_log').insert([{
+        ticket_id: selectedTicketForApproval.id,
+        employee_id: session.employee_id,
+        action: 'rejected',
+        description: `${session.display_name} rejected ticket: ${rejectionReason}`,
+        changes: {
+          approval_status: 'rejected',
+          rejection_reason: rejectionReason,
+          ticket_no: selectedTicketForApproval.ticket_no,
+        },
+      }]);
+
+      showToast('Ticket rejected and sent for admin review', 'success');
+      setShowRejectModal(false);
+      setSelectedTicketForApproval(null);
+      setRejectionReason('');
+      fetchTickets();
+    } catch (error: any) {
+      console.error('Error rejecting ticket:', error);
+      showToast(error.message || 'Failed to reject ticket', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -656,6 +785,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
         {filteredTickets.map((ticket) => {
           const tipCustomer = getTipCustomer(ticket);
           const tipReceptionist = getTipReceptionist(ticket);
+          const totalTips = getTotalTips(ticket);
           const serviceName = getServiceName(ticket);
           const technicianName = getTechnicianName(ticket);
           const customerType = getCustomerType(ticket);
@@ -668,6 +798,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
             isApproved
           );
           const canView = session && Permissions.tickets.canView(session.role_permission);
+          const showApprovalButtons = canApproveTicket(ticket);
 
           const isSelfServiceTicket =
             ticket.opened_by_role &&
@@ -677,6 +808,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
           const isUnclosedTicket = !ticket.closed_at;
           const isClosedTicket = !!ticket.closed_at;
+          const isHighTip = totalTips > 20;
 
           let cardBackgroundClass = 'bg-gray-100';
           let cardHoverClass = 'active:bg-gray-200';
@@ -695,13 +827,16 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
           return (
             <div
               key={ticket.id}
-              onClick={() => canView && openEditor(ticket.id)}
+              onClick={() => canView && !showApprovalButtons && openEditor(ticket.id)}
               className={`${cardBackgroundClass} rounded-lg shadow p-3 ${
-                canView ? `cursor-pointer ${cardHoverClass}` : 'cursor-not-allowed opacity-60'
+                canView && !showApprovalButtons ? `cursor-pointer ${cardHoverClass}` : ''
               }`}
             >
               <div className="flex items-start justify-between mb-2">
-                <div className="flex-1">
+                <div
+                  className={`flex-1 ${canView && showApprovalButtons ? 'cursor-pointer' : ''}`}
+                  onClick={() => canView && showApprovalButtons && openEditor(ticket.id)}
+                >
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-sm font-semibold text-gray-900">{customerType}</span>
                     <span className="text-xs text-gray-500">{time}</span>
@@ -743,10 +878,45 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                 </div>
               </div>
               <div className="pt-2 border-t border-gray-100">
-                <div>
-                  <div className="text-xs text-gray-500">Total</div>
-                  <div className="text-sm font-semibold text-gray-900">${ticket.total.toFixed(2)}</div>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div>
+                    <div className="text-xs text-gray-500">Total</div>
+                    <div className="text-sm font-semibold text-gray-900">${ticket.total.toFixed(2)}</div>
+                  </div>
+                  {isClosedTicket && (
+                    <div className={isHighTip ? 'bg-orange-50 rounded px-2 -mx-2' : ''}>
+                      <div className={`text-xs font-medium ${isHighTip ? 'text-orange-700' : 'text-gray-500'}`}>
+                        Total Tips
+                      </div>
+                      <div className={`text-sm font-semibold ${isHighTip ? 'text-orange-700' : 'text-green-600'}`}>
+                        ${totalTips.toFixed(2)}
+                      </div>
+                    </div>
+                  )}
                 </div>
+                {showApprovalButtons && (
+                  <div className="flex gap-2 mt-2">
+                    <Button
+                      size="sm"
+                      onClick={(e) => handleApproveTicket(ticket, e)}
+                      disabled={processing}
+                      className="flex-1 min-h-[44px]"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={(e) => handleRejectTicketClick(ticket, e)}
+                      disabled={processing}
+                      className="flex-1 min-h-[44px] text-red-600 hover:bg-red-50"
+                    >
+                      <XCircle className="w-4 h-4 mr-1" />
+                      Reject
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -765,6 +935,42 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
           </div>
         )}
       </div>
+
+      <Modal
+        isOpen={showRejectModal}
+        onClose={() => !processing && setShowRejectModal(false)}
+        title="Reject Ticket"
+        onConfirm={handleRejectTicket}
+        confirmText={processing ? 'Rejecting...' : 'Reject Ticket'}
+        confirmVariant="danger"
+        cancelText="Cancel"
+      >
+        {selectedTicketForApproval && (
+          <div>
+            <p className="text-gray-700 mb-3">
+              Rejecting ticket <strong>{selectedTicketForApproval.ticket_no}</strong> will send it for admin review.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Reason for Rejection <span className="text-red-600">*</span>
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Please explain why you are rejecting this ticket..."
+                disabled={processing}
+              />
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <p className="text-sm text-yellow-800">
+                The ticket will be locked and require admin review before any further action can be taken.
+              </p>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {isEditorOpen && (
         <TicketEditor
