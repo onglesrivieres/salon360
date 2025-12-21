@@ -14,6 +14,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Modal } from './ui/Modal';
+import { NumericInput } from './ui/NumericInput';
 import { useToast } from './ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
@@ -1891,16 +1892,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       Price
                     </label>
                     <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                      <input
-                        type="number"
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500 z-10">$</span>
+                      <NumericInput
                         step="0.01"
                         min="0"
                         value={items[0].price_each}
                         onChange={(e) =>
                           updateItem(0, 'price_each', e.target.value)
                         }
-                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        className="pl-6 pr-2"
                         disabled={isTicketClosed || isReadOnly}
                       />
                     </div>
@@ -1939,18 +1939,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       Price
                     </label>
                     <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                      <input
-                        type="number"
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500 z-10">$</span>
+                      <NumericInput
                         step="0.01"
                         min="0"
                         value={formData.addon_price}
                         onChange={(e) =>
                           setFormData({ ...formData, addon_price: e.target.value })
                         }
-                        onFocus={handleNumericFieldFocus}
                         onBlur={(e) => handleNumericFieldBlur(e, 'addon_price')}
-                        className="w-full pl-6 pr-2 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                        className="pl-6 pr-2"
                         disabled={isTicketClosed || isReadOnly}
                       />
                     </div>
@@ -2368,16 +2366,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   Cash Payment
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                  <input
-                    type="number"
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">$</span>
+                  <NumericInput
                     step="0.01"
                     min="0"
                     value={tempPaymentData.payment_cash}
                     onChange={(e) =>
                       setTempPaymentData({ ...tempPaymentData, payment_cash: e.target.value })
                     }
-                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="pl-8 pr-3"
                     placeholder="0.00"
                   />
                 </div>
@@ -2394,16 +2391,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   Card Payment
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                  <input
-                    type="number"
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">$</span>
+                  <NumericInput
                     step="0.01"
                     min="0"
                     value={tempPaymentData.payment_card}
                     onChange={(e) =>
                       setTempPaymentData({ ...tempPaymentData, payment_card: e.target.value })
                     }
-                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="pl-8 pr-3"
                     placeholder="0.00"
                   />
                 </div>
@@ -2420,16 +2416,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   Gift Card Payment
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                  <input
-                    type="number"
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">$</span>
+                  <NumericInput
                     step="0.01"
                     min="0"
                     value={tempPaymentData.payment_gift_card}
                     onChange={(e) =>
                       setTempPaymentData({ ...tempPaymentData, payment_gift_card: e.target.value })
                     }
-                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="pl-8 pr-3"
                     placeholder="0.00"
                   />
                 </div>
@@ -2446,16 +2441,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   Discount Amount
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                  <input
-                    type="number"
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">$</span>
+                  <NumericInput
                     step="0.01"
                     min="0"
                     value={tempPaymentData.discount_amount}
                     onChange={(e) =>
                       setTempPaymentData({ ...tempPaymentData, discount_amount: e.target.value })
                     }
-                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="pl-8 pr-3"
                     placeholder="0.00"
                   />
                 </div>
@@ -2466,8 +2460,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   Discount Percentage
                 </label>
                 <div className="relative">
-                  <input
-                    type="number"
+                  <NumericInput
                     step="0.01"
                     min="0"
                     max="100"
@@ -2475,10 +2468,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     onChange={(e) =>
                       setTempPaymentData({ ...tempPaymentData, discount_percentage: e.target.value })
                     }
-                    className="w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="pl-3 pr-8"
                     placeholder="0"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">%</span>
                 </div>
               </div>
             </div>
@@ -2494,16 +2487,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     Tip (Cash) by Customer
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                    <input
-                      type="number"
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">$</span>
+                    <NumericInput
                       step="0.01"
                       min="0"
                       value={tempPaymentData.tip_customer_cash}
                       onChange={(e) =>
                         setTempPaymentData({ ...tempPaymentData, tip_customer_cash: e.target.value })
                       }
-                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="pl-8 pr-3"
                       placeholder="0.00"
                     />
                   </div>
@@ -2516,16 +2508,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     Tip (Card) by Customer
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                    <input
-                      type="number"
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">$</span>
+                    <NumericInput
                       step="0.01"
                       min="0"
                       value={tempPaymentData.tip_customer_card}
                       onChange={(e) =>
                         setTempPaymentData({ ...tempPaymentData, tip_customer_card: e.target.value })
                       }
-                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="pl-8 pr-3"
                       placeholder="0.00"
                     />
                   </div>
@@ -2544,9 +2535,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       Tip Paired by Receptionist
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                      <input
-                        type="number"
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">$</span>
+                      <NumericInput
                         step="0.01"
                         min="0"
                         value={tempPaymentData.tip_receptionist}
@@ -2554,9 +2544,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                           setTempPaymentData({ ...tempPaymentData, tip_receptionist: e.target.value })
                         }
                         disabled={!isTipPairedEnabled}
-                        className={`w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 ${
-                          !isTipPairedEnabled ? 'bg-gray-100 cursor-not-allowed' : ''
-                        }`}
+                        className="pl-8 pr-3"
                         placeholder="0.00"
                       />
                     </div>

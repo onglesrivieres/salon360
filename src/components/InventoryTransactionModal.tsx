@@ -4,6 +4,7 @@ import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
+import { NumericInput } from './ui/NumericInput';
 import { useToast } from './ui/Toast';
 import { supabase, InventoryItem, Technician, PurchaseUnit, Supplier } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -978,8 +979,7 @@ export function InventoryTransactionModal({
                                   Custom
                                 </option>
                               </Select>
-                              <Input
-                                type="number"
+                              <NumericInput
                                 step="0.01"
                                 min="0.01"
                                 value={item.newPurchaseUnitMultiplier}
@@ -1056,8 +1056,7 @@ export function InventoryTransactionModal({
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Qty {index === 0 && <span className="text-red-500">*</span>}
                         </label>
-                        <Input
-                          type="number"
+                        <NumericInput
                           step="0.01"
                           min="0"
                           value={item.purchase_quantity}
@@ -1074,8 +1073,7 @@ export function InventoryTransactionModal({
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Purchase Unit Price ($)
                         </label>
-                        <Input
-                          type="number"
+                        <NumericInput
                           step="0.01"
                           min="0"
                           value={item.purchase_unit_price}
@@ -1091,8 +1089,7 @@ export function InventoryTransactionModal({
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Quantity {index === 0 && <span className="text-red-500">*</span>}
                         </label>
-                        <Input
-                          type="number"
+                        <NumericInput
                           step="0.01"
                           min="0"
                           value={item.quantity}
@@ -1134,8 +1131,7 @@ export function InventoryTransactionModal({
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Unit Cost
                         </label>
-                        <Input
-                          type="number"
+                        <NumericInput
                           step="0.01"
                           min="0"
                           value={item.unit_cost}
