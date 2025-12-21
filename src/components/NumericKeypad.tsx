@@ -8,32 +8,15 @@ export function NumericKeypad() {
 
   useEffect(() => {
     if (isOpen && inputRef?.current) {
-      const rect = inputRef.current.getBoundingClientRect();
-      const keypadHeight = 380;
       const keypadWidth = 320;
-      const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
-      const spaceBelow = viewportHeight - rect.bottom;
-      const spaceAbove = rect.top;
 
-      if (spaceBelow >= keypadHeight + 20) {
-        setPosition({
-          top: rect.bottom + window.scrollY + 8,
-          left: rect.left + window.scrollX,
-        });
-      } else if (spaceAbove >= keypadHeight + 20) {
-        setPosition({
-          bottom: viewportHeight - rect.top - window.scrollY + 8,
-          left: rect.left + window.scrollX,
-        });
-      } else {
-        // Center both horizontally and vertically when insufficient space
-        const centeredLeft = (viewportWidth - keypadWidth) / 2;
-        setPosition({
-          top: Math.max(20, (viewportHeight - keypadHeight) / 2) + window.scrollY,
-          left: Math.max(20, Math.min(centeredLeft + window.scrollX, viewportWidth - keypadWidth - 20 + window.scrollX)),
-        });
-      }
+      // Center horizontally and position 100px from the top
+      const centeredLeft = (viewportWidth - keypadWidth) / 2;
+      setPosition({
+        top: 100 + window.scrollY,
+        left: Math.max(20, Math.min(centeredLeft + window.scrollX, viewportWidth - keypadWidth - 20 + window.scrollX)),
+      });
     }
   }, [isOpen, inputRef]);
 
