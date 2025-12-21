@@ -137,12 +137,12 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   function getTipCustomer(ticket: any): number {
     if (!ticket.ticket_items || ticket.ticket_items.length === 0) return 0;
     const item = ticket.ticket_items[0];
-    return (parseFloat(item?.tip_customer_cash) || 0) + (parseFloat(item?.tip_customer_card) || 0);
+    return (item?.tip_customer_cash || 0) + (item?.tip_customer_card || 0);
   }
 
   function getTipReceptionist(ticket: any): number {
     if (!ticket.ticket_items || ticket.ticket_items.length === 0) return 0;
-    return parseFloat(ticket.ticket_items[0]?.tip_receptionist) || 0;
+    return ticket.ticket_items[0]?.tip_receptionist || 0;
   }
 
   function getServiceName(ticket: any): string {
@@ -375,7 +375,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   function getTotalTips(ticket: any): number {
     if (!ticket.ticket_items || ticket.ticket_items.length === 0) return 0;
     return ticket.ticket_items.reduce((total: number, item: any) => {
-      return total + (parseFloat(item?.tip_customer_cash) || 0) + (parseFloat(item?.tip_customer_card) || 0) + (parseFloat(item?.tip_receptionist) || 0);
+      return total + (item?.tip_customer_cash || 0) + (item?.tip_customer_card || 0) + (item?.tip_receptionist || 0);
     }, 0);
   }
 
