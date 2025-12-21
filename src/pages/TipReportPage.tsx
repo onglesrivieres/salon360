@@ -99,6 +99,227 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     return dates;
   }
 
+  async function fetchTipsForDateRange(startDate: string, endDate: string) {
+    const canViewAll = session?.role_permission ? Permissions.endOfDay.canViewAll(session.role_permission) : false;
+    const isTechnician = !canViewAll;
+
+    // Get all employee-store relationships
+    const { data: allEmployeeStores, error: allEmployeeStoresError } = await supabase
+      .from('employee_stores')
+      .select('employee_id, store_id');
+
+    if (allEmployeeStoresError) {
+      throw allEmployeeStoresError;
+    }
+
+    // Build a map of employee to their assigned stores
+    const employeeStoreMap = new Map<string, string[]>();
+    for (const es of allEmployeeStores || []) {
+      if (!employeeStoreMap.has(es.employee_id)) {
+        employeeStoreMap.set(es.employee_id, []);
+      }
+      employeeStoreMap.get(es.employee_id)!.push(es.store_id);
+    }
+
+    // Identify multi-store employees
+    const multiStoreEmployees = new Set<string>();
+    for (const [empId, stores] of employeeStoreMap.entries()) {
+      if (stores.length > 1) {
+        multiStoreEmployees.add(empId);
+      }
+    }
+
+    let storeIds: string[] = [];
+
+    if (isTechnician && session?.employee_id) {
+      // Technician: get their own stores
+      storeIds = employeeStoreMap.get(session.employee_id) || [];
+    } else if (canViewAll && selectedStoreId) {
+      // Admin/Manager: for multi-store employees assigned to selected store, include all their stores
+      // For single-store employees, only include the selected store
+      const relevantStores = new Set<string>([selectedStoreId]);
+
+      // Add all stores for multi-store employees who are assigned to the selected store
+      for (const empId of multiStoreEmployees) {
+        const empStores = employeeStoreMap.get(empId) || [];
+        // Only include this multi-store employee if they're assigned to the selected store
+        if (empStores.includes(selectedStoreId)) {
+          for (const storeId of empStores) {
+            relevantStores.add(storeId);
+          }
+        }
+      }
+
+      storeIds = Array.from(relevantStores);
+    }
+
+    let query = supabase
+      .from('sale_tickets')
+      .select(
+        `
+        id,
+        ticket_date,
+        total,
+        payment_method,
+        opened_at,
+        closed_at,
+        completed_at,
+        store_id,
+        store:stores!sale_tickets_store_id_fkey(id, name, code),
+        ticket_items${isTechnician ? '!inner' : ''} (
+          id,
+          store_service_id,
+          custom_service_name,
+          employee_id,
+          qty,
+          price_each,
+          addon_price,
+          tip_customer_cash,
+          tip_customer_card,
+          tip_receptionist,
+          started_at,
+          completed_at,
+          service:store_services!ticket_items_store_service_id_fkey(code, name, duration_min),
+          employee:employees!ticket_items_employee_id_fkey(
+            id,
+            display_name
+          )
+        )
+      `
+      )
+      .gte('ticket_date', startDate)
+      .lte('ticket_date', endDate);
+
+    if (storeIds.length > 0) {
+      query = query.in('store_id', storeIds);
+    } else if (selectedStoreId) {
+      query = query.eq('store_id', selectedStoreId);
+    }
+
+    if (isTechnician && session?.employee_id) {
+      query = query.eq('ticket_items.employee_id', session.employee_id);
+    }
+
+    const { data: tickets, error: ticketsError } = await query;
+
+    if (ticketsError) throw ticketsError;
+
+    // Build intermediate data structure: employee -> date -> store -> tips
+    const dataMap = new Map<string, Map<string, Map<string, { store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>>>();
+    const techNames = new Map<string, string>();
+    const technicianDetails = new Map<string, { services_count: number; revenue: number; items: ServiceItemDetail[] }>();
+
+    for (const ticket of tickets || []) {
+      const ticketDate = (ticket as any).ticket_date;
+      const ticketStoreId = (ticket as any).store_id;
+      const storeCode = (ticket as any).store?.code || '';
+
+      for (const item of (ticket as any).ticket_items || []) {
+        const techId = item.employee_id;
+        const technician = item.employee;
+
+        if (!technician) continue;
+
+        if (isTechnician && session?.employee_id && techId !== session.employee_id) {
+          continue;
+        }
+
+        // For admin/manager viewing a specific store:
+        // Only show employees who are assigned to the selected store
+        if (canViewAll && selectedStoreId) {
+          const empStores = employeeStoreMap.get(techId) || [];
+          // Skip this employee if they're not assigned to the selected store
+          if (!empStores.includes(selectedStoreId)) {
+            continue;
+          }
+
+          // If this ticket is from a different store, only include if employee is multi-store
+          if (ticketStoreId !== selectedStoreId && !multiStoreEmployees.has(techId)) {
+            continue;
+          }
+        }
+
+        // Store technician name
+        if (!techNames.has(techId)) {
+          techNames.set(techId, technician.display_name);
+        }
+
+        // Initialize data structures
+        if (!dataMap.has(techId)) {
+          dataMap.set(techId, new Map());
+        }
+
+        const techMap = dataMap.get(techId)!;
+        if (!techMap.has(ticketDate)) {
+          techMap.set(ticketDate, new Map());
+        }
+
+        const dateMap = techMap.get(ticketDate)!;
+        if (!dateMap.has(ticketStoreId)) {
+          dateMap.set(ticketStoreId, {
+            store_id: ticketStoreId,
+            store_code: storeCode,
+            tips_cash: 0,
+            tips_card: 0,
+            tips_total: 0,
+          });
+        }
+
+        const storeData = dateMap.get(ticketStoreId)!;
+        const tipCustomerCash = item.tip_customer_cash || 0;
+        const tipCustomerCard = item.tip_customer_card || 0;
+        const tipReceptionist = item.tip_receptionist || 0;
+        const tipCash = tipCustomerCash;
+        const tipCard = tipCustomerCard + tipReceptionist;
+        const tipTotal = tipCash + tipCard;
+
+        storeData.tips_cash += tipCash;
+        storeData.tips_card += tipCard;
+        storeData.tips_total += tipTotal;
+
+        // Store detailed item information for Detail Grid
+        if (!technicianDetails.has(techId)) {
+          technicianDetails.set(techId, { services_count: 0, revenue: 0, items: [] });
+        }
+
+        const details = technicianDetails.get(techId)!;
+        const itemRevenue = (parseFloat(item.qty) || 0) * (parseFloat(item.price_each) || 0) + (parseFloat(item.addon_price) || 0);
+        const tipCustomer = tipCustomerCash + tipCustomerCard;
+
+        details.services_count += 1;
+        details.revenue += itemRevenue;
+        details.items.push({
+          ticket_id: ticket.id,
+          service_code: item.service?.code || '',
+          service_name: item.service?.name || '',
+          price: itemRevenue,
+          tip_customer: tipCustomer,
+          tip_receptionist: tipReceptionist,
+          tip_cash: tipCash,
+          tip_card: tipCard,
+          payment_method: (ticket as any).payment_method || '',
+          opened_at: (ticket as any).opened_at,
+          closed_at: (ticket as any).closed_at,
+          ticket_completed_at: (ticket as any).completed_at || null,
+          duration_min: item.service?.duration_min || 0,
+          started_at: item.started_at || null,
+          completed_at: item.completed_at || null,
+          store_code: storeCode,
+          store_name: (ticket as any).store?.name || '',
+        });
+      }
+    }
+
+    return {
+      dataMap,
+      techNames,
+      technicianDetails,
+      employeeStoreMap,
+      multiStoreEmployees,
+      tickets: tickets || [],
+    };
+  }
+
   async function fetchWeeklyData() {
     try {
       setLoading(true);
@@ -107,172 +328,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       const weekDates = getWeekDates(weekStart);
       const weekEnd = weekDates[weekDates.length - 1];
 
-      const canViewAll = session?.role_permission ? Permissions.endOfDay.canViewAll(session.role_permission) : false;
-      const isTechnician = !canViewAll;
-
-      // Get all employee-store relationships
-      const { data: allEmployeeStores, error: allEmployeeStoresError } = await supabase
-        .from('employee_stores')
-        .select('employee_id, store_id');
-
-      if (allEmployeeStoresError) {
-        throw allEmployeeStoresError;
-      }
-
-      // Build a map of employee to their assigned stores
-      const employeeStoreMap = new Map<string, string[]>();
-      for (const es of allEmployeeStores || []) {
-        if (!employeeStoreMap.has(es.employee_id)) {
-          employeeStoreMap.set(es.employee_id, []);
-        }
-        employeeStoreMap.get(es.employee_id)!.push(es.store_id);
-      }
-
-      // Identify multi-store employees
-      const multiStoreEmployees = new Set<string>();
-      for (const [empId, stores] of employeeStoreMap.entries()) {
-        if (stores.length > 1) {
-          multiStoreEmployees.add(empId);
-        }
-      }
-
-      let storeIds: string[] = [];
-
-      if (isTechnician && session?.employee_id) {
-        // Technician: get their own stores
-        storeIds = employeeStoreMap.get(session.employee_id) || [];
-      } else if (canViewAll && selectedStoreId) {
-        // Admin/Manager: for multi-store employees assigned to selected store, include all their stores
-        // For single-store employees, only include the selected store
-        const relevantStores = new Set<string>([selectedStoreId]);
-
-        // Add all stores for multi-store employees who are assigned to the selected store
-        for (const empId of multiStoreEmployees) {
-          const empStores = employeeStoreMap.get(empId) || [];
-          // Only include this multi-store employee if they're assigned to the selected store
-          if (empStores.includes(selectedStoreId)) {
-            for (const storeId of empStores) {
-              relevantStores.add(storeId);
-            }
-          }
-        }
-
-        storeIds = Array.from(relevantStores);
-      }
-
-      let query = supabase
-        .from('sale_tickets')
-        .select(
-          `
-          id,
-          ticket_date,
-          store_id,
-          store:stores!sale_tickets_store_id_fkey(id, name, code),
-          ticket_items${isTechnician ? '!inner' : ''} (
-            id,
-            employee_id,
-            tip_customer_cash,
-            tip_customer_card,
-            tip_receptionist,
-            employee:employees!ticket_items_employee_id_fkey(
-              id,
-              display_name
-            )
-          )
-        `
-        )
-        .gte('ticket_date', weekStart)
-        .lte('ticket_date', weekEnd);
-
-      if (storeIds.length > 0) {
-        query = query.in('store_id', storeIds);
-      } else if (selectedStoreId) {
-        query = query.eq('store_id', selectedStoreId);
-      }
-
-      if (isTechnician && session?.employee_id) {
-        query = query.eq('ticket_items.employee_id', session.employee_id);
-      }
-
-      const { data: tickets, error: ticketsError } = await query;
-
-      if (ticketsError) throw ticketsError;
-
-      // Build intermediate data structure: employee -> date -> store -> tips
-      const dataMap = new Map<string, Map<string, Map<string, { store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>>>();
-
-      for (const ticket of tickets || []) {
-        const ticketDate = (ticket as any).ticket_date;
-        const ticketStoreId = (ticket as any).store_id;
-        const storeCode = (ticket as any).store?.code || '';
-
-        for (const item of (ticket as any).ticket_items || []) {
-          const techId = item.employee_id;
-          const technician = item.employee;
-
-          if (!technician) continue;
-
-          if (isTechnician && session?.employee_id && techId !== session.employee_id) {
-            continue;
-          }
-
-          // For admin/manager viewing a specific store:
-          // Only show employees who are assigned to the selected store
-          if (canViewAll && selectedStoreId) {
-            const empStores = employeeStoreMap.get(techId) || [];
-            // Skip this employee if they're not assigned to the selected store
-            if (!empStores.includes(selectedStoreId)) {
-              continue;
-            }
-
-            // If this ticket is from a different store, only include if employee is multi-store
-            if (ticketStoreId !== selectedStoreId && !multiStoreEmployees.has(techId)) {
-              continue;
-            }
-          }
-
-          if (!dataMap.has(techId)) {
-            dataMap.set(techId, new Map());
-          }
-
-          const techMap = dataMap.get(techId)!;
-          if (!techMap.has(ticketDate)) {
-            techMap.set(ticketDate, new Map());
-          }
-
-          const dateMap = techMap.get(ticketDate)!;
-          if (!dateMap.has(ticketStoreId)) {
-            dateMap.set(ticketStoreId, {
-              store_id: ticketStoreId,
-              store_code: storeCode,
-              tips_cash: 0,
-              tips_card: 0,
-              tips_total: 0,
-            });
-          }
-
-          const storeData = dateMap.get(ticketStoreId)!;
-          const tipCustomerCash = item.tip_customer_cash || 0;
-          const tipCustomerCard = item.tip_customer_card || 0;
-          const tipReceptionist = item.tip_receptionist || 0;
-          const tipCash = tipCustomerCash;
-          const tipCard = tipCustomerCard + tipReceptionist;
-          const tipTotal = tipCash + tipCard;
-
-          storeData.tips_cash += tipCash;
-          storeData.tips_card += tipCard;
-          storeData.tips_total += tipTotal;
-        }
-      }
-
-      const techNames = new Map<string, string>();
-      for (const ticket of tickets || []) {
-        for (const item of (ticket as any).ticket_items || []) {
-          if (item.employee) {
-            techNames.set(item.employee_id, item.employee.display_name);
-          }
-        }
-      }
+      const { dataMap, techNames, employeeStoreMap, multiStoreEmployees, tickets } = await fetchTipsForDateRange(weekStart, weekEnd);
 
       // Convert intermediate structure to final structure with arrays
       const finalData = new Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>>>();
@@ -294,7 +350,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         console.log('Selected Store ID:', selectedStoreId);
         console.log('Week Range:', weekStart, 'to', weekEnd);
         console.log('Multi-store employees:', Array.from(multiStoreEmployees));
-        console.log('Total tickets processed:', tickets?.length || 0);
+        console.log('Total tickets processed:', tickets.length);
 
         for (const [techId, dateMap] of finalData.entries()) {
           const techName = techNames.get(techId) || 'Unknown';
@@ -303,17 +359,30 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           const dailyBreakdown: any = {};
 
           for (const [date, storesArray] of dateMap.entries()) {
+            let dayTotalCash = 0;
+            let dayTotalCard = 0;
+            let dayTotalTips = 0;
             const dayData: any = {};
+
             for (const store of storesArray) {
               storeIds.add(store.store_id);
               totalTips += store.tips_total;
+              dayTotalCash += store.tips_cash;
+              dayTotalCard += store.tips_card;
+              dayTotalTips += store.tips_total;
               dayData[store.store_code || store.store_id] = {
                 cash: store.tips_cash.toFixed(2),
                 card: store.tips_card.toFixed(2),
                 total: store.tips_total.toFixed(2)
               };
             }
-            dailyBreakdown[date] = dayData;
+
+            dailyBreakdown[date] = {
+              stores: dayData,
+              dailyTotal: dayTotalTips.toFixed(2),
+              dailyCash: dayTotalCash.toFixed(2),
+              dailyCard: dayTotalCard.toFixed(2)
+            };
           }
 
           console.log(`${techName} (${techId}):`, {
@@ -398,194 +467,54 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         setShowDetails(true);
       }
 
-      // Get all employee-store relationships
-      const { data: allEmployeeStores, error: allEmployeeStoresError } = await supabase
-        .from('employee_stores')
-        .select('employee_id, store_id');
-
-      if (allEmployeeStoresError) {
-        throw allEmployeeStoresError;
-      }
-
-      // Build a map of employee to their assigned stores
-      const employeeStoreMap = new Map<string, string[]>();
-      for (const es of allEmployeeStores || []) {
-        if (!employeeStoreMap.has(es.employee_id)) {
-          employeeStoreMap.set(es.employee_id, []);
-        }
-        employeeStoreMap.get(es.employee_id)!.push(es.store_id);
-      }
-
-      // Identify multi-store employees
-      const multiStoreEmployees = new Set<string>();
-      for (const [empId, stores] of employeeStoreMap.entries()) {
-        if (stores.length > 1) {
-          multiStoreEmployees.add(empId);
-        }
-      }
-
-      let storeIds: string[] = [];
-
-      if (isTechnician && session?.employee_id) {
-        // Technician: get their own stores
-        storeIds = employeeStoreMap.get(session.employee_id) || [];
-      } else if (canViewAll && selectedStoreId) {
-        // Admin/Manager: for multi-store employees assigned to selected store, include all their stores
-        // For single-store employees, only include the selected store
-        const relevantStores = new Set<string>([selectedStoreId]);
-
-        // Add all stores for multi-store employees who are assigned to the selected store
-        for (const empId of multiStoreEmployees) {
-          const empStores = employeeStoreMap.get(empId) || [];
-          // Only include this multi-store employee if they're assigned to the selected store
-          if (empStores.includes(selectedStoreId)) {
-            for (const storeId of empStores) {
-              relevantStores.add(storeId);
-            }
-          }
-        }
-
-        storeIds = Array.from(relevantStores);
-      }
-
-      let query = supabase
-        .from('sale_tickets')
-        .select(
-          `
-          id,
-          total,
-          payment_method,
-          opened_at,
-          closed_at,
-          completed_at,
-          store_id,
-          store:stores!sale_tickets_store_id_fkey(id, name, code),
-          ticket_items${isTechnician ? '!inner' : ''} (
-            id,
-            store_service_id,
-            custom_service_name,
-            employee_id,
-            qty,
-            price_each,
-            addon_price,
-            tip_customer_cash,
-            tip_customer_card,
-            tip_receptionist,
-            started_at,
-            completed_at,
-            service:store_services!ticket_items_store_service_id_fkey(code, name, duration_min),
-            employee:employees!ticket_items_employee_id_fkey(
-              id,
-              display_name
-            )
-          )
-        `
-        )
-        .eq('ticket_date', selectedDate);
-
-      if (storeIds.length > 0) {
-        query = query.in('store_id', storeIds);
-      } else if (selectedStoreId) {
-        query = query.eq('store_id', selectedStoreId);
-      }
-
-      if (isTechnician && session?.employee_id) {
-        query = query.eq('ticket_items.employee_id', session.employee_id);
-      }
-
-      const { data: tickets, error: ticketsError } = await query;
-
-      if (ticketsError) throw ticketsError;
+      const { dataMap, techNames, technicianDetails, employeeStoreMap, multiStoreEmployees, tickets } = await fetchTipsForDateRange(selectedDate, selectedDate);
 
       const technicianMap = new Map<string, TechnicianSummary>();
       let totalTips = 0;
       let totalTipsCash = 0;
       let totalTipsCard = 0;
 
-      for (const ticket of tickets || []) {
-        const ticketStoreId = (ticket as any).store_id;
+      for (const [techId, dateMap] of dataMap.entries()) {
+        const techName = techNames.get(techId) || 'Unknown';
+        const details = technicianDetails.get(techId);
 
-        for (const item of (ticket as any).ticket_items || []) {
-          const itemRevenue = (parseFloat(item.qty) || 0) * (parseFloat(item.price_each) || 0) + (parseFloat(item.addon_price) || 0);
-          const techId = item.employee_id;
-          const technician = item.employee;
+        if (!details) continue;
 
-          if (!technician) continue;
+        let techTipsCash = 0;
+        let techTipsCard = 0;
+        let techTipsTotal = 0;
 
-          if (isTechnician && session?.employee_id && techId !== session.employee_id) {
-            continue;
+        for (const storesArray of dateMap.values()) {
+          for (const storeData of storesArray) {
+            techTipsCash += storeData.tips_cash;
+            techTipsCard += storeData.tips_card;
+            techTipsTotal += storeData.tips_total;
           }
-
-          // For admin/manager viewing a specific store:
-          // Only show employees who are assigned to the selected store
-          if (canViewAll && selectedStoreId) {
-            const empStores = employeeStoreMap.get(techId) || [];
-            // Skip this employee if they're not assigned to the selected store
-            if (!empStores.includes(selectedStoreId)) {
-              continue;
-            }
-
-            // If this ticket is from a different store, only include if employee is multi-store
-            if (ticketStoreId !== selectedStoreId && !multiStoreEmployees.has(techId)) {
-              continue;
-            }
-          }
-
-          if (!technicianMap.has(techId)) {
-            technicianMap.set(techId, {
-              technician_id: techId,
-              technician_name: technician.display_name,
-              services_count: 0,
-              revenue: 0,
-              tips_customer: 0,
-              tips_receptionist: 0,
-              tips_total: 0,
-              tips_cash: 0,
-              tips_card: 0,
-              items: [],
-            });
-          }
-
-          const summary = technicianMap.get(techId)!;
-          const tipCustomerCash = item.tip_customer_cash || 0;
-          const tipCustomerCard = item.tip_customer_card || 0;
-          const tipCustomer = tipCustomerCash + tipCustomerCard;
-          const tipReceptionist = item.tip_receptionist || 0;
-          const tipCash = tipCustomerCash;
-          const tipCard = tipCustomerCard + tipReceptionist;
-
-          summary.services_count += 1;
-          summary.revenue += itemRevenue;
-          summary.tips_customer += tipCustomer;
-          summary.tips_receptionist += tipReceptionist;
-          summary.tips_total += tipCustomer + tipReceptionist;
-          summary.tips_cash += tipCash;
-          summary.tips_card += tipCard;
-
-          totalTips += tipCustomer + tipReceptionist;
-          totalTipsCash += tipCash;
-          totalTipsCard += tipCard;
-
-          summary.items.push({
-            ticket_id: ticket.id,
-            service_code: item.service?.code || '',
-            service_name: item.service?.name || '',
-            price: itemRevenue,
-            tip_customer: tipCustomer,
-            tip_receptionist: tipReceptionist,
-            tip_cash: tipCash,
-            tip_card: tipCard,
-            payment_method: (ticket as any).payment_method || '',
-            opened_at: (ticket as any).opened_at,
-            closed_at: ticket.closed_at,
-            ticket_completed_at: (ticket as any).completed_at || null,
-            duration_min: item.service?.duration_min || 0,
-            started_at: item.started_at || null,
-            completed_at: item.completed_at || null,
-            store_code: (ticket as any).store?.code || '',
-            store_name: (ticket as any).store?.name || '',
-          });
         }
+
+        let tips_customer = 0;
+        let tips_receptionist = 0;
+        for (const item of details.items) {
+          tips_customer += item.tip_customer;
+          tips_receptionist += item.tip_receptionist;
+        }
+
+        technicianMap.set(techId, {
+          technician_id: techId,
+          technician_name: techName,
+          services_count: details.services_count,
+          revenue: details.revenue,
+          tips_customer: tips_customer,
+          tips_receptionist: tips_receptionist,
+          tips_total: techTipsTotal,
+          tips_cash: techTipsCash,
+          tips_card: techTipsCard,
+          items: details.items,
+        });
+
+        totalTips += techTipsTotal;
+        totalTipsCash += techTipsCash;
+        totalTipsCard += techTipsCard;
       }
 
       // Debug logging for Detail Grid data
@@ -594,7 +523,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         console.log('Selected Date:', selectedDate);
         console.log('Selected Store ID:', selectedStoreId);
         console.log('Multi-store employees:', Array.from(multiStoreEmployees));
-        console.log('Total tickets processed:', tickets?.length || 0);
+        console.log('Total tickets processed:', tickets.length);
 
         for (const [techId, summary] of technicianMap.entries()) {
           const storeBreakdown = new Map<string, { cash: number; card: number; total: number }>();
@@ -631,6 +560,51 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           });
         }
         console.log('=== End Detail Grid Debug Info ===');
+
+        // Cross-validation: Compare with weekly data structure for the same date
+        const weeklyDataForDate = new Map<string, { cash: number; card: number; total: number }>();
+        for (const [techId, dateMap] of dataMap.entries()) {
+          const dayData = dateMap.get(selectedDate);
+          if (dayData) {
+            let dayCash = 0;
+            let dayCard = 0;
+            let dayTotal = 0;
+            for (const storeData of dayData.values()) {
+              dayCash += storeData.tips_cash;
+              dayCard += storeData.tips_card;
+              dayTotal += storeData.tips_total;
+            }
+            weeklyDataForDate.set(techId, { cash: dayCash, card: dayCard, total: dayTotal });
+          }
+        }
+
+        console.log('=== Data Consistency Check ===');
+        for (const [techId, summary] of technicianMap.entries()) {
+          const weeklyValues = weeklyDataForDate.get(techId);
+          if (weeklyValues) {
+            const cashMatch = Math.abs(summary.tips_cash - weeklyValues.cash) < 0.01;
+            const cardMatch = Math.abs(summary.tips_card - weeklyValues.card) < 0.01;
+            const totalMatch = Math.abs(summary.tips_total - weeklyValues.total) < 0.01;
+
+            if (!cashMatch || !cardMatch || !totalMatch) {
+              console.warn(`MISMATCH for ${summary.technician_name}:`, {
+                detailGrid: {
+                  cash: summary.tips_cash.toFixed(2),
+                  card: summary.tips_card.toFixed(2),
+                  total: summary.tips_total.toFixed(2)
+                },
+                weeklyStructure: {
+                  cash: weeklyValues.cash.toFixed(2),
+                  card: weeklyValues.card.toFixed(2),
+                  total: weeklyValues.total.toFixed(2)
+                }
+              });
+            } else {
+              console.log(`✓ ${summary.technician_name}: Data matches perfectly`);
+            }
+          }
+        }
+        console.log('=== End Consistency Check ===');
       }
 
       let filteredSummaries = Array.from(technicianMap.values());
