@@ -292,28 +292,39 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       if (process.env.NODE_ENV === 'development') {
         console.log('=== Weekly Data Debug Info ===');
         console.log('Selected Store ID:', selectedStoreId);
+        console.log('Week Range:', weekStart, 'to', weekEnd);
         console.log('Multi-store employees:', Array.from(multiStoreEmployees));
+        console.log('Total tickets processed:', tickets?.length || 0);
 
         for (const [techId, dateMap] of finalData.entries()) {
           const techName = techNames.get(techId) || 'Unknown';
           const storeIds = new Set<string>();
           let totalTips = 0;
+          const dailyBreakdown: any = {};
 
           for (const [date, storesArray] of dateMap.entries()) {
+            const dayData: any = {};
             for (const store of storesArray) {
               storeIds.add(store.store_id);
               totalTips += store.tips_total;
+              dayData[store.store_code || store.store_id] = {
+                cash: store.tips_cash.toFixed(2),
+                card: store.tips_card.toFixed(2),
+                total: store.tips_total.toFixed(2)
+              };
             }
+            dailyBreakdown[date] = dayData;
           }
 
           console.log(`${techName} (${techId}):`, {
             isMultiStore: multiStoreEmployees.has(techId),
-            uniqueStores: Array.from(storeIds),
+            assignedStores: employeeStoreMap.get(techId) || [],
+            uniqueStoresInData: Array.from(storeIds),
             weeklyTotal: totalTips.toFixed(2),
-            assignedStores: employeeStoreMap.get(techId) || []
+            dailyBreakdown
           });
         }
-        console.log('=== End Debug Info ===');
+        console.log('=== End Weekly Debug Info ===');
       }
 
       const sortedData = new Map(
@@ -583,22 +594,43 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         console.log('Selected Date:', selectedDate);
         console.log('Selected Store ID:', selectedStoreId);
         console.log('Multi-store employees:', Array.from(multiStoreEmployees));
+        console.log('Total tickets processed:', tickets?.length || 0);
 
         for (const [techId, summary] of technicianMap.entries()) {
-          const storeIds = new Set<string>();
+          const storeBreakdown = new Map<string, { cash: number; card: number; total: number }>();
+
           for (const item of summary.items) {
-            storeIds.add(item.store_code);
+            const storeCode = item.store_code || 'Unknown';
+            if (!storeBreakdown.has(storeCode)) {
+              storeBreakdown.set(storeCode, { cash: 0, card: 0, total: 0 });
+            }
+            const storeData = storeBreakdown.get(storeCode)!;
+            storeData.cash += item.tip_cash;
+            storeData.card += item.tip_card;
+            storeData.total += item.tip_customer + item.tip_receptionist;
+          }
+
+          const storeBreakdownObj: any = {};
+          for (const [storeCode, data] of storeBreakdown.entries()) {
+            storeBreakdownObj[storeCode] = {
+              cash: data.cash.toFixed(2),
+              card: data.card.toFixed(2),
+              total: data.total.toFixed(2)
+            };
           }
 
           console.log(`${summary.technician_name} (${techId}):`, {
             isMultiStore: multiStoreEmployees.has(techId),
-            uniqueStores: Array.from(storeIds),
+            assignedStores: employeeStoreMap.get(techId) || [],
+            uniqueStoresInData: Array.from(storeBreakdown.keys()),
             dailyTotal: summary.tips_total.toFixed(2),
+            tipsCash: summary.tips_cash.toFixed(2),
+            tipsCard: summary.tips_card.toFixed(2),
             itemCount: summary.items.length,
-            assignedStores: employeeStoreMap.get(techId) || []
+            storeBreakdown: storeBreakdownObj
           });
         }
-        console.log('=== End Debug Info ===');
+        console.log('=== End Detail Grid Debug Info ===');
       }
 
       let filteredSummaries = Array.from(technicianMap.values());
