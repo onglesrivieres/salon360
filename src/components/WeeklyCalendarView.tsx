@@ -104,7 +104,19 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                   </td>
                   {weekDates.map((date) => {
                     const storesArray = techData?.get(date) || [];
-                    const hasTips = storesArray.length > 0 && storesArray.some(s => s.tips_total > 0);
+
+                    // Calculate daily total by summing all stores for this day
+                    let dailyCash = 0;
+                    let dailyCard = 0;
+                    let dailyTotal = 0;
+
+                    for (const storeData of storesArray) {
+                      dailyCash += storeData.tips_cash;
+                      dailyCard += storeData.tips_card;
+                      dailyTotal += storeData.tips_total;
+                    }
+
+                    const hasTips = dailyTotal > 0;
 
                     return (
                       <td
@@ -114,38 +126,24 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                         }`}
                       >
                         {hasTips ? (
-                          <div className="space-y-0">
-                            {storesArray.map((storeData, idx) => (
-                              <div
-                                key={`${storeData.store_id}-${idx}`}
-                                className={idx > 0 ? 'pt-1 mt-1 border-t border-gray-300' : ''}
-                              >
-                                <div className="space-y-0.5">
-                                  <div className="text-center">
-                                    <span className="text-[9px] text-gray-500">Cash: </span>
-                                    <span className={`text-[9px] ${storeData.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
-                                      ${storeData.tips_cash.toFixed(2)}
-                                    </span>
-                                  </div>
-                                  <div className="text-center">
-                                    <span className="text-[9px] text-gray-500">Card: </span>
-                                    <span className={`text-[9px] ${storeData.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
-                                      ${storeData.tips_card.toFixed(2)}
-                                    </span>
-                                  </div>
-                                  <div className="text-center pt-0.5 border-t border-gray-200 flex items-center justify-center gap-1">
-                                    <span className="font-bold text-gray-900 text-[11px]">
-                                      ${storeData.tips_total.toFixed(2)}
-                                    </span>
-                                    {storeData.store_code && (
-                                      <span className="text-[8px] text-gray-500 font-medium">
-                                        [{abbreviateStoreName(storeData.store_code)}]
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
+                          <div className="space-y-0.5">
+                            <div className="text-center">
+                              <span className="text-[9px] text-gray-500">Cash: </span>
+                              <span className={`text-[9px] ${dailyCash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
+                                ${dailyCash.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="text-center">
+                              <span className="text-[9px] text-gray-500">Card: </span>
+                              <span className={`text-[9px] ${dailyCard === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
+                                ${dailyCard.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="text-center pt-0.5 border-t border-gray-200">
+                              <span className="font-bold text-gray-900 text-[11px]">
+                                ${dailyTotal.toFixed(2)}
+                              </span>
+                            </div>
                           </div>
                         ) : (
                           <span className="text-gray-400 text-xs">-</span>

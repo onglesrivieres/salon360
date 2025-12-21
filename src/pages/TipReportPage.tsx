@@ -288,6 +288,34 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         finalData.set(techId, techDateMap);
       }
 
+      // Debug logging to identify data discrepancies
+      if (process.env.NODE_ENV === 'development') {
+        console.log('=== Weekly Data Debug Info ===');
+        console.log('Selected Store ID:', selectedStoreId);
+        console.log('Multi-store employees:', Array.from(multiStoreEmployees));
+
+        for (const [techId, dateMap] of finalData.entries()) {
+          const techName = techNames.get(techId) || 'Unknown';
+          const storeIds = new Set<string>();
+          let totalTips = 0;
+
+          for (const [date, storesArray] of dateMap.entries()) {
+            for (const store of storesArray) {
+              storeIds.add(store.store_id);
+              totalTips += store.tips_total;
+            }
+          }
+
+          console.log(`${techName} (${techId}):`, {
+            isMultiStore: multiStoreEmployees.has(techId),
+            uniqueStores: Array.from(storeIds),
+            weeklyTotal: totalTips.toFixed(2),
+            assignedStores: employeeStoreMap.get(techId) || []
+          });
+        }
+        console.log('=== End Debug Info ===');
+      }
+
       const sortedData = new Map(
         Array.from(finalData.entries()).sort((a, b) => {
           const nameA = techNames.get(a[0]) || '';
@@ -547,6 +575,30 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             store_name: (ticket as any).store?.name || '',
           });
         }
+      }
+
+      // Debug logging for Detail Grid data
+      if (process.env.NODE_ENV === 'development') {
+        console.log('=== Detail Grid Debug Info ===');
+        console.log('Selected Date:', selectedDate);
+        console.log('Selected Store ID:', selectedStoreId);
+        console.log('Multi-store employees:', Array.from(multiStoreEmployees));
+
+        for (const [techId, summary] of technicianMap.entries()) {
+          const storeIds = new Set<string>();
+          for (const item of summary.items) {
+            storeIds.add(item.store_code);
+          }
+
+          console.log(`${summary.technician_name} (${techId}):`, {
+            isMultiStore: multiStoreEmployees.has(techId),
+            uniqueStores: Array.from(storeIds),
+            dailyTotal: summary.tips_total.toFixed(2),
+            itemCount: summary.items.length,
+            assignedStores: employeeStoreMap.get(techId) || []
+          });
+        }
+        console.log('=== End Debug Info ===');
       }
 
       let filteredSummaries = Array.from(technicianMap.values());
