@@ -266,9 +266,9 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         }
 
         const storeData = dateMap.get(ticketStoreId)!;
-        const tipCustomerCash = item.tip_customer_cash || 0;
-        const tipCustomerCard = item.tip_customer_card || 0;
-        const tipReceptionist = item.tip_receptionist || 0;
+        const tipCustomerCash = parseFloat(item.tip_customer_cash) || 0;
+        const tipCustomerCard = parseFloat(item.tip_customer_card) || 0;
+        const tipReceptionist = parseFloat(item.tip_receptionist) || 0;
         const tipCash = tipCustomerCash;
         const tipCard = tipCustomerCard + tipReceptionist;
         const tipTotal = tipCash + tipCard;

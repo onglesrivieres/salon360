@@ -129,13 +129,13 @@ export function useSalesMetrics(dateRange: DateRange): SalesMetrics {
 
         const currentCashCollected = currentItems.reduce((sum, item) => sum + (item.payment_cash || 0), 0);
         const currentCardCollected = currentItems.reduce((sum, item) => sum + (item.payment_card || 0), 0);
-        const currentTipsGiven = currentItems.reduce((sum, item) => sum + (item.tip_customer_cash || 0) + (item.tip_customer_card || 0), 0);
-        const currentTipsPaired = currentItems.reduce((sum, item) => sum + (item.tip_receptionist || 0), 0);
+        const currentTipsGiven = currentItems.reduce((sum, item) => sum + (parseFloat(item.tip_customer_cash) || 0) + (parseFloat(item.tip_customer_card) || 0), 0);
+        const currentTipsPaired = currentItems.reduce((sum, item) => sum + (parseFloat(item.tip_receptionist) || 0), 0);
 
         const previousCashCollected = previousItems.reduce((sum, item) => sum + (item.payment_cash || 0), 0);
         const previousCardCollected = previousItems.reduce((sum, item) => sum + (item.payment_card || 0), 0);
-        const previousTipsGiven = previousItems.reduce((sum, item) => sum + (item.tip_customer_cash || 0) + (item.tip_customer_card || 0), 0);
-        const previousTipsPaired = previousItems.reduce((sum, item) => sum + (item.tip_receptionist || 0), 0);
+        const previousTipsGiven = previousItems.reduce((sum, item) => sum + (parseFloat(item.tip_customer_cash) || 0) + (parseFloat(item.tip_customer_card) || 0), 0);
+        const previousTipsPaired = previousItems.reduce((sum, item) => sum + (parseFloat(item.tip_receptionist) || 0), 0);
 
         const currentSummary: SalesSummary = {
           transactions: currentTickets.length,
@@ -1011,7 +1011,7 @@ export function useEmployeeSalesData(dateRange: DateRange): EmployeeSalesData {
               empData.refunds += Math.abs(lineSubtotal);
             }
 
-            empData.tips += (item.tip_customer || 0) + (item.tip_receptionist || 0);
+            empData.tips += (parseFloat(item.tip_customer_cash) || 0) + (parseFloat(item.tip_customer_card) || 0) + (parseFloat(item.tip_receptionist) || 0);
             empData.transactions.add(ticket.id);
           });
         });
