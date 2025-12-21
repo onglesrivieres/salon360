@@ -382,7 +382,10 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   function canApproveTicket(ticket: SaleTicket): boolean {
     if (!session?.employee_id || !session?.role) return false;
     if (!Permissions.tickets.canApprove(session.role)) return false;
-    if (ticket.approval_status !== 'pending_approval') return false;
+
+    // Show approval buttons for all closed tickets without an approval status
+    if (!ticket.closed_at) return false;
+    if (ticket.approval_status && ticket.approval_status !== '') return false;
 
     // Check if the current employee worked on this ticket
     const isTechnician = session.role.some((role: string) => ['Technician', 'Spa Expert'].includes(role));
@@ -757,7 +760,32 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                       </div>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      {getApprovalStatusBadge(ticket)}
+                      <div className="flex items-center gap-2">
+                        {getApprovalStatusBadge(ticket)}
+                        {canApproveTicket(ticket) && (
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              onClick={(e) => handleApproveTicket(ticket, e)}
+                              disabled={processing}
+                              className="text-xs py-1 px-2"
+                            >
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={(e) => handleRejectTicketClick(ticket, e)}
+                              disabled={processing}
+                              className="text-xs py-1 px-2 text-red-600 hover:bg-red-50"
+                            >
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Reject
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -827,15 +855,17 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
           return (
             <div
               key={ticket.id}
-              onClick={() => canView && !showApprovalButtons && openEditor(ticket.id)}
-              className={`${cardBackgroundClass} rounded-lg shadow p-3 ${
-                canView && !showApprovalButtons ? `cursor-pointer ${cardHoverClass}` : ''
-              }`}
+              className={`${cardBackgroundClass} rounded-lg shadow p-3`}
             >
               <div className="flex items-start justify-between mb-2">
                 <div
-                  className={`flex-1 ${canView && showApprovalButtons ? 'cursor-pointer' : ''}`}
-                  onClick={() => canView && showApprovalButtons && openEditor(ticket.id)}
+                  className={`flex-1 ${canView ? 'cursor-pointer' : ''}`}
+                  onClick={(e) => {
+                    if (canView) {
+                      e.stopPropagation();
+                      openEditor(ticket.id);
+                    }
+                  }}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-sm font-semibold text-gray-900">{customerType}</span>
