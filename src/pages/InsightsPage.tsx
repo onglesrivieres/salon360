@@ -5,7 +5,6 @@ import { SalesReport } from '../components/insights/SalesReport';
 import { PaymentTypes } from '../components/insights/PaymentTypes';
 import { EmployeeSales } from '../components/insights/EmployeeSales';
 import { TimeFilterDropdown } from '../components/insights/TimeFilterDropdown';
-import { CustomDateRangeModal } from '../components/insights/CustomDateRangeModal';
 import { TimeFilterType, DateRange, getDateRangeForFilter, getFilterLabel } from '../lib/timeFilters';
 
 type InsightsTab = 'sales-overview' | 'sales-report' | 'payment-types' | 'employee-sales';
@@ -14,7 +13,6 @@ export function InsightsPage() {
   const [activeTab, setActiveTab] = useState<InsightsTab>('sales-overview');
   const [selectedFilter, setSelectedFilter] = useState<TimeFilterType>('today');
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
-  const [showCustomModal, setShowCustomModal] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>(() => getDateRangeForFilter('today'));
 
   const tabs = [
@@ -30,10 +28,8 @@ export function InsightsPage() {
   }, [selectedFilter, customDateRange]);
 
   const handleFilterChange = (filter: TimeFilterType) => {
-    if (filter === 'custom') {
-      setShowCustomModal(true);
-    } else {
-      setSelectedFilter(filter);
+    setSelectedFilter(filter);
+    if (filter !== 'custom') {
       setCustomDateRange(undefined);
     }
   };
@@ -57,6 +53,8 @@ export function InsightsPage() {
             selectedFilter={selectedFilter}
             onFilterChange={handleFilterChange}
             customDateLabel={customDateLabel}
+            onCustomDateApply={handleCustomDateApply}
+            customDateRange={customDateRange}
           />
         </div>
 
@@ -90,13 +88,6 @@ export function InsightsPage() {
           {activeTab === 'employee-sales' && <EmployeeSales dateRange={dateRange} />}
         </div>
       </div>
-
-      <CustomDateRangeModal
-        isOpen={showCustomModal}
-        onClose={() => setShowCustomModal(false)}
-        onApply={handleCustomDateApply}
-        initialDateRange={customDateRange}
-      />
     </div>
   );
 }
