@@ -815,6 +815,116 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               )}
             </div>
           </div>
+
+          {(cashInTransactions.length > 0 || cashOutTransactions.length > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+              {cashInTransactions.length > 0 && (
+                <div className="bg-white rounded-lg shadow">
+                  <div className="p-4 border-b border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <ArrowDownLeft className="w-5 h-5 text-green-600" />
+                      <h3 className="text-lg font-semibold text-gray-900">Cash In Transactions</h3>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="space-y-3">
+                      {cashInTransactions.map((transaction) => (
+                        <div
+                          key={transaction.id}
+                          className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-lg font-bold text-green-600">
+                                  ${parseFloat(transaction.amount.toString()).toFixed(2)}
+                                </span>
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                    transaction.status === 'approved'
+                                      ? 'bg-green-100 text-green-700'
+                                      : transaction.status === 'rejected'
+                                      ? 'bg-red-100 text-red-700'
+                                      : 'bg-amber-100 text-amber-700'
+                                  }`}
+                                >
+                                  {transaction.status === 'approved'
+                                    ? 'Approved'
+                                    : transaction.status === 'rejected'
+                                    ? 'Rejected'
+                                    : 'Pending'}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-900 font-medium">{transaction.description}</p>
+                              {transaction.category && (
+                                <p className="text-xs text-gray-500 mt-1">Category: {transaction.category}</p>
+                              )}
+                              <p className="text-xs text-gray-400 mt-1">
+                                {new Date(transaction.created_at).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {cashOutTransactions.length > 0 && (
+                <div className="bg-white rounded-lg shadow">
+                  <div className="p-4 border-b border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <ArrowUpRight className="w-5 h-5 text-red-600" />
+                      <h3 className="text-lg font-semibold text-gray-900">Cash Out Transactions</h3>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="space-y-3">
+                      {cashOutTransactions.map((transaction) => (
+                        <div
+                          key={transaction.id}
+                          className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-lg font-bold text-red-600">
+                                  ${parseFloat(transaction.amount.toString()).toFixed(2)}
+                                </span>
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                    transaction.status === 'approved'
+                                      ? 'bg-green-100 text-green-700'
+                                      : transaction.status === 'rejected'
+                                      ? 'bg-red-100 text-red-700'
+                                      : 'bg-amber-100 text-amber-700'
+                                  }`}
+                                >
+                                  {transaction.status === 'approved'
+                                    ? 'Approved'
+                                    : transaction.status === 'rejected'
+                                    ? 'Rejected'
+                                    : 'Pending'}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-900 font-medium">{transaction.description}</p>
+                              {transaction.category && (
+                                <p className="text-xs text-gray-500 mt-1">Category: {transaction.category}</p>
+                              )}
+                              <p className="text-xs text-gray-400 mt-1">
+                                {new Date(transaction.created_at).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
