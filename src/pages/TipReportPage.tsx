@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Download, Printer, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, Printer, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -719,7 +719,6 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-400" />
               <input
                 type="date"
                 value={selectedDate}

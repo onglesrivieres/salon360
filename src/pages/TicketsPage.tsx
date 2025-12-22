@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit2, Calendar, CheckCircle, Clock, AlertCircle, Filter, X, XCircle, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit2, CheckCircle, Clock, AlertCircle, Filter, X, XCircle, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase, SaleTicket } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -647,7 +647,6 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                 <ChevronLeft className="w-5 h-5 md:w-4 md:h-4" />
               </button>
               <div className="flex items-center gap-2 flex-1 md:flex-initial">
-                <Calendar className="w-4 h-4 text-gray-400" />
                 <input
                   type="date"
                   value={selectedDate}

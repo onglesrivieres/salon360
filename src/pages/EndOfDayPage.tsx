@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Download, Printer, Plus, Save, DollarSign, AlertCircle, CheckCircle, Edit, ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, Printer, Plus, Save, DollarSign, AlertCircle, CheckCircle, Edit, ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase, EndOfDayRecord, CashTransaction, PendingCashTransactionApproval, CashTransactionType } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -613,7 +613,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               <ChevronLeft className="w-5 h-5 md:w-4 md:h-4" />
             </button>
             <div className="flex items-center gap-2 flex-1 md:flex-initial">
-              <Calendar className="w-4 h-4 text-gray-400" />
               <input
                 type="date"
                 value={selectedDate}
