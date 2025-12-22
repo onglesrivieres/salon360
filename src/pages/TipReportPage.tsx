@@ -170,10 +170,18 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           store:stores!sale_tickets_store_id_fkey(id, name, code),
           ticket_items${isTechnician ? '!inner' : ''} (
             id,
+            store_service_id,
+            custom_service_name,
             employee_id,
+            qty,
+            price_each,
+            addon_price,
             tip_customer_cash,
             tip_customer_card,
             tip_receptionist,
+            started_at,
+            completed_at,
+            service:store_services!ticket_items_store_service_id_fkey(code, name, duration_min),
             employee:employees!ticket_items_employee_id_fkey(
               id,
               display_name
