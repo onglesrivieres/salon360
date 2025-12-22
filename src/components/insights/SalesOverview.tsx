@@ -3,14 +3,16 @@ import { useSalesMetrics, useSalesChartData } from '../../hooks/useSalesData';
 import { SalesMetrics } from './SalesMetrics';
 import { SalesChart } from './SalesChart';
 import { TenderTypesChart } from './TenderTypesChart';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface SalesOverviewProps {
   dateRange: DateRange;
 }
 
 export function SalesOverview({ dateRange }: SalesOverviewProps) {
-  const metricsData = useSalesMetrics(dateRange);
-  const chartData = useSalesChartData(dateRange);
+  const { selectedStoreId } = useAuth();
+  const metricsData = useSalesMetrics(dateRange, selectedStoreId);
+  const chartData = useSalesChartData(dateRange, selectedStoreId);
 
   return (
     <div className="space-y-6">

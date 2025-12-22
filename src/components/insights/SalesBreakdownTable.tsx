@@ -3,14 +3,16 @@ import { ChevronDown } from 'lucide-react';
 import { useSalesBreakdownData, ViewByType } from '../../hooks/useSalesData';
 import { DateRange } from '../../lib/timeFilters';
 import { formatCurrency } from '../../lib/formatters';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface SalesBreakdownTableProps {
   dateRange: DateRange;
 }
 
 export function SalesBreakdownTable({ dateRange }: SalesBreakdownTableProps) {
+  const { selectedStoreId } = useAuth();
   const [viewBy, setViewBy] = useState<ViewByType>('hourly');
-  const data = useSalesBreakdownData(dateRange, viewBy);
+  const data = useSalesBreakdownData(dateRange, viewBy, selectedStoreId);
 
   if (data.isLoading) {
     return (

@@ -5,13 +5,15 @@ import { useCardPaymentAnalysis } from '../../hooks/useSalesData';
 import { TenderTypesChart } from './TenderTypesChart';
 import { CardPaymentTable } from './CardPaymentTable';
 import { getCurrentDateEST } from '../../lib/timezone';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface PaymentTypesProps {
   dateRange: DateRange;
 }
 
 export function PaymentTypes({ dateRange }: PaymentTypesProps) {
-  const cardData = useCardPaymentAnalysis(dateRange);
+  const { selectedStoreId } = useAuth();
+  const cardData = useCardPaymentAnalysis(dateRange, selectedStoreId);
   const [showTips, setShowTips] = useState(false);
 
   const formatDateRange = (range: DateRange) => {

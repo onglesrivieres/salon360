@@ -1,13 +1,15 @@
 import { useTenderTypesData } from '../../hooks/useSalesData';
 import { DateRange } from '../../lib/timeFilters';
 import { formatCurrency } from '../../lib/formatters';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TenderTypesTableProps {
   dateRange: DateRange;
 }
 
 export function TenderTypesTable({ dateRange }: TenderTypesTableProps) {
-  const data = useTenderTypesData(dateRange);
+  const { selectedStoreId } = useAuth();
+  const data = useTenderTypesData(dateRange, selectedStoreId);
 
   if (data.isLoading) {
     return (

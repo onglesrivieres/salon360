@@ -4,6 +4,7 @@ import { DateRange } from '../../lib/timeFilters';
 import { useEmployeeSalesData } from '../../hooks/useSalesData';
 import { formatCurrency, formatNumber } from '../../lib/formatters';
 import { getCurrentDateEST } from '../../lib/timezone';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface EmployeeSalesProps {
   dateRange: DateRange;
@@ -13,7 +14,8 @@ type SortColumn = 'name' | 'grossSales' | 'refunds' | 'netSales' | 'tips' | 'non
 type SortDirection = 'asc' | 'desc';
 
 export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
-  const employeeSalesData = useEmployeeSalesData(dateRange);
+  const { selectedStoreId } = useAuth();
+  const employeeSalesData = useEmployeeSalesData(dateRange, selectedStoreId);
   const [sortColumn, setSortColumn] = useState<SortColumn>('netSales');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 

@@ -61,7 +61,7 @@ function getPreviousDateRange(dateRange: DateRange): DateRange {
   };
 }
 
-export function useSalesMetrics(dateRange: DateRange): SalesMetrics {
+export function useSalesMetrics(dateRange: DateRange, storeId: string | null): SalesMetrics {
   const [metrics, setMetrics] = useState<SalesMetrics>({
     current: { transactions: 0, grossSales: 0, netSales: 0, averageTicket: 0, cashCollected: 0, cardCollected: 0, tipsGiven: 0, tipsPaired: 0 },
     previous: { transactions: 0, grossSales: 0, netSales: 0, averageTicket: 0, cashCollected: 0, cardCollected: 0, tipsGiven: 0, tipsPaired: 0 },
@@ -73,6 +73,11 @@ export function useSalesMetrics(dateRange: DateRange): SalesMetrics {
     let cancelled = false;
 
     async function fetchMetrics() {
+      if (!storeId) {
+        setMetrics((prev) => ({ ...prev, isLoading: false, error: 'No store selected' }));
+        return;
+      }
+
       try {
         setMetrics((prev) => ({ ...prev, isLoading: true, error: null }));
 
@@ -82,12 +87,14 @@ export function useSalesMetrics(dateRange: DateRange): SalesMetrics {
           supabase
             .from('sale_tickets')
             .select('id, total, tax, discount, closed_at')
+            .eq('store_id', storeId)
             .gte('ticket_date', dateRange.startDate)
             .lte('ticket_date', dateRange.endDate)
             .not('closed_at', 'is', null),
           supabase
             .from('sale_tickets')
             .select('id, total, tax, discount, closed_at')
+            .eq('store_id', storeId)
             .gte('ticket_date', previousRange.startDate)
             .lte('ticket_date', previousRange.endDate)
             .not('closed_at', 'is', null),
@@ -99,6 +106,7 @@ export function useSalesMetrics(dateRange: DateRange): SalesMetrics {
               (await supabase
                 .from('sale_tickets')
                 .select('id')
+                .eq('store_id', storeId)
                 .gte('ticket_date', dateRange.startDate)
                 .lte('ticket_date', dateRange.endDate)
                 .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
@@ -111,6 +119,7 @@ export function useSalesMetrics(dateRange: DateRange): SalesMetrics {
               (await supabase
                 .from('sale_tickets')
                 .select('id')
+                .eq('store_id', storeId)
                 .gte('ticket_date', previousRange.startDate)
                 .lte('ticket_date', previousRange.endDate)
                 .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
@@ -188,12 +197,12 @@ export function useSalesMetrics(dateRange: DateRange): SalesMetrics {
     return () => {
       cancelled = true;
     };
-  }, [dateRange.startDate, dateRange.endDate]);
+  }, [dateRange.startDate, dateRange.endDate, storeId]);
 
   return metrics;
 }
 
-export function useSalesChartData(dateRange: DateRange): SalesChartData {
+export function useSalesChartData(dateRange: DateRange, storeId: string | null): SalesChartData {
   const [chartData, setChartData] = useState<SalesChartData>({
     labels: [],
     currentData: [],
@@ -206,6 +215,11 @@ export function useSalesChartData(dateRange: DateRange): SalesChartData {
     let cancelled = false;
 
     async function fetchChartData() {
+      if (!storeId) {
+        setChartData((prev) => ({ ...prev, isLoading: false, error: 'No store selected' }));
+        return;
+      }
+
       try {
         setChartData((prev) => ({ ...prev, isLoading: true, error: null }));
 
@@ -219,12 +233,14 @@ export function useSalesChartData(dateRange: DateRange): SalesChartData {
           supabase
             .from('sale_tickets')
             .select('ticket_date, closed_at, total')
+            .eq('store_id', storeId)
             .gte('ticket_date', dateRange.startDate)
             .lte('ticket_date', dateRange.endDate)
             .not('closed_at', 'is', null),
           supabase
             .from('sale_tickets')
             .select('ticket_date, closed_at, total')
+            .eq('store_id', storeId)
             .gte('ticket_date', previousRange.startDate)
             .lte('ticket_date', previousRange.endDate)
             .not('closed_at', 'is', null),
@@ -319,12 +335,12 @@ export function useSalesChartData(dateRange: DateRange): SalesChartData {
     return () => {
       cancelled = true;
     };
-  }, [dateRange.startDate, dateRange.endDate]);
+  }, [dateRange.startDate, dateRange.endDate, storeId]);
 
   return chartData;
 }
 
-export function usePaymentBreakdown(dateRange: DateRange): PaymentBreakdownData {
+export function usePaymentBreakdown(dateRange: DateRange, storeId: string | null): PaymentBreakdownData {
   const [data, setData] = useState<PaymentBreakdownData>({
     tenderTypes: [],
     isLoading: true,
@@ -335,12 +351,18 @@ export function usePaymentBreakdown(dateRange: DateRange): PaymentBreakdownData 
     let cancelled = false;
 
     async function fetchPaymentBreakdown() {
+      if (!storeId) {
+        setData((prev) => ({ ...prev, isLoading: false, error: 'No store selected' }));
+        return;
+      }
+
       try {
         setData((prev) => ({ ...prev, isLoading: true, error: null }));
 
         const result = await supabase
           .from('sale_tickets')
           .select('payment_method, total')
+          .eq('store_id', storeId)
           .gte('ticket_date', dateRange.startDate)
           .lte('ticket_date', dateRange.endDate)
           .not('closed_at', 'is', null);
@@ -384,7 +406,7 @@ export function usePaymentBreakdown(dateRange: DateRange): PaymentBreakdownData 
     return () => {
       cancelled = true;
     };
-  }, [dateRange.startDate, dateRange.endDate]);
+  }, [dateRange.startDate, dateRange.endDate, storeId]);
 
   return data;
 }
@@ -428,7 +450,7 @@ export interface TenderTypesData {
   error: string | null;
 }
 
-export function useSalesReportData(dateRange: DateRange): SalesReportData {
+export function useSalesReportData(dateRange: DateRange, storeId: string | null): SalesReportData {
   const [data, setData] = useState<SalesReportData>({
     netSales: 0,
     transactions: 0,
@@ -444,6 +466,11 @@ export function useSalesReportData(dateRange: DateRange): SalesReportData {
     let cancelled = false;
 
     async function fetchReportData() {
+      if (!storeId) {
+        setData((prev) => ({ ...prev, isLoading: false, error: 'No store selected' }));
+        return;
+      }
+
       try {
         setData((prev) => ({ ...prev, isLoading: true, error: null }));
 
@@ -451,6 +478,7 @@ export function useSalesReportData(dateRange: DateRange): SalesReportData {
           supabase
             .from('sale_tickets')
             .select('id, total, closed_at')
+            .eq('store_id', storeId)
             .gte('ticket_date', dateRange.startDate)
             .lte('ticket_date', dateRange.endDate)
             .not('closed_at', 'is', null),
@@ -463,6 +491,7 @@ export function useSalesReportData(dateRange: DateRange): SalesReportData {
                 await supabase
                   .from('sale_tickets')
                   .select('id')
+                  .eq('store_id', storeId)
                   .gte('ticket_date', dateRange.startDate)
                   .lte('ticket_date', dateRange.endDate)
                   .not('closed_at', 'is', null)
@@ -527,14 +556,14 @@ export function useSalesReportData(dateRange: DateRange): SalesReportData {
     return () => {
       cancelled = true;
     };
-  }, [dateRange.startDate, dateRange.endDate]);
+  }, [dateRange.startDate, dateRange.endDate, storeId]);
 
   return data;
 }
 
 export type ViewByType = 'hourly' | 'daily' | 'weekly';
 
-export function useSalesBreakdownData(dateRange: DateRange, viewBy: ViewByType): SalesBreakdownData {
+export function useSalesBreakdownData(dateRange: DateRange, viewBy: ViewByType, storeId: string | null): SalesBreakdownData {
   const [data, setData] = useState<SalesBreakdownData>({
     timeLabels: [],
     grossSales: [],
@@ -555,12 +584,18 @@ export function useSalesBreakdownData(dateRange: DateRange, viewBy: ViewByType):
     let cancelled = false;
 
     async function fetchBreakdownData() {
+      if (!storeId) {
+        setData((prev) => ({ ...prev, isLoading: false, error: 'No store selected' }));
+        return;
+      }
+
       try {
         setData((prev) => ({ ...prev, isLoading: true, error: null }));
 
         const ticketsResult = await supabase
           .from('sale_tickets')
           .select('id, total, closed_at')
+          .eq('store_id', storeId)
           .gte('ticket_date', dateRange.startDate)
           .lte('ticket_date', dateRange.endDate)
           .not('closed_at', 'is', null);
@@ -628,12 +663,12 @@ export function useSalesBreakdownData(dateRange: DateRange, viewBy: ViewByType):
     return () => {
       cancelled = true;
     };
-  }, [dateRange.startDate, dateRange.endDate, viewBy]);
+  }, [dateRange.startDate, dateRange.endDate, viewBy, storeId]);
 
   return data;
 }
 
-export function useTenderTypesData(dateRange: DateRange): TenderTypesData {
+export function useTenderTypesData(dateRange: DateRange, storeId: string | null): TenderTypesData {
   const [data, setData] = useState<TenderTypesData>({
     tenderTypes: [],
     totalCollected: 0,
@@ -645,12 +680,18 @@ export function useTenderTypesData(dateRange: DateRange): TenderTypesData {
     let cancelled = false;
 
     async function fetchTenderTypes() {
+      if (!storeId) {
+        setData((prev) => ({ ...prev, isLoading: false, error: 'No store selected' }));
+        return;
+      }
+
       try {
         setData((prev) => ({ ...prev, isLoading: true, error: null }));
 
         const ticketsResult = await supabase
           .from('sale_tickets')
           .select('id, payment_method, total')
+          .eq('store_id', storeId)
           .gte('ticket_date', dateRange.startDate)
           .lte('ticket_date', dateRange.endDate)
           .not('closed_at', 'is', null);
@@ -697,7 +738,7 @@ export function useTenderTypesData(dateRange: DateRange): TenderTypesData {
     return () => {
       cancelled = true;
     };
-  }, [dateRange.startDate, dateRange.endDate]);
+  }, [dateRange.startDate, dateRange.endDate, storeId]);
 
   return data;
 }
@@ -741,7 +782,7 @@ export interface CardPaymentAnalysis {
   error: string | null;
 }
 
-export function useCardPaymentAnalysis(dateRange: DateRange): CardPaymentAnalysis {
+export function useCardPaymentAnalysis(dateRange: DateRange, storeId: string | null): CardPaymentAnalysis {
   const [data, setData] = useState<CardPaymentAnalysis>({
     creditCards: {
       category: 'credit',
@@ -763,12 +804,18 @@ export function useCardPaymentAnalysis(dateRange: DateRange): CardPaymentAnalysi
     let cancelled = false;
 
     async function fetchCardPaymentData() {
+      if (!storeId) {
+        setData((prev) => ({ ...prev, isLoading: false, error: 'No store selected' }));
+        return;
+      }
+
       try {
         setData((prev) => ({ ...prev, isLoading: true, error: null }));
 
         const ticketsResult = await supabase
           .from('sale_tickets')
           .select('id, total, payment_method')
+          .eq('store_id', storeId)
           .gte('ticket_date', dateRange.startDate)
           .lte('ticket_date', dateRange.endDate)
           .not('closed_at', 'is', null)
@@ -895,7 +942,7 @@ export function useCardPaymentAnalysis(dateRange: DateRange): CardPaymentAnalysi
     return () => {
       cancelled = true;
     };
-  }, [dateRange.startDate, dateRange.endDate]);
+  }, [dateRange.startDate, dateRange.endDate, storeId]);
 
   return data;
 }
@@ -925,7 +972,7 @@ export interface EmployeeSalesData {
   error: string | null;
 }
 
-export function useEmployeeSalesData(dateRange: DateRange): EmployeeSalesData {
+export function useEmployeeSalesData(dateRange: DateRange, storeId: string | null): EmployeeSalesData {
   const [data, setData] = useState<EmployeeSalesData>({
     employees: [],
     summary: {
@@ -942,6 +989,11 @@ export function useEmployeeSalesData(dateRange: DateRange): EmployeeSalesData {
     let cancelled = false;
 
     async function fetchEmployeeSales() {
+      if (!storeId) {
+        setData((prev) => ({ ...prev, isLoading: false, error: 'No store selected' }));
+        return;
+      }
+
       try {
         setData((prev) => ({ ...prev, isLoading: true, error: null }));
 
@@ -963,6 +1015,7 @@ export function useEmployeeSalesData(dateRange: DateRange): EmployeeSalesData {
               )
             )
           `)
+          .eq('store_id', storeId)
           .gte('ticket_date', dateRange.startDate)
           .lte('ticket_date', dateRange.endDate)
           .not('closed_at', 'is', null);
@@ -1066,7 +1119,7 @@ export function useEmployeeSalesData(dateRange: DateRange): EmployeeSalesData {
     return () => {
       cancelled = true;
     };
-  }, [dateRange.startDate, dateRange.endDate]);
+  }, [dateRange.startDate, dateRange.endDate, storeId]);
 
   return data;
 }

@@ -7,13 +7,15 @@ import { SalesReportChart } from './SalesReportChart';
 import { SalesBreakdownTable } from './SalesBreakdownTable';
 import { TenderTypesTable } from './TenderTypesTable';
 import { getCurrentDateEST } from '../../lib/timezone';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface SalesReportProps {
   dateRange: DateRange;
 }
 
 export function SalesReport({ dateRange }: SalesReportProps) {
-  const reportData = useSalesReportData(dateRange);
+  const { selectedStoreId } = useAuth();
+  const reportData = useSalesReportData(dateRange, selectedStoreId);
   const [showFilters, setShowFilters] = useState(false);
 
   const isToday = dateRange.startDate === getCurrentDateEST();
