@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Printer, Plus, Save, DollarSign, AlertCircle, CheckCircle, Edit, ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, Printer, Plus, Save, DollarSign, AlertCircle, CheckCircle, Edit, ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { supabase, EndOfDayRecord, CashTransaction, PendingCashTransactionApproval, CashTransactionType } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { TicketEditor } from '../components/TicketEditor';
 import { CashCountModal } from '../components/CashCountModal';
 import { CashTransactionModal, TransactionData } from '../components/CashTransactionModal';
+import { TransactionListModal } from '../components/TransactionListModal';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { getCurrentDateEST } from '../lib/timezone';
@@ -73,6 +74,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [cashOutTransactions, setCashOutTransactions] = useState<CashTransaction[]>([]);
   const [isCashInModalOpen, setIsCashInModalOpen] = useState(false);
   const [isCashOutModalOpen, setIsCashOutModalOpen] = useState(false);
+  const [isCashInListModalOpen, setIsCashInListModalOpen] = useState(false);
+  const [isCashOutListModalOpen, setIsCashOutListModalOpen] = useState(false);
 
   useEffect(() => {
     loadEODData();
@@ -707,7 +710,22 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               </div>
               <div className="text-center py-3">
                 <p className="text-xs text-gray-600 mb-1">Total Amount</p>
-                <p className="text-2xl font-bold text-green-600 mb-3">${totalCashIn.toFixed(2)}</p>
+                <button
+                  onClick={() => setIsCashInListModalOpen(true)}
+                  className="text-2xl font-bold text-green-600 mb-3 hover:text-green-700 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 rounded px-2"
+                  title="View all Cash In transactions"
+                >
+                  ${totalCashIn.toFixed(2)}
+                </button>
+                {cashInTransactions.length > 0 && (
+                  <button
+                    onClick={() => setIsCashInListModalOpen(true)}
+                    className="w-full mb-2 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors flex items-center justify-center gap-1"
+                  >
+                    <Eye className="w-3 h-3" />
+                    View {cashInTransactions.length} Transaction{cashInTransactions.length !== 1 ? 's' : ''}
+                  </button>
+                )}
                 <Button
                   variant="secondary"
                   size="sm"
@@ -727,7 +745,22 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               </div>
               <div className="text-center py-3">
                 <p className="text-xs text-gray-600 mb-1">Total Amount</p>
-                <p className="text-2xl font-bold text-red-600 mb-3">${totalCashOut.toFixed(2)}</p>
+                <button
+                  onClick={() => setIsCashOutListModalOpen(true)}
+                  className="text-2xl font-bold text-red-600 mb-3 hover:text-red-700 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded px-2"
+                  title="View all Cash Out transactions"
+                >
+                  ${totalCashOut.toFixed(2)}
+                </button>
+                {cashOutTransactions.length > 0 && (
+                  <button
+                    onClick={() => setIsCashOutListModalOpen(true)}
+                    className="w-full mb-2 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center justify-center gap-1"
+                  >
+                    <Eye className="w-3 h-3" />
+                    View {cashOutTransactions.length} Transaction{cashOutTransactions.length !== 1 ? 's' : ''}
+                  </button>
+                )}
                 <Button
                   variant="secondary"
                   size="sm"
@@ -966,6 +999,28 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         onClose={() => setIsCashOutModalOpen(false)}
         onSubmit={(data) => handleCashTransactionSubmit('cash_out', data)}
         transactionType="cash_out"
+      />
+
+      <TransactionListModal
+        isOpen={isCashInListModalOpen}
+        onClose={() => setIsCashInListModalOpen(false)}
+        transactions={cashInTransactions}
+        transactionType="cash_in"
+        onAddNew={() => {
+          setIsCashInListModalOpen(false);
+          setIsCashInModalOpen(true);
+        }}
+      />
+
+      <TransactionListModal
+        isOpen={isCashOutListModalOpen}
+        onClose={() => setIsCashOutListModalOpen(false)}
+        transactions={cashOutTransactions}
+        transactionType="cash_out"
+        onAddNew={() => {
+          setIsCashOutListModalOpen(false);
+          setIsCashOutModalOpen(true);
+        }}
       />
     </div>
   );
