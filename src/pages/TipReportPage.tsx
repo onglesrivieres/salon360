@@ -592,6 +592,20 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     onDateChange(d.toISOString().split('T')[0]);
   }
 
+  function navigateDay(direction: 'prev' | 'next') {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + (direction === 'prev' ? -1 : 1));
+    onDateChange(d.toISOString().split('T')[0]);
+  }
+
+  function canNavigatePrev(): boolean {
+    return selectedDate > getMinDate();
+  }
+
+  function canNavigateNext(): boolean {
+    return selectedDate < getMaxDate();
+  }
+
   function getCurrentWeekLabel(): string {
     const weekStart = getWeekStartDate(selectedDate);
     const weekDates = getWeekDates(weekStart);
@@ -693,16 +707,38 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
         <h2 className="text-base md:text-lg font-bold text-gray-900">Tip Report</h2>
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
-          <div className="flex items-center gap-2 flex-1 md:flex-initial">
-            <Calendar className="w-4 h-4 text-gray-400" />
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => onDateChange(e.target.value)}
-              min={getMinDate()}
-              max={getMaxDate()}
-              className="px-2 py-2 md:py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 md:flex-initial min-h-[44px] md:min-h-0"
-            />
+          <div className="flex items-center gap-1 flex-1 md:flex-initial">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => navigateDay('prev')}
+              disabled={!canNavigatePrev()}
+              className="p-1 h-[44px] md:h-8 w-10 flex items-center justify-center"
+              aria-label="Previous day"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-400" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => onDateChange(e.target.value)}
+                min={getMinDate()}
+                max={getMaxDate()}
+                className="px-2 py-2 md:py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] md:min-h-0"
+              />
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => navigateDay('next')}
+              disabled={!canNavigateNext()}
+              className="p-1 h-[44px] md:h-8 w-10 flex items-center justify-center"
+              aria-label="Next day"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
           </div>
           {session && session.role && Permissions.endOfDay.canExport(session.role) && (
             <>
