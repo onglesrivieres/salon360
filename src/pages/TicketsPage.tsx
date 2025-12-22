@@ -21,6 +21,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [quickFilter, setQuickFilter] = useState<'all' | 'unclosed'>('all');
   const [approvalFilter, setApprovalFilter] = useState<string>('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
   const [technicianFilter, setTechnicianFilter] = useState<string>('all');
@@ -223,6 +224,11 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   const filteredTickets = useMemo(() => {
     let filtered = tickets;
 
+    // Apply quick filter first
+    if (quickFilter === 'unclosed') {
+      filtered = filtered.filter(ticket => !ticket.closed_at);
+    }
+
     // Apply approval status filter
     if (approvalFilter !== 'all') {
       filtered = filtered.filter(ticket => {
@@ -255,7 +261,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     }
 
     return filtered;
-  }, [tickets, approvalFilter, paymentMethodFilter, technicianFilter]);
+  }, [tickets, quickFilter, approvalFilter, paymentMethodFilter, technicianFilter]);
 
   function getMinDate(): string {
     const canViewUnlimitedHistory = session?.role ? Permissions.tickets.canViewAll(session.role) : false;
@@ -381,6 +387,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
   function getActiveFilterCount(): number {
     let count = 0;
+    if (quickFilter !== 'all') count++;
     if (approvalFilter !== 'all') count++;
     if (paymentMethodFilter !== 'all') count++;
     if (technicianFilter !== 'all') count++;
@@ -388,6 +395,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   }
 
   function clearAllFilters(): void {
+    setQuickFilter('all');
     setApprovalFilter('all');
     setPaymentMethodFilter('all');
     setTechnicianFilter('all');
@@ -533,6 +541,28 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
         <h2 className="text-base md:text-lg font-bold text-gray-900">Sale Tickets</h2>
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
+          <div className="inline-flex rounded-lg border border-gray-300 bg-white min-h-[44px] md:min-h-0">
+            <button
+              onClick={() => setQuickFilter('all')}
+              className={`px-3 py-2 text-sm font-medium rounded-l-lg transition-colors min-h-[44px] md:min-h-0 ${
+                quickFilter === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setQuickFilter('unclosed')}
+              className={`px-3 py-2 text-sm font-medium rounded-r-lg border-l border-gray-300 transition-colors min-h-[44px] md:min-h-0 ${
+                quickFilter === 'unclosed'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Unclosed
+            </button>
+          </div>
           <div className="relative">
             <button
               onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
