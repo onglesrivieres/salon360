@@ -100,7 +100,7 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
             .not('closed_at', 'is', null),
           supabase
             .from('ticket_items')
-            .select('sale_ticket_id, payment_cash, payment_card, tip_customer_cash, tip_customer_card, tip_receptionist')
+            .select('sale_ticket_id, payment_cash, payment_card, payment_gift_card, tip_customer_cash, tip_customer_card, tip_receptionist')
             .in(
               'sale_ticket_id',
               (await supabase
@@ -113,7 +113,7 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
             ),
           supabase
             .from('ticket_items')
-            .select('sale_ticket_id, payment_cash, payment_card, tip_customer_cash, tip_customer_card, tip_receptionist')
+            .select('sale_ticket_id, payment_cash, payment_card, payment_gift_card, tip_customer_cash, tip_customer_card, tip_receptionist')
             .in(
               'sale_ticket_id',
               (await supabase
@@ -162,13 +162,22 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
         const previousTipsGiven = previousItems.reduce((sum, item) => sum + (item.tip_customer_cash || 0) + (item.tip_customer_card || 0), 0);
         const previousTipsPaired = previousItems.reduce((sum, item) => sum + (item.tip_receptionist || 0), 0);
 
+        const currentGrandTotal = currentItems.reduce(
+          (sum, item) => sum + (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0),
+          0
+        );
+        const previousGrandTotal = previousItems.reduce(
+          (sum, item) => sum + (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0),
+          0
+        );
+
         const currentSummary: SalesSummary = {
           transactions: currentTickets.length,
-          grossSales: currentTickets.reduce((sum, t) => sum + (t.total || 0), 0),
-          netSales: currentTickets.reduce((sum, t) => sum + (t.total || 0), 0),
+          grossSales: currentGrandTotal,
+          netSales: currentGrandTotal,
           averageTicket:
             currentTickets.length > 0
-              ? currentTickets.reduce((sum, t) => sum + (t.total || 0), 0) / currentTickets.length
+              ? currentGrandTotal / currentTickets.length
               : 0,
           cashCollected: currentCashCollected,
           cardCollected: currentCardCollected,
@@ -178,11 +187,11 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
 
         const previousSummary: SalesSummary = {
           transactions: previousTickets.length,
-          grossSales: previousTickets.reduce((sum, t) => sum + (t.total || 0), 0),
-          netSales: previousTickets.reduce((sum, t) => sum + (t.total || 0), 0),
+          grossSales: previousGrandTotal,
+          netSales: previousGrandTotal,
           averageTicket:
             previousTickets.length > 0
-              ? previousTickets.reduce((sum, t) => sum + (t.total || 0), 0) / previousTickets.length
+              ? previousGrandTotal / previousTickets.length
               : 0,
           cashCollected: previousCashCollected,
           cardCollected: previousCardCollected,
@@ -245,21 +254,47 @@ export function useSalesChartData(dateRange: DateRange, storeId: string | null):
 
         const previousRange = getPreviousDateRange(dateRange);
 
-        const [currentResult, previousResult] = await Promise.all([
+        const [currentResult, previousResult, currentItemsResult, previousItemsResult] = await Promise.all([
           supabase
             .from('sale_tickets')
-            .select('ticket_date, closed_at, total')
+            .select('id, ticket_date, closed_at, total')
             .eq('store_id', storeId)
             .gte('ticket_date', dateRange.startDate)
             .lte('ticket_date', dateRange.endDate)
             .not('closed_at', 'is', null),
           supabase
             .from('sale_tickets')
-            .select('ticket_date, closed_at, total')
+            .select('id, ticket_date, closed_at, total')
             .eq('store_id', storeId)
             .gte('ticket_date', previousRange.startDate)
             .lte('ticket_date', previousRange.endDate)
             .not('closed_at', 'is', null),
+          supabase
+            .from('ticket_items')
+            .select('sale_ticket_id, payment_cash, payment_card, payment_gift_card')
+            .in(
+              'sale_ticket_id',
+              (await supabase
+                .from('sale_tickets')
+                .select('id')
+                .eq('store_id', storeId)
+                .gte('ticket_date', dateRange.startDate)
+                .lte('ticket_date', dateRange.endDate)
+                .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
+            ),
+          supabase
+            .from('ticket_items')
+            .select('sale_ticket_id, payment_cash, payment_card, payment_gift_card')
+            .in(
+              'sale_ticket_id',
+              (await supabase
+                .from('sale_tickets')
+                .select('id')
+                .eq('store_id', storeId)
+                .gte('ticket_date', previousRange.startDate)
+                .lte('ticket_date', previousRange.endDate)
+                .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
+            ),
         ]);
 
         if (cancelled) return;
@@ -269,6 +304,22 @@ export function useSalesChartData(dateRange: DateRange, storeId: string | null):
 
         const currentTickets = currentResult.data || [];
         const previousTickets = previousResult.data || [];
+        const currentItems = currentItemsResult?.data || [];
+        const previousItems = previousItemsResult?.data || [];
+
+        const currentTicketTotals = new Map<string, number>();
+        currentItems.forEach(item => {
+          const ticketId = item.sale_ticket_id;
+          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0);
+          currentTicketTotals.set(ticketId, (currentTicketTotals.get(ticketId) || 0) + itemTotal);
+        });
+
+        const previousTicketTotals = new Map<string, number>();
+        previousItems.forEach(item => {
+          const ticketId = item.sale_ticket_id;
+          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0);
+          previousTicketTotals.set(ticketId, (previousTicketTotals.get(ticketId) || 0) + itemTotal);
+        });
 
         if (daysDiff === 0) {
           const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -278,7 +329,8 @@ export function useSalesChartData(dateRange: DateRange, storeId: string | null):
           currentTickets.forEach((ticket) => {
             if (ticket.closed_at) {
               const hour = new Date(ticket.closed_at).getHours();
-              currentHourlyData[hour] += ticket.total || 0;
+              const ticketTotal = currentTicketTotals.get(ticket.id) || 0;
+              currentHourlyData[hour] += ticketTotal;
             }
           });
 
@@ -286,7 +338,8 @@ export function useSalesChartData(dateRange: DateRange, storeId: string | null):
           previousTickets.forEach((ticket) => {
             if (ticket.closed_at) {
               const hour = new Date(ticket.closed_at).getHours();
-              previousHourlyData[hour] += ticket.total || 0;
+              const ticketTotal = previousTicketTotals.get(ticket.id) || 0;
+              previousHourlyData[hour] += ticketTotal;
             }
           });
 
@@ -303,12 +356,14 @@ export function useSalesChartData(dateRange: DateRange, storeId: string | null):
 
           currentTickets.forEach((ticket) => {
             const date = ticket.ticket_date;
-            currentDailyData[date] = (currentDailyData[date] || 0) + (ticket.total || 0);
+            const ticketTotal = currentTicketTotals.get(ticket.id) || 0;
+            currentDailyData[date] = (currentDailyData[date] || 0) + ticketTotal;
           });
 
           previousTickets.forEach((ticket) => {
             const date = ticket.ticket_date;
-            previousDailyData[date] = (previousDailyData[date] || 0) + (ticket.total || 0);
+            const ticketTotal = previousTicketTotals.get(ticket.id) || 0;
+            previousDailyData[date] = (previousDailyData[date] || 0) + ticketTotal;
           });
 
           const dates: string[] = [];
@@ -375,24 +430,49 @@ export function usePaymentBreakdown(dateRange: DateRange, storeId: string | null
       try {
         setData((prev) => ({ ...prev, isLoading: true, error: null }));
 
-        const result = await supabase
-          .from('sale_tickets')
-          .select('payment_method, total')
-          .eq('store_id', storeId)
-          .gte('ticket_date', dateRange.startDate)
-          .lte('ticket_date', dateRange.endDate)
-          .not('closed_at', 'is', null);
+        const [ticketsResult, itemsResult] = await Promise.all([
+          supabase
+            .from('sale_tickets')
+            .select('id, payment_method, total')
+            .eq('store_id', storeId)
+            .gte('ticket_date', dateRange.startDate)
+            .lte('ticket_date', dateRange.endDate)
+            .not('closed_at', 'is', null),
+          supabase
+            .from('ticket_items')
+            .select('sale_ticket_id, payment_cash, payment_card, payment_gift_card')
+            .in(
+              'sale_ticket_id',
+              (await supabase
+                .from('sale_tickets')
+                .select('id')
+                .eq('store_id', storeId)
+                .gte('ticket_date', dateRange.startDate)
+                .lte('ticket_date', dateRange.endDate)
+                .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
+            ),
+        ]);
 
         if (cancelled) return;
 
-        if (result.error) throw result.error;
+        if (ticketsResult.error) throw ticketsResult.error;
 
-        const tickets = result.data || [];
+        const tickets = ticketsResult.data || [];
+        const items = itemsResult?.data || [];
+
+        const ticketTotalsMap = new Map<string, number>();
+        items.forEach(item => {
+          const ticketId = item.sale_ticket_id;
+          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0);
+          ticketTotalsMap.set(ticketId, (ticketTotalsMap.get(ticketId) || 0) + itemTotal);
+        });
+
         const breakdown: Record<string, number> = {};
 
         tickets.forEach((ticket) => {
           const method = ticket.payment_method || 'Other';
-          breakdown[method] = (breakdown[method] || 0) + (ticket.total || 0);
+          const ticketTotal = ticketTotalsMap.get(ticket.id) || 0;
+          breakdown[method] = (breakdown[method] || 0) + ticketTotal;
         });
 
         const tenderTypes = Object.entries(breakdown)
@@ -522,14 +602,21 @@ export function useSalesReportData(dateRange: DateRange, storeId: string | null)
         const tickets = ticketsResult.data || [];
         const items = itemsResult.data || [];
 
-        const netSales = tickets.reduce((sum, t) => sum + (t.total || 0), 0);
-        const transactions = tickets.length;
+        const ticketTotalsMap = new Map<string, number>();
+        items.forEach(item => {
+          const ticketId = item.sale_ticket_id;
+          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0);
+          ticketTotalsMap.set(ticketId, (ticketTotalsMap.get(ticketId) || 0) + itemTotal);
+        });
 
-        const amountCollected = items.reduce(
+        const netSales = items.reduce(
           (sum, item) =>
             sum + (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0),
           0
         );
+        const transactions = tickets.length;
+
+        const amountCollected = netSales;
 
         const grossSales = netSales;
         const refunds = 0;
@@ -540,7 +627,8 @@ export function useSalesReportData(dateRange: DateRange, storeId: string | null)
             const hour = new Date(ticket.closed_at).getHours();
             if (hour >= 9 && hour <= 21) {
               const index = hour - 9;
-              hourlyData[index] += ticket.total || 0;
+              const ticketTotal = ticketTotalsMap.get(ticket.id) || 0;
+              hourlyData[index] += ticketTotal;
             }
           }
         });
@@ -608,19 +696,42 @@ export function useSalesBreakdownData(dateRange: DateRange, viewBy: ViewByType, 
       try {
         setData((prev) => ({ ...prev, isLoading: true, error: null }));
 
-        const ticketsResult = await supabase
-          .from('sale_tickets')
-          .select('id, total, closed_at')
-          .eq('store_id', storeId)
-          .gte('ticket_date', dateRange.startDate)
-          .lte('ticket_date', dateRange.endDate)
-          .not('closed_at', 'is', null);
+        const [ticketsResult, itemsResult] = await Promise.all([
+          supabase
+            .from('sale_tickets')
+            .select('id, total, closed_at')
+            .eq('store_id', storeId)
+            .gte('ticket_date', dateRange.startDate)
+            .lte('ticket_date', dateRange.endDate)
+            .not('closed_at', 'is', null),
+          supabase
+            .from('ticket_items')
+            .select('sale_ticket_id, payment_cash, payment_card, payment_gift_card')
+            .in(
+              'sale_ticket_id',
+              (await supabase
+                .from('sale_tickets')
+                .select('id')
+                .eq('store_id', storeId)
+                .gte('ticket_date', dateRange.startDate)
+                .lte('ticket_date', dateRange.endDate)
+                .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
+            ),
+        ]);
 
         if (cancelled) return;
 
         if (ticketsResult.error) throw ticketsResult.error;
 
         const tickets = ticketsResult.data || [];
+        const items = itemsResult?.data || [];
+
+        const ticketTotalsMap = new Map<string, number>();
+        items.forEach(item => {
+          const ticketId = item.sale_ticket_id;
+          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0);
+          ticketTotalsMap.set(ticketId, (ticketTotalsMap.get(ticketId) || 0) + itemTotal);
+        });
 
         if (viewBy === 'hourly') {
           const hours = Array.from({ length: 13 }, (_, i) => i + 9);
@@ -638,7 +749,8 @@ export function useSalesBreakdownData(dateRange: DateRange, viewBy: ViewByType, 
               const hour = new Date(ticket.closed_at).getHours();
               if (hour >= 9 && hour <= 21) {
                 const index = hour - 9;
-                grossSales[index] += ticket.total || 0;
+                const ticketTotal = ticketTotalsMap.get(ticket.id) || 0;
+                grossSales[index] += ticketTotal;
               }
             }
           });
@@ -704,24 +816,49 @@ export function useTenderTypesData(dateRange: DateRange, storeId: string | null)
       try {
         setData((prev) => ({ ...prev, isLoading: true, error: null }));
 
-        const ticketsResult = await supabase
-          .from('sale_tickets')
-          .select('id, payment_method, total')
-          .eq('store_id', storeId)
-          .gte('ticket_date', dateRange.startDate)
-          .lte('ticket_date', dateRange.endDate)
-          .not('closed_at', 'is', null);
+        const [ticketsResult, itemsResult] = await Promise.all([
+          supabase
+            .from('sale_tickets')
+            .select('id, payment_method, total')
+            .eq('store_id', storeId)
+            .gte('ticket_date', dateRange.startDate)
+            .lte('ticket_date', dateRange.endDate)
+            .not('closed_at', 'is', null),
+          supabase
+            .from('ticket_items')
+            .select('sale_ticket_id, payment_cash, payment_card, payment_gift_card')
+            .in(
+              'sale_ticket_id',
+              (await supabase
+                .from('sale_tickets')
+                .select('id')
+                .eq('store_id', storeId)
+                .gte('ticket_date', dateRange.startDate)
+                .lte('ticket_date', dateRange.endDate)
+                .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
+            ),
+        ]);
 
         if (cancelled) return;
 
         if (ticketsResult.error) throw ticketsResult.error;
 
         const tickets = ticketsResult.data || [];
+        const items = itemsResult?.data || [];
+
+        const ticketTotalsMap = new Map<string, number>();
+        items.forEach(item => {
+          const ticketId = item.sale_ticket_id;
+          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0);
+          ticketTotalsMap.set(ticketId, (ticketTotalsMap.get(ticketId) || 0) + itemTotal);
+        });
+
         const breakdown: Record<string, number> = {};
 
         tickets.forEach((ticket) => {
           const method = ticket.payment_method || 'Other';
-          breakdown[method] = (breakdown[method] || 0) + (ticket.total || 0);
+          const ticketTotal = ticketTotalsMap.get(ticket.id) || 0;
+          breakdown[method] = (breakdown[method] || 0) + ticketTotal;
         });
 
         const tenderTypes = Object.entries(breakdown).map(([tenderType, amount]) => ({
@@ -876,6 +1013,10 @@ export function useCardPaymentAnalysis(dateRange: DateRange, storeId: string | n
 
         tickets.forEach((ticket) => {
           const ticketItems = itemsByTicket[ticket.id] || [];
+          const ticketGrandTotal = ticketItems.reduce(
+            (sum, item) => sum + (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0),
+            0
+          );
           const cardAmount = ticketItems.reduce((sum, item) => sum + (item.payment_card || 0), 0);
 
           const isCredit = Math.random() > 0.5;
@@ -883,11 +1024,11 @@ export function useCardPaymentAnalysis(dateRange: DateRange, storeId: string | n
 
           if (isCredit) {
             creditCardData[cardIndex].transactions += 1;
-            creditCardData[cardIndex].salesTotal += ticket.total;
+            creditCardData[cardIndex].salesTotal += ticketGrandTotal;
             creditCardData[cardIndex].amountCollected += cardAmount;
           } else {
             debitCardData[cardIndex].transactions += 1;
-            debitCardData[cardIndex].salesTotal += ticket.total;
+            debitCardData[cardIndex].salesTotal += ticketGrandTotal;
             debitCardData[cardIndex].amountCollected += cardAmount;
           }
         });
