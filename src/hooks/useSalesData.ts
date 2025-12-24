@@ -163,11 +163,11 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
         const previousTipsPaired = previousItems.reduce((sum, item) => sum + (item.tip_receptionist || 0), 0);
 
         const currentGrandTotal = currentItems.reduce(
-          (sum, item) => sum + (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0),
+          (sum, item) => sum + (item.payment_cash || 0) + (item.payment_card || 0),
           0
         );
         const previousGrandTotal = previousItems.reduce(
-          (sum, item) => sum + (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0),
+          (sum, item) => sum + (item.payment_cash || 0) + (item.payment_card || 0),
           0
         );
 
@@ -310,14 +310,14 @@ export function useSalesChartData(dateRange: DateRange, storeId: string | null):
         const currentTicketTotals = new Map<string, number>();
         currentItems.forEach(item => {
           const ticketId = item.sale_ticket_id;
-          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0);
+          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0);
           currentTicketTotals.set(ticketId, (currentTicketTotals.get(ticketId) || 0) + itemTotal);
         });
 
         const previousTicketTotals = new Map<string, number>();
         previousItems.forEach(item => {
           const ticketId = item.sale_ticket_id;
-          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0);
+          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0);
           previousTicketTotals.set(ticketId, (previousTicketTotals.get(ticketId) || 0) + itemTotal);
         });
 
@@ -463,7 +463,7 @@ export function usePaymentBreakdown(dateRange: DateRange, storeId: string | null
         const ticketTotalsMap = new Map<string, number>();
         items.forEach(item => {
           const ticketId = item.sale_ticket_id;
-          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0);
+          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0);
           ticketTotalsMap.set(ticketId, (ticketTotalsMap.get(ticketId) || 0) + itemTotal);
         });
 
@@ -605,13 +605,13 @@ export function useSalesReportData(dateRange: DateRange, storeId: string | null)
         const ticketTotalsMap = new Map<string, number>();
         items.forEach(item => {
           const ticketId = item.sale_ticket_id;
-          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0);
+          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0);
           ticketTotalsMap.set(ticketId, (ticketTotalsMap.get(ticketId) || 0) + itemTotal);
         });
 
         const netSales = items.reduce(
           (sum, item) =>
-            sum + (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0),
+            sum + (item.payment_cash || 0) + (item.payment_card || 0),
           0
         );
         const transactions = tickets.length;
@@ -729,7 +729,7 @@ export function useSalesBreakdownData(dateRange: DateRange, viewBy: ViewByType, 
         const ticketTotalsMap = new Map<string, number>();
         items.forEach(item => {
           const ticketId = item.sale_ticket_id;
-          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0);
+          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0);
           ticketTotalsMap.set(ticketId, (ticketTotalsMap.get(ticketId) || 0) + itemTotal);
         });
 
@@ -849,7 +849,7 @@ export function useTenderTypesData(dateRange: DateRange, storeId: string | null)
         const ticketTotalsMap = new Map<string, number>();
         items.forEach(item => {
           const ticketId = item.sale_ticket_id;
-          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0);
+          const itemTotal = (item.payment_cash || 0) + (item.payment_card || 0);
           ticketTotalsMap.set(ticketId, (ticketTotalsMap.get(ticketId) || 0) + itemTotal);
         });
 
@@ -1014,7 +1014,7 @@ export function useCardPaymentAnalysis(dateRange: DateRange, storeId: string | n
         tickets.forEach((ticket) => {
           const ticketItems = itemsByTicket[ticket.id] || [];
           const ticketGrandTotal = ticketItems.reduce(
-            (sum, item) => sum + (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0),
+            (sum, item) => sum + (item.payment_cash || 0) + (item.payment_card || 0),
             0
           );
           const cardAmount = ticketItems.reduce((sum, item) => sum + (item.payment_card || 0), 0);
