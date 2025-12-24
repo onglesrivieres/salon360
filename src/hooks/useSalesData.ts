@@ -86,14 +86,14 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
         const [currentResult, previousResult, currentItemsResult, previousItemsResult] = await Promise.all([
           supabase
             .from('sale_tickets')
-            .select('id, total, tax, discount, closed_at')
+            .select('id, total, tax, discount, closed_at, payment_method')
             .eq('store_id', storeId)
             .gte('ticket_date', dateRange.startDate)
             .lte('ticket_date', dateRange.endDate)
             .not('closed_at', 'is', null),
           supabase
             .from('sale_tickets')
-            .select('id, total, tax, discount, closed_at')
+            .select('id, total, tax, discount, closed_at, payment_method')
             .eq('store_id', storeId)
             .gte('ticket_date', previousRange.startDate)
             .lte('ticket_date', previousRange.endDate)
@@ -136,13 +136,29 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
         const currentItems = currentItemsResult?.data || [];
         const previousItems = previousItemsResult?.data || [];
 
+        const currentTicketPaymentMethods = new Map(
+          currentTickets.map(t => [t.id, t.payment_method])
+        );
+        const previousTicketPaymentMethods = new Map(
+          previousTickets.map(t => [t.id, t.payment_method])
+        );
+
+        const currentCardItems = currentItems.filter(item => {
+          const paymentMethod = currentTicketPaymentMethods.get(item.sale_ticket_id);
+          return paymentMethod === 'Card' || paymentMethod === 'Mixed';
+        });
+        const previousCardItems = previousItems.filter(item => {
+          const paymentMethod = previousTicketPaymentMethods.get(item.sale_ticket_id);
+          return paymentMethod === 'Card' || paymentMethod === 'Mixed';
+        });
+
         const currentCashCollected = currentItems.reduce((sum, item) => sum + (item.payment_cash || 0) + (item.tip_customer_cash || 0), 0);
-        const currentCardCollected = currentItems.reduce((sum, item) => sum + (item.payment_card || 0) + (item.tip_customer_card || 0), 0);
+        const currentCardCollected = currentCardItems.reduce((sum, item) => sum + (item.payment_card || 0) + (item.tip_customer_card || 0), 0);
         const currentTipsGiven = currentItems.reduce((sum, item) => sum + (item.tip_customer_cash || 0) + (item.tip_customer_card || 0), 0);
         const currentTipsPaired = currentItems.reduce((sum, item) => sum + (item.tip_receptionist || 0), 0);
 
         const previousCashCollected = previousItems.reduce((sum, item) => sum + (item.payment_cash || 0) + (item.tip_customer_cash || 0), 0);
-        const previousCardCollected = previousItems.reduce((sum, item) => sum + (item.payment_card || 0) + (item.tip_customer_card || 0), 0);
+        const previousCardCollected = previousCardItems.reduce((sum, item) => sum + (item.payment_card || 0) + (item.tip_customer_card || 0), 0);
         const previousTipsGiven = previousItems.reduce((sum, item) => sum + (item.tip_customer_cash || 0) + (item.tip_customer_card || 0), 0);
         const previousTipsPaired = previousItems.reduce((sum, item) => sum + (item.tip_receptionist || 0), 0);
 
