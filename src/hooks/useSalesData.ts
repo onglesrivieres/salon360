@@ -136,13 +136,13 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
         const currentItems = currentItemsResult?.data || [];
         const previousItems = previousItemsResult?.data || [];
 
-        const currentCashCollected = currentItems.reduce((sum, item) => sum + (item.payment_cash || 0), 0);
-        const currentCardCollected = currentItems.reduce((sum, item) => sum + (item.payment_card || 0), 0);
+        const currentCashCollected = currentItems.reduce((sum, item) => sum + (item.payment_cash || 0) + (item.tip_customer_cash || 0) + (item.tip_receptionist || 0), 0);
+        const currentCardCollected = currentItems.reduce((sum, item) => sum + (item.payment_card || 0) + (item.tip_customer_card || 0), 0);
         const currentTipsGiven = currentItems.reduce((sum, item) => sum + (item.tip_customer_cash || 0) + (item.tip_customer_card || 0), 0);
         const currentTipsPaired = currentItems.reduce((sum, item) => sum + (item.tip_receptionist || 0), 0);
 
-        const previousCashCollected = previousItems.reduce((sum, item) => sum + (item.payment_cash || 0), 0);
-        const previousCardCollected = previousItems.reduce((sum, item) => sum + (item.payment_card || 0), 0);
+        const previousCashCollected = previousItems.reduce((sum, item) => sum + (item.payment_cash || 0) + (item.tip_customer_cash || 0) + (item.tip_receptionist || 0), 0);
+        const previousCardCollected = previousItems.reduce((sum, item) => sum + (item.payment_card || 0) + (item.tip_customer_card || 0), 0);
         const previousTipsGiven = previousItems.reduce((sum, item) => sum + (item.tip_customer_cash || 0) + (item.tip_customer_card || 0), 0);
         const previousTipsPaired = previousItems.reduce((sum, item) => sum + (item.tip_receptionist || 0), 0);
 
