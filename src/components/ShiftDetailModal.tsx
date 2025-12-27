@@ -6,12 +6,19 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { useToast } from './ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
+import { formatTimeEST, formatDateEST } from '../lib/timezone';
 
 interface ShiftDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   attendance: StoreAttendance | null;
   onProposalSubmitted?: () => void;
+}
+
+function convertUTCToESTDate(utcDate: Date): Date {
+  const EST_TIMEZONE = 'America/New_York';
+  const estDateString = utcDate.toLocaleString('en-US', { timeZone: EST_TIMEZONE });
+  return new Date(estDateString);
 }
 
 export function ShiftDetailModal({
@@ -39,13 +46,13 @@ export function ShiftDetailModal({
   function initializeTimes() {
     if (!attendance) return;
 
-    const checkInDate = new Date(attendance.check_in_time);
-    const checkInTimeStr = `${String(checkInDate.getHours()).padStart(2, '0')}:${String(checkInDate.getMinutes()).padStart(2, '0')}`;
+    const checkInDateEST = convertUTCToESTDate(new Date(attendance.check_in_time));
+    const checkInTimeStr = `${String(checkInDateEST.getHours()).padStart(2, '0')}:${String(checkInDateEST.getMinutes()).padStart(2, '0')}`;
     setProposedCheckInTime(checkInTimeStr);
 
     if (attendance.check_out_time) {
-      const checkOutDate = new Date(attendance.check_out_time);
-      const checkOutTimeStr = `${String(checkOutDate.getHours()).padStart(2, '0')}:${String(checkOutDate.getMinutes()).padStart(2, '0')}`;
+      const checkOutDateEST = convertUTCToESTDate(new Date(attendance.check_out_time));
+      const checkOutTimeStr = `${String(checkOutDateEST.getHours()).padStart(2, '0')}:${String(checkOutDateEST.getMinutes()).padStart(2, '0')}`;
       setProposedCheckOutTime(checkOutTimeStr);
     } else {
       setProposedCheckOutTime('');
@@ -84,13 +91,13 @@ export function ShiftDetailModal({
       return;
     }
 
-    const currentCheckIn = new Date(attendance.check_in_time);
-    const currentCheckInTimeStr = `${String(currentCheckIn.getHours()).padStart(2, '0')}:${String(currentCheckIn.getMinutes()).padStart(2, '0')}`;
+    const currentCheckInEST = convertUTCToESTDate(new Date(attendance.check_in_time));
+    const currentCheckInTimeStr = `${String(currentCheckInEST.getHours()).padStart(2, '0')}:${String(currentCheckInEST.getMinutes()).padStart(2, '0')}`;
 
     let currentCheckOutTimeStr = '';
     if (attendance.check_out_time) {
-      const currentCheckOut = new Date(attendance.check_out_time);
-      currentCheckOutTimeStr = `${String(currentCheckOut.getHours()).padStart(2, '0')}:${String(currentCheckOut.getMinutes()).padStart(2, '0')}`;
+      const currentCheckOutEST = convertUTCToESTDate(new Date(attendance.check_out_time));
+      currentCheckOutTimeStr = `${String(currentCheckOutEST.getHours()).padStart(2, '0')}:${String(currentCheckOutEST.getMinutes()).padStart(2, '0')}`;
     }
 
     const checkInChanged = proposedCheckInTime !== currentCheckInTimeStr;
@@ -124,15 +131,26 @@ export function ShiftDetailModal({
       let proposedCheckInISO = null;
       if (checkInChanged && proposedCheckInTime) {
         const [hour, minute] = proposedCheckInTime.split(':').map(Number);
-        const proposedCheckInDate = new Date(year, month, day, hour, minute);
-        proposedCheckInISO = proposedCheckInDate.toISOString();
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        const estDateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+        const utcDate = new Date(new Date(estDateString).toLocaleString('en-US', { timeZone: 'UTC' }));
+        const estDate = new Date(new Date(estDateString).toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        const diff = utcDate.getTime() - estDate.getTime();
+        const localAsEST = new Date(estDateString);
+        const correctedUTC = new Date(localAsEST.getTime() - diff);
+        proposedCheckInISO = correctedUTC.toISOString();
       }
 
       let proposedCheckOutISO = null;
       if (checkOutChanged && proposedCheckOutTime) {
         const [hour, minute] = proposedCheckOutTime.split(':').map(Number);
-        const proposedCheckOutDate = new Date(year, month, day, hour, minute);
-        proposedCheckOutISO = proposedCheckOutDate.toISOString();
+        const estDateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+        const utcDate = new Date(new Date(estDateString).toLocaleString('en-US', { timeZone: 'UTC' }));
+        const estDate = new Date(new Date(estDateString).toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        const diff = utcDate.getTime() - estDate.getTime();
+        const localAsEST = new Date(estDateString);
+        const correctedUTC = new Date(localAsEST.getTime() - diff);
+        proposedCheckOutISO = correctedUTC.toISOString();
       }
 
       const { error } = await supabase
@@ -166,23 +184,6 @@ export function ShiftDetailModal({
   const currentCheckIn = new Date(attendance.check_in_time);
   const currentCheckOut = attendance.check_out_time ? new Date(attendance.check_out_time) : null;
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
   return (
     <Modal
       isOpen={isOpen}
@@ -192,7 +193,12 @@ export function ShiftDetailModal({
       <div className="space-y-6">
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <Calendar className="w-5 h-5" />
-          <span>{formatDate(attendance.work_date)}</span>
+          <span>{formatDateEST(new Date(attendance.work_date), {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}</span>
         </div>
 
         {pendingProposal && (
@@ -219,7 +225,11 @@ export function ShiftDetailModal({
               <label className="text-xs text-gray-500 mb-1 block">Check In</label>
               <div className="flex items-center gap-2 text-gray-900">
                 <Clock className="w-4 h-4 text-green-600" />
-                <span className="font-medium">{formatTime(currentCheckIn)}</span>
+                <span className="font-medium">{formatTimeEST(currentCheckIn, {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                })}</span>
               </div>
             </div>
             <div>
@@ -227,7 +237,11 @@ export function ShiftDetailModal({
               <div className="flex items-center gap-2 text-gray-900">
                 <Clock className="w-4 h-4 text-red-600" />
                 <span className="font-medium">
-                  {currentCheckOut ? formatTime(currentCheckOut) : 'Not checked out'}
+                  {currentCheckOut ? formatTimeEST(currentCheckOut, {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                  }) : 'Not checked out'}
                 </span>
               </div>
             </div>

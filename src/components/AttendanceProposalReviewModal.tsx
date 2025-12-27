@@ -5,6 +5,7 @@ import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { useToast } from './ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
+import { formatTimeEST, formatDateEST } from '../lib/timezone';
 
 interface AttendanceProposalReviewModalProps {
   isOpen: boolean;
@@ -138,8 +139,7 @@ export function AttendanceProposalReviewModal({
   }
 
   const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString('en-US', {
+    return formatTimeEST(new Date(dateStr), {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
@@ -147,7 +147,7 @@ export function AttendanceProposalReviewModal({
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
+    return formatDateEST(new Date(dateStr), {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
