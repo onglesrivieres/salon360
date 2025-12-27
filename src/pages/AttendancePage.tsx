@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Download, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Users, Bell } from 'lucide-react';
 import { supabase, StoreAttendance } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { formatTimeEST, formatDateEST } from '../lib/timezone';
+import { ShiftDetailModal } from '../components/ShiftDetailModal';
+import { AttendanceProposalReviewModal } from '../components/AttendanceProposalReviewModal';
+import { NotificationBadge } from '../components/ui/NotificationBadge';
 
 interface AttendanceSession {
   attendanceRecordId: string;
@@ -14,6 +17,7 @@ interface AttendanceSession {
   totalHours?: number;
   status: string;
   storeCode: string;
+  hasPendingProposal?: boolean;
 }
 
 interface AttendanceSummary {
@@ -32,12 +36,17 @@ export function AttendancePage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [attendanceData, setAttendanceData] = useState<StoreAttendance[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedAttendance, setSelectedAttendance] = useState<StoreAttendance | null>(null);
+  const [isShiftDetailModalOpen, setIsShiftDetailModalOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [pendingProposalsCount, setPendingProposalsCount] = useState(0);
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
   useEffect(() => {
     if (selectedStoreId) {
       fetchAttendance();
+      fetchPendingProposalsCount();
     }
   }, [currentDate, selectedStoreId]);
 
@@ -65,6 +74,28 @@ export function AttendancePage() {
       showToast('Failed to load attendance data', 'error');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchPendingProposalsCount() {
+    if (!selectedStoreId) return;
+
+    try {
+      const { startDate, endDate } = getDateRange();
+
+      const { data, error } = await supabase
+        .from('attendance_change_proposals')
+        .select('id, attendance_records!inner(store_id, work_date)', { count: 'exact', head: true })
+        .eq('attendance_records.store_id', selectedStoreId)
+        .gte('attendance_records.work_date', startDate)
+        .lte('attendance_records.work_date', endDate)
+        .eq('status', 'pending');
+
+      if (error) throw error;
+
+      setPendingProposalsCount(data || 0);
+    } catch (error: any) {
+      console.error('Error fetching pending proposals count:', error);
     }
   }
 
@@ -154,7 +185,8 @@ export function AttendancePage() {
         checkOutTime: record.check_out_time,
         totalHours: record.total_hours,
         status: record.status,
-        storeCode: record.store_code
+        storeCode: record.store_code,
+        hasPendingProposal: record.has_pending_proposal
       });
 
       if (record.total_hours) {
@@ -184,6 +216,41 @@ export function AttendancePage() {
 
   function navigateToday() {
     setCurrentDate(new Date());
+  }
+
+  function handleShiftClick(record: AttendanceSession, employeeId: string, employeeName: string, workDate: string) {
+    const isTechnician = session?.role_permission === 'Technician';
+
+    if (isTechnician && session?.employee_id !== employeeId) {
+      return;
+    }
+
+    const attendanceRecord: StoreAttendance = {
+      attendance_record_id: record.attendanceRecordId,
+      employee_id: employeeId,
+      employee_name: employeeName,
+      work_date: workDate,
+      check_in_time: record.checkInTime,
+      check_out_time: record.checkOutTime,
+      total_hours: record.totalHours,
+      status: record.status,
+      pay_type: '',
+      store_code: record.storeCode,
+      has_pending_proposal: record.hasPendingProposal
+    };
+
+    setSelectedAttendance(attendanceRecord);
+    setIsShiftDetailModalOpen(true);
+  }
+
+  function handleProposalSubmitted() {
+    fetchAttendance();
+    fetchPendingProposalsCount();
+  }
+
+  function handleProposalReviewed() {
+    fetchAttendance();
+    fetchPendingProposalsCount();
   }
 
   function exportCSV() {
@@ -258,12 +325,28 @@ export function AttendancePage() {
     <div className="w-full max-w-full mx-auto px-2">
       <div className="mb-2 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
         <h2 className="text-sm md:text-base font-bold text-gray-900">Attendance Tracking</h2>
-        {session && session.role && Permissions.endOfDay.canExport(session.role) && (
-          <Button variant="secondary" size="sm" onClick={exportCSV}>
-            <Download className="w-3 h-3 mr-1" />
-            Export
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {session && session.role && Permissions.endOfDay.canView(session.role) && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsReviewModalOpen(true)}
+              className="relative"
+            >
+              <Bell className="w-3 h-3 mr-1" />
+              Review Requests
+              {pendingProposalsCount > 0 && (
+                <NotificationBadge count={pendingProposalsCount} />
+              )}
+            </Button>
+          )}
+          {session && session.role && Permissions.endOfDay.canExport(session.role) && (
+            <Button variant="secondary" size="sm" onClick={exportCSV}>
+              <Download className="w-3 h-3 mr-1" />
+              Export
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow mb-2">
@@ -344,18 +427,30 @@ export function AttendancePage() {
                         >
                           {sessions && sessions.length > 0 ? (
                             <div className="space-y-0.5">
-                              {sessions.map((record, sessionIdx) => (
+                              {sessions.map((record, sessionIdx) => {
+                                const isClickable = isTechnician
+                                  ? employeeId === session?.employee_id
+                                  : true;
+
+                                return (
                                 <div
                                   key={sessionIdx}
-                                  className={`relative group rounded p-0.5 ${
-                                    record.status === 'checked_in'
+                                  onClick={() => isClickable && handleShiftClick(record, employeeId, employee.employeeName, dateStr)}
+                                  className={`relative group rounded p-0.5 transition-opacity ${
+                                    record.hasPendingProposal
+                                      ? 'bg-yellow-100 animate-pulse cursor-pointer hover:opacity-80'
+                                      : record.status === 'checked_in'
                                       ? 'bg-green-500 animate-pulse'
                                       : 'bg-gray-200'
-                                  }`}
+                                  } ${isClickable ? 'cursor-pointer hover:opacity-80' : ''}`}
                                 >
                                   <div className="leading-tight">
                                     <div className={`text-[9px] ${
-                                      record.status === 'checked_in' ? 'text-white' : 'text-gray-700'
+                                      record.status === 'checked_in'
+                                        ? 'text-white'
+                                        : record.hasPendingProposal
+                                        ? 'text-yellow-900'
+                                        : 'text-gray-700'
                                     }`}>
                                       {formatTimeEST(record.checkInTime, {
                                         hour: 'numeric',
@@ -367,6 +462,8 @@ export function AttendancePage() {
                                       <div className={`text-[9px] ${
                                         record.status === 'checked_in'
                                           ? 'text-white'
+                                          : record.hasPendingProposal
+                                          ? 'text-yellow-900'
                                           : record.status === 'auto_checked_out'
                                           ? 'text-orange-600'
                                           : 'text-gray-700'
@@ -380,14 +477,25 @@ export function AttendancePage() {
                                     )}
                                     {record.totalHours && !(isTechnician && employee.payType === 'daily') && (
                                       <div className={`text-[9px] font-semibold ${
-                                        record.status === 'checked_in' ? 'text-white' : 'text-gray-900'
+                                        record.status === 'checked_in'
+                                          ? 'text-white'
+                                          : record.hasPendingProposal
+                                          ? 'text-yellow-900'
+                                          : 'text-gray-900'
                                       }`}>
-                                        {record.totalHours.toFixed(1)}h <span className="text-[8px] text-gray-500">[{getStoreCodeAbbreviation(record.storeCode)}]</span>
+                                        {record.totalHours.toFixed(1)}h <span className={`text-[8px] ${
+                                          record.status === 'checked_in'
+                                            ? 'text-white'
+                                            : record.hasPendingProposal
+                                            ? 'text-yellow-700'
+                                            : 'text-gray-500'
+                                        }`}>[{getStoreCodeAbbreviation(record.storeCode)}]</span>
                                       </div>
                                     )}
                                   </div>
                                 </div>
-                              ))}
+                              );
+                              })}
                             </div>
                           ) : (
                             <div className="text-gray-300 text-[10px]">-</div>
@@ -429,6 +537,10 @@ export function AttendancePage() {
             <span className="text-[10px] text-gray-600">Currently checked in</span>
           </div>
           <div className="flex items-center gap-1.5">
+            <div className="w-10 h-6 bg-yellow-100 animate-pulse rounded"></div>
+            <span className="text-[10px] text-gray-600">Pending change request</span>
+          </div>
+          <div className="flex items-center gap-1.5">
             <div className="w-10 h-6 bg-gray-200 rounded"></div>
             <span className="text-[10px] text-gray-600">Checked out</span>
           </div>
@@ -440,6 +552,22 @@ export function AttendancePage() {
           </div>
         </div>
       </div>
+
+      <ShiftDetailModal
+        isOpen={isShiftDetailModalOpen}
+        onClose={() => setIsShiftDetailModalOpen(false)}
+        attendance={selectedAttendance}
+        onProposalSubmitted={handleProposalSubmitted}
+      />
+
+      {session && session.role && (Permissions.endOfDay.canView(session.role)) && (
+        <AttendanceProposalReviewModal
+          isOpen={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+          storeId={selectedStoreId || ''}
+          onProposalReviewed={handleProposalReviewed}
+        />
+      )}
     </div>
   );
 }

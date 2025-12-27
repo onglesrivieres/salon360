@@ -267,6 +267,7 @@ export interface StoreAttendance {
   status: string;
   pay_type: string;
   store_code: string;
+  has_pending_proposal?: boolean;
 }
 
 export interface AttendanceComment {
@@ -277,6 +278,30 @@ export interface AttendanceComment {
   created_at: string;
   updated_at: string;
   employee?: Technician;
+}
+
+export type AttendanceProposalStatus = 'pending' | 'approved' | 'rejected';
+
+export interface AttendanceChangeProposal {
+  id: string;
+  attendance_record_id: string;
+  employee_id: string;
+  proposed_check_in_time?: string;
+  proposed_check_out_time?: string;
+  current_check_in_time: string;
+  current_check_out_time?: string;
+  reason_comment: string;
+  status: AttendanceProposalStatus;
+  reviewed_by_employee_id?: string;
+  reviewed_at?: string;
+  review_comment?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AttendanceChangeProposalWithDetails extends AttendanceChangeProposal {
+  employee?: Technician;
+  reviewed_by?: Technician;
 }
 
 export interface PendingApprovalTicket {
