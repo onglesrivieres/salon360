@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Printer, Plus, Save, DollarSign, AlertCircle, CheckCircle, Edit, ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Download, Printer, Plus, Save, DollarSign, AlertCircle, CheckCircle, Edit, ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Eye, Vault } from 'lucide-react';
 import { supabase, EndOfDayRecord, CashTransaction, PendingCashTransactionApproval, CashTransactionType } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -76,6 +76,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [isCashOutModalOpen, setIsCashOutModalOpen] = useState(false);
   const [isCashInListModalOpen, setIsCashInListModalOpen] = useState(false);
   const [isCashOutListModalOpen, setIsCashOutListModalOpen] = useState(false);
+  const [isSafeDepositModalOpen, setIsSafeDepositModalOpen] = useState(false);
 
   useEffect(() => {
     loadEODData();
@@ -698,8 +699,17 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                 <h3 className="text-sm font-semibold text-gray-900">From Tickets</h3>
               </div>
               <div className="text-center py-3">
-                <p className="text-xs text-gray-600 mb-1">Total Amount</p>
+                <p className="text-xs text-gray-600 mb-1">Current Amount</p>
                 <p className="text-2xl font-bold text-gray-900 mb-3">${expectedCash.toFixed(2)}</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsSafeDepositModalOpen(true)}
+                  className="w-full"
+                >
+                  <Vault className="w-3 h-3 mr-1" />
+                  Deposit into Safe
+                </Button>
               </div>
             </div>
 
@@ -999,6 +1009,15 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         onClose={() => setIsCashOutModalOpen(false)}
         onSubmit={(data) => handleCashTransactionSubmit('cash_out', data)}
         transactionType="cash_out"
+      />
+
+      <CashTransactionModal
+        isOpen={isSafeDepositModalOpen}
+        onClose={() => setIsSafeDepositModalOpen(false)}
+        onSubmit={(data) => handleCashTransactionSubmit('cash_out', data)}
+        transactionType="cash_out"
+        defaultCategory="Safe Deposit"
+        defaultDescription="Safe deposit from till"
       />
 
       <TransactionListModal

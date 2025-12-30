@@ -10,6 +10,8 @@ interface CashTransactionModalProps {
   onClose: () => void;
   onSubmit: (data: TransactionData) => void;
   transactionType: CashTransactionType;
+  defaultCategory?: string;
+  defaultDescription?: string;
 }
 
 export interface TransactionData {
@@ -19,6 +21,7 @@ export interface TransactionData {
 }
 
 const CATEGORIES = [
+  'Safe Deposit',
   'Bank Deposit',
   'Supplies Purchase',
   'Tip Payout',
@@ -32,11 +35,20 @@ export function CashTransactionModal({
   onClose,
   onSubmit,
   transactionType,
+  defaultCategory,
+  defaultDescription,
 }: CashTransactionModalProps) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [errors, setErrors] = useState<{ amount?: string; description?: string }>({});
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setDescription(defaultDescription || '');
+      setCategory(defaultCategory || '');
+    }
+  }, [isOpen, defaultCategory, defaultDescription]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
