@@ -728,3 +728,35 @@ export interface PendingCashTransactionApproval {
   created_at: string;
   requires_manager_approval: boolean;
 }
+
+export interface SafeBalanceHistory {
+  id: string;
+  store_id: string;
+  date: string;
+  opening_balance: number;
+  closing_balance: number;
+  total_deposits: number;
+  total_withdrawals: number;
+  created_by_id: string;
+  updated_by_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SafeBalanceSummary {
+  opening_balance: number;
+  total_deposits: number;
+  total_withdrawals: number;
+  closing_balance: number;
+}
+
+export interface SafeTransaction {
+  transaction_date: string;
+  transaction_type: 'deposit' | 'withdrawal';
+  amount: number;
+  description: string;
+  running_balance: number;
+  created_by_name: string;
+  created_at: string;
+  status: string;
+}
