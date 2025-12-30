@@ -856,7 +856,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                   className="w-full"
                 >
                   <Vault className="w-3 h-3 mr-1" />
-                  Deposit into Safe
+                  Safe Drop
                 </Button>
               </div>
             </div>
