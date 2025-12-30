@@ -864,14 +864,14 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                           <>
                             <div className="flex justify-between items-center">
                               <span className="text-[9px] text-gray-600">T. (given)</span>
-                              <span className={`text-[9px] ${summary.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
-                                ${summary.tips_cash.toFixed(2)}
+                              <span className={`text-[9px] ${summary.tips_customer === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
+                                ${summary.tips_customer.toFixed(2)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-[9px] text-gray-600">T. (paired)</span>
-                              <span className={`text-[9px] ${summary.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
-                                ${summary.tips_card.toFixed(2)}
+                              <span className={`text-[9px] ${summary.tips_receptionist === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
+                                ${summary.tips_receptionist.toFixed(2)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
