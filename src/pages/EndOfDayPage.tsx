@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Printer, Plus, Save, DollarSign, AlertCircle, AlertTriangle, CheckCircle, Edit, ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Eye, Vault, TrendingUp, TrendingDown } from 'lucide-react';
-import { supabase, EndOfDayRecord, CashTransaction, PendingCashTransactionApproval, CashTransactionType, SafeBalanceSummary, CashTransactionWithDetails } from '../lib/supabase';
+import { Download, Printer, Plus, Save, DollarSign, AlertCircle, AlertTriangle, CheckCircle, Edit, ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Eye, Vault } from 'lucide-react';
+import { supabase, EndOfDayRecord, CashTransaction, PendingCashTransactionApproval, CashTransactionType } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { TicketEditor } from '../components/TicketEditor';
 import { CashCountModal } from '../components/CashCountModal';
 import { CashTransactionModal, TransactionData } from '../components/CashTransactionModal';
 import { TransactionListModal } from '../components/TransactionListModal';
-import { SafeWithdrawalModal, WithdrawalData } from '../components/SafeWithdrawalModal';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { getCurrentDateEST } from '../lib/timezone';
@@ -78,23 +77,10 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [isCashInListModalOpen, setIsCashInListModalOpen] = useState(false);
   const [isCashOutListModalOpen, setIsCashOutListModalOpen] = useState(false);
   const [isSafeDepositModalOpen, setIsSafeDepositModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'cash' | 'safe'>('cash');
-
-  const [safeBalance, setSafeBalance] = useState<SafeBalanceSummary | null>(null);
-  const [safeDeposits, setSafeDeposits] = useState<CashTransactionWithDetails[]>([]);
-  const [safeWithdrawals, setSafeWithdrawals] = useState<CashTransactionWithDetails[]>([]);
-  const [isSafeWithdrawalModalOpen, setIsSafeWithdrawalModalOpen] = useState(false);
-  const [loadingSafeBalance, setLoadingSafeBalance] = useState(false);
 
   useEffect(() => {
     loadEODData();
   }, [selectedDate, selectedStoreId]);
-
-  useEffect(() => {
-    if (activeTab === 'safe') {
-      loadSafeBalanceData();
-    }
-  }, [selectedDate, selectedStoreId, activeTab]);
 
   async function loadEODData() {
     if (!selectedStoreId) return;
@@ -219,74 +205,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     }
   }
 
-  async function loadSafeBalanceData() {
-    if (!selectedStoreId) return;
-
-    try {
-      setLoadingSafeBalance(true);
-
-      const { data: balanceData, error: balanceError } = await supabase
-        .rpc('get_safe_balance_for_date', {
-          p_store_id: selectedStoreId,
-          p_date: selectedDate,
-        })
-        .maybeSingle();
-
-      if (balanceError) throw balanceError;
-
-      setSafeBalance(balanceData || {
-        opening_balance: 0,
-        total_deposits: 0,
-        total_withdrawals: 0,
-        closing_balance: 0,
-      });
-
-      const { data: transactions, error: transactionsError } = await supabase
-        .from('cash_transactions')
-        .select(`
-          *,
-          created_by:employees!cash_transactions_created_by_id_fkey (
-            id,
-            name:legal_name
-          ),
-          approved_by:employees!cash_transactions_manager_approved_by_id_fkey (
-            id,
-            name:legal_name
-          )
-        `)
-        .eq('store_id', selectedStoreId)
-        .eq('date', selectedDate)
-        .eq('transaction_type', 'cash_out')
-        .in('category', ['Safe Deposit', 'Safe Withdrawal'])
-        .order('created_at', { ascending: false });
-
-      if (transactionsError) throw transactionsError;
-
-      const deposits = (transactions || [])
-        .filter(t => t.category === 'Safe Deposit')
-        .map(t => ({
-          ...t,
-          created_by_name: t.created_by?.name,
-          manager_approved_by_name: t.approved_by?.name,
-        }));
-
-      const withdrawals = (transactions || [])
-        .filter(t => t.category === 'Safe Withdrawal')
-        .map(t => ({
-          ...t,
-          created_by_name: t.created_by?.name,
-          manager_approved_by_name: t.approved_by?.name,
-        }));
-
-      setSafeDeposits(deposits);
-      setSafeWithdrawals(withdrawals);
-    } catch (error) {
-      console.error('Failed to load safe balance data:', error);
-      showToast('Failed to load safe balance data', 'error');
-    } finally {
-      setLoadingSafeBalance(false);
-    }
-  }
 
   function calculateTotal(denominations: CashDenominations): number {
     return (
@@ -662,41 +580,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     }
   }
 
-  async function handleSafeWithdrawalSubmit(data: WithdrawalData) {
-    if (!selectedStoreId || !session?.employee_id) {
-      showToast('Missing required information', 'error');
-      return;
-    }
-
-    try {
-      setSaving(true);
-
-      const { error } = await supabase
-        .from('cash_transactions')
-        .insert({
-          store_id: selectedStoreId,
-          date: selectedDate,
-          transaction_type: 'cash_out',
-          amount: data.amount,
-          description: data.description,
-          category: 'Safe Withdrawal',
-          created_by_id: session.employee_id,
-          status: 'pending_approval',
-          requires_manager_approval: true,
-        });
-
-      if (error) throw error;
-
-      showToast('Safe withdrawal submitted for manager approval', 'success');
-      setIsSafeWithdrawalModalOpen(false);
-      await loadSafeBalanceData();
-    } catch (error) {
-      showToast('Failed to save withdrawal', 'error');
-      console.error(error);
-    } finally {
-      setSaving(false);
-    }
-  }
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -774,41 +657,12 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         </div>
       </div>
 
-      <div className="mb-4 border-b border-gray-200">
-        <div className="flex gap-1">
-          <button
-            onClick={() => setActiveTab('cash')}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors relative flex items-center gap-2 ${
-              activeTab === 'cash'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-            }`}
-          >
-            <DollarSign className="w-4 h-4" />
-            Cash Reconciliation
-          </button>
-          <button
-            onClick={() => setActiveTab('safe')}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors relative flex items-center gap-2 ${
-              activeTab === 'safe'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-            }`}
-          >
-            <Vault className="w-4 h-4" />
-            Safe Balance
-          </button>
-        </div>
-      </div>
-
       {loading ? (
         <div className="flex items-center justify-center h-64">
           <div className="text-sm text-gray-500">Loading...</div>
         </div>
       ) : (
         <>
-          {activeTab === 'cash' && (
-            <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
             <div className={`bg-white rounded-lg shadow p-4 ${!isOpeningCashRecorded ? 'ring-2 ring-amber-400' : ''}`}>
               <div className="flex items-center gap-2 mb-3">
@@ -1155,201 +1009,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               )}
             </div>
           )}
-            </>
-          )}
-
-          {activeTab === 'safe' && (
-            <div className="space-y-4">
-              {loadingSafeBalance ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="text-sm text-gray-500">Loading safe balance...</div>
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-white rounded-lg shadow p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <DollarSign className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-sm font-semibold text-gray-900">Opening Balance</h3>
-                      </div>
-                      <p className="text-2xl font-bold text-blue-600">
-                        ${(safeBalance?.opening_balance || 0).toFixed(2)}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">From previous day</p>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp className="w-4 h-4 text-green-600" />
-                        <h3 className="text-sm font-semibold text-gray-900">Total Deposits</h3>
-                      </div>
-                      <p className="text-2xl font-bold text-green-600">
-                        ${(safeBalance?.total_deposits || 0).toFixed(2)}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {safeDeposits.filter(d => d.status === 'approved').length} approved
-                      </p>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <TrendingDown className="w-4 h-4 text-red-600" />
-                        <h3 className="text-sm font-semibold text-gray-900">Total Withdrawals</h3>
-                      </div>
-                      <p className="text-2xl font-bold text-red-600">
-                        ${(safeBalance?.total_withdrawals || 0).toFixed(2)}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {safeWithdrawals.filter(w => w.status === 'approved').length} approved
-                      </p>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg shadow p-4 text-white">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Vault className="w-4 h-4" />
-                        <h3 className="text-sm font-semibold">Current Balance</h3>
-                      </div>
-                      <p className="text-2xl font-bold">
-                        ${(safeBalance?.closing_balance || 0).toFixed(2)}
-                      </p>
-                      <p className="text-xs opacity-90 mt-1">Safe total</p>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => setIsSafeWithdrawalModalOpen(true)}
-                    >
-                      <ArrowUpRight className="w-4 h-4 mr-1" />
-                      Record Withdrawal
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div className="bg-white rounded-lg shadow">
-                      <div className="border-b border-gray-200 p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <TrendingUp className="w-5 h-5 text-green-600" />
-                            <h3 className="text-lg font-semibold text-gray-900">Safe Deposits</h3>
-                          </div>
-                          <span className="text-sm text-gray-500">
-                            {safeDeposits.length} {safeDeposits.length === 1 ? 'transaction' : 'transactions'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-4">
-                        {safeDeposits.length === 0 ? (
-                          <div className="text-center py-8 text-gray-500">
-                            <TrendingUp className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                            <p className="text-sm">No deposits recorded for this date</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            {safeDeposits.map((deposit) => (
-                              <div
-                                key={deposit.id}
-                                className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
-                              >
-                                <div className="flex items-start justify-between mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-lg font-bold text-green-600">
-                                      +${parseFloat(deposit.amount.toString()).toFixed(2)}
-                                    </span>
-                                    <span
-                                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                        deposit.status === 'approved'
-                                          ? 'bg-green-100 text-green-700'
-                                          : deposit.status === 'rejected'
-                                          ? 'bg-red-100 text-red-700'
-                                          : 'bg-amber-100 text-amber-700'
-                                      }`}
-                                    >
-                                      {deposit.status === 'approved'
-                                        ? 'Approved'
-                                        : deposit.status === 'rejected'
-                                        ? 'Rejected'
-                                        : 'Pending'}
-                                    </span>
-                                  </div>
-                                </div>
-                                <p className="text-sm text-gray-900 font-medium">{deposit.description}</p>
-                                <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                                  <span>By: {deposit.created_by_name}</span>
-                                  <span>{new Date(deposit.created_at).toLocaleTimeString()}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow">
-                      <div className="border-b border-gray-200 p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <TrendingDown className="w-5 h-5 text-red-600" />
-                            <h3 className="text-lg font-semibold text-gray-900">Safe Withdrawals</h3>
-                          </div>
-                          <span className="text-sm text-gray-500">
-                            {safeWithdrawals.length} {safeWithdrawals.length === 1 ? 'transaction' : 'transactions'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-4">
-                        {safeWithdrawals.length === 0 ? (
-                          <div className="text-center py-8 text-gray-500">
-                            <TrendingDown className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                            <p className="text-sm">No withdrawals recorded for this date</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            {safeWithdrawals.map((withdrawal) => (
-                              <div
-                                key={withdrawal.id}
-                                className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
-                              >
-                                <div className="flex items-start justify-between mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-lg font-bold text-red-600">
-                                      -${parseFloat(withdrawal.amount.toString()).toFixed(2)}
-                                    </span>
-                                    <span
-                                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                        withdrawal.status === 'approved'
-                                          ? 'bg-green-100 text-green-700'
-                                          : withdrawal.status === 'rejected'
-                                          ? 'bg-red-100 text-red-700'
-                                          : 'bg-amber-100 text-amber-700'
-                                      }`}
-                                    >
-                                      {withdrawal.status === 'approved'
-                                        ? 'Approved'
-                                        : withdrawal.status === 'rejected'
-                                        ? 'Rejected'
-                                        : 'Pending'}
-                                    </span>
-                                  </div>
-                                </div>
-                                <p className="text-sm text-gray-900 font-medium">{withdrawal.description}</p>
-                                <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                                  <span>By: {withdrawal.created_by_name}</span>
-                                  <span>{new Date(withdrawal.created_at).toLocaleTimeString()}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
         </>
       )}
 
@@ -1422,13 +1081,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           setIsCashOutListModalOpen(false);
           setIsCashOutModalOpen(true);
         }}
-      />
-
-      <SafeWithdrawalModal
-        isOpen={isSafeWithdrawalModalOpen}
-        onClose={() => setIsSafeWithdrawalModalOpen(false)}
-        onSubmit={handleSafeWithdrawalSubmit}
-        currentBalance={safeBalance?.closing_balance || 0}
       />
     </div>
   );

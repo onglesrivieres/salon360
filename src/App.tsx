@@ -13,6 +13,7 @@ import { getCurrentDateEST } from './lib/timezone';
 import { StoreSelectionModal } from './components/StoreSelectionModal';
 
 const EndOfDayPage = lazy(() => import('./pages/EndOfDayPage').then(m => ({ default: m.EndOfDayPage })));
+const SafeBalancePage = lazy(() => import('./pages/SafeBalancePage').then(m => ({ default: m.SafeBalancePage })));
 const TipReportPage = lazy(() => import('./pages/TipReportPage').then(m => ({ default: m.TipReportPage })));
 const AttendancePage = lazy(() => import('./pages/AttendancePage').then(m => ({ default: m.AttendancePage })));
 const EmployeesPage = lazy(() => import('./pages/EmployeesPage').then(m => ({ default: m.EmployeesPage })));
@@ -23,7 +24,7 @@ const PendingApprovalsPage = lazy(() => import('./pages/PendingApprovalsPage').t
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
 const InsightsPage = lazy(() => import('./pages/InsightsPage').then(m => ({ default: m.InsightsPage })));
 
-type Page = 'tickets' | 'eod' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'configuration' | 'approvals' | 'inventory' | 'insights';
+type Page = 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'configuration' | 'approvals' | 'inventory' | 'insights';
 
 function AppContent() {
   const { isAuthenticated, selectedStoreId, selectStore, session, login } = useAuth();
@@ -177,6 +178,7 @@ function AppContent() {
           {currentPage === 'approvals' && <PendingApprovalsPage />}
           {currentPage === 'tipreport' && <TipReportPage selectedDate={selectedDate} onDateChange={handleDateChange} />}
           {currentPage === 'eod' && <EndOfDayPage selectedDate={selectedDate} onDateChange={handleDateChange} />}
+          {currentPage === 'safebalance' && <SafeBalancePage selectedDate={selectedDate} onDateChange={handleDateChange} />}
           {currentPage === 'attendance' && <AttendancePage />}
           {currentPage === 'technicians' && <EmployeesPage />}
           {currentPage === 'inventory' && <InventoryPage />}
