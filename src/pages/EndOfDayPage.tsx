@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Printer, Plus, Save, DollarSign, AlertCircle, CheckCircle, Edit, ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Eye, Vault } from 'lucide-react';
+import { Download, Printer, Plus, Save, DollarSign, AlertCircle, AlertTriangle, CheckCircle, Edit, ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Eye, Vault } from 'lucide-react';
 import { supabase, EndOfDayRecord, CashTransaction, PendingCashTransactionApproval, CashTransactionType } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -816,12 +816,51 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-2xl font-bold text-gray-900">
-                      Net Cash Collected
+                      Expected Cash Collected
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-gray-900">
                       ${netCashCollected.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className={`mt-4 p-4 rounded-lg border-2 ${
+                isBalanced
+                  ? 'bg-green-50 border-green-500'
+                  : cashVariance < 0
+                    ? 'bg-red-50 border-red-500'
+                    : 'bg-yellow-50 border-yellow-500'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {isBalanced ? (
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                    ) : cashVariance < 0 ? (
+                      <AlertTriangle className="w-5 h-5 text-red-600" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-yellow-600" />
+                    )}
+                    <p className="text-2xl font-bold text-gray-900">
+                      Cash Discrepancy
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-2xl font-bold ${
+                      isBalanced
+                        ? 'text-green-600'
+                        : cashVariance < 0
+                          ? 'text-red-600'
+                          : 'text-yellow-600'
+                    }`}>
+                      {isBalanced
+                        ? 'Balanced'
+                        : cashVariance < 0
+                          ? `Short by $${Math.abs(cashVariance).toFixed(2)}`
+                          : `Over by $${cashVariance.toFixed(2)}`
+                      }
                     </p>
                   </div>
                 </div>
