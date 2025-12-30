@@ -863,13 +863,13 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                         {showDetails ? (
                           <>
                             <div className="flex justify-between items-center">
-                              <span className="text-[9px] text-gray-600">T. (Cash)</span>
+                              <span className="text-[9px] text-gray-600">T. (given)</span>
                               <span className={`text-[9px] ${summary.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
                                 ${summary.tips_cash.toFixed(2)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-[9px] text-gray-600">T. (Card)</span>
+                              <span className="text-[9px] text-gray-600">T. (paired)</span>
                               <span className={`text-[9px] ${summary.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
                                 ${summary.tips_card.toFixed(2)}
                               </span>
