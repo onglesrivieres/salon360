@@ -377,15 +377,9 @@ export function TipReportDetailView({ selectedDate, onRefresh }: TipReportDetail
                     {showDetails ? (
                       <>
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-gray-600">Services</span>
+                          <span className="text-[9px] text-gray-600">Sub-total</span>
                           <span className="text-[9px] font-semibold text-gray-900">
-                            ${summary.service_revenue.toFixed(0)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-gray-600">Addons</span>
-                          <span className="text-[9px] font-semibold text-gray-900">
-                            ${summary.addon_revenue.toFixed(0)}
+                            ${summary.total_revenue.toFixed(0)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
@@ -454,19 +448,11 @@ export function TipReportDetailView({ selectedDate, onRefresh }: TipReportDetail
                             </div>
                           </div>
                           {showDetails ? (
-                            <div className="space-y-0">
-                              <div className="flex justify-between items-center">
-                                <span className="text-[8px] text-gray-600">Services</span>
-                                <span className="text-[8px] font-semibold text-gray-900">
-                                  ${item.service_revenue.toFixed(0)}
-                                </span>
-                              </div>
-                              <div className="flex justify-between items-center">
-                                <span className="text-[8px] text-gray-600">Addons</span>
-                                <span className="text-[8px] font-semibold text-gray-900">
-                                  ${item.addon_revenue.toFixed(0)}
-                                </span>
-                              </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-[8px] text-gray-600">Sub-total</span>
+                              <span className="text-[8px] font-semibold text-gray-900">
+                                ${totalRevenue.toFixed(0)}
+                              </span>
                             </div>
                           ) : (
                             <div className="flex justify-between items-center">
