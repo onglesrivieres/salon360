@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit2, CheckCircle, Clock, AlertCircle, Filter, X, XCircle, DollarSign, ChevronLeft, ChevronRight, List, LayoutGrid } from 'lucide-react';
+import { Plus, Edit2, CheckCircle, Clock, AlertCircle, Filter, X, XCircle, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase, SaleTicket } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { useToast } from '../components/ui/Toast';
 import { TicketEditor } from '../components/TicketEditor';
-import { DailyTicketsView } from '../components/DailyTicketsView';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { formatTimeEST, getCurrentDateEST } from '../lib/timezone';
@@ -31,7 +30,6 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   const [selectedTicketForApproval, setSelectedTicketForApproval] = useState<SaleTicket | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'daily'>('list');
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
@@ -538,33 +536,11 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     );
   }
 
-  const canViewDailyReport = session?.role ? Permissions.tickets.canViewDailyReport(session.role) : false;
-
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
         <h2 className="text-base md:text-lg font-bold text-gray-900">Sale Tickets</h2>
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
-          {canViewDailyReport && (
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={viewMode === 'list' ? 'primary' : 'ghost'}
-                onClick={() => setViewMode('list')}
-              >
-                <List className="w-4 h-4 mr-1" />
-                List
-              </Button>
-              <Button
-                size="sm"
-                variant={viewMode === 'daily' ? 'primary' : 'ghost'}
-                onClick={() => setViewMode('daily')}
-              >
-                <LayoutGrid className="w-4 h-4 mr-1" />
-                Daily
-              </Button>
-            </div>
-          )}
           <div className="inline-flex rounded-lg border border-gray-300 bg-white min-h-[44px] md:min-h-0">
             <button
               onClick={() => setQuickFilter('all')}
@@ -730,16 +706,9 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
         </div>
       </div>
 
-      {viewMode === 'daily' ? (
-        <DailyTicketsView
-          tickets={filteredTickets}
-          onTicketClick={(ticketId) => openEditor(ticketId)}
-        />
-      ) : (
-        <>
-          <div className="bg-white rounded-lg shadow hidden md:block">
-            <div className="overflow-x-auto">
-              <table className="w-full">
+      <div className="bg-white rounded-lg shadow hidden md:block">
+        <div className="overflow-x-auto">
+          <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1064,8 +1033,6 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
           </div>
         )}
       </div>
-        </>
-      )}
 
       <Modal
         isOpen={showRejectModal}
