@@ -111,7 +111,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                 >
                                   <div className="text-center flex items-center justify-center gap-1">
                                     <span className="font-bold text-gray-900 text-[11px]">
-                                      ${storeData.revenue.toFixed(2)}
+                                      ${storeData.revenue.toFixed(0)}
                                     </span>
                                     {storeData.store_code && (
                                       <span className="text-[8px] text-gray-600 font-medium">
@@ -125,7 +125,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                           ) : (
                             <div className="text-center">
                               <span className="font-bold text-gray-900 text-[11px]">
-                                ${dailyRevenue.toFixed(2)}
+                                ${dailyRevenue.toFixed(0)}
                               </span>
                             </div>
                           )
@@ -165,7 +165,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                             >
                               <div className="text-center flex items-center justify-center gap-1">
                                 <span className="font-bold text-gray-900 text-[11px]">
-                                  ${storeAgg.revenue.toFixed(2)}
+                                  ${storeAgg.revenue.toFixed(0)}
                                 </span>
                                 {storeAgg.store_code && (
                                   <span className="text-[8px] text-gray-600 font-medium">
@@ -179,7 +179,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                       ) : (
                         <div className="text-center">
                           <span className="font-bold text-gray-900 text-[11px]">
-                            ${(storesList[0]?.revenue || 0).toFixed(2)}
+                            ${(storesList[0]?.revenue || 0).toFixed(0)}
                           </span>
                         </div>
                       );

@@ -393,19 +393,19 @@ export function TipReportDetailView({ selectedDate, onRefresh }: TipReportDetail
                         <div className="flex justify-between items-center">
                           <span className="text-[9px] text-gray-600">T. (given)</span>
                           <span className={`text-[9px] ${summary.tips_customer === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
-                            ${summary.tips_customer.toFixed(2)}
+                            ${summary.tips_customer.toFixed(0)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-[9px] text-gray-600">T. (paired)</span>
                           <span className={`text-[9px] ${summary.tips_receptionist === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
-                            ${summary.tips_receptionist.toFixed(2)}
+                            ${summary.tips_receptionist.toFixed(0)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
                           <span className="text-[9px] font-medium text-gray-900">Total</span>
                           <span className="text-[10px] font-bold text-gray-900">
-                            ${summary.tips_total.toFixed(2)}
+                            ${summary.tips_total.toFixed(0)}
                           </span>
                         </div>
                       </>
@@ -413,7 +413,7 @@ export function TipReportDetailView({ selectedDate, onRefresh }: TipReportDetail
                       <div className="flex justify-between items-center">
                         <span className="text-[9px] font-medium text-gray-900">Total Tips</span>
                         <span className="text-[10px] font-bold text-gray-900">
-                          ${summary.tips_total.toFixed(2)}
+                          ${summary.tips_total.toFixed(0)}
                         </span>
                       </div>
                     )}
@@ -472,13 +472,13 @@ export function TipReportDetailView({ selectedDate, onRefresh }: TipReportDetail
                               <div className="flex justify-between items-center">
                                 <span className="text-[8px] text-gray-600">T. (given)</span>
                                 <span className={`text-[8px] ${item.tip_customer === 0 ? 'text-gray-900' : 'font-semibold text-gray-900'}`}>
-                                  ${item.tip_customer.toFixed(2)}
+                                  ${item.tip_customer.toFixed(0)}
                                 </span>
                               </div>
                               <div className="flex justify-between items-center">
                                 <span className="text-[8px] text-gray-600">T. (paired)</span>
                                 <span className={`text-[8px] ${item.tip_receptionist === 0 ? 'text-gray-900' : 'font-semibold text-orange-600'}`}>
-                                  ${item.tip_receptionist.toFixed(2)}
+                                  ${item.tip_receptionist.toFixed(0)}
                                 </span>
                               </div>
                             </div>
@@ -486,7 +486,7 @@ export function TipReportDetailView({ selectedDate, onRefresh }: TipReportDetail
                             <div className="flex justify-between items-center">
                               <span className="text-[8px] text-gray-600">Total Tip</span>
                               <span className={`text-[8px] ${totalTip === 0 ? 'text-gray-900' : 'font-semibold text-gray-900'}`}>
-                                ${totalTip.toFixed(2)}
+                                ${totalTip.toFixed(0)}
                               </span>
                             </div>
                           )}
