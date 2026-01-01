@@ -11,6 +11,7 @@ interface WeeklyCalendarViewProps {
     tips_card: number;
     tips_total: number;
   }>;
+  periodDates: string[];
 }
 
 function abbreviateStoreName(storeCode: string): string {
@@ -22,24 +23,6 @@ function abbreviateStoreName(storeCode: string): string {
   return codeMap[storeCode.toUpperCase()] || storeCode.substring(0, 1).toUpperCase();
 }
 
-function getWeekStartDate(date: string): string {
-  const d = new Date(date + 'T00:00:00');
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0];
-}
-
-function getWeekDates(startDate: string): string[] {
-  const dates: string[] = [];
-  const d = new Date(startDate + 'T00:00:00');
-  for (let i = 0; i < 7; i++) {
-    dates.push(d.toISOString().split('T')[0]);
-    d.setDate(d.getDate() + 1);
-  }
-  return dates;
-}
-
 function formatDateHeader(dateStr: string): { day: string; date: string } {
   const d = new Date(dateStr + 'T00:00:00');
   const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -48,9 +31,7 @@ function formatDateHeader(dateStr: string): { day: string; date: string } {
   return { day, date };
 }
 
-export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: WeeklyCalendarViewProps) {
-  const weekStart = getWeekStartDate(selectedDate);
-  const weekDates = getWeekDates(weekStart);
+export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, periodDates }: WeeklyCalendarViewProps) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   return (
@@ -62,7 +43,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
               <th className="border border-gray-300 bg-gray-100 px-1.5 py-1 text-left font-semibold sticky left-0 z-10 w-20 sm:w-24">
                 <div className="truncate">Tech</div>
               </th>
-              {weekDates.map((date) => {
+              {periodDates.map((date) => {
                 const { day, date: dateStr } = formatDateHeader(date);
                 return (
                   <th
@@ -76,7 +57,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
               })}
               <th className="border border-gray-300 bg-blue-100 px-1 py-1 text-center font-semibold w-[72px] sm:w-20 relative">
                 <div className="flex items-center justify-center gap-1">
-                  <div className="font-bold text-[10px] sm:text-xs">Weekly Total</div>
+                  <div className="font-bold text-[10px] sm:text-xs">Period Total</div>
                   <div
                     className="relative"
                     onMouseEnter={() => setShowTooltip(true)}
@@ -85,7 +66,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                     <Info className="w-3 h-3 text-blue-600 cursor-help" />
                     {showTooltip && (
                       <div className="absolute top-full right-0 mt-1 w-48 p-2 bg-gray-900 text-white text-[10px] rounded shadow-lg z-20">
-                        Sum of all 7 days (Mon-Sun) in this week
+                        Sum of all days in this bi-weekly period
                       </div>
                     )}
                   </div>
@@ -102,7 +83,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries }: Week
                   <td className="border border-gray-300 bg-gray-50 px-1.5 py-1 font-medium sticky left-0 z-10">
                     <div className="truncate text-[10px] sm:text-xs">{summary.technician_name}</div>
                   </td>
-                  {weekDates.map((date) => {
+                  {periodDates.map((date) => {
                     const storesArray = techData?.get(date) || [];
 
                     // Calculate daily total by summing all stores for this day

@@ -56,46 +56,77 @@ export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWee
     fetchWeeklyData();
   }, [selectedDate, selectedStoreId]);
 
-  function getWeekStartDate(date: string): string {
-    const d = new Date(date + 'T00:00:00');
-    const day = d.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    d.setDate(d.getDate() + diff);
-    return d.toISOString().split('T')[0];
+  function getDateRange(currentDate: Date) {
+    // Bi-weekly payroll periods starting from October 13, 2024 (Sunday)
+    const payrollStartDate = new Date(2024, 9, 13); // October 13, 2024
+
+    // Normalize dates to midnight for accurate day calculation
+    const normalizedCurrent = new Date(currentDate);
+    normalizedCurrent.setHours(0, 0, 0, 0);
+
+    const normalizedStart = new Date(payrollStartDate);
+    normalizedStart.setHours(0, 0, 0, 0);
+
+    const daysSinceStart = Math.floor((normalizedCurrent.getTime() - normalizedStart.getTime()) / (1000 * 60 * 60 * 24));
+    const periodNumber = Math.floor(daysSinceStart / 14);
+
+    const periodStart = new Date(normalizedStart);
+    periodStart.setDate(periodStart.getDate() + (periodNumber * 14));
+
+    const periodEnd = new Date(periodStart);
+    periodEnd.setDate(periodEnd.getDate() + 13); // 14 days total (0-13)
+
+    // Use local date formatting to avoid timezone conversion
+    const formatLocalDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const startDate = formatLocalDate(periodStart);
+    const endDate = formatLocalDate(periodEnd);
+    return { startDate, endDate, periodStart, periodEnd };
   }
 
-  function getWeekDates(startDate: string): string[] {
+  function getPeriodDates(): string[] {
+    const currentDate = new Date(selectedDate + 'T00:00:00');
+    const { periodStart, periodEnd } = getDateRange(currentDate);
+
     const dates: string[] = [];
-    const d = new Date(startDate + 'T00:00:00');
-    for (let i = 0; i < 7; i++) {
-      dates.push(d.toISOString().split('T')[0]);
-      d.setDate(d.getDate() + 1);
+    for (let d = new Date(periodStart); d <= periodEnd; d.setDate(d.getDate() + 1)) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      dates.push(`${year}-${month}-${day}`);
     }
+
     return dates;
   }
 
-  function getCurrentWeekLabel(): string {
-    const weekStart = getWeekStartDate(selectedDate);
-    const weekDates = getWeekDates(weekStart);
-    const startDate = new Date(weekDates[0] + 'T00:00:00');
-    const endDate = new Date(weekDates[6] + 'T00:00:00');
+  function getCurrentPeriodLabel(): string {
+    const currentDate = new Date(selectedDate + 'T00:00:00');
+    const { periodStart, periodEnd } = getDateRange(currentDate);
 
-    const startYear = startDate.getFullYear();
-    const endYear = endDate.getFullYear();
+    const startYear = periodStart.getFullYear();
+    const endYear = periodEnd.getFullYear();
 
     if (startYear !== endYear) {
       const formatDateWithYear = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
-      return `${formatDateWithYear(startDate)} - ${formatDateWithYear(endDate)}`;
+      return `${formatDateWithYear(periodStart)} - ${formatDateWithYear(periodEnd)}`;
     } else {
       const formatDate = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
-      return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+      return `${formatDate(periodStart)} - ${formatDate(periodEnd)}/${endYear}`;
     }
   }
 
-  function navigateWeek(direction: 'prev' | 'next') {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + (direction === 'prev' ? -7 : 7));
-    onDateChange(d.toISOString().split('T')[0]);
+  function navigatePeriod(direction: 'prev' | 'next') {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + (direction === 'prev' ? -14 : 14));
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    onDateChange(`${year}-${month}-${day}`);
   }
 
   async function fetchDailyTipData(dateToFetch: string): Promise<Map<string, TechnicianSummary>> {
@@ -280,15 +311,14 @@ export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWee
     try {
       setLoading(true);
 
-      const weekStart = getWeekStartDate(selectedDate);
-      const weekDates = getWeekDates(weekStart);
+      const periodDates = getPeriodDates();
 
-      const dailyDataPromises = weekDates.map(date => fetchDailyTipData(date));
+      const dailyDataPromises = periodDates.map(date => fetchDailyTipData(date));
       const dailyDataResults = await Promise.all(dailyDataPromises);
 
       const dataMap = new Map<string, Map<string, Map<string, { store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>>>();
 
-      weekDates.forEach((date, index) => {
+      periodDates.forEach((date, index) => {
         const technicianMap = dailyDataResults[index];
 
         for (const [techId, summary] of technicianMap.entries()) {
@@ -391,7 +421,7 @@ export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWee
       const sortedSummaries = Array.from(technicianMap.values());
       setSummaries(sortedSummaries);
     } catch (error) {
-      showToast('Failed to load weekly data', 'error');
+      showToast('Failed to load period data', 'error');
     } finally {
       setLoading(false);
     }
@@ -400,7 +430,7 @@ export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWee
   if (loading) {
     return (
       <div className="flex items-center justify-center h-32">
-        <div className="text-sm text-gray-500">Loading weekly data...</div>
+        <div className="text-sm text-gray-500">Loading period data...</div>
       </div>
     );
   }
@@ -408,31 +438,33 @@ export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWee
   if (summaries.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-sm text-gray-500">No tips for this week</p>
+        <p className="text-sm text-gray-500">No tips for this period</p>
       </div>
     );
   }
 
+  const periodDates = getPeriodDates();
+
   return (
     <div>
       <div className="p-2 border-b border-gray-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
-        <h3 className="text-base font-semibold text-gray-900">Weekly Tips</h3>
+        <h3 className="text-base font-semibold text-gray-900">Period Tips</h3>
         <div className="flex items-center gap-2">
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => navigateWeek('prev')}
+            onClick={() => navigatePeriod('prev')}
             className="h-8"
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
           <span className="text-sm font-medium text-gray-700 min-w-[120px] text-center">
-            {getCurrentWeekLabel()}
+            {getCurrentPeriodLabel()}
           </span>
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => navigateWeek('next')}
+            onClick={() => navigatePeriod('next')}
             className="h-8"
           >
             <ChevronRight className="w-4 h-4" />
@@ -444,6 +476,7 @@ export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWee
           selectedDate={selectedDate}
           weeklyData={weeklyData}
           summaries={summaries}
+          periodDates={periodDates}
         />
       </div>
     </div>
