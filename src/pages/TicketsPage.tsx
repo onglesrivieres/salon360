@@ -7,6 +7,7 @@ import { Modal } from '../components/ui/Modal';
 import { useToast } from '../components/ui/Toast';
 import { TicketEditor } from '../components/TicketEditor';
 import { TipReportDetailView } from '../components/TipReportDetailView';
+import { TipReportWeeklyView } from '../components/TipReportWeeklyView';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { formatTimeEST, getCurrentDateEST } from '../lib/timezone';
@@ -17,7 +18,7 @@ interface TicketsPageProps {
 }
 
 export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
-  const [viewMode, setViewMode] = useState<'tickets' | 'daily'>('tickets');
+  const [viewMode, setViewMode] = useState<'tickets' | 'daily' | 'period'>('tickets');
   const [tickets, setTickets] = useState<SaleTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -546,7 +547,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
           <div className="inline-flex rounded-lg border border-gray-300 bg-white">
             <button
               onClick={() => setViewMode('tickets')}
-              className={`px-3 py-1.5 text-xs md:text-sm font-medium rounded-l-lg transition-colors ${
+              className={`px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium rounded-l-lg transition-colors ${
                 viewMode === 'tickets'
                   ? 'bg-blue-600 text-white'
                   : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -556,13 +557,23 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
             </button>
             <button
               onClick={() => setViewMode('daily')}
-              className={`px-3 py-1.5 text-xs md:text-sm font-medium rounded-r-lg border-l border-gray-300 transition-colors ${
+              className={`px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium border-l border-gray-300 transition-colors ${
                 viewMode === 'daily'
                   ? 'bg-blue-600 text-white'
                   : 'bg-white text-gray-700 hover:bg-gray-50'
               }`}
             >
               Daily
+            </button>
+            <button
+              onClick={() => setViewMode('period')}
+              className={`px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium rounded-r-lg border-l border-gray-300 transition-colors ${
+                viewMode === 'period'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Period
             </button>
           </div>
         </div>
@@ -695,7 +706,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
               </div>
             </>
           )}
-          {session?.role_permission !== 'Cashier' && (
+          {viewMode !== 'period' && session?.role_permission !== 'Cashier' && (
             <div className="flex items-center gap-2 flex-1 md:flex-initial">
               <button
                 onClick={() => navigateDay('prev')}
@@ -738,6 +749,10 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
       {viewMode === 'daily' ? (
         <div className="bg-white rounded-lg shadow">
           <TipReportDetailView selectedDate={selectedDate} onRefresh={fetchTickets} />
+        </div>
+      ) : viewMode === 'period' ? (
+        <div className="bg-white rounded-lg shadow">
+          <TipReportWeeklyView selectedDate={selectedDate} onDateChange={onDateChange} />
         </div>
       ) : (
         <>
