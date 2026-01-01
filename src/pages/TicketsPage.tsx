@@ -543,7 +543,6 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
         <div className="flex items-center gap-3">
-          <h2 className="text-base md:text-lg font-bold text-gray-900">Sale Tickets</h2>
           <div className="inline-flex rounded-lg border border-gray-300 bg-white">
             <button
               onClick={() => setViewMode('tickets')}
