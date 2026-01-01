@@ -216,8 +216,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     tip_customer_cash: '',
     tip_customer_card: '',
     tip_receptionist: '',
-    addon_details: '',
-    addon_price: '',
     discount_percentage: '',
     discount_amount: '',
     notes: '',
@@ -430,8 +428,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           tip_customer_cash: firstItem ? parseFloat(firstItem.tip_customer_cash || 0).toString() : '0',
           tip_customer_card: firstItem ? parseFloat(firstItem.tip_customer_card || 0).toString() : '0',
           tip_receptionist: firstItem ? parseFloat(firstItem.tip_receptionist || 0).toString() : '0',
-          addon_details: firstItem?.addon_details || '',
-          addon_price: firstItem ? parseFloat(firstItem.addon_price || 0).toString() : '0',
           discount_percentage: firstItem ? parseFloat(firstItem.discount_percentage || 0).toString() : '0',
           discount_amount: firstItem ? parseFloat(firstItem.discount_amount || 0).toString() : '0',
           notes: ticketData.notes,
@@ -596,10 +592,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     const itemsTotal = items.reduce((sum, item) => {
       const qty = parseFloat(item.qty) || 0;
       const price = parseFloat(item.price_each) || 0;
-      return sum + (qty * price);
+      const addonPrice = parseFloat(item.addon_price) || 0;
+      return sum + (qty * price) + addonPrice;
     }, 0);
-    const addonPrice = parseFloat(formData.addon_price) || 0;
-    return itemsTotal + addonPrice;
+    return itemsTotal;
   }
 
   function calculateTotal(): number {
@@ -1009,7 +1005,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           .not('id', 'in', `(${existingItemIds.join(',')})`);
 
         for (const item of items) {
-          const addonPrice = parseFloat(formData.addon_price) || 0;
+          const addonPrice = parseFloat(item.addon_price) || 0;
           const discountPercentage = parseFloat(formData.discount_percentage) || 0;
           const discountAmount = parseFloat(formData.discount_amount) || 0;
 
@@ -1026,7 +1022,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             tip_customer_cash: tipCustomerCash,
             tip_customer_card: tipCustomerCard,
             tip_receptionist: tipReceptionist,
-            addon_details: formData.addon_details || '',
+            addon_details: item.addon_details || '',
             addon_price: addonPrice,
             discount_percentage: discountPercentage,
             discount_amount: discountAmount,
@@ -1078,10 +1074,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
         if (ticketError) throw ticketError;
 
-        const addonPrice = parseFloat(formData.addon_price) || 0;
         const discountPercentage = parseFloat(formData.discount_percentage) || 0;
         const discountAmount = parseFloat(formData.discount_amount) || 0;
         const itemsData = items.map((item) => {
+          const addonPrice = parseFloat(item.addon_price) || 0;
           return {
             sale_ticket_id: newTicket.id,
             store_service_id: item.is_custom ? null : item.service_id,
@@ -1095,7 +1091,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             tip_customer_cash: tipCustomerCash,
             tip_customer_card: tipCustomerCard,
             tip_receptionist: tipReceptionist,
-            addon_details: formData.addon_details || '',
+            addon_details: item.addon_details || '',
             addon_price: addonPrice,
             discount_percentage: discountPercentage,
             discount_amount: discountAmount,
@@ -1851,109 +1847,157 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 )}
               </div>
             ) : (
-              <div className="border border-gray-200 rounded-lg p-3 space-y-3 bg-white">
-                <div className="flex items-start gap-2">
-                  <div className="flex-1">
-                    {items[0].is_custom ? (
-                      <div>
+              <div className="space-y-3">
+                {items.map((item, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-3 space-y-3 bg-white">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-gray-600">
+                        Service {items.length > 1 ? `#${index + 1}` : ''}
+                      </span>
+                      {!isTicketClosed && !isReadOnly && items.length > 1 && (
+                        <button
+                          onClick={() => removeItem(index)}
+                          className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1">
+                        {item.is_custom ? (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                              Service Name
+                            </label>
+                            <input
+                              type="text"
+                              value={item.custom_service_name || ''}
+                              onChange={(e) => {
+                                const updatedItems = [...items];
+                                updatedItems[index].custom_service_name = e.target.value;
+                                setItems(updatedItems);
+                              }}
+                              className="w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
+                              placeholder="Enter custom service name"
+                              disabled={isTicketClosed || isReadOnly}
+                            />
+                          </div>
+                        ) : (
+                          <Select
+                            label="Service"
+                            value={item.service_id}
+                            onChange={(e) => updateItem(index, 'service_id', e.target.value)}
+                            options={services
+                              .filter(s => canEmployeePerformService(item?.employee_id || selectedTechnicianId || lastUsedEmployeeId, s.id))
+                              .map((s) => ({
+                                value: s.id,
+                                label: `${s.code} - ${s.name}`,
+                              }))}
+                            disabled={isTicketClosed || isReadOnly}
+                          />
+                        )}
+                      </div>
+                      <div className="w-24">
                         <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                          Service Name
+                          Price
                         </label>
-                        <input
-                          type="text"
-                          value={items[0].custom_service_name || ''}
-                          onChange={(e) => {
-                            const updatedItems = [...items];
-                            updatedItems[0].custom_service_name = e.target.value;
-                            setItems(updatedItems);
-                          }}
-                          className="w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
-                          placeholder="Enter custom service name"
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500 z-10">$</span>
+                          <NumericInput
+                            step="0.01"
+                            min="0"
+                            value={item.price_each}
+                            onChange={(e) =>
+                              updateItem(index, 'price_each', e.target.value)
+                            }
+                            className="pl-6 pr-2"
+                            disabled={isTicketClosed || isReadOnly}
+                          />
+                        </div>
+                      </div>
+                      {!isTicketClosed && !isReadOnly && items.length === 1 && (
+                        <div className="flex items-end">
+                          <button
+                            onClick={() => {
+                              setItems([]);
+                              setShowCustomService(false);
+                            }}
+                            className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Add-ons
+                        </label>
+                        <Input
+                          value={item.addon_details}
+                          onChange={(e) =>
+                            updateItem(index, 'addon_details', e.target.value)
+                          }
+                          placeholder="Enter add-on details"
                           disabled={isTicketClosed || isReadOnly}
                         />
                       </div>
-                    ) : (
-                      <Select
-                        label="Service"
-                        value={items[0].service_id}
-                        onChange={(e) => updateItem(0, 'service_id', e.target.value)}
-                        options={services
-                          .filter(s => canEmployeePerformService(items[0]?.employee_id || selectedTechnicianId || lastUsedEmployeeId, s.id))
-                          .map((s) => ({
-                            value: s.id,
-                            label: `${s.code} - ${s.name}`,
-                          }))}
-                        disabled={isTicketClosed || isReadOnly}
-                      />
-                    )}
-                  </div>
-                  <div className="w-24">
-                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                      Price
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500 z-10">$</span>
-                      <NumericInput
-                        step="0.01"
-                        min="0"
-                        value={items[0].price_each}
-                        onChange={(e) =>
-                          updateItem(0, 'price_each', e.target.value)
-                        }
-                        className="pl-6 pr-2"
-                        disabled={isTicketClosed || isReadOnly}
-                      />
+                      <div className="w-24">
+                        <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                          Price
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500 z-10">$</span>
+                          <NumericInput
+                            step="0.01"
+                            min="0"
+                            value={item.addon_price}
+                            onChange={(e) =>
+                              updateItem(index, 'addon_price', e.target.value)
+                            }
+                            className="pl-6 pr-2"
+                            disabled={isTicketClosed || isReadOnly}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  {!isTicketClosed && (
-                    <div className="flex items-end">
-                      <button
-                        onClick={() => {
-                          setItems([]);
-                          setShowCustomService(false);
-                        }}
-                        className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                </div>
+                ))}
 
-                <div className="flex items-end gap-2">
-                  <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Add-ons
-                    </label>
-                    <Input
-                      value={formData.addon_details}
-                      onChange={(e) =>
-                        setFormData({ ...formData, addon_details: e.target.value })
+                {!isTicketClosed && !isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const employeeId = selectedTechnicianId || lastUsedEmployeeId;
+                      if (!employeeId) {
+                        showToast('Please select a technician first', 'error');
+                        return;
                       }
-                      placeholder="Enter add-on details"
-                      disabled={isTicketClosed || isReadOnly}
-                    />
-                  </div>
-                  <div className="w-24">
-                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                      Price
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500 z-10">$</span>
-                      <NumericInput
-                        step="0.01"
-                        min="0"
-                        value={formData.addon_price}
-                        onChange={(e) =>
-                          setFormData({ ...formData, addon_price: e.target.value })
+                      setItems([
+                        ...items,
+                        {
+                          service_id: '',
+                          employee_id: employeeId,
+                          qty: '1',
+                          price_each: '0',
+                          tip_customer: '0',
+                          tip_receptionist: '0',
+                          addon_details: '',
+                          addon_price: '0',
+                          is_custom: false,
                         }
-                        onBlur={(e) => handleNumericFieldBlur(e, 'addon_price')}
-                        className="pl-6 pr-2"
-                        disabled={isTicketClosed || isReadOnly}
-                      />
-                    </div>
-                  </div>
-                </div>
+                      ]);
+                    }}
+                    className="w-full py-3 md:py-2 px-4 text-sm font-medium text-blue-700 bg-blue-50 border-2 border-blue-300 border-dashed rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Another Service
+                  </button>
+                )}
               </div>
             )}
           </div>
