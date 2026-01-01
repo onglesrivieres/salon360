@@ -6,6 +6,7 @@ import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { useToast } from '../components/ui/Toast';
 import { TicketEditor } from '../components/TicketEditor';
+import { TipReportDetailView } from '../components/TipReportDetailView';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { formatTimeEST, getCurrentDateEST } from '../lib/timezone';
@@ -16,6 +17,7 @@ interface TicketsPageProps {
 }
 
 export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
+  const [viewMode, setViewMode] = useState<'tickets' | 'daily'>('tickets');
   const [tickets, setTickets] = useState<SaleTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -539,49 +541,75 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
-        <h2 className="text-base md:text-lg font-bold text-gray-900">Sale Tickets</h2>
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
-          <div className="inline-flex rounded-lg border border-gray-300 bg-white min-h-[44px] md:min-h-0">
+        <div className="flex items-center gap-3">
+          <h2 className="text-base md:text-lg font-bold text-gray-900">Sale Tickets</h2>
+          <div className="inline-flex rounded-lg border border-gray-300 bg-white">
             <button
-              onClick={() => setQuickFilter('all')}
-              className={`px-3 py-2 text-sm font-medium rounded-l-lg transition-colors min-h-[44px] md:min-h-0 ${
-                quickFilter === 'all'
+              onClick={() => setViewMode('tickets')}
+              className={`px-3 py-1.5 text-xs md:text-sm font-medium rounded-l-lg transition-colors ${
+                viewMode === 'tickets'
                   ? 'bg-blue-600 text-white'
                   : 'bg-white text-gray-700 hover:bg-gray-50'
               }`}
             >
-              All
+              Tickets
             </button>
             <button
-              onClick={() => setQuickFilter('unclosed')}
-              className={`px-3 py-2 text-sm font-medium rounded-r-lg border-l border-gray-300 transition-colors min-h-[44px] md:min-h-0 ${
-                quickFilter === 'unclosed'
+              onClick={() => setViewMode('daily')}
+              className={`px-3 py-1.5 text-xs md:text-sm font-medium rounded-r-lg border-l border-gray-300 transition-colors ${
+                viewMode === 'daily'
                   ? 'bg-blue-600 text-white'
                   : 'bg-white text-gray-700 hover:bg-gray-50'
               }`}
             >
-              Unclosed
+              Daily
             </button>
           </div>
-          <div className="relative">
-            <button
-              onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
-              className={`px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] md:min-h-0 flex items-center gap-2 ${
-                getActiveFilterCount() > 0
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <Filter className="w-4 h-4" />
-              <span>Filters</span>
-              {getActiveFilterCount() > 0 && (
-                <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full">
-                  {getActiveFilterCount()}
-                </span>
-              )}
-            </button>
+        </div>
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
+          {viewMode === 'tickets' && (
+            <>
+              <div className="inline-flex rounded-lg border border-gray-300 bg-white min-h-[44px] md:min-h-0">
+                <button
+                  onClick={() => setQuickFilter('all')}
+                  className={`px-3 py-2 text-sm font-medium rounded-l-lg transition-colors min-h-[44px] md:min-h-0 ${
+                    quickFilter === 'all'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setQuickFilter('unclosed')}
+                  className={`px-3 py-2 text-sm font-medium rounded-r-lg border-l border-gray-300 transition-colors min-h-[44px] md:min-h-0 ${
+                    quickFilter === 'unclosed'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Unclosed
+                </button>
+              </div>
+              <div className="relative">
+                <button
+                  onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+                  className={`px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] md:min-h-0 flex items-center gap-2 ${
+                    getActiveFilterCount() > 0
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <Filter className="w-4 h-4" />
+                  <span>Filters</span>
+                  {getActiveFilterCount() > 0 && (
+                    <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full">
+                      {getActiveFilterCount()}
+                    </span>
+                  )}
+                </button>
 
-            {isFilterPanelOpen && (
+                {isFilterPanelOpen && (
               <>
                 <div
                   className="fixed inset-0 z-40"
@@ -664,8 +692,9 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                 </div>
               </>
             )}
-          </div>
-
+              </div>
+            </>
+          )}
           {session?.role_permission !== 'Cashier' && (
             <div className="flex items-center gap-2 flex-1 md:flex-initial">
               <button
@@ -696,7 +725,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
               </button>
             </div>
           )}
-          {session && session.role_permission && Permissions.tickets.canCreate(session.role_permission) && (
+          {viewMode === 'tickets' && session && session.role_permission && Permissions.tickets.canCreate(session.role_permission) && (
             <Button size="sm" onClick={() => openEditor()} className="min-h-[44px] md:min-h-0">
               <Plus className="w-4 h-4 md:w-3 md:h-3 mr-1" />
               <span className="hidden xs:inline">New Ticket</span>
@@ -706,7 +735,13 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow hidden md:block">
+      {viewMode === 'daily' ? (
+        <div className="bg-white rounded-lg shadow">
+          <TipReportDetailView selectedDate={selectedDate} onRefresh={fetchTickets} />
+        </div>
+      ) : (
+        <>
+          <div className="bg-white rounded-lg shadow hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -1033,6 +1068,8 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
           </div>
         )}
       </div>
+        </>
+      )}
 
       <Modal
         isOpen={showRejectModal}
