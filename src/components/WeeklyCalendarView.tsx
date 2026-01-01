@@ -78,7 +78,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
 
               return (
                 <tr key={summary.technician_id}>
-                  <td className="border border-gray-300 bg-gray-50 px-1.5 py-1 font-medium sticky left-0 z-10">
+                  <td className="border border-gray-300 bg-gray-50 px-1.5 py-1 font-bold sticky left-0 z-10">
                     <div className="truncate text-[10px] sm:text-xs">{summary.technician_name}</div>
                   </td>
                   {periodDates.map((date) => {
@@ -110,7 +110,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                   className={idx > 0 ? 'pt-1 mt-1 border-t border-gray-400' : ''}
                                 >
                                   <div className="text-center flex items-center justify-center gap-1">
-                                    <span className="font-bold text-gray-900 text-[11px]">
+                                    <span className="text-gray-900 text-[11px]">
                                       ${storeData.revenue.toFixed(0)}
                                     </span>
                                     {storeData.store_code && (
@@ -124,7 +124,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                             </div>
                           ) : (
                             <div className="text-center">
-                              <span className="font-bold text-gray-900 text-[11px]">
+                              <span className="text-gray-900 text-[11px]">
                                 ${dailyRevenue.toFixed(0)}
                               </span>
                             </div>
