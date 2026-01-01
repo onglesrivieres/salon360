@@ -3,13 +3,11 @@ import { Info } from 'lucide-react';
 
 interface WeeklyCalendarViewProps {
   selectedDate: string;
-  weeklyData: Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>>>;
+  weeklyData: Map<string, Map<string, Array<{ store_id: string; store_code: string; revenue: number }>>>;
   summaries: Array<{
     technician_id: string;
     technician_name: string;
-    tips_cash: number;
-    tips_card: number;
-    tips_total: number;
+    revenue: number;
   }>;
   periodDates: string[];
 }
@@ -87,27 +85,23 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                     const storesArray = techData?.get(date) || [];
 
                     // Calculate daily total by summing all stores for this day
-                    let dailyCash = 0;
-                    let dailyCard = 0;
-                    let dailyTotal = 0;
+                    let dailyRevenue = 0;
 
                     for (const storeData of storesArray) {
-                      dailyCash += storeData.tips_cash;
-                      dailyCard += storeData.tips_card;
-                      dailyTotal += storeData.tips_total;
+                      dailyRevenue += storeData.revenue;
                     }
 
-                    const hasTips = dailyTotal > 0;
+                    const hasRevenue = dailyRevenue > 0;
                     const hasMultipleStores = storesArray.length > 1;
 
                     return (
                       <td
                         key={date}
                         className={`border border-gray-300 px-1 py-0.5 text-center ${
-                          hasTips ? 'bg-white' : 'bg-gray-50'
+                          hasRevenue ? 'bg-white' : 'bg-gray-50'
                         }`}
                       >
-                        {hasTips ? (
+                        {hasRevenue ? (
                           hasMultipleStores ? (
                             <div className="space-y-0">
                               {storesArray.map((storeData, idx) => (
@@ -115,52 +109,24 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                   key={`${storeData.store_id}-${idx}`}
                                   className={idx > 0 ? 'pt-1 mt-1 border-t border-gray-400' : ''}
                                 >
-                                  <div className="space-y-0.5">
-                                    <div className="text-center">
-                                      <span className="text-[9px] text-gray-500">Cash: </span>
-                                      <span className={`text-[9px] ${storeData.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
-                                        ${storeData.tips_cash.toFixed(2)}
+                                  <div className="text-center flex items-center justify-center gap-1">
+                                    <span className="font-bold text-gray-900 text-[11px]">
+                                      ${storeData.revenue.toFixed(2)}
+                                    </span>
+                                    {storeData.store_code && (
+                                      <span className="text-[8px] text-gray-600 font-medium">
+                                        [{abbreviateStoreName(storeData.store_code)}]
                                       </span>
-                                    </div>
-                                    <div className="text-center">
-                                      <span className="text-[9px] text-gray-500">Card: </span>
-                                      <span className={`text-[9px] ${storeData.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
-                                        ${storeData.tips_card.toFixed(2)}
-                                      </span>
-                                    </div>
-                                    <div className="text-center pt-0.5 border-t border-gray-900 flex items-center justify-center gap-1">
-                                      <span className="font-bold text-gray-900 text-[11px]">
-                                        ${storeData.tips_total.toFixed(2)}
-                                      </span>
-                                      {storeData.store_code && (
-                                        <span className="text-[8px] text-gray-600 font-medium">
-                                          [{abbreviateStoreName(storeData.store_code)}]
-                                        </span>
-                                      )}
-                                    </div>
+                                    )}
                                   </div>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <div className="space-y-0.5">
-                              <div className="text-center">
-                                <span className="text-[9px] text-gray-500">Cash: </span>
-                                <span className={`text-[9px] ${dailyCash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
-                                  ${dailyCash.toFixed(2)}
-                                </span>
-                              </div>
-                              <div className="text-center">
-                                <span className="text-[9px] text-gray-500">Card: </span>
-                                <span className={`text-[9px] ${dailyCard === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
-                                  ${dailyCard.toFixed(2)}
-                                </span>
-                              </div>
-                              <div className="text-center pt-0.5 border-t border-gray-200">
-                                <span className="font-bold text-gray-900 text-[11px]">
-                                  ${dailyTotal.toFixed(2)}
-                                </span>
-                              </div>
+                            <div className="text-center">
+                              <span className="font-bold text-gray-900 text-[11px]">
+                                ${dailyRevenue.toFixed(2)}
+                              </span>
                             </div>
                           )
                         ) : (
@@ -171,23 +137,19 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                   })}
                   <td className="border border-gray-300 bg-blue-50 px-1 py-0.5 text-center">
                     {(() => {
-                      // Aggregate tips by store across all days - ALWAYS use techData for consistency
-                      const storeAggregates = new Map<string, { store_code: string; tips_cash: number; tips_card: number; tips_total: number }>();
+                      // Aggregate revenue by store across all days - ALWAYS use techData for consistency
+                      const storeAggregates = new Map<string, { store_code: string; revenue: number }>();
 
                       for (const storesArray of techData?.values() || []) {
                         for (const storeData of storesArray) {
                           if (!storeAggregates.has(storeData.store_id)) {
                             storeAggregates.set(storeData.store_id, {
                               store_code: storeData.store_code,
-                              tips_cash: 0,
-                              tips_card: 0,
-                              tips_total: 0,
+                              revenue: 0,
                             });
                           }
                           const agg = storeAggregates.get(storeData.store_id)!;
-                          agg.tips_cash += storeData.tips_cash;
-                          agg.tips_card += storeData.tips_card;
-                          agg.tips_total += storeData.tips_total;
+                          agg.revenue += storeData.revenue;
                         }
                       }
 
@@ -201,52 +163,24 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                               key={`${storeAgg.store_code}-${idx}`}
                               className={idx > 0 ? 'pt-1 mt-1 border-t border-gray-400' : ''}
                             >
-                              <div className="space-y-0.5">
-                                <div className="text-center">
-                                  <span className="text-[9px] text-gray-500">Cash: </span>
-                                  <span className={`text-[9px] ${storeAgg.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
-                                    ${storeAgg.tips_cash.toFixed(2)}
+                              <div className="text-center flex items-center justify-center gap-1">
+                                <span className="font-bold text-gray-900 text-[11px]">
+                                  ${storeAgg.revenue.toFixed(2)}
+                                </span>
+                                {storeAgg.store_code && (
+                                  <span className="text-[8px] text-gray-600 font-medium">
+                                    [{abbreviateStoreName(storeAgg.store_code)}]
                                   </span>
-                                </div>
-                                <div className="text-center">
-                                  <span className="text-[9px] text-gray-500">Card: </span>
-                                  <span className={`text-[9px] ${storeAgg.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
-                                    ${storeAgg.tips_card.toFixed(2)}
-                                  </span>
-                                </div>
-                                <div className="text-center pt-0.5 border-t border-gray-900 flex items-center justify-center gap-1">
-                                  <span className="font-bold text-gray-900 text-[11px]">
-                                    ${storeAgg.tips_total.toFixed(2)}
-                                  </span>
-                                  {storeAgg.store_code && (
-                                    <span className="text-[8px] text-gray-600 font-medium">
-                                      [{abbreviateStoreName(storeAgg.store_code)}]
-                                    </span>
-                                  )}
-                                </div>
+                                )}
                               </div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="space-y-0.5">
-                          <div className="text-center">
-                            <span className="text-[9px] text-gray-500">Cash: </span>
-                            <span className={`text-[9px] ${storesList[0]?.tips_cash === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
-                              ${(storesList[0]?.tips_cash || 0).toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="text-center">
-                            <span className="text-[9px] text-gray-500">Card: </span>
-                            <span className={`text-[9px] ${storesList[0]?.tips_card === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
-                              ${(storesList[0]?.tips_card || 0).toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="text-center pt-0.5 border-t border-gray-900">
-                            <span className="font-bold text-gray-900 text-[11px]">
-                              ${(storesList[0]?.tips_total || 0).toFixed(2)}
-                            </span>
-                          </div>
+                        <div className="text-center">
+                          <span className="font-bold text-gray-900 text-[11px]">
+                            ${(storesList[0]?.revenue || 0).toFixed(2)}
+                          </span>
                         </div>
                       );
                     })()}

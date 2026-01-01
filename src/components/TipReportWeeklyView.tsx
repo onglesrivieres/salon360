@@ -48,7 +48,7 @@ interface TipReportWeeklyViewProps {
 export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWeeklyViewProps) {
   const [summaries, setSummaries] = useState<TechnicianSummary[]>([]);
   const [loading, setLoading] = useState(false);
-  const [weeklyData, setWeeklyData] = useState<Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>>>>(new Map());
+  const [weeklyData, setWeeklyData] = useState<Map<string, Map<string, Array<{ store_id: string; store_code: string; revenue: number }>>>>(new Map());
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
@@ -316,7 +316,7 @@ export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWee
       const dailyDataPromises = periodDates.map(date => fetchDailyTipData(date));
       const dailyDataResults = await Promise.all(dailyDataPromises);
 
-      const dataMap = new Map<string, Map<string, Map<string, { store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>>>();
+      const dataMap = new Map<string, Map<string, Map<string, { store_id: string; store_code: string; revenue: number }>>>();
 
       periodDates.forEach((date, index) => {
         const technicianMap = dailyDataResults[index];
@@ -333,7 +333,7 @@ export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWee
 
           const dateMap = techMap.get(date)!;
 
-          const storeBreakdown = new Map<string, { store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>();
+          const storeBreakdown = new Map<string, { store_id: string; store_code: string; revenue: number }>();
 
           for (const item of summary.items) {
             const storeId = item.store_code;
@@ -341,16 +341,12 @@ export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWee
               storeBreakdown.set(storeId, {
                 store_id: storeId,
                 store_code: item.store_code,
-                tips_cash: 0,
-                tips_card: 0,
-                tips_total: 0,
+                revenue: 0,
               });
             }
 
             const storeData = storeBreakdown.get(storeId)!;
-            storeData.tips_cash += item.tip_cash;
-            storeData.tips_card += item.tip_card;
-            storeData.tips_total += item.tip_customer + item.tip_receptionist;
+            storeData.revenue += item.price;
           }
 
           for (const [storeId, storeData] of storeBreakdown.entries()) {
@@ -359,10 +355,10 @@ export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWee
         }
       });
 
-      const finalData = new Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>>>();
+      const finalData = new Map<string, Map<string, Array<{ store_id: string; store_code: string; revenue: number }>>>();
 
       for (const [techId, dateMap] of dataMap.entries()) {
-        const techDateMap = new Map<string, Array<{ store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>>();
+        const techDateMap = new Map<string, Array<{ store_id: string; store_code: string; revenue: number }>>();
 
         for (const [date, storeMap] of dateMap.entries()) {
           const storesArray = Array.from(storeMap.values());
@@ -392,15 +388,11 @@ export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWee
       const technicianMap = new Map<string, TechnicianSummary>();
       for (const [techId, dayMap] of sortedData.entries()) {
         const techName = techNames.get(techId) || 'Unknown';
-        let totalCash = 0;
-        let totalCard = 0;
-        let totalTips = 0;
+        let totalRevenue = 0;
 
         for (const storesArray of dayMap.values()) {
           for (const storeData of storesArray) {
-            totalCash += storeData.tips_cash;
-            totalCard += storeData.tips_card;
-            totalTips += storeData.tips_total;
+            totalRevenue += storeData.revenue;
           }
         }
 
@@ -408,12 +400,12 @@ export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWee
           technician_id: techId,
           technician_name: techName,
           services_count: 0,
-          revenue: 0,
+          revenue: totalRevenue,
           tips_customer: 0,
           tips_receptionist: 0,
-          tips_total: totalTips,
-          tips_cash: totalCash,
-          tips_card: totalCard,
+          tips_total: 0,
+          tips_cash: 0,
+          tips_card: 0,
           items: [],
         });
       }
@@ -438,7 +430,7 @@ export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWee
   if (summaries.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-sm text-gray-500">No tips for this period</p>
+        <p className="text-sm text-gray-500">No data for this period</p>
       </div>
     );
   }
@@ -448,7 +440,7 @@ export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWee
   return (
     <div>
       <div className="p-2 border-b border-gray-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
-        <h3 className="text-base font-semibold text-gray-900">Period Tips</h3>
+        <h3 className="text-base font-semibold text-gray-900">Period Revenue</h3>
         <div className="flex items-center gap-2">
           <Button
             size="sm"
