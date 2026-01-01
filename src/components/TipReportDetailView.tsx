@@ -11,11 +11,9 @@ interface TechnicianSummary {
   technician_name: string;
   services_count: number;
   revenue: number;
-  tips_customer: number;
-  tips_receptionist: number;
-  tips_total: number;
-  tips_cash: number;
-  tips_card: number;
+  service_revenue: number;
+  addon_revenue: number;
+  total_revenue: number;
   items: ServiceItemDetail[];
 }
 
@@ -24,10 +22,8 @@ interface ServiceItemDetail {
   service_code: string;
   service_name: string;
   price: number;
-  tip_customer: number;
-  tip_receptionist: number;
-  tip_cash: number;
-  tip_card: number;
+  service_revenue: number;
+  addon_revenue: number;
   payment_method: string;
   opened_at: string;
   closed_at: string | null;
@@ -194,40 +190,30 @@ export function TipReportDetailView({ selectedDate, onRefresh }: TipReportDetail
             technician_name: technician.display_name,
             services_count: 0,
             revenue: 0,
-            tips_customer: 0,
-            tips_receptionist: 0,
-            tips_total: 0,
-            tips_cash: 0,
-            tips_card: 0,
+            service_revenue: 0,
+            addon_revenue: 0,
+            total_revenue: 0,
             items: [],
           });
         }
 
         const summary = technicianMap.get(techId)!;
-        const tipCustomerCash = item.tip_customer_cash || 0;
-        const tipCustomerCard = item.tip_customer_card || 0;
-        const tipCustomer = tipCustomerCash + tipCustomerCard;
-        const tipReceptionist = item.tip_receptionist || 0;
-        const tipCash = tipCustomerCash;
-        const tipCard = tipCustomerCard + tipReceptionist;
+        const serviceRevenue = (parseFloat(item.qty) || 0) * (parseFloat(item.price_each) || 0);
+        const addonRevenue = parseFloat(item.addon_price) || 0;
 
         summary.services_count += 1;
         summary.revenue += itemRevenue;
-        summary.tips_customer += tipCustomer;
-        summary.tips_receptionist += tipReceptionist;
-        summary.tips_total += tipCustomer + tipReceptionist;
-        summary.tips_cash += tipCash;
-        summary.tips_card += tipCard;
+        summary.service_revenue += serviceRevenue;
+        summary.addon_revenue += addonRevenue;
+        summary.total_revenue += itemRevenue;
 
         summary.items.push({
           ticket_id: ticket.id,
           service_code: item.service?.code || '',
           service_name: item.service?.name || '',
           price: itemRevenue,
-          tip_customer: tipCustomer,
-          tip_receptionist: tipReceptionist,
-          tip_cash: tipCash,
-          tip_card: tipCard,
+          service_revenue: serviceRevenue,
+          addon_revenue: addonRevenue,
           payment_method: (ticket as any).payment_method || '',
           opened_at: (ticket as any).opened_at,
           closed_at: ticket.closed_at,
@@ -391,29 +377,29 @@ export function TipReportDetailView({ selectedDate, onRefresh }: TipReportDetail
                     {showDetails ? (
                       <>
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-gray-600">T. (given)</span>
-                          <span className={`text-[9px] ${summary.tips_customer === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
-                            ${summary.tips_customer.toFixed(0)}
+                          <span className="text-[9px] text-gray-600">Services</span>
+                          <span className="text-[9px] font-semibold text-gray-900">
+                            ${summary.service_revenue.toFixed(0)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-gray-600">T. (paired)</span>
-                          <span className={`text-[9px] ${summary.tips_receptionist === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
-                            ${summary.tips_receptionist.toFixed(0)}
+                          <span className="text-[9px] text-gray-600">Addons</span>
+                          <span className="text-[9px] font-semibold text-gray-900">
+                            ${summary.addon_revenue.toFixed(0)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
                           <span className="text-[9px] font-medium text-gray-900">Total</span>
                           <span className="text-[10px] font-bold text-gray-900">
-                            ${summary.tips_total.toFixed(0)}
+                            ${summary.total_revenue.toFixed(0)}
                           </span>
                         </div>
                       </>
                     ) : (
                       <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-medium text-gray-900">Total Tips</span>
+                        <span className="text-[9px] font-medium text-gray-900">Total Revenue</span>
                         <span className="text-[10px] font-bold text-gray-900">
-                          ${summary.tips_total.toFixed(0)}
+                          ${summary.total_revenue.toFixed(0)}
                         </span>
                       </div>
                     )}
@@ -427,7 +413,7 @@ export function TipReportDetailView({ selectedDate, onRefresh }: TipReportDetail
                   <div className="space-y-1 max-h-[1500px] overflow-y-auto">
                     {summary.items.map((item, index) => {
                       const openTime = formatTimeEST(item.opened_at);
-                      const totalTip = item.tip_customer + item.tip_receptionist;
+                      const totalRevenue = item.service_revenue + item.addon_revenue;
                       const completionDuration = calculateItemCompletionDuration(item);
                       const completionStatus = getItemCompletionStatus(item);
 
@@ -470,23 +456,23 @@ export function TipReportDetailView({ selectedDate, onRefresh }: TipReportDetail
                           {showDetails ? (
                             <div className="space-y-0">
                               <div className="flex justify-between items-center">
-                                <span className="text-[8px] text-gray-600">T. (given)</span>
-                                <span className={`text-[8px] ${item.tip_customer === 0 ? 'text-gray-900' : 'font-semibold text-gray-900'}`}>
-                                  ${item.tip_customer.toFixed(0)}
+                                <span className="text-[8px] text-gray-600">Services</span>
+                                <span className="text-[8px] font-semibold text-gray-900">
+                                  ${item.service_revenue.toFixed(0)}
                                 </span>
                               </div>
                               <div className="flex justify-between items-center">
-                                <span className="text-[8px] text-gray-600">T. (paired)</span>
-                                <span className={`text-[8px] ${item.tip_receptionist === 0 ? 'text-gray-900' : 'font-semibold text-orange-600'}`}>
-                                  ${item.tip_receptionist.toFixed(0)}
+                                <span className="text-[8px] text-gray-600">Addons</span>
+                                <span className="text-[8px] font-semibold text-gray-900">
+                                  ${item.addon_revenue.toFixed(0)}
                                 </span>
                               </div>
                             </div>
                           ) : (
                             <div className="flex justify-between items-center">
-                              <span className="text-[8px] text-gray-600">Total Tip</span>
-                              <span className={`text-[8px] ${totalTip === 0 ? 'text-gray-900' : 'font-semibold text-gray-900'}`}>
-                                ${totalTip.toFixed(0)}
+                              <span className="text-[8px] text-gray-600">Total</span>
+                              <span className="text-[8px] font-semibold text-gray-900">
+                                ${totalRevenue.toFixed(0)}
                               </span>
                             </div>
                           )}

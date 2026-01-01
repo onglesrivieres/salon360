@@ -14,11 +14,9 @@ interface TechnicianSummary {
   technician_name: string;
   services_count: number;
   revenue: number;
-  tips_customer: number;
-  tips_receptionist: number;
-  tips_total: number;
-  tips_cash: number;
-  tips_card: number;
+  service_revenue: number;
+  addon_revenue: number;
+  total_revenue: number;
   items: ServiceItemDetail[];
 }
 
@@ -27,10 +25,8 @@ interface ServiceItemDetail {
   service_code: string;
   service_name: string;
   price: number;
-  tip_customer: number;
-  tip_receptionist: number;
-  tip_cash: number;
-  tip_card: number;
+  service_revenue: number;
+  addon_revenue: number;
   payment_method: string;
   opened_at: string;
   closed_at: string | null;
@@ -227,40 +223,30 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             technician_name: technician.display_name,
             services_count: 0,
             revenue: 0,
-            tips_customer: 0,
-            tips_receptionist: 0,
-            tips_total: 0,
-            tips_cash: 0,
-            tips_card: 0,
+            service_revenue: 0,
+            addon_revenue: 0,
+            total_revenue: 0,
             items: [],
           });
         }
 
         const summary = technicianMap.get(techId)!;
-        const tipCustomerCash = item.tip_customer_cash || 0;
-        const tipCustomerCard = item.tip_customer_card || 0;
-        const tipCustomer = tipCustomerCash + tipCustomerCard;
-        const tipReceptionist = item.tip_receptionist || 0;
-        const tipCash = tipCustomerCash;
-        const tipCard = tipCustomerCard + tipReceptionist;
+        const serviceRevenue = (parseFloat(item.qty) || 0) * (parseFloat(item.price_each) || 0);
+        const addonRevenue = parseFloat(item.addon_price) || 0;
 
         summary.services_count += 1;
         summary.revenue += itemRevenue;
-        summary.tips_customer += tipCustomer;
-        summary.tips_receptionist += tipReceptionist;
-        summary.tips_total += tipCustomer + tipReceptionist;
-        summary.tips_cash += tipCash;
-        summary.tips_card += tipCard;
+        summary.service_revenue += serviceRevenue;
+        summary.addon_revenue += addonRevenue;
+        summary.total_revenue += itemRevenue;
 
         summary.items.push({
           ticket_id: ticket.id,
           service_code: item.service?.code || '',
           service_name: item.service?.name || '',
           price: itemRevenue,
-          tip_customer: tipCustomer,
-          tip_receptionist: tipReceptionist,
-          tip_cash: tipCash,
-          tip_card: tipCard,
+          service_revenue: serviceRevenue,
+          addon_revenue: addonRevenue,
           payment_method: (ticket as any).payment_method || '',
           opened_at: (ticket as any).opened_at,
           closed_at: ticket.closed_at,
@@ -458,14 +444,14 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
       const technicianMap = await fetchDailyTipData(selectedDate);
 
-      let totalTips = 0;
-      let totalTipsCash = 0;
-      let totalTipsCard = 0;
+      let totalRevenue = 0;
+      let totalServiceRevenue = 0;
+      let totalAddonRevenue = 0;
 
       for (const summary of technicianMap.values()) {
-        totalTips += summary.tips_total;
-        totalTipsCash += summary.tips_cash;
-        totalTipsCard += summary.tips_card;
+        totalRevenue += summary.total_revenue;
+        totalServiceRevenue += summary.service_revenue;
+        totalAddonRevenue += summary.addon_revenue;
       }
 
       // Debug logging for Detail Grid data
@@ -475,33 +461,33 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         console.log('Selected Store ID:', selectedStoreId);
 
         for (const [techId, summary] of technicianMap.entries()) {
-          const storeBreakdown = new Map<string, { cash: number; card: number; total: number }>();
+          const storeBreakdown = new Map<string, { services: number; addons: number; total: number }>();
 
           for (const item of summary.items) {
             const storeCode = item.store_code || 'Unknown';
             if (!storeBreakdown.has(storeCode)) {
-              storeBreakdown.set(storeCode, { cash: 0, card: 0, total: 0 });
+              storeBreakdown.set(storeCode, { services: 0, addons: 0, total: 0 });
             }
             const storeData = storeBreakdown.get(storeCode)!;
-            storeData.cash += item.tip_cash;
-            storeData.card += item.tip_card;
-            storeData.total += item.tip_customer + item.tip_receptionist;
+            storeData.services += item.service_revenue;
+            storeData.addons += item.addon_revenue;
+            storeData.total += item.service_revenue + item.addon_revenue;
           }
 
           const storeBreakdownObj: any = {};
           for (const [storeCode, data] of storeBreakdown.entries()) {
             storeBreakdownObj[storeCode] = {
-              cash: data.cash.toFixed(2),
-              card: data.card.toFixed(2),
+              services: data.services.toFixed(2),
+              addons: data.addons.toFixed(2),
               total: data.total.toFixed(2)
             };
           }
 
           console.log(`${summary.technician_name} (${techId}):`, {
             uniqueStoresInData: Array.from(storeBreakdown.keys()),
-            dailyTotal: summary.tips_total.toFixed(2),
-            tipsCash: summary.tips_cash.toFixed(2),
-            tipsCard: summary.tips_card.toFixed(2),
+            dailyTotal: summary.total_revenue.toFixed(2),
+            serviceRevenue: summary.service_revenue.toFixed(2),
+            addonRevenue: summary.addon_revenue.toFixed(2),
             itemCount: summary.items.length,
             storeBreakdown: storeBreakdownObj
           });
@@ -524,21 +510,21 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
         const technicianTotals = filteredSummaries[0];
         if (technicianTotals) {
-          totalTips = technicianTotals.tips_total;
-          totalTipsCash = technicianTotals.tips_cash;
-          totalTipsCard = technicianTotals.tips_card;
+          totalRevenue = technicianTotals.total_revenue;
+          totalServiceRevenue = technicianTotals.service_revenue;
+          totalAddonRevenue = technicianTotals.addon_revenue;
         } else {
-          totalTips = 0;
-          totalTipsCash = 0;
-          totalTipsCard = 0;
+          totalRevenue = 0;
+          totalServiceRevenue = 0;
+          totalAddonRevenue = 0;
         }
       }
 
       setSummaries(filteredSummaries);
       setTotals({
-        tips: totalTips,
-        tips_cash: totalTipsCash,
-        tips_card: totalTipsCard,
+        tips: totalRevenue,
+        tips_cash: totalServiceRevenue,
+        tips_card: totalAddonRevenue,
       });
     } catch (error) {
       showToast('Failed to load tip data', 'error');
@@ -551,21 +537,17 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     const headers = [
       'Technician',
       'Services Done',
-      'Tips (Customer)',
-      'Tips (Receptionist)',
-      'T. (Cash)',
-      'T. (Card)',
-      'Tips Total',
+      'Service Revenue',
+      'Addon Revenue',
+      'Total Revenue',
     ];
 
     const rows = summaries.map((s) => [
       s.technician_name,
       s.services_count.toString(),
-      s.tips_customer.toFixed(2),
-      s.tips_receptionist.toFixed(2),
-      s.tips_cash.toFixed(2),
-      s.tips_card.toFixed(2),
-      s.tips_total.toFixed(2),
+      s.service_revenue.toFixed(2),
+      s.addon_revenue.toFixed(2),
+      s.total_revenue.toFixed(2),
     ]);
 
     const csv = [headers, ...rows].map((row) => row.join(',')).join('\n');
@@ -863,29 +845,29 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                         {showDetails ? (
                           <>
                             <div className="flex justify-between items-center">
-                              <span className="text-[9px] text-gray-600">T. (given)</span>
-                              <span className={`text-[9px] ${summary.tips_customer === 0 ? 'text-gray-900' : 'font-semibold text-green-600'}`}>
-                                ${summary.tips_customer.toFixed(0)}
+                              <span className="text-[9px] text-gray-600">Services</span>
+                              <span className="text-[9px] font-semibold text-gray-900">
+                                ${summary.service_revenue.toFixed(0)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-[9px] text-gray-600">T. (paired)</span>
-                              <span className={`text-[9px] ${summary.tips_receptionist === 0 ? 'text-gray-900' : 'font-semibold text-blue-600'}`}>
-                                ${summary.tips_receptionist.toFixed(0)}
+                              <span className="text-[9px] text-gray-600">Addons</span>
+                              <span className="text-[9px] font-semibold text-gray-900">
+                                ${summary.addon_revenue.toFixed(0)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
                               <span className="text-[9px] font-medium text-gray-900">Total</span>
                               <span className="text-[10px] font-bold text-gray-900">
-                                ${summary.tips_total.toFixed(0)}
+                                ${summary.total_revenue.toFixed(0)}
                               </span>
                             </div>
                           </>
                         ) : (
                           <div className="flex justify-between items-center">
-                            <span className="text-[9px] font-medium text-gray-900">Total Tips</span>
+                            <span className="text-[9px] font-medium text-gray-900">Total Revenue</span>
                             <span className="text-[10px] font-bold text-gray-900">
-                              ${summary.tips_total.toFixed(0)}
+                              ${summary.total_revenue.toFixed(0)}
                             </span>
                           </div>
                         )}
@@ -899,7 +881,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                       <div className="space-y-1 max-h-[1500px] overflow-y-auto">
                         {summary.items.map((item, index) => {
                           const openTime = formatTimeEST(item.opened_at);
-                          const totalTip = item.tip_customer + item.tip_receptionist;
+                          const totalRevenue = item.service_revenue + item.addon_revenue;
                           const completionDuration = calculateItemCompletionDuration(item);
                           const completionStatus = getItemCompletionStatus(item);
 
@@ -942,23 +924,23 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                               {showDetails ? (
                                 <div className="space-y-0">
                                   <div className="flex justify-between items-center">
-                                    <span className="text-[8px] text-gray-600">T. (given)</span>
-                                    <span className={`text-[8px] ${item.tip_customer === 0 ? 'text-gray-900' : 'font-semibold text-gray-900'}`}>
-                                      ${item.tip_customer.toFixed(0)}
+                                    <span className="text-[8px] text-gray-600">Services</span>
+                                    <span className="text-[8px] font-semibold text-gray-900">
+                                      ${item.service_revenue.toFixed(0)}
                                     </span>
                                   </div>
                                   <div className="flex justify-between items-center">
-                                    <span className="text-[8px] text-gray-600">T. (paired)</span>
-                                    <span className={`text-[8px] ${item.tip_receptionist === 0 ? 'text-gray-900' : 'font-semibold text-orange-600'}`}>
-                                      ${item.tip_receptionist.toFixed(0)}
+                                    <span className="text-[8px] text-gray-600">Addons</span>
+                                    <span className="text-[8px] font-semibold text-gray-900">
+                                      ${item.addon_revenue.toFixed(0)}
                                     </span>
                                   </div>
                                 </div>
                               ) : (
                                 <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-600">Total Tip</span>
-                                  <span className={`text-[8px] ${totalTip === 0 ? 'text-gray-900' : 'font-semibold text-gray-900'}`}>
-                                    ${totalTip.toFixed(0)}
+                                  <span className="text-[8px] text-gray-600">Total</span>
+                                  <span className="text-[8px] font-semibold text-gray-900">
+                                    ${totalRevenue.toFixed(0)}
                                   </span>
                                 </div>
                               )}
