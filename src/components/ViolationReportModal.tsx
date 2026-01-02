@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, User, MessageSquare, Hash, RefreshCw } from 'lucide-react';
+import { AlertTriangle, User, MessageSquare, RefreshCw } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Select } from './ui/Select';
@@ -16,7 +16,6 @@ interface ViolationReportModalProps {
   onSubmit: (data: {
     reportedEmployeeId: string;
     description: string;
-    queuePosition: string;
   }) => Promise<void>;
 }
 
@@ -32,16 +31,11 @@ export function ViolationReportModal({
 }: ViolationReportModalProps) {
   const [reportedEmployeeId, setReportedEmployeeId] = useState('');
   const [description, setDescription] = useState('');
-  const [queuePosition, setQueuePosition] = useState('');
   const [confirmAccuracy, setConfirmAccuracy] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const eligibleEmployees = workingEmployees.filter(
     (emp) => emp.employee_id !== currentEmployeeId
-  );
-
-  const selectedEmployee = eligibleEmployees.find(
-    (emp) => emp.employee_id === reportedEmployeeId
   );
 
   const responderCount = workingEmployees.filter(
@@ -58,7 +52,6 @@ export function ViolationReportModal({
       await onSubmit({
         reportedEmployeeId,
         description: description.trim(),
-        queuePosition,
       });
       handleClose();
     } catch (error) {
@@ -71,7 +64,6 @@ export function ViolationReportModal({
   const handleClose = () => {
     setReportedEmployeeId('');
     setDescription('');
-    setQueuePosition('');
     setConfirmAccuracy(false);
     onClose();
   };
@@ -133,29 +125,6 @@ export function ViolationReportModal({
             ))}
           </Select>
         </div>
-
-        {selectedEmployee && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              <Hash className="w-4 h-4 inline mr-1" />
-              Queue Position They Claimed (Optional)
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={queuePosition}
-              onChange={(e) => setQueuePosition(e.target.value)}
-              placeholder="Enter position number"
-              disabled={isSubmitting}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              {selectedEmployee.queue_position
-                ? `Current queue position: #${selectedEmployee.queue_position}`
-                : 'Not currently in queue'}
-            </p>
-          </div>
-        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">

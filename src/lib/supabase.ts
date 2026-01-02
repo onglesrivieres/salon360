@@ -790,7 +790,6 @@ export interface PendingViolationResponse {
   reporter_employee_name: string;
   violation_description: string;
   violation_date: string;
-  queue_position_claimed: number | null;
   total_responses_required: number;
   total_responses_received: number;
   expires_at: string;
@@ -805,7 +804,6 @@ export interface ViolationReportForApproval {
   reporter_employee_name: string;
   violation_description: string;
   violation_date: string;
-  queue_position_claimed: number | null;
   total_responses: number;
   votes_for_violation: number;
   votes_against_violation: number;

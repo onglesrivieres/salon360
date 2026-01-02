@@ -504,7 +504,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const handleSubmitViolationReport = async (data: {
     reportedEmployeeId: string;
     description: string;
-    queuePosition: string;
   }) => {
     if (!session?.employee_id || !selectedStoreId) return;
 
@@ -514,7 +513,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         p_reporter_employee_id: session.employee_id,
         p_store_id: selectedStoreId,
         p_violation_description: data.description,
-        p_queue_position_claimed: data.queuePosition ? parseInt(data.queuePosition) : null
+        p_queue_position_claimed: null
       });
 
       if (error) throw error;

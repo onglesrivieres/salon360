@@ -152,15 +152,6 @@ export function ViolationResponseRibbon({
                 <p className="text-white text-sm">{currentReport.violation_description}</p>
               </div>
 
-              {currentReport.queue_position_claimed && (
-                <div>
-                  <p className="text-sm font-medium text-red-100 mb-1">
-                    Queue Position Claimed
-                  </p>
-                  <p className="text-white">#{currentReport.queue_position_claimed}</p>
-                </div>
-              )}
-
               <div>
                 <p className="text-sm font-medium text-red-100 mb-1">
                   Date

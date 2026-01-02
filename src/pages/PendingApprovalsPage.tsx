@@ -973,11 +973,6 @@ export function PendingApprovalsPage() {
                       <p className="text-sm text-gray-900 mb-2">
                         <span className="font-medium">Description:</span> {report.violation_description}
                       </p>
-                      {report.queue_position_claimed && (
-                        <p className="text-sm text-gray-600 mb-2">
-                          <span className="font-medium">Queue Position Claimed:</span> #{report.queue_position_claimed}
-                        </p>
-                      )}
                       <p className="text-xs text-gray-500">
                         Date: {new Date(report.violation_date).toLocaleDateString()}
                       </p>
