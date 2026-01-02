@@ -162,7 +162,6 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                               ))}
                               <div className="pt-0.5 mt-0.5 border-t border-gray-300">
                                 <div className="flex items-center justify-center gap-0.5">
-                                  <span className="text-[9px] text-gray-600">Total</span>
                                   <span className="text-gray-900 text-[10px] font-bold">
                                     {(dailyCustomer + dailyReceptionist).toFixed(0)}
                                   </span>
@@ -183,7 +182,6 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                               </div>
                               <div className="pt-0.5 mt-0.5 border-t border-gray-300">
                                 <div className="flex items-center justify-center gap-0.5">
-                                  <span className="text-[9px] text-gray-600">Total</span>
                                   <span className="text-gray-900 text-[10px] font-bold">
                                     {(dailyCustomer + dailyReceptionist).toFixed(0)}
                                   </span>
@@ -272,7 +270,6 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                           ))}
                           <div className="pt-0.5 mt-0.5 border-t border-gray-300">
                             <div className="flex items-center justify-center gap-0.5">
-                              <span className="text-[9px] text-gray-600">Total</span>
                               <span className="text-gray-900 text-[10px] font-bold">
                                 {periodTotal.toFixed(0)}
                               </span>
@@ -293,7 +290,6 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                           </div>
                           <div className="pt-0.5 mt-0.5 border-t border-gray-300">
                             <div className="flex items-center justify-center gap-0.5">
-                              <span className="text-[9px] text-gray-600">Total</span>
                               <span className="text-gray-900 text-[10px] font-bold">
                                 {periodTotal.toFixed(0)}
                               </span>
