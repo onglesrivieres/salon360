@@ -6,8 +6,8 @@ import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { useToast } from '../components/ui/Toast';
 import { TicketEditor } from '../components/TicketEditor';
-import { TipReportDetailView } from '../components/TipReportDetailView';
-import { TipReportWeeklyView } from '../components/TipReportWeeklyView';
+import { TicketsDetailView } from '../components/TicketsDetailView';
+import { TicketsPeriodView } from '../components/TicketsPeriodView';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { formatTimeEST, getCurrentDateEST } from '../lib/timezone';
@@ -781,11 +781,11 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
       {viewMode === 'daily' ? (
         <div className="bg-white rounded-lg shadow">
-          <TipReportDetailView selectedDate={selectedDate} onRefresh={fetchTickets} />
+          <TicketsDetailView selectedDate={selectedDate} onRefresh={fetchTickets} />
         </div>
       ) : viewMode === 'period' ? (
         <div className="bg-white rounded-lg shadow">
-          <TipReportWeeklyView selectedDate={selectedDate} onDateChange={onDateChange} />
+          <TicketsPeriodView selectedDate={selectedDate} onDateChange={onDateChange} />
         </div>
       ) : (
         <>
