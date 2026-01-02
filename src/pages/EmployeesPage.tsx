@@ -44,7 +44,7 @@ export function EmployeesPage() {
     display_name: '',
     role: ['Technician'] as Employee['role'],
     status: 'Active' as Employee['status'],
-    pay_type: 'hourly' as 'hourly' | 'daily',
+    pay_type: 'hourly' as 'hourly' | 'daily' | 'commission',
     store_ids: [] as string[],
     notes: '',
     tip_report_show_details: true,
@@ -473,12 +473,13 @@ export function EmployeesPage() {
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  pay_type: e.target.value as 'hourly' | 'daily',
+                  pay_type: e.target.value as 'hourly' | 'daily' | 'commission',
                 })
               }
               options={[
                 { value: 'hourly', label: 'Hourly' },
                 { value: 'daily', label: 'Daily' },
+                { value: 'commission', label: 'Commission' },
               ]}
             />
           )}

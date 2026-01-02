@@ -77,6 +77,18 @@ export function PendingApprovalsPage() {
         return;
       }
 
+      // Check if user is a commission employee
+      let isCommissionEmployee = false;
+      if (session?.employee_id) {
+        const { data: employeeData } = await supabase
+          .from('employees')
+          .select('pay_type')
+          .eq('id', session.employee_id)
+          .maybeSingle();
+
+        isCommissionEmployee = employeeData?.pay_type === 'commission';
+      }
+
       const userRoles = session?.role || [];
       const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
       const isSupervisor = userRoles.includes('Supervisor');
@@ -84,7 +96,8 @@ export function PendingApprovalsPage() {
 
       let allTickets: any[] = [];
 
-      if (isTechnician) {
+      // Commission employees and technicians see only their own ticket approvals
+      if (isTechnician || isCommissionEmployee) {
         const techResult = await supabase.rpc('get_pending_approvals_for_technician', {
           p_employee_id: session?.employee_id,
           p_store_id: selectedStoreId,
@@ -93,7 +106,9 @@ export function PendingApprovalsPage() {
         allTickets.push(...(techResult.data || []));
       }
 
-      if (isSupervisor) {
+      // Commission employees should not see supervisor or management approvals
+      // Only non-commission employees with these roles can see them
+      if (isSupervisor && !isCommissionEmployee) {
         const supervisorResult = await supabase.rpc('get_pending_approvals_for_supervisor', {
           p_employee_id: session?.employee_id,
           p_store_id: selectedStoreId,
@@ -102,7 +117,7 @@ export function PendingApprovalsPage() {
         allTickets.push(...(supervisorResult.data || []));
       }
 
-      if (isManagement) {
+      if (isManagement && !isCommissionEmployee) {
         const managementResult = await supabase.rpc('get_pending_approvals_for_management', {
           p_store_id: selectedStoreId,
         });

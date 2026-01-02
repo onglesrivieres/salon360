@@ -44,7 +44,7 @@ export interface Technician {
   role_permission?: 'Admin' | 'Receptionist' | 'Technician' | 'Supervisor' | 'Cashier';
   status: 'Active' | 'Inactive';
   store_id?: string;
-  pay_type?: 'hourly' | 'daily';
+  pay_type?: 'hourly' | 'daily' | 'commission';
   payout_rule_type?: string;
   payout_commission_pct?: number;
   payout_hourly_rate?: number;
@@ -235,7 +235,7 @@ export interface AttendanceRecord {
   check_in_time: string;
   check_out_time?: string;
   last_activity_time?: string;
-  pay_type: 'hourly' | 'daily';
+  pay_type: 'hourly' | 'daily' | 'commission';
   status: 'checked_in' | 'checked_out' | 'auto_checked_out';
   total_hours?: number;
   notes: string;

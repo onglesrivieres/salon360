@@ -64,6 +64,18 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
       const isTechnician = session?.role_permission === 'Technician';
       const isCashier = session?.role_permission === 'Cashier';
 
+      // Check if user is a commission employee
+      let isCommissionEmployee = false;
+      if (session?.employee_id) {
+        const { data: employeeData } = await supabase
+          .from('employees')
+          .select('pay_type')
+          .eq('id', session.employee_id)
+          .maybeSingle();
+
+        isCommissionEmployee = employeeData?.pay_type === 'commission';
+      }
+
       // Safety check: Cashiers can only view today's date
       if (isCashier) {
         const today = getCurrentDateEST();
@@ -110,7 +122,8 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
       let filteredData = data || [];
 
-      if (isTechnician && session?.employee_id) {
+      // Filter tickets for technicians and commission employees to show only their work
+      if ((isTechnician || isCommissionEmployee) && session?.employee_id) {
         filteredData = filteredData.filter(ticket =>
           ticket.ticket_items && ticket.ticket_items.some((item: any) => item.employee_id === session.employee_id)
         );
