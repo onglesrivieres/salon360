@@ -104,7 +104,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                           {hasRevenue ? (
                             <div className="flex items-center justify-center">
                               <span className="text-gray-900 text-[10px] font-bold">
-                                ${dailyTotal.toFixed(0)}
+                                {dailyTotal.toFixed(0)}
                               </span>
                             </div>
                           ) : (
@@ -145,7 +145,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                     <div className="flex items-center justify-center gap-0.5">
                                       <span className="text-[9px] text-gray-600">T.(given)</span>
                                       <span className="text-gray-900 text-[10px] font-medium">
-                                        ${storeData.tips_customer.toFixed(0)}
+                                        {storeData.tips_customer.toFixed(0)}
                                       </span>
                                       {storeData.store_code && (
                                         <span className="text-[7px] text-gray-600 font-medium">
@@ -156,7 +156,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                     <div className="flex items-center justify-center gap-0.5">
                                       <span className="text-[9px] text-gray-600">T.(paired)</span>
                                       <span className="text-gray-900 text-[10px] font-medium">
-                                        ${storeData.tips_receptionist.toFixed(0)}
+                                        {storeData.tips_receptionist.toFixed(0)}
                                       </span>
                                     </div>
                                   </div>
@@ -166,7 +166,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                 <div className="flex items-center justify-center gap-0.5">
                                   <span className="text-[9px] text-gray-600">Total</span>
                                   <span className="text-gray-900 text-[10px] font-bold">
-                                    ${(dailyCustomer + dailyReceptionist).toFixed(0)}
+                                    {(dailyCustomer + dailyReceptionist).toFixed(0)}
                                   </span>
                                 </div>
                               </div>
@@ -176,20 +176,20 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                               <div className="flex items-center justify-center gap-0.5">
                                 <span className="text-[9px] text-gray-600">T.(given)</span>
                                 <span className="text-gray-900 text-[10px] font-medium">
-                                  ${dailyCustomer.toFixed(0)}
+                                  {dailyCustomer.toFixed(0)}
                                 </span>
                               </div>
                               <div className="flex items-center justify-center gap-0.5">
                                 <span className="text-[9px] text-gray-600">T.(paired)</span>
                                 <span className="text-gray-900 text-[10px] font-medium">
-                                  ${dailyReceptionist.toFixed(0)}
+                                  {dailyReceptionist.toFixed(0)}
                                 </span>
                               </div>
                               <div className="pt-0.5 mt-0.5 border-t border-gray-300">
                                 <div className="flex items-center justify-center gap-0.5">
                                   <span className="text-[9px] text-gray-600">Total</span>
                                   <span className="text-gray-900 text-[10px] font-bold">
-                                    ${(dailyCustomer + dailyReceptionist).toFixed(0)}
+                                    {(dailyCustomer + dailyReceptionist).toFixed(0)}
                                   </span>
                                 </div>
                               </div>
@@ -215,7 +215,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                         return (
                           <div className="flex items-center justify-center">
                             <span className="text-gray-900 text-[10px] font-bold">
-                              ${periodTotal.toFixed(0)}
+                              {periodTotal.toFixed(0)}
                             </span>
                           </div>
                         );
@@ -259,7 +259,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                 <div className="flex items-center justify-center gap-0.5">
                                   <span className="text-[9px] text-gray-600">T.(given)</span>
                                   <span className="font-bold text-gray-900 text-[10px]">
-                                    ${storeAgg.tips_customer.toFixed(0)}
+                                    {storeAgg.tips_customer.toFixed(0)}
                                   </span>
                                   {storeAgg.store_code && (
                                     <span className="text-[7px] text-gray-600 font-medium">
@@ -270,7 +270,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                 <div className="flex items-center justify-center gap-0.5">
                                   <span className="text-[9px] text-gray-600">T.(paired)</span>
                                   <span className="font-bold text-gray-900 text-[10px]">
-                                    ${storeAgg.tips_receptionist.toFixed(0)}
+                                    {storeAgg.tips_receptionist.toFixed(0)}
                                   </span>
                                 </div>
                               </div>
@@ -280,7 +280,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                             <div className="flex items-center justify-center gap-0.5">
                               <span className="text-[9px] text-gray-600">Total</span>
                               <span className="text-gray-900 text-[10px] font-bold">
-                                ${periodTotal.toFixed(0)}
+                                {periodTotal.toFixed(0)}
                               </span>
                             </div>
                           </div>
@@ -290,20 +290,20 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                           <div className="flex items-center justify-center gap-0.5">
                             <span className="text-[9px] text-gray-600">T.(given)</span>
                             <span className="font-bold text-gray-900 text-[10px]">
-                              ${(storesList[0]?.tips_customer || 0).toFixed(0)}
+                              {(storesList[0]?.tips_customer || 0).toFixed(0)}
                             </span>
                           </div>
                           <div className="flex items-center justify-center gap-0.5">
                             <span className="text-[9px] text-gray-600">T.(paired)</span>
                             <span className="font-bold text-gray-900 text-[10px]">
-                              ${(storesList[0]?.tips_receptionist || 0).toFixed(0)}
+                              {(storesList[0]?.tips_receptionist || 0).toFixed(0)}
                             </span>
                           </div>
                           <div className="pt-0.5 mt-0.5 border-t border-gray-300">
                             <div className="flex items-center justify-center gap-0.5">
                               <span className="text-[9px] text-gray-600">Total</span>
                               <span className="text-gray-900 text-[10px] font-bold">
-                                ${periodTotal.toFixed(0)}
+                                {periodTotal.toFixed(0)}
                               </span>
                             </div>
                           </div>

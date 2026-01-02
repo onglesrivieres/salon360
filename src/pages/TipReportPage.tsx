@@ -868,19 +868,19 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                             <div className="flex justify-between items-center">
                               <span className="text-[9px] text-gray-600">T. (given)</span>
                               <span className="text-[9px] font-semibold text-gray-900">
-                                ${(summary.tips_customer || 0).toFixed(0)}
+                                {(summary.tips_customer || 0).toFixed(0)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-[9px] text-gray-600">T. (paired)</span>
                               <span className="text-[9px] font-semibold text-gray-900">
-                                ${(summary.tips_receptionist || 0).toFixed(0)}
+                                {(summary.tips_receptionist || 0).toFixed(0)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
                               <span className="text-[9px] font-medium text-gray-900">Total</span>
                               <span className="text-[10px] font-bold text-gray-900">
-                                ${((summary.tips_customer || 0) + (summary.tips_receptionist || 0)).toFixed(0)}
+                                {((summary.tips_customer || 0) + (summary.tips_receptionist || 0)).toFixed(0)}
                               </span>
                             </div>
                           </>
@@ -888,7 +888,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                           <div className="flex justify-between items-center">
                             <span className="text-[9px] font-medium text-gray-900">Total Tips</span>
                             <span className="text-[10px] font-bold text-gray-900">
-                              ${((summary.tips_customer || 0) + (summary.tips_receptionist || 0)).toFixed(0)}
+                              {((summary.tips_customer || 0) + (summary.tips_receptionist || 0)).toFixed(0)}
                             </span>
                           </div>
                         )}
@@ -949,13 +949,13 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                   <div className="flex justify-between items-center">
                                     <span className="text-[8px] text-gray-600">T. (given)</span>
                                     <span className="text-[8px] font-semibold text-gray-900">
-                                      ${tipGiven.toFixed(0)}
+                                      {tipGiven.toFixed(0)}
                                     </span>
                                   </div>
                                   <div className="flex justify-between items-center">
                                     <span className="text-[8px] text-gray-600">T. (paired)</span>
                                     <span className="text-[8px] font-semibold text-gray-900">
-                                      ${tipPaired.toFixed(0)}
+                                      {tipPaired.toFixed(0)}
                                     </span>
                                   </div>
                                 </div>
@@ -963,7 +963,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                 <div className="flex justify-between items-center">
                                   <span className="text-[8px] text-gray-600">Total</span>
                                   <span className="text-[8px] font-semibold text-gray-900">
-                                    ${totalTips.toFixed(0)}
+                                    {totalTips.toFixed(0)}
                                   </span>
                                 </div>
                               )}
