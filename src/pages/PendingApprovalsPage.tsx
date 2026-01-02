@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign } from 'lucide-react';
-import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval } from '../lib/supabase';
+import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, ViolationReportForApproval, ViolationDecision, ViolationActionType } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
@@ -12,13 +12,20 @@ export function PendingApprovalsPage() {
   const [tickets, setTickets] = useState<PendingApprovalTicket[]>([]);
   const [inventoryApprovals, setInventoryApprovals] = useState<PendingInventoryApproval[]>([]);
   const [cashTransactionApprovals, setCashTransactionApprovals] = useState<PendingCashTransactionApproval[]>([]);
+  const [violationReports, setViolationReports] = useState<ViolationReportForApproval[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<PendingApprovalTicket | null>(null);
   const [selectedInventory, setSelectedInventory] = useState<PendingInventoryApproval | null>(null);
   const [selectedCashTransaction, setSelectedCashTransaction] = useState<PendingCashTransactionApproval | null>(null);
+  const [selectedViolationReport, setSelectedViolationReport] = useState<ViolationReportForApproval | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showInventoryRejectModal, setShowInventoryRejectModal] = useState(false);
   const [showCashTransactionRejectModal, setShowCashTransactionRejectModal] = useState(false);
+  const [showViolationDecisionModal, setShowViolationDecisionModal] = useState(false);
+  const [violationDecision, setViolationDecision] = useState<ViolationDecision>('violation_confirmed');
+  const [violationNotes, setViolationNotes] = useState('');
+  const [violationAction, setViolationAction] = useState<ViolationActionType>('none');
+  const [violationActionDetails, setViolationActionDetails] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
   const [approvalStats, setApprovalStats] = useState<ApprovalStatistics | null>(null);
@@ -30,6 +37,7 @@ export function PendingApprovalsPage() {
       fetchPendingApprovals();
       fetchInventoryApprovals();
       fetchCashTransactionApprovals();
+      fetchViolationReports();
       fetchApprovalStats();
     }
   }, [session?.employee_id, selectedStoreId]);
@@ -40,6 +48,7 @@ export function PendingApprovalsPage() {
         fetchPendingApprovals();
         fetchInventoryApprovals();
         fetchCashTransactionApprovals();
+        fetchViolationReports();
         fetchApprovalStats();
       }
     }, 30000);
@@ -178,6 +187,29 @@ export function PendingApprovalsPage() {
       setCashTransactionApprovals(data || []);
     } catch (error) {
       console.error('Error fetching cash transaction approvals:', error);
+    }
+  }
+
+  async function fetchViolationReports() {
+    if (!selectedStoreId) return;
+
+    const userRoles = session?.role || [];
+    const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
+
+    if (!isManagement) {
+      setViolationReports([]);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('get_violation_reports_for_approval', {
+        p_store_id: selectedStoreId,
+      });
+
+      if (error) throw error;
+      setViolationReports(data || []);
+    } catch (error) {
+      console.error('Error fetching violation reports:', error);
     }
   }
 
@@ -485,6 +517,50 @@ export function PendingApprovalsPage() {
     } catch (error) {
       console.error('Error rejecting cash transaction:', error);
       showToast('Failed to reject transaction', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  function handleViolationDecisionClick(report: ViolationReportForApproval) {
+    setSelectedViolationReport(report);
+    setShowViolationDecisionModal(true);
+    setViolationDecision('violation_confirmed');
+    setViolationNotes('');
+    setViolationAction('none');
+    setViolationActionDetails('');
+  }
+
+  async function handleSubmitViolationDecision() {
+    if (!selectedViolationReport || !session?.employee_id) return;
+
+    try {
+      setProcessing(true);
+
+      const { data, error } = await supabase.rpc('approve_violation_report', {
+        p_violation_report_id: selectedViolationReport.report_id,
+        p_reviewer_employee_id: session.employee_id,
+        p_decision: violationDecision,
+        p_manager_notes: violationNotes.trim() || null,
+        p_action_type: violationDecision === 'violation_confirmed' ? violationAction : 'none',
+        p_action_details: violationActionDetails.trim() || null
+      });
+
+      if (error) throw error;
+
+      showToast(
+        violationDecision === 'violation_confirmed'
+          ? 'Violation confirmed and recorded'
+          : 'Violation report rejected',
+        'success'
+      );
+
+      await fetchViolationReports();
+      setShowViolationDecisionModal(false);
+      setSelectedViolationReport(null);
+    } catch (error: any) {
+      console.error('Error processing violation decision:', error);
+      showToast(error.message || 'Failed to process decision', 'error');
     } finally {
       setProcessing(false);
     }
@@ -856,7 +932,115 @@ export function PendingApprovalsPage() {
         </div>
       )}
 
-      {tickets.length === 0 && inventoryApprovals.length === 0 && cashTransactionApprovals.length === 0 ? (
+      {violationReports.length > 0 && (
+        <div className="mb-6">
+          <div className="mb-3">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Flag className="w-5 h-5 text-red-600" />
+              Pending Turn Violation Reports ({violationReports.length})
+            </h3>
+            <p className="text-sm text-gray-600">
+              Review employee votes and make final decision on reported violations
+            </p>
+          </div>
+          <div className="space-y-3">
+            {violationReports.map((report) => {
+              const votesFor = report.votes_for_violation || 0;
+              const votesAgainst = report.votes_against_violation || 0;
+              const totalVotes = votesFor + votesAgainst;
+              const percentageFor = totalVotes > 0 ? Math.round((votesFor / totalVotes) * 100) : 0;
+
+              return (
+                <div
+                  key={report.report_id}
+                  className="bg-white rounded-lg shadow p-4 border-l-4 border-red-500"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Flag className="w-5 h-5 text-red-600" />
+                        <span className="font-semibold text-gray-900">
+                          Turn Violation Report
+                        </span>
+                        <Badge variant="error">PENDING REVIEW</Badge>
+                      </div>
+                      <p className="text-sm text-gray-900 mb-2">
+                        <span className="font-medium">Reported Employee:</span> {report.reported_employee_name}
+                      </p>
+                      <p className="text-sm text-gray-600 mb-2">
+                        <span className="font-medium">Reported by:</span> {report.reporter_employee_name}
+                      </p>
+                      <p className="text-sm text-gray-900 mb-2">
+                        <span className="font-medium">Description:</span> {report.violation_description}
+                      </p>
+                      {report.queue_position_claimed && (
+                        <p className="text-sm text-gray-600 mb-2">
+                          <span className="font-medium">Queue Position Claimed:</span> #{report.queue_position_claimed}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500">
+                        Date: {new Date(report.violation_date).toLocaleDateString()}
+                      </p>
+
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <p className="text-sm font-medium text-gray-900 mb-2">
+                          Employee Votes ({totalVotes} responses)
+                        </p>
+                        <div className="flex items-center gap-4 mb-2">
+                          <div className="flex items-center gap-2">
+                            <ThumbsUp className="w-4 h-4 text-green-600" />
+                            <span className="text-sm font-medium text-gray-900">
+                              {votesFor} voted violation occurred ({percentageFor}%)
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <ThumbsDown className="w-4 h-4 text-red-600" />
+                            <span className="text-sm font-medium text-gray-900">
+                              {votesAgainst} voted no violation ({100 - percentageFor}%)
+                            </span>
+                          </div>
+                        </div>
+                        {report.response_details && report.response_details.length > 0 && (
+                          <div className="mt-2">
+                            <p className="text-xs font-medium text-gray-700 mb-1">Individual Responses:</p>
+                            <div className="max-h-32 overflow-y-auto space-y-1">
+                              {report.response_details.map((response: any, idx: number) => (
+                                <div key={idx} className="text-xs text-gray-600 flex items-center gap-2">
+                                  {response.response ? (
+                                    <CheckCircle className="w-3 h-3 text-green-600" />
+                                  ) : (
+                                    <XCircle className="w-3 h-3 text-red-600" />
+                                  )}
+                                  <span className="font-medium">{response.employee_name}:</span>
+                                  <span>{response.response ? 'Violation occurred' : 'No violation'}</span>
+                                  {response.response_notes && (
+                                    <span className="italic">- {response.response_notes}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleViolationDecisionClick(report)}
+                        disabled={processing}
+                      >
+                        Review & Decide
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {tickets.length === 0 && inventoryApprovals.length === 0 && cashTransactionApprovals.length === 0 && violationReports.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
           <p className="text-lg font-medium text-gray-900 mb-1">All caught up!</p>
@@ -1086,6 +1270,139 @@ export function PendingApprovalsPage() {
                 placeholder="Please explain why you are rejecting this transaction..."
                 disabled={processing}
               />
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={showViolationDecisionModal}
+        onClose={() => !processing && setShowViolationDecisionModal(false)}
+        title="Review Turn Violation Report"
+        onConfirm={handleSubmitViolationDecision}
+        confirmText={processing ? 'Processing...' : 'Submit Decision'}
+        confirmVariant={violationDecision === 'violation_confirmed' ? 'danger' : 'default'}
+        cancelText="Cancel"
+      >
+        {selectedViolationReport && (
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="text-sm font-medium text-gray-900 mb-1">Reported Employee</p>
+              <p className="text-sm text-gray-700">{selectedViolationReport.reported_employee_name}</p>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="text-sm font-medium text-gray-900 mb-1">Reported By</p>
+              <p className="text-sm text-gray-700">{selectedViolationReport.reporter_employee_name}</p>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="text-sm font-medium text-gray-900 mb-1">Violation Description</p>
+              <p className="text-sm text-gray-700">{selectedViolationReport.violation_description}</p>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-blue-900 mb-2">Employee Votes</p>
+              <p className="text-sm text-blue-800">
+                {selectedViolationReport.votes_for_violation} voted that violation occurred
+              </p>
+              <p className="text-sm text-blue-800">
+                {selectedViolationReport.votes_against_violation} voted that no violation occurred
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Your Decision <span className="text-red-600">*</span>
+              </label>
+              <div className="space-y-2">
+                <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="radio"
+                    name="decision"
+                    value="violation_confirmed"
+                    checked={violationDecision === 'violation_confirmed'}
+                    onChange={(e) => setViolationDecision(e.target.value as 'violation_confirmed')}
+                    disabled={processing}
+                    className="mr-3"
+                  />
+                  <div>
+                    <p className="font-medium text-gray-900">Confirm Violation</p>
+                    <p className="text-sm text-gray-600">The violation did occur and action should be taken</p>
+                  </div>
+                </label>
+                <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="radio"
+                    name="decision"
+                    value="no_violation"
+                    checked={violationDecision === 'no_violation'}
+                    onChange={(e) => setViolationDecision(e.target.value as 'no_violation')}
+                    disabled={processing}
+                    className="mr-3"
+                  />
+                  <div>
+                    <p className="font-medium text-gray-900">No Violation</p>
+                    <p className="text-sm text-gray-600">The report is not substantiated</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {violationDecision === 'violation_confirmed' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Action to Take
+                </label>
+                <select
+                  value={violationAction}
+                  onChange={(e) => setViolationAction(e.target.value as any)}
+                  disabled={processing}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="none">No immediate action</option>
+                  <option value="warning">Verbal Warning</option>
+                  <option value="written_warning">Written Warning</option>
+                  <option value="queue_removal">Temporary Queue Removal</option>
+                  <option value="suspension">Suspension</option>
+                </select>
+              </div>
+            )}
+
+            {violationDecision === 'violation_confirmed' && violationAction !== 'none' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Action Details (Optional)
+                </label>
+                <textarea
+                  value={violationActionDetails}
+                  onChange={(e) => setViolationActionDetails(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Additional details about the action taken..."
+                  disabled={processing}
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Manager Notes <span className="text-red-600">*</span>
+              </label>
+              <textarea
+                value={violationNotes}
+                onChange={(e) => setViolationNotes(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Explain your decision and reasoning..."
+                disabled={processing}
+              />
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <p className="text-sm text-yellow-800">
+                Your decision will be recorded and all involved parties will be notified.
+              </p>
             </div>
           </div>
         )}

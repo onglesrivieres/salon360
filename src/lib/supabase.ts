@@ -760,3 +760,47 @@ export interface SafeTransaction {
   created_at: string;
   status: string;
 }
+
+export type ViolationReportStatus = 'collecting_responses' | 'pending_approval' | 'approved' | 'rejected' | 'expired';
+export type ViolationDecision = 'violation_confirmed' | 'no_violation';
+export type ViolationActionType = 'none' | 'warning' | 'written_warning' | 'queue_removal' | 'suspension';
+
+export interface ViolationResponse {
+  employee_id: string;
+  employee_name: string;
+  response: boolean;
+  response_notes: string | null;
+  responded_at: string;
+}
+
+export interface PendingViolationResponse {
+  report_id: string;
+  reported_employee_id: string;
+  reported_employee_name: string;
+  reporter_employee_id: string;
+  reporter_employee_name: string;
+  violation_description: string;
+  violation_date: string;
+  queue_position_claimed: number | null;
+  total_responses_required: number;
+  total_responses_received: number;
+  expires_at: string;
+  created_at: string;
+}
+
+export interface ViolationReportForApproval {
+  report_id: string;
+  reported_employee_id: string;
+  reported_employee_name: string;
+  reporter_employee_id: string;
+  reporter_employee_name: string;
+  violation_description: string;
+  violation_date: string;
+  queue_position_claimed: number | null;
+  total_responses: number;
+  votes_for_violation: number;
+  votes_against_violation: number;
+  response_details: ViolationResponse[];
+  created_at: string;
+  status: ViolationReportStatus;
+}

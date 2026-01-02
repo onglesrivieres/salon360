@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package, List, RefreshCw, Circle, TrendingUp, Vault, History } from 'lucide-react';
+import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package, List, RefreshCw, Circle, TrendingUp, Vault, History, Flag } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
-import { supabase, Store, TechnicianWithQueue } from '../lib/supabase';
+import { supabase, Store, TechnicianWithQueue, PendingViolationResponse } from '../lib/supabase';
 import { NotificationBadge } from './ui/NotificationBadge';
 import { VersionNotification } from './VersionNotification';
 import { initializeVersionCheck, startVersionCheck } from '../lib/version';
@@ -13,6 +13,8 @@ import { getCurrentDateEST } from '../lib/timezone';
 import { ViewAsSelector } from './ViewAsSelector';
 import { ViewAsBanner } from './ViewAsBanner';
 import { RemoveTechnicianModal } from './RemoveTechnicianModal';
+import { ViolationReportModal } from './ViolationReportModal';
+import { ViolationResponseRibbon } from './ViolationResponseRibbon';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -42,10 +44,13 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [technicianToRemove, setTechnicianToRemove] = useState<{ id: string; name: string } | null>(null);
   const [removingTechnicianId, setRemovingTechnicianId] = useState<string | undefined>();
   const [isSubmittingRemoval, setIsSubmittingRemoval] = useState(false);
+  const [showViolationReportModal, setShowViolationReportModal] = useState(false);
+  const [pendingViolationResponses, setPendingViolationResponses] = useState<PendingViolationResponse[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const canViewAllQueueStatuses = effectiveRole && Permissions.queue.canViewAllQueueStatuses(effectiveRole);
   const canRemoveTechnicians = effectiveRole && Permissions.queue.canRemoveTechnicians(effectiveRole);
+  const canReportViolations = session?.employee_id && selectedStoreId;
 
   useEffect(() => {
     if (selectedStoreId) {
@@ -123,6 +128,50 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       supabase.removeChannel(approvalsChannel);
     };
   }, [session?.employee_id, effectiveRole, selectedStoreId]);
+
+  useEffect(() => {
+    if (!session?.employee_id || !selectedStoreId) return;
+
+    fetchPendingViolationResponses();
+
+    // Poll every 10 seconds for pending violation responses
+    const interval = setInterval(() => {
+      fetchPendingViolationResponses();
+    }, 10000);
+
+    // Subscribe to real-time changes on violation tables
+    const violationsChannel = supabase
+      .channel(`violations-${selectedStoreId}-${session.employee_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'queue_violation_reports',
+          filter: `store_id=eq.${selectedStoreId}`,
+        },
+        () => {
+          fetchPendingViolationResponses();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'queue_violation_responses',
+        },
+        () => {
+          fetchPendingViolationResponses();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(violationsChannel);
+    };
+  }, [session?.employee_id, selectedStoreId]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -409,6 +458,73 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     }
   };
 
+  async function fetchPendingViolationResponses() {
+    if (!session?.employee_id || !selectedStoreId) return;
+
+    try {
+      const { data, error } = await supabase.rpc('get_pending_violation_responses', {
+        p_employee_id: session.employee_id,
+        p_store_id: selectedStoreId
+      });
+
+      if (error) throw error;
+      setPendingViolationResponses(data || []);
+    } catch (error) {
+      console.error('Error fetching pending violation responses:', error);
+    }
+  }
+
+  const handleSubmitViolationReport = async (data: {
+    reportedEmployeeId: string;
+    description: string;
+    queuePosition: string;
+  }) => {
+    if (!session?.employee_id || !selectedStoreId) return;
+
+    try {
+      const { data: result, error } = await supabase.rpc('create_queue_violation_report', {
+        p_reported_employee_id: data.reportedEmployeeId,
+        p_reporter_employee_id: session.employee_id,
+        p_store_id: selectedStoreId,
+        p_violation_description: data.description,
+        p_queue_position_claimed: data.queuePosition ? parseInt(data.queuePosition) : null
+      });
+
+      if (error) throw error;
+
+      alert('Violation report submitted successfully. All employees will be notified to vote.');
+      setShowViolationReportModal(false);
+    } catch (error: any) {
+      console.error('Error submitting violation report:', error);
+      alert(error.message || 'Failed to submit violation report. Please try again.');
+      throw error;
+    }
+  };
+
+  const handleViolationResponse = async (
+    reportId: string,
+    response: boolean,
+    notes?: string
+  ) => {
+    if (!session?.employee_id) return;
+
+    try {
+      const { data, error } = await supabase.rpc('submit_violation_response', {
+        p_violation_report_id: reportId,
+        p_employee_id: session.employee_id,
+        p_response: response,
+        p_response_notes: notes
+      });
+
+      if (error) throw error;
+
+      await fetchPendingViolationResponses();
+    } catch (error: any) {
+      console.error('Error submitting violation response:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     // Extract current user's queue status from sortedTechnicians
     if (session?.employee_id && sortedTechnicians.length > 0) {
@@ -536,6 +652,12 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {pendingViolationResponses.length > 0 && (
+        <ViolationResponseRibbon
+          pendingResponses={pendingViolationResponses}
+          onRespond={handleViolationResponse}
+        />
+      )}
       {hasNewVersion && showVersionNotifications && <VersionNotification onRefresh={handleRefresh} />}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="px-3 py-2 md:px-4">
@@ -758,6 +880,18 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             />
           )}
 
+          {canReportViolations && sortedTechnicians.filter(t => t.queue_status === 'ready' && t.employee_id !== session?.employee_id).length > 0 && (
+            <div className="pt-4 border-t border-gray-200">
+              <button
+                onClick={() => setShowViolationReportModal(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-lg font-medium hover:bg-red-100 transition-colors"
+              >
+                <Flag className="w-4 h-4" />
+                Report Turn Violation
+              </button>
+            </div>
+          )}
+
           <div className="pt-4 border-t border-gray-200">
             <p className="text-xs text-gray-500 text-center">
               Queue updates automatically every 30 seconds
@@ -765,6 +899,16 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           </div>
         </div>
       </Modal>
+
+      <ViolationReportModal
+        isOpen={showViolationReportModal}
+        onClose={() => setShowViolationReportModal(false)}
+        availableTechnicians={sortedTechnicians}
+        currentEmployeeId={session?.employee_id || ''}
+        currentEmployeeName={session?.name || ''}
+        storeId={selectedStoreId || ''}
+        onSubmit={handleSubmitViolationReport}
+      />
 
       <Modal
         isOpen={showLeaveConfirm}
