@@ -20,7 +20,6 @@ interface ViolationHistoryReport {
   status: string;
   created_at: string;
   expires_at: string | null;
-  approval_deadline: string | null;
   reviewed_by_id: string | null;
   reviewed_by_name: string | null;
   reviewed_at: string | null;
