@@ -94,6 +94,18 @@ export function ViolationReportModal({
           </div>
         </div>
 
+        {eligibleTechnicians.length === 0 && (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+            <User className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-600 font-medium">
+              No other technicians currently in the ready queue
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              You can only report violations for technicians who are currently in the ready queue.
+            </p>
+          </div>
+        )}
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             <User className="w-4 h-4 inline mr-1" />

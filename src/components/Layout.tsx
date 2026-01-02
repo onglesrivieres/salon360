@@ -880,7 +880,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             />
           )}
 
-          {canReportViolations && sortedTechnicians.filter(t => t.queue_status === 'ready' && t.employee_id !== session?.employee_id).length > 0 && (
+          {canReportViolations && (
             <div className="pt-4 border-t border-gray-200">
               <button
                 onClick={() => setShowViolationReportModal(true)}
