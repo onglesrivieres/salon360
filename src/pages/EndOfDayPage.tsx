@@ -820,6 +820,23 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                     <p className="text-2xl font-bold text-gray-900">
                       Expected Cash Collected
                     </p>
+                    <p className="text-xs text-gray-500 mt-1">Cash payments + cash tips from tickets</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-gray-900">
+                      ${expectedCash.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 p-4 rounded-lg border-2 bg-white border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      Net Cash Collected
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Expected cash + cash in - cash out</p>
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-gray-900">
