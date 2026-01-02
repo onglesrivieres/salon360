@@ -9,7 +9,6 @@ import { CriticalSettingConfirmationModal } from '../components/CriticalSettingC
 import { SettingsDependencyIndicator } from '../components/SettingsDependencyIndicator';
 import { ConfigurationWizard } from '../components/ConfigurationWizard';
 import { RolePermissionMatrix } from '../components/RolePermissionMatrix';
-import { Role } from '../lib/permissions';
 
 interface AppSetting {
   id: string;
@@ -89,7 +88,6 @@ export function ConfigurationPage() {
   const [hasConfiguration, setHasConfiguration] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'settings' | 'permissions'>('settings');
-  const [selectedRole, setSelectedRole] = useState<Role>('Admin');
 
   const canManageSettings = session?.role?.includes('Owner') || session?.role?.includes('Admin');
 
@@ -331,8 +329,6 @@ export function ConfigurationPage() {
     );
   }
 
-  const roles: Role[] = ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Spa Expert', 'Cashier'];
-
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-6">
@@ -437,29 +433,10 @@ export function ConfigurationPage() {
             </button>
           </div>
         )}
-
-        {activeTab === 'permissions' && (
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Role to Configure
-            </label>
-            <select
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value as Role)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {roles.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
       </div>
 
       {activeTab === 'permissions' && (
-        <RolePermissionMatrix role={selectedRole} onPermissionChange={() => {
+        <RolePermissionMatrix onPermissionChange={() => {
           showToast('Permissions updated. Changes will take effect after users log out and back in.', 'success');
         }} />
       )}
