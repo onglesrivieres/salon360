@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, ViolationReportForApproval, ViolationDecision, ViolationActionType } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -7,6 +7,7 @@ import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Modal } from '../components/ui/Modal';
 import { getCurrentDateEST } from '../lib/timezone';
+import { Permissions } from '../lib/permissions';
 
 interface ViolationHistoryReport {
   report_id: string;
@@ -38,6 +39,7 @@ type TabType = 'tickets' | 'inventory' | 'cash' | 'violations';
 
 export function PendingApprovalsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('tickets');
+  const [selectedDate, setSelectedDate] = useState<string>(getCurrentDateEST());
   const [tickets, setTickets] = useState<PendingApprovalTicket[]>([]);
   const [inventoryApprovals, setInventoryApprovals] = useState<PendingInventoryApproval[]>([]);
   const [cashTransactionApprovals, setCashTransactionApprovals] = useState<PendingCashTransactionApproval[]>([]);
@@ -91,7 +93,7 @@ export function PendingApprovalsPage() {
         fetchViolationHistory();
       }
     }
-  }, [session?.employee_id, selectedStoreId, activeTab, isManagement]);
+  }, [session?.employee_id, selectedStoreId, selectedDate, activeTab, isManagement]);
 
   useEffect(() => {
     if (!isManagement) return;
@@ -126,11 +128,10 @@ export function PendingApprovalsPage() {
     if (!selectedStoreId) return;
 
     try {
-      const today = getCurrentDateEST();
       const { data, error } = await supabase.rpc('get_approval_statistics', {
         p_store_id: selectedStoreId,
-        p_start_date: today,
-        p_end_date: today,
+        p_start_date: selectedDate,
+        p_end_date: selectedDate,
       });
 
       if (error) throw error;
@@ -542,6 +543,40 @@ export function PendingApprovalsPage() {
     return true;
   });
 
+  function navigateDay(direction: 'prev' | 'next') {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + (direction === 'prev' ? -1 : 1));
+    setSelectedDate(d.toISOString().split('T')[0]);
+  }
+
+  function canNavigatePrev(): boolean {
+    return selectedDate > getMinDate();
+  }
+
+  function canNavigateNext(): boolean {
+    return selectedDate < getMaxDate();
+  }
+
+  function getMinDate(): string {
+    const canViewUnlimitedHistory = session?.role ? Permissions.tipReport.canViewUnlimitedHistory(session.role) : false;
+
+    if (canViewUnlimitedHistory) {
+      return '2000-01-01';
+    }
+
+    const today = getCurrentDateEST();
+    const date = new Date(today);
+    date.setDate(date.getDate() - 14);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function getMaxDate(): string {
+    return getCurrentDateEST();
+  }
+
   if (!isManagement) {
     return (
       <div className="max-w-4xl mx-auto">
@@ -572,10 +607,44 @@ export function PendingApprovalsPage() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Management Approvals</h2>
-        <p className="text-sm text-gray-600">
-          Review and approve pending requests across all categories
-        </p>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-2">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Management Approvals</h2>
+            <p className="text-sm text-gray-600">
+              Review and approve pending requests across all categories
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => navigateDay('prev')}
+              disabled={!canNavigatePrev()}
+              className="p-1 h-[44px] md:h-8 w-10 flex items-center justify-center"
+              aria-label="Previous day"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              min={getMinDate()}
+              max={getMaxDate()}
+              className="px-2 py-2 md:py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] md:min-h-0"
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => navigateDay('next')}
+              disabled={!canNavigateNext()}
+              className="p-1 h-[44px] md:h-8 w-10 flex items-center justify-center"
+              aria-label="Next day"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow mb-6">
@@ -653,7 +722,9 @@ export function PendingApprovalsPage() {
             <div>
               {approvalStats && approvalStats.total_closed > 0 && (
                 <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                  <h3 className="text-base font-semibold text-gray-900 mb-3">Today's Approval Status</h3>
+                  <h3 className="text-base font-semibold text-gray-900 mb-3">
+                    {selectedDate === getCurrentDateEST() ? "Today's" : new Date(selectedDate + 'T00:00:00').toLocaleDateString()} Approval Status
+                  </h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                     <div className="bg-white rounded-lg p-3 border border-gray-200">
                       <p className="text-xs text-gray-500 mb-1">Total Closed</p>
