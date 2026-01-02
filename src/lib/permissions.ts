@@ -229,6 +229,12 @@ export const Permissions = {
     canViewAllQueueStatuses: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
     },
+    canRemoveTechnicians: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+    },
+    canViewRemovalHistory: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+    },
   },
 
   insights: {
@@ -264,7 +270,7 @@ export function getPermissionMessage(
 }
 
 export function canAccessPage(
-  page: 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'settings' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'configuration' | 'safebalance',
+  page: 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'settings' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'configuration' | 'safebalance' | 'queue-removal-history',
   roles: Role[] | RolePermission
 ): boolean {
   switch (page) {
@@ -294,6 +300,8 @@ export function canAccessPage(
       return Permissions.configuration.canView(roles);
     case 'safebalance':
       return Permissions.safeBalance.canView(roles);
+    case 'queue-removal-history':
+      return Permissions.queue.canViewRemovalHistory(roles);
     default:
       return false;
   }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award, Lock, Clock } from 'lucide-react';
+import { Award, Lock, Clock, XCircle } from 'lucide-react';
 import { TechnicianWithQueue } from '../lib/supabase';
 
 interface TechnicianQueueProps {
@@ -13,6 +13,9 @@ interface TechnicianQueueProps {
   allowLeaveQueue?: boolean;
   onLeaveQueue?: (employeeId: string) => void;
   leavingQueueEmployeeId?: string;
+  canRemoveTechnicians?: boolean;
+  onRemoveTechnician?: (employeeId: string, employeeName: string) => void;
+  removingTechnicianId?: string;
 }
 
 export function TechnicianQueue({
@@ -26,6 +29,9 @@ export function TechnicianQueue({
   allowLeaveQueue = false,
   onLeaveQueue,
   leavingQueueEmployeeId,
+  canRemoveTechnicians = false,
+  onRemoveTechnician,
+  removingTechnicianId,
 }: TechnicianQueueProps) {
 
   const calculateTimeRemaining = (tech: TechnicianWithQueue): string => {
@@ -92,27 +98,47 @@ export function TechnicianQueue({
       <div className="flex flex-wrap gap-2">
         {readyTechnicians.map((tech) => {
           const isCurrentEmployee = currentEmployeeId === tech.employee_id;
+          const showRemoveButton = canRemoveTechnicians && !isCurrentEmployee && onRemoveTechnician;
+          const isBeingRemoved = removingTechnicianId === tech.employee_id;
           return (
-            <button
-              key={tech.employee_id}
-              type="button"
-              onClick={() => !isReadOnly && onTechnicianSelect?.(tech.employee_id)}
-              className={`py-2 px-3 text-sm rounded-lg font-medium transition-colors ${
-                selectedTechnicianId === tech.employee_id
-                  ? 'bg-green-600 text-white ring-2 ring-green-400'
-                  : 'bg-green-100 text-green-800 hover:bg-green-200'
-              } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} ${isCurrentEmployee ? 'animate-pulse' : ''}`}
-              disabled={isReadOnly}
-            >
-            <div className="flex items-center gap-2">
-              {tech.queue_position > 0 && (
-                <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-white text-green-600 rounded-full">
-                  {tech.queue_position}
-                </span>
+            <div key={tech.employee_id} className="relative inline-block group">
+              <button
+                type="button"
+                onClick={() => !isReadOnly && onTechnicianSelect?.(tech.employee_id)}
+                className={`py-2 px-3 text-sm rounded-lg font-medium transition-colors ${
+                  selectedTechnicianId === tech.employee_id
+                    ? 'bg-green-600 text-white ring-2 ring-green-400'
+                    : 'bg-green-100 text-green-800 hover:bg-green-200'
+                } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} ${isCurrentEmployee ? 'animate-pulse' : ''} ${isBeingRemoved ? 'opacity-50' : ''}`}
+                disabled={isReadOnly || isBeingRemoved}
+              >
+                <div className="flex items-center gap-2">
+                  {tech.queue_position > 0 && (
+                    <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-white text-green-600 rounded-full">
+                      {tech.queue_position}
+                    </span>
+                  )}
+                  <span>{tech.display_name}</span>
+                  {isBeingRemoved && (
+                    <div className="w-3 h-3 border-2 border-green-600 border-t-transparent rounded-full animate-spin ml-1" />
+                  )}
+                </div>
+              </button>
+              {showRemoveButton && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveTechnician(tech.employee_id, tech.display_name);
+                  }}
+                  disabled={isBeingRemoved || !!removingTechnicianId}
+                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 transition-colors shadow-sm opacity-0 group-hover:opacity-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Remove from queue"
+                >
+                  <XCircle className="w-4 h-4" />
+                </button>
               )}
-              <span>{tech.display_name}</span>
             </div>
-          </button>
           );
         })}
 

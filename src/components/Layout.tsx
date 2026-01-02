@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package, List, RefreshCw, Circle, TrendingUp, Vault } from 'lucide-react';
+import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package, List, RefreshCw, Circle, TrendingUp, Vault, History } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
@@ -12,11 +12,12 @@ import { TechnicianQueue } from './TechnicianQueue';
 import { getCurrentDateEST } from '../lib/timezone';
 import { ViewAsSelector } from './ViewAsSelector';
 import { ViewAsBanner } from './ViewAsBanner';
+import { RemoveTechnicianModal } from './RemoveTechnicianModal';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentPage: 'home' | 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'configuration' | 'attendance' | 'approvals' | 'inventory' | 'insights';
-  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'configuration' | 'attendance' | 'approvals' | 'inventory' | 'insights') => void;
+  currentPage: 'home' | 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'configuration' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'queue-removal-history';
+  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'configuration' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'queue-removal-history') => void;
 }
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
@@ -37,9 +38,14 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [employeeToRemove, setEmployeeToRemove] = useState<string | undefined>();
   const [userQueueStatus, setUserQueueStatus] = useState<'ready' | 'neutral' | 'busy'>('neutral');
+  const [showRemovalModal, setShowRemovalModal] = useState(false);
+  const [technicianToRemove, setTechnicianToRemove] = useState<{ id: string; name: string } | null>(null);
+  const [removingTechnicianId, setRemovingTechnicianId] = useState<string | undefined>();
+  const [isSubmittingRemoval, setIsSubmittingRemoval] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const canViewAllQueueStatuses = effectiveRole && Permissions.queue.canViewAllQueueStatuses(effectiveRole);
+  const canRemoveTechnicians = effectiveRole && Permissions.queue.canRemoveTechnicians(effectiveRole);
 
   useEffect(() => {
     if (selectedStoreId) {
@@ -365,6 +371,44 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     }
   };
 
+  const handleRemoveTechnician = (employeeId: string, employeeName: string) => {
+    setTechnicianToRemove({ id: employeeId, name: employeeName });
+    setShowRemovalModal(true);
+  };
+
+  const confirmRemoveTechnician = async (reason: string, notes: string) => {
+    if (!technicianToRemove || !selectedStoreId) return;
+
+    setIsSubmittingRemoval(true);
+    setRemovingTechnicianId(technicianToRemove.id);
+
+    try {
+      const { data, error } = await supabase.rpc('remove_technician_from_queue_admin', {
+        p_employee_id: technicianToRemove.id,
+        p_store_id: selectedStoreId,
+        p_reason: reason,
+        p_notes: notes || null
+      });
+
+      if (error) throw error;
+
+      if (data && !data.success) {
+        throw new Error(data.message || 'Failed to remove technician');
+      }
+
+      await fetchTechnicianQueue();
+      setShowRemovalModal(false);
+      setTechnicianToRemove(null);
+      alert(`${technicianToRemove.name} has been removed from the queue for 30 minutes.`);
+    } catch (error: any) {
+      console.error('Error removing technician:', error);
+      alert(error.message || 'Failed to remove technician. Please try again.');
+    } finally {
+      setIsSubmittingRemoval(false);
+      setRemovingTechnicianId(undefined);
+    }
+  };
+
   useEffect(() => {
     // Extract current user's queue status from sortedTechnicians
     if (session?.employee_id && sortedTechnicians.length > 0) {
@@ -467,6 +511,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const showOpeningCashBanner = getSettingBoolean('show_opening_cash_missing_banner', true);
   const requireOpeningCash = getSettingBoolean('require_opening_cash_count', false);
 
+  const canViewQueueHistory = effectiveRole && Permissions.queue.canViewRemovalHistory(effectiveRole);
+
   const allNavItems = [
     { id: 'home' as const, label: 'Home', icon: Home },
     { id: 'tickets' as const, label: t('nav.tickets'), icon: Receipt },
@@ -479,6 +525,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     { id: 'inventory' as const, label: 'Inventory', icon: Package, hidden: !showInventory },
     { id: 'services' as const, label: t('nav.services'), icon: Briefcase },
     { id: 'insights' as const, label: 'Insights', icon: TrendingUp },
+    { id: 'queue-removal-history' as const, label: 'Queue History', icon: History, hidden: !canViewQueueHistory },
     { id: 'configuration' as const, label: 'Configuration', icon: Settings },
   ];
 
@@ -705,6 +752,9 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               allowLeaveQueue={!canViewAllQueueStatuses}
               onLeaveQueue={handleLeaveQueue}
               leavingQueueEmployeeId={leavingQueueEmployeeId}
+              canRemoveTechnicians={canRemoveTechnicians}
+              onRemoveTechnician={handleRemoveTechnician}
+              removingTechnicianId={removingTechnicianId}
             />
           )}
 
@@ -748,6 +798,17 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           </div>
         </div>
       </Modal>
+
+      <RemoveTechnicianModal
+        isOpen={showRemovalModal}
+        onClose={() => {
+          setShowRemovalModal(false);
+          setTechnicianToRemove(null);
+        }}
+        onConfirm={confirmRemoveTechnician}
+        technicianName={technicianToRemove?.name || ''}
+        isSubmitting={isSubmittingRemoval}
+      />
     </div>
   );
 }

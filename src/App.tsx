@@ -25,8 +25,9 @@ const ConfigurationPage = lazy(() => import('./pages/ConfigurationPage').then(m 
 const PendingApprovalsPage = lazy(() => import('./pages/PendingApprovalsPage').then(m => ({ default: m.PendingApprovalsPage })));
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
 const InsightsPage = lazy(() => import('./pages/InsightsPage').then(m => ({ default: m.InsightsPage })));
+const QueueRemovalHistoryPage = lazy(() => import('./pages/QueueRemovalHistoryPage').then(m => ({ default: m.QueueRemovalHistoryPage })));
 
-type Page = 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'configuration' | 'approvals' | 'inventory' | 'insights';
+type Page = 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'configuration' | 'approvals' | 'inventory' | 'insights' | 'queue-removal-history';
 
 function AppContent() {
   const { isAuthenticated, selectedStoreId, selectStore, session, login } = useAuth();
@@ -188,6 +189,7 @@ function AppContent() {
           {currentPage === 'insights' && <InsightsPage />}
           {currentPage === 'settings' && <SettingsPage />}
           {currentPage === 'configuration' && <ConfigurationPage />}
+          {currentPage === 'queue-removal-history' && <QueueRemovalHistoryPage />}
         </Suspense>
       </Layout>
 

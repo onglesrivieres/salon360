@@ -1,0 +1,189 @@
+/*
+  # Add Cooldown Check to Queue Join Function
+  
+  ## Overview
+  Updates the join_ready_queue_with_checkin function to check for active cooldowns
+  before allowing a technician to rejoin the queue after being removed.
+  
+  ## Changes
+  - Adds cooldown check at the beginning of join_ready_queue_with_checkin
+  - Returns error if active cooldown exists with time remaining and reason
+  - Calculates minutes remaining until cooldown expires
+  
+  ## Error Response Format
+  {
+    "success": false,
+    "error": "COOLDOWN_ACTIVE",
+    "message": "You cannot join the queue until [time]. You were removed for: [reason]",
+    "cooldown_expires_at": timestamp,
+    "minutes_remaining": integer,
+    "reason": string,
+    "removed_by_name": string
+  }
+*/
+
+CREATE OR REPLACE FUNCTION public.join_ready_queue_with_checkin(
+  p_employee_id uuid,
+  p_store_id uuid
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_attendance record;
+  v_today date;
+  v_all_completed boolean;
+  v_ticket_id uuid;
+  v_position integer;
+  v_total integer;
+  v_ready_at timestamptz;
+  v_cooldown_record record;
+  v_minutes_remaining integer;
+  v_removed_by_name text;
+BEGIN
+  v_today := CURRENT_DATE;
+
+  -- Check for active cooldown
+  SELECT
+    qrl.cooldown_expires_at,
+    qrl.reason,
+    qrl.notes,
+    e.name as removed_by_name,
+    EXTRACT(EPOCH FROM (qrl.cooldown_expires_at - now())) / 60 as minutes_remaining
+  INTO v_cooldown_record
+  FROM public.queue_removals_log qrl
+  JOIN public.employees e ON e.id = qrl.removed_by_employee_id
+  WHERE qrl.employee_id = p_employee_id
+    AND qrl.store_id = p_store_id
+    AND qrl.cooldown_expires_at > now()
+  ORDER BY qrl.removed_at DESC
+  LIMIT 1;
+
+  IF v_cooldown_record IS NOT NULL THEN
+    v_minutes_remaining := CEIL(v_cooldown_record.minutes_remaining);
+    
+    RETURN json_build_object(
+      'success', false,
+      'error', 'COOLDOWN_ACTIVE',
+      'message', format(
+        'You cannot join the queue for %s more minutes. You were removed for: %s',
+        v_minutes_remaining,
+        v_cooldown_record.reason
+      ),
+      'cooldown_expires_at', v_cooldown_record.cooldown_expires_at,
+      'minutes_remaining', v_minutes_remaining,
+      'reason', v_cooldown_record.reason,
+      'notes', v_cooldown_record.notes,
+      'removed_by_name', v_cooldown_record.removed_by_name,
+      'position', 0,
+      'total', 0
+    );
+  END IF;
+
+  -- Check if employee is checked in
+  SELECT *
+  INTO v_attendance
+  FROM public.attendance_records
+  WHERE employee_id = p_employee_id
+    AND store_id = p_store_id
+    AND work_date = v_today
+    AND status = 'checked_in'
+  ORDER BY check_in_time DESC
+  LIMIT 1;
+
+  IF v_attendance IS NULL THEN
+    RETURN json_build_object(
+      'success', false,
+      'error', 'CHECK_IN_REQUIRED',
+      'message', 'You must check in before joining the ready queue',
+      'position', 0,
+      'total', 0
+    );
+  END IF;
+
+  -- Mark individual services (ticket_items) assigned to this technician as completed
+  UPDATE public.ticket_items ti
+  SET
+    completed_at = NOW(),
+    completed_by = p_employee_id,
+    updated_at = NOW()
+  WHERE ti.employee_id = p_employee_id
+    AND ti.completed_at IS NULL
+    AND EXISTS (
+      SELECT 1
+      FROM public.sale_tickets st
+      WHERE st.id = ti.sale_ticket_id
+        AND st.store_id = p_store_id
+        AND st.closed_at IS NULL
+    );
+
+  -- For each affected ticket, check if ALL services are now completed
+  FOR v_ticket_id IN (
+    SELECT DISTINCT ti.sale_ticket_id
+    FROM public.ticket_items ti
+    INNER JOIN public.sale_tickets st ON st.id = ti.sale_ticket_id
+    WHERE ti.employee_id = p_employee_id
+      AND st.store_id = p_store_id
+      AND st.closed_at IS NULL
+      AND st.completed_at IS NULL
+  )
+  LOOP
+    v_all_completed := public.check_ticket_all_services_completed(v_ticket_id);
+
+    IF v_all_completed THEN
+      -- Mark ticket as completed but keep it open
+      UPDATE public.sale_tickets
+      SET
+        completed_at = NOW(),
+        completed_by = p_employee_id,
+        updated_at = NOW()
+      WHERE id = v_ticket_id
+        AND completed_at IS NULL;
+    END IF;
+  END LOOP;
+
+  -- Remove any existing entry for this technician in this store
+  DELETE FROM public.technician_ready_queue
+  WHERE employee_id = p_employee_id
+    AND store_id = p_store_id;
+
+  -- Add technician to ready queue
+  INSERT INTO public.technician_ready_queue (
+    employee_id,
+    store_id,
+    status,
+    ready_at
+  ) VALUES (
+    p_employee_id,
+    p_store_id,
+    'ready',
+    NOW()
+  )
+  RETURNING ready_at INTO v_ready_at;
+
+  -- Calculate position (count how many people joined before this employee)
+  SELECT COUNT(*) + 1
+  INTO v_position
+  FROM public.technician_ready_queue
+  WHERE store_id = p_store_id
+    AND status = 'ready'
+    AND ready_at < v_ready_at;
+
+  -- Get total count of ready employees in this store
+  SELECT COUNT(*)
+  INTO v_total
+  FROM public.technician_ready_queue
+  WHERE store_id = p_store_id
+    AND status = 'ready';
+
+  RETURN json_build_object(
+    'success', true,
+    'position', v_position,
+    'total', v_total
+  );
+END;
+$$;
+
+COMMENT ON FUNCTION public.join_ready_queue_with_checkin IS 'Adds employee to ready queue with attendance validation and cooldown check. Returns position and total queue size.';
