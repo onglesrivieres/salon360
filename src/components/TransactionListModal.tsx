@@ -5,6 +5,7 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { CashTransaction, CashTransactionType, supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { formatDateTimeEST } from '../lib/timezone';
 
 interface TransactionListModalProps {
   isOpen: boolean;
@@ -42,7 +43,8 @@ export function TransactionListModal({
       const { data, error } = await supabase
         .from('employees')
         .select('id, name')
-        .in('id', employeeIds);
+        .in('id', employeeIds)
+        .eq('store_id', selectedStoreId);
 
       if (error) throw error;
 
@@ -218,7 +220,9 @@ export function TransactionListModal({
                     </Badge>
                   </div>
                 </div>
-                <p className="text-sm text-gray-900 font-medium mb-2">{transaction.description}</p>
+                {transaction.description && (
+                  <p className="text-sm text-gray-900 font-medium mb-2">{transaction.description}</p>
+                )}
                 {transaction.category && (
                   <div className="flex items-center gap-1 mb-2">
                     <span className="text-xs text-gray-500">Category:</span>
@@ -229,17 +233,10 @@ export function TransactionListModal({
                 )}
                 <div className="flex items-center justify-between text-xs text-gray-500">
                   <span>
-                    Created by: {employeeNames[transaction.created_by_id] || 'Loading...'}
+                    Created by: {employeeNames[transaction.created_by_id] || 'Unknown User'}
                   </span>
                   <span>
-                    {new Date(transaction.created_at).toLocaleString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12: true,
-                    })}
+                    {formatDateTimeEST(transaction.created_at)} EST
                   </span>
                 </div>
               </div>
