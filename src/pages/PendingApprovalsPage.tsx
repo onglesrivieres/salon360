@@ -1215,9 +1215,6 @@ export function PendingApprovalsPage() {
                               <p className="text-sm text-gray-900 mb-2">
                                 <span className="font-medium">Reported Employee:</span> {report.reported_employee_name}
                               </p>
-                              <p className="text-sm text-gray-600 mb-2">
-                                <span className="font-medium">Reported by:</span> {report.reporter_employee_name}
-                              </p>
                               <p className="text-sm text-gray-900 mb-2">
                                 <span className="font-medium">Description:</span> {report.violation_description}
                               </p>
@@ -1377,9 +1374,6 @@ export function PendingApprovalsPage() {
                             </div>
                             <p className="text-sm text-gray-900 mb-1">
                               <span className="font-medium">Reported Employee:</span> {report.reported_employee_name}
-                            </p>
-                            <p className="text-sm text-gray-600 mb-1">
-                              <span className="font-medium">Reported by:</span> {report.reporter_employee_name}
                             </p>
                             <p className="text-sm text-gray-700 mb-2">{report.violation_description}</p>
                             <p className="text-xs text-gray-500">
@@ -1559,11 +1553,6 @@ export function PendingApprovalsPage() {
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-sm font-medium text-gray-900 mb-1">Reported Employee</p>
               <p className="text-sm text-gray-700">{selectedViolationReport.reported_employee_name}</p>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-sm font-medium text-gray-900 mb-1">Reported By</p>
-              <p className="text-sm text-gray-700">{selectedViolationReport.reporter_employee_name}</p>
             </div>
 
             <div className="bg-gray-50 rounded-lg p-3">
