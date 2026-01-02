@@ -41,6 +41,15 @@ export function ViolationResponseRibbon({
     return reportTime.toLocaleString();
   };
 
+  const formatTime = (timestamp: string) => {
+    const reportTime = new Date(timestamp);
+    return reportTime.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   const handleResponse = async (response: boolean) => {
     setIsSubmitting(true);
     try {
@@ -117,7 +126,7 @@ export function ViolationResponseRibbon({
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-red-200" />
                     <span className="text-red-100 text-sm">
-                      Reported {formatTimeAgo(currentReport.created_at)} by {currentReport.reporter_employee_name}
+                      Reported {formatTimeAgo(currentReport.created_at)} at {formatTime(currentReport.created_at)}
                     </span>
                   </div>
                   {!isExpanded && (
