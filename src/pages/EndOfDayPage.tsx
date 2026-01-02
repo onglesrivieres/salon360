@@ -698,11 +698,11 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             <div className="bg-gray-50 rounded-lg shadow p-4">
               <div className="flex items-center gap-2 mb-3">
                 <DollarSign className="w-4 h-4 text-gray-700" />
-                <h3 className="text-sm font-semibold text-gray-900">From Tickets</h3>
+                <h3 className="text-sm font-semibold text-gray-900">Current Register</h3>
               </div>
               <div className="text-center py-3">
                 <p className="text-xs text-gray-600 mb-1">Current Amount</p>
-                <p className="text-2xl font-bold text-gray-900 mb-3">${expectedCash.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-900 mb-3">${netCashCollected.toFixed(2)}</p>
                 <Button
                   variant="secondary"
                   size="sm"
