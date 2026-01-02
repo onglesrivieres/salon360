@@ -372,14 +372,14 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
   const handleReady = async (employeeId: string, storeId: string, storeName?: string) => {
     try {
-      const { data: inQueue, error: checkError } = await supabase.rpc('check_queue_status', {
+      const { data: queueStatus, error: checkError } = await supabase.rpc('check_queue_status', {
         p_employee_id: employeeId,
         p_store_id: storeId
       });
 
       if (checkError) throw checkError;
 
-      if (inQueue) {
+      if (queueStatus?.in_queue) {
         setShowConfirmModal(true);
       } else {
         const { data: queueResult, error: joinError } = await supabase.rpc('join_ready_queue_with_checkin', {
@@ -391,7 +391,19 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
         if (!queueResult?.success) {
           setShowPinModal(false);
-          setErrorMessage('Unable to join the ready queue. Please ensure you are checked in.');
+
+          if (queueResult?.error === 'COOLDOWN_ACTIVE') {
+            const minutesRemaining = queueResult.minutes_remaining || 0;
+            const reason = queueResult.reason || 'policy violation';
+            setErrorMessage(
+              `You cannot join the queue for ${minutesRemaining} more minute${minutesRemaining !== 1 ? 's' : ''}. You were removed for: ${reason}`
+            );
+          } else if (queueResult?.error === 'CHECK_IN_REQUIRED') {
+            setErrorMessage('You must check in before joining the ready queue.');
+          } else {
+            setErrorMessage(queueResult?.message || 'Unable to join the ready queue. Please ensure you are checked in.');
+          }
+
           setShowErrorModal(true);
           return;
         }
