@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight } from 'lucide-react';
-import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, ViolationReportForApproval, ViolationDecision, ViolationActionType } from '../lib/supabase';
+import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
@@ -41,6 +41,8 @@ export function PendingApprovalsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('tickets');
   const [selectedDate, setSelectedDate] = useState<string>(getCurrentDateEST());
   const [tickets, setTickets] = useState<PendingApprovalTicket[]>([]);
+  const [historicalManagerTickets, setHistoricalManagerTickets] = useState<HistoricalApprovalTicket[]>([]);
+  const [historicalSupervisorTickets, setHistoricalSupervisorTickets] = useState<HistoricalApprovalTicket[]>([]);
   const [inventoryApprovals, setInventoryApprovals] = useState<PendingInventoryApproval[]>([]);
   const [cashTransactionApprovals, setCashTransactionApprovals] = useState<PendingCashTransactionApproval[]>([]);
   const [violationReports, setViolationReports] = useState<ViolationReportForApproval[]>([]);
@@ -84,6 +86,7 @@ export function PendingApprovalsPage() {
       if (activeTab === 'tickets') {
         fetchPendingApprovals();
         fetchApprovalStats();
+        fetchHistoricalApprovals();
       } else if (activeTab === 'inventory') {
         fetchInventoryApprovals();
       } else if (activeTab === 'cash') {
@@ -232,6 +235,29 @@ export function PendingApprovalsPage() {
       setViolationHistory(data || []);
     } catch (error) {
       console.error('Error fetching violation history:', error);
+    }
+  }
+
+  async function fetchHistoricalApprovals() {
+    if (!selectedStoreId) return;
+
+    try {
+      const [managerData, supervisorData] = await Promise.all([
+        supabase.rpc('get_historical_approvals_for_manager', {
+          p_store_id: selectedStoreId,
+        }),
+        supabase.rpc('get_historical_approvals_for_supervisor', {
+          p_store_id: selectedStoreId,
+        }),
+      ]);
+
+      if (managerData.error) throw managerData.error;
+      if (supervisorData.error) throw supervisorData.error;
+
+      setHistoricalManagerTickets(managerData.data || []);
+      setHistoricalSupervisorTickets(supervisorData.data || []);
+    } catch (error) {
+      console.error('Error fetching historical approvals:', error);
     }
   }
 
@@ -478,6 +504,7 @@ export function PendingApprovalsPage() {
 
       showToast('Ticket approved successfully', 'success');
       fetchPendingApprovals();
+      fetchHistoricalApprovals();
     } catch (error: any) {
       showToast(error.message || 'Failed to approve ticket', 'error');
     } finally {
@@ -518,6 +545,7 @@ export function PendingApprovalsPage() {
       setSelectedTicket(null);
       setRejectionReason('');
       fetchPendingApprovals();
+      fetchHistoricalApprovals();
     } catch (error: any) {
       showToast(error.message || 'Failed to reject ticket', 'error');
     } finally {
@@ -899,6 +927,108 @@ export function PendingApprovalsPage() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+
+              {(historicalManagerTickets.length > 0 || historicalSupervisorTickets.length > 0) && (
+                <div className="mt-8 pt-8 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Historical Approvals</h3>
+
+                  {historicalManagerTickets.length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="text-md font-medium text-gray-700 mb-3 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        Manager Approvals ({historicalManagerTickets.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {historicalManagerTickets.slice(0, 10).map((ticket) => (
+                          <div
+                            key={ticket.ticket_id}
+                            className={`bg-gray-50 rounded-lg border p-3 ${
+                              ticket.approval_status === 'approved' ? 'border-green-200' : 'border-red-200'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-sm font-medium text-gray-900">
+                                    Ticket #{ticket.ticket_number}
+                                  </span>
+                                  <Badge variant={ticket.approval_status === 'approved' ? 'success' : 'error'}>
+                                    {ticket.approval_status.toUpperCase()}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-gray-600">
+                                  Customer: {ticket.customer_name} • Total: ${ticket.total_amount.toFixed(2)}
+                                </p>
+                                <p className="text-xs text-gray-600">
+                                  Services: {ticket.service_names}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Approved by: {ticket.approved_by_name} on{' '}
+                                  {new Date(ticket.approved_at).toLocaleDateString()} at{' '}
+                                  {new Date(ticket.approved_at).toLocaleTimeString()}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {historicalManagerTickets.length > 10 && (
+                        <p className="text-xs text-gray-500 text-center mt-2">
+                          Showing 10 of {historicalManagerTickets.length} records
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {historicalSupervisorTickets.length > 0 && (
+                    <div>
+                      <h4 className="text-md font-medium text-gray-700 mb-3 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-blue-600" />
+                        Supervisor Approvals ({historicalSupervisorTickets.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {historicalSupervisorTickets.slice(0, 10).map((ticket) => (
+                          <div
+                            key={ticket.ticket_id}
+                            className={`bg-gray-50 rounded-lg border p-3 ${
+                              ticket.approval_status === 'approved' ? 'border-green-200' : 'border-red-200'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-sm font-medium text-gray-900">
+                                    Ticket #{ticket.ticket_number}
+                                  </span>
+                                  <Badge variant={ticket.approval_status === 'approved' ? 'success' : 'error'}>
+                                    {ticket.approval_status.toUpperCase()}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-gray-600">
+                                  Customer: {ticket.customer_name} • Total: ${ticket.total_amount.toFixed(2)}
+                                </p>
+                                <p className="text-xs text-gray-600">
+                                  Services: {ticket.service_names}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Approved by: {ticket.approved_by_name} on{' '}
+                                  {new Date(ticket.approved_at).toLocaleDateString()} at{' '}
+                                  {new Date(ticket.approved_at).toLocaleTimeString()}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {historicalSupervisorTickets.length > 10 && (
+                        <p className="text-xs text-gray-500 text-center mt-2">
+                          Showing 10 of {historicalSupervisorTickets.length} records
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

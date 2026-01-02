@@ -335,6 +335,24 @@ export interface PendingApprovalTicket {
   technician_names?: string;
 }
 
+export interface HistoricalApprovalTicket {
+  ticket_id: string;
+  ticket_number: number;
+  customer_name: string;
+  customer_phone: string;
+  total_amount: number;
+  created_at: string;
+  completed_at: string;
+  completed_by_id: string;
+  completed_by_name: string;
+  approval_status: string;
+  approved_at: string;
+  approved_by_id: string;
+  approved_by_name: string;
+  requires_supervisor_approval: boolean;
+  service_names: string;
+}
+
 export interface ApprovalStatistics {
   total_closed: number;
   pending_approval: number;
