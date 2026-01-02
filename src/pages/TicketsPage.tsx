@@ -36,18 +36,23 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
-  const canViewManagementReports = session?.role ? Permissions.tipReport.canViewAll(session.role) : false;
+  const canViewDailyReport = session?.role ? Permissions.tipReport.canViewAll(session.role) : false;
+  const canViewPeriodReport = session?.role ? Permissions.tipReport.canViewPeriodReports(session.role) : false;
 
   useEffect(() => {
     fetchTickets();
   }, [selectedDate, selectedStoreId]);
 
   useEffect(() => {
-    if (!canViewManagementReports && (viewMode === 'daily' || viewMode === 'period')) {
+    if (!canViewDailyReport && viewMode === 'daily') {
       setViewMode('tickets');
-      showToast('You do not have permission to view this report', 'error');
+      showToast('You do not have permission to view daily reports', 'error');
     }
-  }, [viewMode, canViewManagementReports]);
+    if (!canViewPeriodReport && viewMode === 'period') {
+      setViewMode('tickets');
+      showToast('You do not have permission to view period reports', 'error');
+    }
+  }, [viewMode, canViewDailyReport, canViewPeriodReport]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -566,11 +571,13 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
         <div className="flex items-center gap-3">
-          {canViewManagementReports ? (
+          {canViewDailyReport || canViewPeriodReport ? (
             <div className="inline-flex rounded-lg border border-gray-300 bg-white">
               <button
                 onClick={() => setViewMode('tickets')}
-                className={`px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium rounded-l-lg transition-colors ${
+                className={`px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium ${
+                  !canViewDailyReport && !canViewPeriodReport ? 'rounded-lg' : 'rounded-l-lg'
+                } transition-colors ${
                   viewMode === 'tickets'
                     ? 'bg-blue-600 text-white'
                     : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -578,26 +585,32 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
               >
                 Tickets
               </button>
-              <button
-                onClick={() => setViewMode('daily')}
-                className={`px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium border-l border-gray-300 transition-colors ${
-                  viewMode === 'daily'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Daily
-              </button>
-              <button
-                onClick={() => setViewMode('period')}
-                className={`px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium rounded-r-lg border-l border-gray-300 transition-colors ${
-                  viewMode === 'period'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Period
-              </button>
+              {canViewDailyReport && (
+                <button
+                  onClick={() => setViewMode('daily')}
+                  className={`px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium ${
+                    !canViewPeriodReport ? 'rounded-r-lg' : ''
+                  } border-l border-gray-300 transition-colors ${
+                    viewMode === 'daily'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Daily
+                </button>
+              )}
+              {canViewPeriodReport && (
+                <button
+                  onClick={() => setViewMode('period')}
+                  className={`px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium rounded-r-lg border-l border-gray-300 transition-colors ${
+                    viewMode === 'period'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Period
+                </button>
+              )}
             </div>
           ) : (
             <div className="inline-flex rounded-lg border border-gray-300 bg-white">
