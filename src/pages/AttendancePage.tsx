@@ -40,6 +40,7 @@ export function AttendancePage() {
   const [isShiftDetailModalOpen, setIsShiftDetailModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [pendingProposalsCount, setPendingProposalsCount] = useState(0);
+  const [employeePayType, setEmployeePayType] = useState<'hourly' | 'daily' | 'commission' | null>(null);
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
@@ -49,6 +50,21 @@ export function AttendancePage() {
       fetchPendingProposalsCount();
     }
   }, [currentDate, selectedStoreId]);
+
+  useEffect(() => {
+    async function fetchEmployeePayType() {
+      if (!session?.employee_id) return;
+      const { data } = await supabase
+        .from('employees')
+        .select('pay_type')
+        .eq('id', session.employee_id)
+        .maybeSingle();
+      if (data) {
+        setEmployeePayType(data.pay_type);
+      }
+    }
+    fetchEmployeePayType();
+  }, [session?.employee_id]);
 
   async function fetchAttendance() {
     if (!selectedStoreId) return;
@@ -310,6 +326,19 @@ export function AttendancePage() {
 
   // Check if this is an individual employee view (not management)
   const isTechnician = session?.role_permission === 'Technician';
+  const isManagement = session?.role && Permissions.endOfDay.canView(session.role);
+
+  // Check if commission employee (and not management)
+  if (employeePayType === 'commission' && !isManagement) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <p className="text-gray-600 mb-4">Attendance tracking is not available for commission-based employees.</p>
+          <p className="text-gray-600">Please view your sales performance in the Tickets page under Daily and Weekly reports.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (session && session.role && !Permissions.endOfDay.canView(session.role)) {
     return (

@@ -36,8 +36,26 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
-  const canViewDailyReport = session?.role ? Permissions.tipReport.canViewAll(session.role) : false;
-  const canViewPeriodReport = session?.role ? Permissions.tipReport.canViewPeriodReports(session.role) : false;
+  // Check if user is a commission employee
+  const [isCommissionEmployee, setIsCommissionEmployee] = useState(false);
+
+  useEffect(() => {
+    async function checkPayType() {
+      if (session?.employee_id) {
+        const { data: employeeData } = await supabase
+          .from('employees')
+          .select('pay_type')
+          .eq('id', session.employee_id)
+          .maybeSingle();
+        setIsCommissionEmployee(employeeData?.pay_type === 'commission');
+      }
+    }
+    checkPayType();
+  }, [session?.employee_id]);
+
+  // Management can view all reports, commission employees can view their own Daily/Weekly reports
+  const canViewDailyReport = session?.role ? (Permissions.tipReport.canViewAll(session.role) || isCommissionEmployee) : false;
+  const canViewPeriodReport = session?.role ? (Permissions.tipReport.canViewPeriodReports(session.role) || isCommissionEmployee) : false;
 
   useEffect(() => {
     fetchTickets();

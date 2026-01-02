@@ -49,6 +49,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [workingEmployees, setWorkingEmployees] = useState<WorkingEmployee[]>([]);
   const [loadingWorkingEmployees, setLoadingWorkingEmployees] = useState(false);
   const [minVotesRequired, setMinVotesRequired] = useState(3);
+  const [employeePayType, setEmployeePayType] = useState<'hourly' | 'daily' | 'commission' | undefined>(undefined);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const canViewAllQueueStatuses = effectiveRole && Permissions.queue.canViewAllQueueStatuses(effectiveRole);
@@ -62,6 +63,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     }
     if (session?.employee_id) {
       fetchAllStores();
+      fetchEmployeePayType();
     }
     if (session?.employee_id && effectiveRole && Permissions.tickets.canViewPendingApprovals(effectiveRole)) {
       fetchPendingApprovalsCount();
@@ -216,6 +218,18 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     if (data) {
       setCurrentStore(data);
       setMinVotesRequired(data.violation_min_votes_required || 3);
+    }
+  }
+
+  async function fetchEmployeePayType() {
+    if (!session?.employee_id) return;
+    const { data } = await supabase
+      .from('employees')
+      .select('pay_type')
+      .eq('id', session.employee_id)
+      .maybeSingle();
+    if (data) {
+      setEmployeePayType(data.pay_type);
     }
   }
 
@@ -810,7 +824,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = currentPage === item.id;
-                const hasAccess = session && effectiveRole && canAccessPage(item.id, effectiveRole);
+                const hasAccess = session && effectiveRole && canAccessPage(item.id, effectiveRole, employeePayType);
 
                 if (!hasAccess) return null;
 

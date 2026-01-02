@@ -163,8 +163,18 @@ export const Permissions = {
   },
 
   attendance: {
-    canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
+    canView: (roles: Role[] | RolePermission, payType?: 'hourly' | 'daily' | 'commission'): boolean => {
+      // Management roles can always view attendance
+      if (hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner'])) {
+        return true;
+      }
+      // For non-management roles, check pay type
+      // Commission employees cannot view attendance
+      if (payType === 'commission') {
+        return false;
+      }
+      // Hourly and daily employees can view attendance
+      return hasAnyRole(roles, ['Technician', 'Spa Expert']);
     },
     canComment: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
@@ -274,7 +284,8 @@ export function getPermissionMessage(
 
 export function canAccessPage(
   page: 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'settings' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'configuration' | 'safebalance' | 'queue-removal-history',
-  roles: Role[] | RolePermission
+  roles: Role[] | RolePermission,
+  payType?: 'hourly' | 'daily' | 'commission'
 ): boolean {
   switch (page) {
     case 'tickets':
@@ -292,7 +303,7 @@ export function canAccessPage(
     case 'settings':
       return true;
     case 'attendance':
-      return Permissions.attendance.canView(roles);
+      return Permissions.attendance.canView(roles, payType);
     case 'approvals':
       return Permissions.tickets.canViewPendingApprovals(roles);
     case 'inventory':
@@ -310,7 +321,7 @@ export function canAccessPage(
   }
 }
 
-export function getAccessiblePages(roles: Role[] | RolePermission): string[] {
+export function getAccessiblePages(roles: Role[] | RolePermission, payType?: 'hourly' | 'daily' | 'commission'): string[] {
   const pages: string[] = ['tickets', 'profile'];
 
   if (Permissions.tickets.canViewPendingApprovals(roles)) {
@@ -325,7 +336,7 @@ export function getAccessiblePages(roles: Role[] | RolePermission): string[] {
     pages.push('eod');
   }
 
-  if (Permissions.attendance.canView(roles)) {
+  if (Permissions.attendance.canView(roles, payType)) {
     pages.push('attendance');
   }
 
