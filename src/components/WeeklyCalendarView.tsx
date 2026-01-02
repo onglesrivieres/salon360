@@ -143,7 +143,6 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                 >
                                   <div className="text-center space-y-0.5">
                                     <div className="flex items-center justify-center gap-0.5">
-                                      <span className="text-[9px] text-gray-600">T.(given)</span>
                                       <span className="text-green-700 text-[10px] font-medium">
                                         {storeData.tips_customer.toFixed(0)}
                                       </span>
@@ -154,7 +153,6 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                       )}
                                     </div>
                                     <div className="flex items-center justify-center gap-0.5">
-                                      <span className="text-[9px] text-gray-600">T.(paired)</span>
                                       <span className="text-blue-700 text-[10px] font-medium">
                                         {storeData.tips_receptionist.toFixed(0)}
                                       </span>
@@ -174,13 +172,11 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                           ) : (
                             <div className="text-center space-y-0.5">
                               <div className="flex items-center justify-center gap-0.5">
-                                <span className="text-[9px] text-gray-600">T.(given)</span>
                                 <span className="text-green-700 text-[10px] font-medium">
                                   {dailyCustomer.toFixed(0)}
                                 </span>
                               </div>
                               <div className="flex items-center justify-center gap-0.5">
-                                <span className="text-[9px] text-gray-600">T.(paired)</span>
                                 <span className="text-blue-700 text-[10px] font-medium">
                                   {dailyReceptionist.toFixed(0)}
                                 </span>
@@ -257,7 +253,6 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                             >
                               <div className="text-center space-y-0.5">
                                 <div className="flex items-center justify-center gap-0.5">
-                                  <span className="text-[9px] text-gray-600">T.(given)</span>
                                   <span className="font-bold text-green-700 text-[10px]">
                                     {storeAgg.tips_customer.toFixed(0)}
                                   </span>
@@ -268,7 +263,6 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                   )}
                                 </div>
                                 <div className="flex items-center justify-center gap-0.5">
-                                  <span className="text-[9px] text-gray-600">T.(paired)</span>
                                   <span className="font-bold text-blue-700 text-[10px]">
                                     {storeAgg.tips_receptionist.toFixed(0)}
                                   </span>
@@ -288,13 +282,11 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                       ) : (
                         <div className="text-center space-y-0.5">
                           <div className="flex items-center justify-center gap-0.5">
-                            <span className="text-[9px] text-gray-600">T.(given)</span>
                             <span className="font-bold text-green-700 text-[10px]">
                               {(storesList[0]?.tips_customer || 0).toFixed(0)}
                             </span>
                           </div>
                           <div className="flex items-center justify-center gap-0.5">
-                            <span className="text-[9px] text-gray-600">T.(paired)</span>
                             <span className="font-bold text-blue-700 text-[10px]">
                               {(storesList[0]?.tips_receptionist || 0).toFixed(0)}
                             </span>
