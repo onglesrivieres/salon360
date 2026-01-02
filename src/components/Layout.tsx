@@ -3,7 +3,7 @@ import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, Che
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
-import { supabase, Store, TechnicianWithQueue, PendingViolationResponse } from '../lib/supabase';
+import { supabase, Store, TechnicianWithQueue, WorkingEmployee, PendingViolationResponse } from '../lib/supabase';
 import { NotificationBadge } from './ui/NotificationBadge';
 import { VersionNotification } from './VersionNotification';
 import { initializeVersionCheck, startVersionCheck } from '../lib/version';
@@ -46,6 +46,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [isSubmittingRemoval, setIsSubmittingRemoval] = useState(false);
   const [showViolationReportModal, setShowViolationReportModal] = useState(false);
   const [pendingViolationResponses, setPendingViolationResponses] = useState<PendingViolationResponse[]>([]);
+  const [workingEmployees, setWorkingEmployees] = useState<WorkingEmployee[]>([]);
+  const [loadingWorkingEmployees, setLoadingWorkingEmployees] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const canViewAllQueueStatuses = effectiveRole && Permissions.queue.canViewAllQueueStatuses(effectiveRole);
@@ -474,6 +476,31 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     }
   }
 
+  async function fetchWorkingEmployees() {
+    if (!selectedStoreId) return;
+
+    setLoadingWorkingEmployees(true);
+    try {
+      const today = getCurrentDateEST();
+      const { data, error } = await supabase.rpc('get_employees_working_today', {
+        p_store_id: selectedStoreId,
+        p_date: today
+      });
+
+      if (error) throw error;
+      setWorkingEmployees(data || []);
+    } catch (error) {
+      console.error('Error fetching working employees:', error);
+    } finally {
+      setLoadingWorkingEmployees(false);
+    }
+  }
+
+  const handleOpenViolationReportModal = () => {
+    setShowViolationReportModal(true);
+    fetchWorkingEmployees();
+  };
+
   const handleSubmitViolationReport = async (data: {
     reportedEmployeeId: string;
     description: string;
@@ -883,7 +910,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           {canReportViolations && (
             <div className="pt-4 border-t border-gray-200">
               <button
-                onClick={() => setShowViolationReportModal(true)}
+                onClick={handleOpenViolationReportModal}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-lg font-medium hover:bg-red-100 transition-colors"
               >
                 <Flag className="w-4 h-4" />
@@ -903,7 +930,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       <ViolationReportModal
         isOpen={showViolationReportModal}
         onClose={() => setShowViolationReportModal(false)}
-        availableTechnicians={sortedTechnicians}
+        workingEmployees={workingEmployees}
+        loadingEmployees={loadingWorkingEmployees}
         currentEmployeeId={session?.employee_id || ''}
         currentEmployeeName={session?.name || ''}
         storeId={selectedStoreId || ''}

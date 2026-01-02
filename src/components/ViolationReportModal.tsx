@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { AlertTriangle, User, MessageSquare, Hash } from 'lucide-react';
+import { AlertTriangle, User, MessageSquare, Hash, RefreshCw } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Select } from './ui/Select';
-import { TechnicianWithQueue } from '../lib/supabase';
+import { WorkingEmployee } from '../lib/supabase';
 
 interface ViolationReportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  availableTechnicians: TechnicianWithQueue[];
+  workingEmployees: WorkingEmployee[];
+  loadingEmployees: boolean;
   currentEmployeeId: string;
   currentEmployeeName: string;
   storeId: string;
@@ -22,7 +23,8 @@ interface ViolationReportModalProps {
 export function ViolationReportModal({
   isOpen,
   onClose,
-  availableTechnicians,
+  workingEmployees,
+  loadingEmployees,
   currentEmployeeId,
   currentEmployeeName,
   storeId,
@@ -34,16 +36,16 @@ export function ViolationReportModal({
   const [confirmAccuracy, setConfirmAccuracy] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const eligibleTechnicians = availableTechnicians.filter(
-    (tech) => tech.employee_id !== currentEmployeeId && tech.queue_status === 'ready'
+  const eligibleEmployees = workingEmployees.filter(
+    (emp) => emp.employee_id !== currentEmployeeId
   );
 
-  const selectedTechnician = eligibleTechnicians.find(
-    (tech) => tech.employee_id === reportedEmployeeId
+  const selectedEmployee = eligibleEmployees.find(
+    (emp) => emp.employee_id === reportedEmployeeId
   );
 
-  const responderCount = availableTechnicians.filter(
-    (tech) => tech.employee_id !== currentEmployeeId && tech.employee_id !== reportedEmployeeId
+  const responderCount = workingEmployees.filter(
+    (emp) => emp.employee_id !== currentEmployeeId && emp.employee_id !== reportedEmployeeId
   ).length;
 
   const handleSubmit = async () => {
@@ -87,24 +89,30 @@ export function ViolationReportModal({
                 Report a Queue Turn Violation
               </p>
               <p className="text-xs text-amber-700 mt-1">
-                All employees working today will be asked to vote on whether this violation
-                occurred. A manager will make the final decision based on the votes.
+                All employees who are checked in or have worked on services today will be asked to vote on whether this violation occurred. A manager will make the final decision based on the votes.
               </p>
             </div>
           </div>
         </div>
 
-        {eligibleTechnicians.length === 0 && (
+        {loadingEmployees ? (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+            <RefreshCw className="w-8 h-8 text-gray-400 mx-auto mb-2 animate-spin" />
+            <p className="text-sm text-gray-600 font-medium">
+              Loading employees...
+            </p>
+          </div>
+        ) : eligibleEmployees.length === 0 ? (
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
             <User className="w-8 h-8 text-gray-400 mx-auto mb-2" />
             <p className="text-sm text-gray-600 font-medium">
-              No other technicians currently in the ready queue
+              No other employees are working today
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              You can only report violations for technicians who are currently in the ready queue.
+              There are no other employees checked in or working on services today to report.
             </p>
           </div>
-        )}
+        ) : null}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -114,19 +122,19 @@ export function ViolationReportModal({
           <Select
             value={reportedEmployeeId}
             onChange={(e) => setReportedEmployeeId(e.target.value)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || loadingEmployees}
           >
             <option value="">Select an employee...</option>
-            {eligibleTechnicians.map((tech) => (
-              <option key={tech.employee_id} value={tech.employee_id}>
-                {tech.display_name}
-                {tech.queue_position > 0 ? ` (#${tech.queue_position})` : ''}
+            {eligibleEmployees.map((emp) => (
+              <option key={emp.employee_id} value={emp.employee_id}>
+                {emp.display_name}
+                {emp.queue_position ? ` (#${emp.queue_position})` : ''}
               </option>
             ))}
           </Select>
         </div>
 
-        {selectedTechnician && (
+        {selectedEmployee && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               <Hash className="w-4 h-4 inline mr-1" />
@@ -142,7 +150,9 @@ export function ViolationReportModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Current queue position: #{selectedTechnician.queue_position || 'N/A'}
+              {selectedEmployee.queue_position
+                ? `Current queue position: #${selectedEmployee.queue_position}`
+                : 'Not currently in queue'}
             </p>
           </div>
         )}

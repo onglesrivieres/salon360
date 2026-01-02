@@ -227,6 +227,15 @@ export interface TechnicianWithQueue {
   estimated_completion_time?: string;
 }
 
+export interface WorkingEmployee {
+  employee_id: string;
+  legal_name: string;
+  display_name: string;
+  queue_status: string | null;
+  queue_position: number | null;
+  is_checked_in: boolean;
+}
+
 export interface AttendanceRecord {
   id: string;
   employee_id: string;
