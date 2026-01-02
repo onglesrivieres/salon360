@@ -67,6 +67,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const requireCustomerName = getSettingBoolean('require_customer_name_on_tickets', false);
   const requireCustomerPhone = getSettingBoolean('require_customer_phone_on_tickets', false);
   const requireEmployeeCheckin = getSettingBoolean('require_employee_checkin_before_tickets', true);
+  const requireOpeningCashValidation = getSettingBoolean('require_opening_cash_validation', false);
 
   const isApproved = ticket?.approval_status === 'approved' || ticket?.approval_status === 'auto_approved';
 
@@ -927,7 +928,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     try {
       setSaving(true);
 
-      if (!ticketId && selectedStoreId) {
+      // Only check opening cash if validation is required in configuration
+      if (!ticketId && selectedStoreId && requireOpeningCashValidation) {
         const openingCashRecorded = await checkOpeningCashRecorded(selectedStoreId, selectedDate);
         if (!openingCashRecorded) {
           showToast('Opening cash count must be recorded before creating tickets. Please go to End of Day and count the opening cash first.', 'error');
