@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Search, RotateCcw, ChevronDown, ChevronRight, Loader2, CheckSquare, Square } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { AlertTriangle, Search, RotateCcw, ChevronDown, ChevronRight, Loader2, CheckSquare, Square, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissionsCache } from '../contexts/PermissionsCacheContext';
@@ -39,6 +39,7 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
   const [allPermissions, setAllPermissions] = useState<RolePermissions>(new Map());
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set(Object.keys(getPermissionsByModule())));
@@ -46,26 +47,33 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
 
   const groupedPermissions = getPermissionsByModule();
 
-  useEffect(() => {
-    loadAllPermissionsWithCache();
-  }, [storeId]);
+  const loadAllPermissionsWithCache = useCallback(async () => {
+    if (!storeId) {
+      console.log('[Permissions] No storeId available, skipping load');
+      return;
+    }
 
-  const loadAllPermissionsWithCache = async () => {
-    if (!storeId) return;
+    console.log('[Permissions] Loading permissions for store:', storeId);
+    setLoadError(null);
 
     // Try to get cached data first (stale-while-revalidate pattern)
     const cached = getCachedPermissions(storeId);
-    if (cached) {
+    console.log('[Permissions] Cache check:', cached ? `Found ${cached.size} roles` : 'No cache');
+
+    if (cached && cached.size > 0) {
+      console.log('[Permissions] Using cached data');
       setAllPermissions(cached);
       setLoading(false);
 
       // Refresh in background
       setIsRefreshing(true);
       try {
+        console.log('[Permissions] Refreshing in background');
         const fresh = await loadPermissions(storeId, true);
+        console.log('[Permissions] Fresh data loaded:', fresh.size, 'roles');
         setAllPermissions(fresh);
       } catch (error) {
-        console.error('Error refreshing permissions:', error);
+        console.error('[Permissions] Error refreshing permissions:', error);
       } finally {
         setIsRefreshing(false);
       }
@@ -75,14 +83,28 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
     // No cache, show loading state
     setLoading(true);
     try {
+      console.log('[Permissions] No cache, loading from database');
       const permissions = await loadPermissions(storeId);
-      setAllPermissions(permissions);
+      console.log('[Permissions] Loaded from database:', permissions.size, 'roles');
+
+      if (!permissions || permissions.size === 0) {
+        console.warn('[Permissions] No permissions loaded - empty result');
+        setLoadError('No permissions data found. Please contact support.');
+      } else {
+        setAllPermissions(permissions);
+      }
     } catch (error) {
-      console.error('Error loading permissions:', error);
+      console.error('[Permissions] Error loading permissions:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load permissions';
+      setLoadError(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [storeId, getCachedPermissions, loadPermissions]);
+
+  useEffect(() => {
+    loadAllPermissionsWithCache();
+  }, [loadAllPermissionsWithCache]);
 
   const togglePermission = async (role: Role, permissionKey: string, currentValue: boolean) => {
     if (!storeId || !employee) return;
@@ -261,6 +283,62 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-gray-400 mr-3" />
         <div className="text-gray-500">Loading permissions for all roles...</div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-red-900 mb-2">Failed to Load Permissions</h3>
+              <p className="text-sm text-red-800 mb-4">{loadError}</p>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setLoadError(null);
+                  loadAllPermissionsWithCache();
+                }}
+              >
+                Retry Loading
+              </Button>
+            </div>
+          </div>
+        </div>
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <h4 className="font-medium text-gray-900 mb-2 text-sm">Troubleshooting Tips:</h4>
+          <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+            <li>Check your internet connection</li>
+            <li>Verify the database migration has been applied</li>
+            <li>Try refreshing the page</li>
+            <li>Check the browser console for detailed error messages</li>
+          </ul>
+        </div>
+      </div>
+    );
+  }
+
+  if (allPermissions.size === 0) {
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-yellow-900 mb-2">No Permissions Found</h3>
+            <p className="text-sm text-yellow-800 mb-4">
+              No permission data is available for this store. The permissions system may need to be initialized.
+            </p>
+            <Button
+              variant="primary"
+              onClick={() => loadAllPermissionsWithCache()}
+            >
+              Refresh
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
