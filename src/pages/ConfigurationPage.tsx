@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, AlertCircle, Search, RefreshCw, Copy, CheckCircle2, Loader2, AlertTriangle, Shield } from 'lucide-react';
+import { Settings, AlertCircle, Search, RefreshCw, Copy, CheckCircle2, Loader2, AlertTriangle, Shield, UserCog } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { NumericInput } from '../components/ui/NumericInput';
 import { useToast } from '../components/ui/Toast';
@@ -8,6 +8,8 @@ import { supabase } from '../lib/supabase';
 import { CriticalSettingConfirmationModal } from '../components/CriticalSettingConfirmationModal';
 import { SettingsDependencyIndicator } from '../components/SettingsDependencyIndicator';
 import { ConfigurationWizard } from '../components/ConfigurationWizard';
+import { RolePermissionMatrix } from '../components/RolePermissionMatrix';
+import { Role } from '../lib/permissions';
 
 interface AppSetting {
   id: string;
@@ -85,6 +87,9 @@ export function ConfigurationPage() {
   const [showWizard, setShowWizard] = useState(false);
   const [storeName, setStoreName] = useState('');
   const [hasConfiguration, setHasConfiguration] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<'settings' | 'permissions'>('settings');
+  const [selectedRole, setSelectedRole] = useState<Role>('Admin');
 
   const canManageSettings = session?.role?.includes('Owner') || session?.role?.includes('Admin');
 
@@ -326,6 +331,8 @@ export function ConfigurationPage() {
     );
   }
 
+  const roles: Role[] = ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Spa Expert', 'Cashier'];
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-6">
@@ -344,7 +351,32 @@ export function ConfigurationPage() {
           </Button>
         </div>
 
-        {validationIssues.length > 0 && (
+        <div className="flex gap-2 mb-6 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+              activeTab === 'settings'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Settings className="w-4 h-4 inline mr-2" />
+            App Settings
+          </button>
+          <button
+            onClick={() => setActiveTab('permissions')}
+            className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+              activeTab === 'permissions'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <UserCog className="w-4 h-4 inline mr-2" />
+            Role Permissions
+          </button>
+        </div>
+
+        {activeTab === 'settings' && validationIssues.length > 0 && (
           <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
@@ -364,53 +396,80 @@ export function ConfigurationPage() {
           </div>
         )}
 
-        <div className="flex flex-wrap gap-3">
-          <div className="flex-1 min-w-[200px]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search settings..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+        {activeTab === 'settings' && (
+          <div className="flex flex-wrap gap-3">
+            <div className="flex-1 min-w-[200px]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search settings..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
+
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={() => setShowCriticalOnly(!showCriticalOnly)}
+              className={`px-4 py-2 border rounded-lg transition-colors ${
+                showCriticalOnly
+                  ? 'bg-orange-100 border-orange-300 text-orange-800'
+                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Shield className="w-4 h-4 inline mr-2" />
+              Critical Only
+            </button>
           </div>
+        )}
 
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-
-          <button
-            onClick={() => setShowCriticalOnly(!showCriticalOnly)}
-            className={`px-4 py-2 border rounded-lg transition-colors ${
-              showCriticalOnly
-                ? 'bg-orange-100 border-orange-300 text-orange-800'
-                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Shield className="w-4 h-4 inline mr-2" />
-            Critical Only
-          </button>
-        </div>
+        {activeTab === 'permissions' && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Role to Configure
+            </label>
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value as Role)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {roles.map((role) => (
+                <option key={role} value={role}>
+                  {role}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
-      {isLoading ? (
+      {activeTab === 'permissions' && (
+        <RolePermissionMatrix role={selectedRole} onPermissionChange={() => {
+          showToast('Permissions updated. Changes will take effect after users log out and back in.', 'success');
+        }} />
+      )}
+
+      {activeTab === 'settings' && isLoading ? (
         <div className="text-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-2" />
           <p className="text-gray-600">Loading configuration...</p>
         </div>
-      ) : Object.keys(settingsByCategory).length === 0 ? (
+      ) : activeTab === 'settings' && Object.keys(settingsByCategory).length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg shadow">
           <Settings className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600 mb-4">No settings found matching your filters</p>
@@ -418,7 +477,7 @@ export function ConfigurationPage() {
             Clear Filters
           </Button>
         </div>
-      ) : (
+      ) : activeTab === 'settings' ? (
         <div className="space-y-6">
           {Object.entries(settingsByCategory).map(([category, categorySettings]) => (
             <div key={category} className="bg-white rounded-lg shadow">
@@ -528,7 +587,7 @@ export function ConfigurationPage() {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
 
       {pendingChange && (
         <CriticalSettingConfirmationModal

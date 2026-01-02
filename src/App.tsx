@@ -4,6 +4,7 @@ import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { NumericKeypadProvider } from './contexts/NumericKeypadContext';
+import { PermissionsProvider } from './contexts/PermissionsContext';
 import { NumericKeypad } from './components/NumericKeypad';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
@@ -205,12 +206,14 @@ function App() {
   return (
     <ToastProvider>
       <AuthProvider>
-        <SettingsProvider>
-          <NumericKeypadProvider>
-            <AppContent />
-            <NumericKeypad />
-          </NumericKeypadProvider>
-        </SettingsProvider>
+        <PermissionsProvider>
+          <SettingsProvider>
+            <NumericKeypadProvider>
+              <AppContent />
+              <NumericKeypad />
+            </NumericKeypadProvider>
+          </SettingsProvider>
+        </PermissionsProvider>
       </AuthProvider>
     </ToastProvider>
   );
