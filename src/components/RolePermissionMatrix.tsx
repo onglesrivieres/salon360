@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, Search, RotateCcw, ChevronDown, ChevronRight, Loader2, CheckSquare, Square, AlertCircle } from 'lucide-react';
+import { AlertTriangle, Search, RotateCcw, ChevronDown, ChevronRight, Loader2, CheckSquare, Square, AlertCircle, ChevronLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissionsCache } from '../contexts/PermissionsCacheContext';
@@ -21,6 +21,7 @@ interface PermissionState {
 type RolePermissions = Map<Role, Map<string, PermissionState>>;
 
 const ALL_ROLES: Role[] = ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Spa Expert', 'Cashier'];
+const PERMISSIONS_PER_PAGE = 10;
 
 const ROLE_COLORS: Record<Role, string> = {
   'Admin': 'bg-purple-100 text-purple-800 border-purple-200',
@@ -44,6 +45,7 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set(Object.keys(getPermissionsByModule())));
   const [hasChanges, setHasChanges] = useState(false);
+  const [currentPages, setCurrentPages] = useState<Map<string, number>>(new Map());
 
   const groupedPermissions = getPermissionsByModule();
 
@@ -105,6 +107,10 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
   useEffect(() => {
     loadAllPermissionsWithCache();
   }, [loadAllPermissionsWithCache]);
+
+  useEffect(() => {
+    setCurrentPages(new Map());
+  }, [searchTerm]);
 
   const togglePermission = async (role: Role, permissionKey: string, currentValue: boolean) => {
     if (!storeId || !employee) return;
@@ -240,6 +246,7 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
         next.delete(module);
       } else {
         next.add(module);
+        resetPaginationForModule(module);
       }
       return next;
     });
@@ -276,6 +283,38 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
 
   const isRoleSaving = (role: Role): boolean => {
     return saving.has(`role-${role}`);
+  };
+
+  const getCurrentPage = (module: string): number => {
+    return currentPages.get(module) ?? 1;
+  };
+
+  const getTotalPages = (module: string, filteredPerms: PermissionMetadata[]): number => {
+    return Math.ceil(filteredPerms.length / PERMISSIONS_PER_PAGE);
+  };
+
+  const getPaginatedPermissions = (module: string, filteredPerms: PermissionMetadata[]): PermissionMetadata[] => {
+    const currentPage = getCurrentPage(module);
+    const startIndex = (currentPage - 1) * PERMISSIONS_PER_PAGE;
+    const endIndex = startIndex + PERMISSIONS_PER_PAGE;
+    return filteredPerms.slice(startIndex, endIndex);
+  };
+
+  const handlePageChange = (module: string, newPage: number, totalPages: number) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPages(prev => {
+      const next = new Map(prev);
+      next.set(module, newPage);
+      return next;
+    });
+  };
+
+  const resetPaginationForModule = (module: string) => {
+    setCurrentPages(prev => {
+      const next = new Map(prev);
+      next.set(module, 1);
+      return next;
+    });
   };
 
   if (loading) {
@@ -379,6 +418,11 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
             if (filtered.length === 0) return null;
 
             const isExpanded = expandedModules.has(module);
+            const paginated = getPaginatedPermissions(module, filtered);
+            const currentPage = getCurrentPage(module);
+            const totalPages = getTotalPages(module, filtered);
+            const startIndex = (currentPage - 1) * PERMISSIONS_PER_PAGE;
+            const endIndex = Math.min(startIndex + PERMISSIONS_PER_PAGE, filtered.length);
 
             return (
               <div key={module} className="border-b border-gray-200 last:border-b-0">
@@ -404,107 +448,155 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
 
                 {/* Permission Table */}
                 {isExpanded && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="bg-gray-50 border-b border-gray-200">
-                          <th className="sticky left-0 bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r border-gray-200 min-w-[300px]">
-                            Permission
-                          </th>
-                          {ALL_ROLES.map((role) => (
-                            <th
-                              key={role}
-                              className={`px-3 py-3 text-center text-xs font-medium uppercase tracking-wider border-r border-gray-200 last:border-r-0 min-w-[120px] ${ROLE_COLORS[role]}`}
-                            >
-                              <div className="flex flex-col items-center gap-2">
-                                <span className="font-semibold">{role}</span>
-                                <div className="flex gap-1">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleAllForRole(role, true);
-                                    }}
-                                    disabled={isRoleSaving(role)}
-                                    className="text-xs px-2 py-1 bg-white rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
-                                    title={`Enable all ${role} permissions`}
-                                  >
-                                    All
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      resetRoleToDefaults(role);
-                                    }}
-                                    disabled={isRoleSaving(role)}
-                                    className="text-xs px-2 py-1 bg-white rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
-                                    title={`Reset ${role} to defaults`}
-                                  >
-                                    <RotateCcw className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </div>
+                  <div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="bg-gray-50 border-b border-gray-200">
+                            <th className="sticky left-0 bg-gray-50 px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider border-r border-gray-200 min-w-[300px]">
+                              Permission
                             </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filtered.map((perm, idx) => (
-                          <tr
-                            key={perm.key}
-                            className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                              idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                            }`}
-                          >
-                            <td className="sticky left-0 bg-inherit px-4 py-3 border-r border-gray-200">
-                              <div className="flex items-start gap-2">
-                                {perm.isCritical && (
-                                  <AlertTriangle className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-medium text-gray-900 text-sm">
-                                    {perm.displayName}
-                                  </div>
-                                  <div className="text-xs text-gray-600 mt-0.5">
-                                    {perm.description}
+                            {ALL_ROLES.map((role) => (
+                              <th
+                                key={role}
+                                className={`px-3 py-3 text-center text-xs font-medium uppercase tracking-wider border-r border-gray-200 last:border-r-0 min-w-[120px] ${ROLE_COLORS[role]}`}
+                              >
+                                <div className="flex flex-col items-center gap-2">
+                                  <span className="font-semibold">{role}</span>
+                                  <div className="flex gap-1">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleAllForRole(role, true);
+                                      }}
+                                      disabled={isRoleSaving(role)}
+                                      className="text-xs px-2 py-1 bg-white rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                      title={`Enable all ${role} permissions`}
+                                    >
+                                      All
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        resetRoleToDefaults(role);
+                                      }}
+                                      disabled={isRoleSaving(role)}
+                                      className="text-xs px-2 py-1 bg-white rounded hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                      title={`Reset ${role} to defaults`}
+                                    >
+                                      <RotateCcw className="w-3 h-3" />
+                                    </button>
                                   </div>
                                 </div>
-                              </div>
-                            </td>
-                            {ALL_ROLES.map((role) => {
-                              const isEnabled = isPermissionEnabled(role, perm.key);
-                              const isModified = isPermissionModified(role, perm.key);
-                              const isSaving = isCellSaving(role, perm.key);
-
-                              return (
-                                <td
-                                  key={`${role}-${perm.key}`}
-                                  className="px-3 py-3 text-center border-r border-gray-100 last:border-r-0"
-                                >
-                                  <div className="flex items-center justify-center">
-                                    {isSaving ? (
-                                      <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                                    ) : (
-                                      <button
-                                        onClick={() => togglePermission(role, perm.key, isEnabled)}
-                                        disabled={isRoleSaving(role)}
-                                        className={`relative group ${isModified ? 'ring-2 ring-blue-400 ring-offset-1 rounded' : ''}`}
-                                        title={`${isEnabled ? 'Disable' : 'Enable'} ${perm.displayName} for ${role}${isModified ? ' (Modified)' : ''}`}
-                                      >
-                                        {isEnabled ? (
-                                          <CheckSquare className="w-6 h-6 text-green-600 hover:text-green-700 transition-colors" />
-                                        ) : (
-                                          <Square className="w-6 h-6 text-gray-400 hover:text-gray-600 transition-colors" />
-                                        )}
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                              );
-                            })}
+                              </th>
+                            ))}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {paginated.map((perm, idx) => (
+                            <tr
+                              key={perm.key}
+                              className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                                idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                              }`}
+                            >
+                              <td className="sticky left-0 bg-inherit px-4 py-3 border-r border-gray-200">
+                                <div className="flex items-start gap-2">
+                                  {perm.isCritical && (
+                                    <AlertTriangle className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-gray-900 text-sm">
+                                      {perm.displayName}
+                                    </div>
+                                    <div className="text-xs text-gray-600 mt-0.5">
+                                      {perm.description}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              {ALL_ROLES.map((role) => {
+                                const isEnabled = isPermissionEnabled(role, perm.key);
+                                const isModified = isPermissionModified(role, perm.key);
+                                const isSaving = isCellSaving(role, perm.key);
+
+                                return (
+                                  <td
+                                    key={`${role}-${perm.key}`}
+                                    className="px-3 py-3 text-center border-r border-gray-100 last:border-r-0"
+                                  >
+                                    <div className="flex items-center justify-center">
+                                      {isSaving ? (
+                                        <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                                      ) : (
+                                        <button
+                                          onClick={() => togglePermission(role, perm.key, isEnabled)}
+                                          disabled={isRoleSaving(role)}
+                                          className={`relative group ${isModified ? 'ring-2 ring-blue-400 ring-offset-1 rounded' : ''}`}
+                                          title={`${isEnabled ? 'Disable' : 'Enable'} ${perm.displayName} for ${role}${isModified ? ' (Modified)' : ''}`}
+                                        >
+                                          {isEnabled ? (
+                                            <CheckSquare className="w-6 h-6 text-green-600 hover:text-green-700 transition-colors" />
+                                          ) : (
+                                            <Square className="w-6 h-6 text-gray-400 hover:text-gray-600 transition-colors" />
+                                          )}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+                        <div className="text-sm text-gray-600">
+                          Showing {startIndex + 1}-{endIndex} of {filtered.length} permissions
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handlePageChange(module, 1, totalPages)}
+                            disabled={currentPage === 1}
+                            className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="First page"
+                          >
+                            First
+                          </button>
+                          <button
+                            onClick={() => handlePageChange(module, currentPage - 1, totalPages)}
+                            disabled={currentPage === 1}
+                            className="p-1 border border-gray-300 rounded hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Previous page"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <span className="text-sm font-medium text-gray-700 px-3">
+                            Page {currentPage} of {totalPages}
+                          </span>
+                          <button
+                            onClick={() => handlePageChange(module, currentPage + 1, totalPages)}
+                            disabled={currentPage === totalPages}
+                            className="p-1 border border-gray-300 rounded hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Next page"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handlePageChange(module, totalPages, totalPages)}
+                            disabled={currentPage === totalPages}
+                            className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Last page"
+                          >
+                            Last
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
