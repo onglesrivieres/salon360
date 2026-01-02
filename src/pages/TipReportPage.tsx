@@ -17,6 +17,11 @@ interface TechnicianSummary {
   service_revenue: number;
   addon_revenue: number;
   total_revenue: number;
+  tips_customer?: number;
+  tips_receptionist?: number;
+  tips_total?: number;
+  tips_cash?: number;
+  tips_card?: number;
   items: ServiceItemDetail[];
 }
 
@@ -27,6 +32,9 @@ interface ServiceItemDetail {
   price: number;
   service_revenue: number;
   addon_revenue: number;
+  tip_customer_cash: number;
+  tip_customer_card: number;
+  tip_receptionist: number;
   payment_method: string;
   opened_at: string;
   closed_at: string | null;
@@ -305,9 +313,11 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             }
 
             const storeData = storeBreakdown.get(storeId)!;
-            storeData.tips_cash += item.tip_cash;
-            storeData.tips_card += item.tip_card;
-            storeData.tips_total += item.tip_customer + item.tip_receptionist;
+            storeData.tips_cash += (parseFloat(String(item.tip_customer_cash)) || 0);
+            storeData.tips_card += (parseFloat(String(item.tip_customer_card)) || 0);
+            storeData.tips_total += (parseFloat(String(item.tip_customer_cash)) || 0) +
+                                    (parseFloat(String(item.tip_customer_card)) || 0) +
+                                    (parseFloat(String(item.tip_receptionist)) || 0);
           }
 
           for (const [storeId, storeData] of storeBreakdown.entries()) {
@@ -817,6 +827,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
               selectedDate={selectedDate}
               weeklyData={weeklyData}
               summaries={summaries}
+              periodDates={getWeekDates(getWeekStartDate(selectedDate))}
             />
           </div>
         ) : (

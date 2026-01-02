@@ -3,11 +3,11 @@ import { Info } from 'lucide-react';
 
 interface WeeklyCalendarViewProps {
   selectedDate: string;
-  weeklyData: Map<string, Map<string, Array<{ store_id: string; store_code: string; revenue: number }>>>;
+  weeklyData: Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>>>;
   summaries: Array<{
     technician_id: string;
     technician_name: string;
-    revenue: number;
+    tips_total?: number;
   }>;
   periodDates: string[];
 }
@@ -88,7 +88,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                     let dailyRevenue = 0;
 
                     for (const storeData of storesArray) {
-                      dailyRevenue += storeData.revenue;
+                      dailyRevenue += storeData.tips_total;
                     }
 
                     const hasRevenue = dailyRevenue > 0;
@@ -111,7 +111,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                 >
                                   <div className="text-center flex items-center justify-center gap-1">
                                     <span className="text-gray-900 text-[11px]">
-                                      ${storeData.revenue.toFixed(0)}
+                                      ${storeData.tips_total.toFixed(0)}
                                     </span>
                                     {storeData.store_code && (
                                       <span className="text-[8px] text-gray-600 font-medium">
@@ -137,19 +137,19 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                   })}
                   <td className="border border-gray-300 bg-blue-50 px-1 py-0.5 text-center">
                     {(() => {
-                      // Aggregate revenue by store across all days - ALWAYS use techData for consistency
-                      const storeAggregates = new Map<string, { store_code: string; revenue: number }>();
+                      // Aggregate tips by store across all days - ALWAYS use techData for consistency
+                      const storeAggregates = new Map<string, { store_code: string; tips_total: number }>();
 
                       for (const storesArray of techData?.values() || []) {
                         for (const storeData of storesArray) {
                           if (!storeAggregates.has(storeData.store_id)) {
                             storeAggregates.set(storeData.store_id, {
                               store_code: storeData.store_code,
-                              revenue: 0,
+                              tips_total: 0,
                             });
                           }
                           const agg = storeAggregates.get(storeData.store_id)!;
-                          agg.revenue += storeData.revenue;
+                          agg.tips_total += storeData.tips_total;
                         }
                       }
 
@@ -165,7 +165,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                             >
                               <div className="text-center flex items-center justify-center gap-1">
                                 <span className="font-bold text-gray-900 text-[11px]">
-                                  ${storeAgg.revenue.toFixed(0)}
+                                  ${storeAgg.tips_total.toFixed(0)}
                                 </span>
                                 {storeAgg.store_code && (
                                   <span className="text-[8px] text-gray-600 font-medium">
@@ -179,7 +179,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                       ) : (
                         <div className="text-center">
                           <span className="font-bold text-gray-900 text-[11px]">
-                            ${(storesList[0]?.revenue || 0).toFixed(0)}
+                            ${(storesList[0]?.tips_total || 0).toFixed(0)}
                           </span>
                         </div>
                       );
