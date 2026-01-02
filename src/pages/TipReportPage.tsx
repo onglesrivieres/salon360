@@ -234,6 +234,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             service_revenue: 0,
             addon_revenue: 0,
             total_revenue: 0,
+            tips_customer: 0,
+            tips_receptionist: 0,
             items: [],
           });
         }
@@ -241,12 +243,17 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         const summary = technicianMap.get(techId)!;
         const serviceRevenue = (parseFloat(item.qty) || 0) * (parseFloat(item.price_each) || 0);
         const addonRevenue = parseFloat(item.addon_price) || 0;
+        const tipCustomerCash = parseFloat(String(item.tip_customer_cash)) || 0;
+        const tipCustomerCard = parseFloat(String(item.tip_customer_card)) || 0;
+        const tipReceptionist = parseFloat(String(item.tip_receptionist)) || 0;
 
         summary.services_count += 1;
         summary.revenue += itemRevenue;
         summary.service_revenue += serviceRevenue;
         summary.addon_revenue += addonRevenue;
         summary.total_revenue += itemRevenue;
+        summary.tips_customer = (summary.tips_customer || 0) + tipCustomerCash + tipCustomerCard;
+        summary.tips_receptionist = (summary.tips_receptionist || 0) + tipReceptionist;
 
         summary.items.push({
           ticket_id: ticket.id,
@@ -851,23 +858,29 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                         {showDetails ? (
                           <>
                             <div className="flex justify-between items-center">
-                              <span className="text-[9px] text-gray-600">Sub-total</span>
+                              <span className="text-[9px] text-gray-600">T. (given)</span>
                               <span className="text-[9px] font-semibold text-gray-900">
-                                ${summary.total_revenue.toFixed(0)}
+                                ${(summary.tips_customer || 0).toFixed(0)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-[9px] text-gray-600">T. (paired)</span>
+                              <span className="text-[9px] font-semibold text-gray-900">
+                                ${(summary.tips_receptionist || 0).toFixed(0)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
                               <span className="text-[9px] font-medium text-gray-900">Total</span>
                               <span className="text-[10px] font-bold text-gray-900">
-                                ${summary.total_revenue.toFixed(0)}
+                                ${((summary.tips_customer || 0) + (summary.tips_receptionist || 0)).toFixed(0)}
                               </span>
                             </div>
                           </>
                         ) : (
                           <div className="flex justify-between items-center">
-                            <span className="text-[9px] font-medium text-gray-900">Total Revenue</span>
+                            <span className="text-[9px] font-medium text-gray-900">Total Tips</span>
                             <span className="text-[10px] font-bold text-gray-900">
-                              ${summary.total_revenue.toFixed(0)}
+                              ${((summary.tips_customer || 0) + (summary.tips_receptionist || 0)).toFixed(0)}
                             </span>
                           </div>
                         )}
@@ -881,7 +894,9 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                       <div className="space-y-1 max-h-[1500px] overflow-y-auto">
                         {summary.items.map((item, index) => {
                           const openTime = formatTimeEST(item.opened_at);
-                          const totalRevenue = item.service_revenue + item.addon_revenue;
+                          const tipGiven = item.tip_customer_cash + item.tip_customer_card;
+                          const tipPaired = item.tip_receptionist;
+                          const totalTips = tipGiven + tipPaired;
                           const completionDuration = calculateItemCompletionDuration(item);
                           const completionStatus = getItemCompletionStatus(item);
 
@@ -922,17 +937,25 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                 </div>
                               </div>
                               {showDetails ? (
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-600">Sub-total</span>
-                                  <span className="text-[8px] font-semibold text-gray-900">
-                                    ${totalRevenue.toFixed(0)}
-                                  </span>
+                                <div className="space-y-0.5">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-[8px] text-gray-600">T. (given)</span>
+                                    <span className="text-[8px] font-semibold text-gray-900">
+                                      ${tipGiven.toFixed(0)}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-[8px] text-gray-600">T. (paired)</span>
+                                    <span className="text-[8px] font-semibold text-gray-900">
+                                      ${tipPaired.toFixed(0)}
+                                    </span>
+                                  </div>
                                 </div>
                               ) : (
                                 <div className="flex justify-between items-center">
                                   <span className="text-[8px] text-gray-600">Total</span>
                                   <span className="text-[8px] font-semibold text-gray-900">
-                                    ${totalRevenue.toFixed(0)}
+                                    ${totalTips.toFixed(0)}
                                   </span>
                                 </div>
                               )}
