@@ -812,6 +812,8 @@ export interface PendingViolationResponse {
   total_responses_received: number;
   expires_at: string;
   created_at: string;
+  min_votes_required: number;
+  votes_violation_confirmed: number;
 }
 
 export interface ViolationReportForApproval {
@@ -828,4 +830,9 @@ export interface ViolationReportForApproval {
   response_details: ViolationResponse[];
   created_at: string;
   status: ViolationReportStatus;
+  expires_at?: string;
+  votes_violation_confirmed: number;
+  min_votes_required: number;
+  threshold_met: boolean;
+  insufficient_responders: boolean;
 }

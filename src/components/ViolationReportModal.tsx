@@ -13,6 +13,7 @@ interface ViolationReportModalProps {
   currentEmployeeId: string;
   currentEmployeeName: string;
   storeId: string;
+  minVotesRequired?: number;
   onSubmit: (data: {
     reportedEmployeeId: string;
     description: string;
@@ -27,6 +28,7 @@ export function ViolationReportModal({
   currentEmployeeId,
   currentEmployeeName,
   storeId,
+  minVotesRequired = 3,
   onSubmit,
 }: ViolationReportModalProps) {
   const [reportedEmployeeId, setReportedEmployeeId] = useState('');
@@ -41,6 +43,8 @@ export function ViolationReportModal({
   const responderCount = workingEmployees.filter(
     (emp) => emp.employee_id !== currentEmployeeId && emp.employee_id !== reportedEmployeeId
   ).length;
+
+  const hasInsufficientResponders = responderCount < minVotesRequired;
 
   const handleSubmit = async () => {
     if (!reportedEmployeeId || !description.trim() || !confirmAccuracy) {
@@ -145,14 +149,38 @@ export function ViolationReportModal({
         </div>
 
         {reportedEmployeeId && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-sm text-blue-800">
-              <strong>Voting Process:</strong> {responderCount} employee
-              {responderCount !== 1 ? 's' : ''} will be asked to vote on whether this
-              violation occurred. They will have 24 hours to respond before the report is sent to
-              management for review.
-            </p>
-          </div>
+          <>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                <strong>Voting Process:</strong> {responderCount} employee
+                {responderCount !== 1 ? 's' : ''} will be asked to vote on whether this
+                violation occurred.
+              </p>
+              <ul className="text-xs text-blue-700 mt-2 space-y-1 ml-4 list-disc">
+                <li>Minimum <strong>{minVotesRequired}</strong> "violation confirmed" vote{minVotesRequired !== 1 ? 's' : ''} required for validation</li>
+                <li>Voting window: <strong>60 minutes</strong></li>
+                <li>If threshold not met or time expires, report is sent to management for review</li>
+              </ul>
+            </div>
+
+            {hasInsufficientResponders && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-amber-800 font-medium">
+                      Insufficient Responders
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Only {responderCount} employee{responderCount !== 1 ? 's' : ''} available to respond,
+                      but minimum of {minVotesRequired} vote{minVotesRequired !== 1 ? 's' : ''} required.
+                      The report will be created but may not reach the threshold. It will be sent to management for review.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         <div className="flex items-start gap-2">

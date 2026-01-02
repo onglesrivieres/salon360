@@ -230,6 +230,14 @@ export function ConfigurationPage() {
       }
     }
 
+    // Validate range for violation_min_votes_required
+    if (setting.setting_key === 'violation_min_votes_required') {
+      if (newValue < 1 || newValue > 10) {
+        showToast('Value must be between 1 and 10 votes', 'error');
+        return;
+      }
+    }
+
     if (setting.is_critical) {
       setPendingChange({ setting, newValue });
       setShowConfirmModal(true);
@@ -506,12 +514,20 @@ export function ConfigurationPage() {
                                   handleNumericChange(setting, value);
                                 }
                               }}
-                              min={(setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10 : undefined}
-                              max={(setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10080 : undefined}
+                              min={
+                                (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10 :
+                                setting.setting_key === 'violation_min_votes_required' ? 1 : undefined
+                              }
+                              max={
+                                (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10080 :
+                                setting.setting_key === 'violation_min_votes_required' ? 10 : undefined
+                              }
                               step="1"
                               className="w-28 px-3 py-2"
                             />
-                            <span className="text-sm text-gray-600">minutes</span>
+                            <span className="text-sm text-gray-600">
+                              {setting.setting_key === 'violation_min_votes_required' ? 'votes' : 'minutes'}
+                            </span>
                           </div>
                           {(setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') && (
                             <>
@@ -541,6 +557,28 @@ export function ConfigurationPage() {
                                 ))}
                               </div>
                             </>
+                          )}
+                          {setting.setting_key === 'violation_min_votes_required' && (
+                            <div className="flex flex-wrap gap-1 justify-end">
+                              {[
+                                { label: '2', value: 2 },
+                                { label: '3', value: 3 },
+                                { label: '4', value: 4 },
+                                { label: '5', value: 5 },
+                              ].map((preset) => (
+                                <button
+                                  key={preset.value}
+                                  onClick={() => handleNumericChange(setting, preset.value)}
+                                  className={`text-xs px-2 py-1 rounded transition-colors ${
+                                    setting.setting_value === preset.value
+                                      ? 'bg-blue-100 text-blue-700 font-medium'
+                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                  }`}
+                                >
+                                  {preset.label}
+                                </button>
+                              ))}
+                            </div>
                           )}
                         </div>
                       ) : (

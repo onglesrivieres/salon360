@@ -48,6 +48,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [pendingViolationResponses, setPendingViolationResponses] = useState<PendingViolationResponse[]>([]);
   const [workingEmployees, setWorkingEmployees] = useState<WorkingEmployee[]>([]);
   const [loadingWorkingEmployees, setLoadingWorkingEmployees] = useState(false);
+  const [minVotesRequired, setMinVotesRequired] = useState(3);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const canViewAllQueueStatuses = effectiveRole && Permissions.queue.canViewAllQueueStatuses(effectiveRole);
@@ -212,7 +213,10 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       .select('*')
       .eq('id', selectedStoreId)
       .maybeSingle();
-    if (data) setCurrentStore(data);
+    if (data) {
+      setCurrentStore(data);
+      setMinVotesRequired(data.violation_min_votes_required || 3);
+    }
   }
 
   async function fetchAllStores() {
@@ -921,6 +925,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         currentEmployeeId={session?.employee_id || ''}
         currentEmployeeName={session?.name || ''}
         storeId={selectedStoreId || ''}
+        minVotesRequired={minVotesRequired}
         onSubmit={handleSubmitViolationReport}
       />
 

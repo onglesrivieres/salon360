@@ -1197,20 +1197,35 @@ export function PendingApprovalsPage() {
                       const votesAgainst = report.votes_against_violation || 0;
                       const totalVotes = votesFor + votesAgainst;
                       const percentageFor = totalVotes > 0 ? Math.round((votesFor / totalVotes) * 100) : 0;
+                      const isExpired = report.status === 'expired';
 
                       return (
                         <div
                           key={report.report_id}
-                          className="bg-white rounded-lg border-2 border-red-500 p-4"
+                          className={`bg-white rounded-lg border-2 p-4 ${
+                            isExpired ? 'border-gray-500' : 'border-red-500'
+                          }`}
                         >
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Flag className="w-5 h-5 text-red-600" />
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                <Flag className={`w-5 h-5 ${isExpired ? 'text-gray-600' : 'text-red-600'}`} />
                                 <span className="font-semibold text-gray-900">
                                   Turn Violation Report
                                 </span>
-                                <Badge variant="error">PENDING REVIEW</Badge>
+                                {isExpired ? (
+                                  <Badge variant="warning">EXPIRED</Badge>
+                                ) : (
+                                  <Badge variant="error">PENDING REVIEW</Badge>
+                                )}
+                                {report.threshold_met ? (
+                                  <Badge className="bg-green-100 text-green-700">Threshold Met</Badge>
+                                ) : (
+                                  <Badge className="bg-yellow-100 text-yellow-700">Threshold Not Met</Badge>
+                                )}
+                                {report.insufficient_responders && (
+                                  <Badge className="bg-orange-100 text-orange-700">Insufficient Responders</Badge>
+                                )}
                               </div>
                               <p className="text-sm text-gray-900 mb-2">
                                 <span className="font-medium">Reported Employee:</span> {report.reported_employee_name}
@@ -1224,21 +1239,29 @@ export function PendingApprovalsPage() {
 
                               <div className="mt-3 pt-3 border-t border-gray-200">
                                 <p className="text-sm font-medium text-gray-900 mb-2">
-                                  Employee Votes ({totalVotes} responses)
+                                  Employee Votes
                                 </p>
-                                <div className="flex items-center gap-4 mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <ThumbsUp className="w-4 h-4 text-green-600" />
-                                    <span className="text-sm font-medium text-gray-900">
-                                      {votesFor} voted violation occurred ({percentageFor}%)
-                                    </span>
+                                <div className="space-y-2 mb-2">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <ThumbsUp className="w-4 h-4 text-green-600" />
+                                      <span className="text-sm font-medium text-gray-900">
+                                        {report.votes_violation_confirmed} of {report.min_votes_required} "YES" votes needed
+                                      </span>
+                                    </div>
+                                    {report.threshold_met && (
+                                      <CheckCircle className="w-4 h-4 text-green-600" />
+                                    )}
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <ThumbsDown className="w-4 h-4 text-red-600" />
-                                    <span className="text-sm font-medium text-gray-900">
-                                      {votesAgainst} voted no violation ({100 - percentageFor}%)
-                                    </span>
+                                  <div className="text-xs text-gray-600">
+                                    Total responses: {totalVotes} ({votesFor} Yes, {votesAgainst} No)
                                   </div>
+                                  {isExpired && (
+                                    <div className="text-xs text-orange-600 flex items-center gap-1">
+                                      <AlertTriangle className="w-3 h-3" />
+                                      Report expired after 60 minutes
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>

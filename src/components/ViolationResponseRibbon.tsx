@@ -20,6 +20,15 @@ export function ViolationResponseRibbon({
   const [isExpanded, setIsExpanded] = useState(true);
   const [responseNotes, setResponseNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update countdown timer every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   if (pendingResponses.length === 0) {
     return null;
@@ -86,16 +95,55 @@ export function ViolationResponseRibbon({
     }
   };
 
-  const timeRemaining = () => {
-    const now = new Date();
+  const getTimeRemainingInfo = () => {
     const expiresAt = new Date(currentReport.expires_at);
-    const diffMs = expiresAt.getTime() - now.getTime();
+    const diffMs = expiresAt.getTime() - currentTime.getTime();
+    const totalMinutes = Math.floor(diffMs / (1000 * 60));
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const diffSeconds = Math.floor((diffMs % (1000 * 60)) / 1000);
 
-    if (diffMs < 0) return 'Expired';
-    if (diffHours > 0) return `${diffHours}h ${diffMinutes}m remaining`;
-    return `${diffMinutes}m remaining`;
+    let text = 'Expired';
+    let urgency: 'expired' | 'critical' | 'warning' | 'normal' = 'expired';
+
+    if (diffMs > 0) {
+      if (diffHours > 0) {
+        text = `${diffHours}h ${diffMinutes}m remaining`;
+      } else if (diffMinutes > 0) {
+        text = `${diffMinutes}m ${diffSeconds}s remaining`;
+      } else {
+        text = `${diffSeconds}s remaining`;
+      }
+
+      // Determine urgency level for visual indicators
+      if (totalMinutes <= 5) {
+        urgency = 'critical';
+      } else if (totalMinutes <= 15) {
+        urgency = 'warning';
+      } else if (totalMinutes <= 30) {
+        urgency = 'normal';
+      } else {
+        urgency = 'normal';
+      }
+    }
+
+    return { text, urgency, totalMinutes };
+  };
+
+  const timeInfo = getTimeRemainingInfo();
+
+  // Determine ribbon background color based on urgency
+  const getRibbonColor = () => {
+    switch (timeInfo.urgency) {
+      case 'expired':
+        return 'bg-gray-700';
+      case 'critical':
+        return 'bg-red-900 animate-pulse';
+      case 'warning':
+        return 'bg-red-700';
+      default:
+        return 'bg-red-600';
+    }
   };
 
   return (
@@ -104,7 +152,7 @@ export function ViolationResponseRibbon({
       <div className="fixed inset-0 bg-black bg-opacity-60 z-40 backdrop-blur-sm" />
 
       {/* Violation Response Ribbon */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-red-600 text-white shadow-2xl">
+      <div className={`fixed top-0 left-0 right-0 z-50 text-white shadow-2xl transition-colors ${getRibbonColor()}`}>
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -197,16 +245,29 @@ export function ViolationResponseRibbon({
                     <p className="text-sm font-medium text-red-100 mb-1">
                       Time Remaining to Vote
                     </p>
-                    <p className="text-white font-semibold">{timeRemaining()}</p>
+                    <div className="flex items-center gap-2">
+                      <p className={`font-bold text-lg ${
+                        timeInfo.urgency === 'critical' ? 'text-yellow-300' :
+                        timeInfo.urgency === 'warning' ? 'text-yellow-100' :
+                        'text-white'
+                      }`}>
+                        {timeInfo.text}
+                      </p>
+                      {timeInfo.urgency === 'critical' && (
+                        <Clock className="w-5 h-5 text-yellow-300 animate-pulse" />
+                      )}
+                    </div>
                   </div>
 
                   <div>
                     <p className="text-sm font-medium text-red-100 mb-1">
-                      Response Progress
+                      Vote Progress
                     </p>
-                    <p className="text-white">
-                      {currentReport.total_responses_received} of{' '}
-                      {currentReport.total_responses_required} votes received
+                    <p className="text-white font-medium">
+                      {currentReport.votes_violation_confirmed} of {currentReport.min_votes_required} "YES" votes needed
+                    </p>
+                    <p className="text-xs text-red-100 mt-0.5">
+                      ({currentReport.total_responses_received}/{currentReport.total_responses_required} total responses)
                     </p>
                   </div>
                 </div>
