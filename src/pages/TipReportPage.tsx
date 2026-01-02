@@ -867,13 +867,13 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                           <>
                             <div className="flex justify-between items-center">
                               <span className="text-[9px] text-gray-600">T. (given)</span>
-                              <span className="text-[9px] font-semibold text-gray-900">
+                              <span className="text-[9px] font-semibold text-green-700">
                                 {(summary.tips_customer || 0).toFixed(0)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-[9px] text-gray-600">T. (paired)</span>
-                              <span className="text-[9px] font-semibold text-gray-900">
+                              <span className="text-[9px] font-semibold text-blue-700">
                                 {(summary.tips_receptionist || 0).toFixed(0)}
                               </span>
                             </div>
@@ -948,13 +948,13 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                 <div className="space-y-0.5">
                                   <div className="flex justify-between items-center">
                                     <span className="text-[8px] text-gray-600">T. (given)</span>
-                                    <span className="text-[8px] font-semibold text-gray-900">
+                                    <span className="text-[8px] font-semibold text-green-700">
                                       {tipGiven.toFixed(0)}
                                     </span>
                                   </div>
                                   <div className="flex justify-between items-center">
                                     <span className="text-[8px] text-gray-600">T. (paired)</span>
-                                    <span className="text-[8px] font-semibold text-gray-900">
+                                    <span className="text-[8px] font-semibold text-blue-700">
                                       {tipPaired.toFixed(0)}
                                     </span>
                                   </div>
