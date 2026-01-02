@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Search, RotateCcw, ChevronDown, ChevronRight, Loader2, CheckSquare, Square } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissionsCache } from '../contexts/PermissionsCacheContext';
 import { Role } from '../lib/permissions';
 import { getPermissionsByModule, moduleDisplayNames, PermissionMetadata } from '../lib/permission-metadata';
 import { Button } from './ui/Button';
@@ -34,9 +35,11 @@ const ROLE_COLORS: Record<Role, string> = {
 
 export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatrixProps) {
   const { employee, storeId } = useAuth();
+  const { getCachedPermissions, loadPermissions, invalidateCache } = usePermissionsCache();
   const [allPermissions, setAllPermissions] = useState<RolePermissions>(new Map());
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<Set<string>>(new Set()); // Track which cells are saving
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [saving, setSaving] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set(Object.keys(getPermissionsByModule())));
   const [hasChanges, setHasChanges] = useState(false);
@@ -44,75 +47,36 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
   const groupedPermissions = getPermissionsByModule();
 
   useEffect(() => {
-    loadAllPermissions();
+    loadAllPermissionsWithCache();
   }, [storeId]);
 
-  const loadAllPermissions = async () => {
+  const loadAllPermissionsWithCache = async () => {
     if (!storeId) return;
 
+    // Try to get cached data first (stale-while-revalidate pattern)
+    const cached = getCachedPermissions(storeId);
+    if (cached) {
+      setAllPermissions(cached);
+      setLoading(false);
+
+      // Refresh in background
+      setIsRefreshing(true);
+      try {
+        const fresh = await loadPermissions(storeId, true);
+        setAllPermissions(fresh);
+      } catch (error) {
+        console.error('Error refreshing permissions:', error);
+      } finally {
+        setIsRefreshing(false);
+      }
+      return;
+    }
+
+    // No cache, show loading state
     setLoading(true);
     try {
-      // Try to use the optimized bulk query function first
-      const { data: bulkData, error: bulkError } = await supabase.rpc('get_all_roles_permissions', {
-        p_store_id: storeId
-      });
-
-      // If the new function exists and works, use it
-      if (!bulkError && bulkData) {
-        const rolePermissions = new Map<Role, Map<string, PermissionState>>();
-
-        // Parse the JSONB response
-        ALL_ROLES.forEach((role) => {
-          const roleData = bulkData[role];
-          if (roleData && Array.isArray(roleData)) {
-            const permMap = new Map<string, PermissionState>();
-            roleData.forEach((perm: any) => {
-              permMap.set(perm.permission_key, {
-                permission_key: perm.permission_key,
-                is_enabled: perm.is_enabled,
-                is_default: perm.is_enabled === true && !perm.updated_at,
-                updated_at: perm.updated_at
-              });
-            });
-            rolePermissions.set(role, permMap);
-          }
-        });
-
-        setAllPermissions(rolePermissions);
-        return;
-      }
-
-      // Fallback: Load permissions for all roles in parallel (old method)
-      console.log('Using fallback permission loading method');
-      const promises = ALL_ROLES.map(async (role) => {
-        const { data, error } = await supabase.rpc('get_role_permissions', {
-          p_store_id: storeId,
-          p_role_name: role
-        });
-
-        if (error) throw error;
-
-        const permMap = new Map<string, PermissionState>();
-        (data || []).forEach((perm: any) => {
-          permMap.set(perm.permission_key, {
-            permission_key: perm.permission_key,
-            is_enabled: perm.is_enabled,
-            is_default: perm.is_enabled === true && !perm.updated_at,
-            updated_at: perm.updated_at
-          });
-        });
-
-        return { role, permMap };
-      });
-
-      const results = await Promise.all(promises);
-
-      const rolePermissions = new Map<Role, Map<string, PermissionState>>();
-      results.forEach(({ role, permMap }) => {
-        rolePermissions.set(role, permMap);
-      });
-
-      setAllPermissions(rolePermissions);
+      const permissions = await loadPermissions(storeId);
+      setAllPermissions(permissions);
     } catch (error) {
       console.error('Error loading permissions:', error);
     } finally {
@@ -155,6 +119,7 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
 
       if (error) throw error;
 
+      invalidateCache(storeId || undefined);
       onPermissionChange?.();
     } catch (error) {
       console.error('Error updating permission:', error);
@@ -199,7 +164,8 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
         });
       }
 
-      await loadAllPermissions();
+      invalidateCache(storeId || undefined);
+      await loadAllPermissionsWithCache();
       setHasChanges(true);
       onPermissionChange?.();
     } catch (error) {
@@ -229,7 +195,8 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
 
       if (error) throw error;
 
-      await loadAllPermissions();
+      invalidateCache(storeId || undefined);
+      await loadAllPermissionsWithCache();
       setHasChanges(false);
       onPermissionChange?.();
     } catch (error) {
@@ -298,6 +265,8 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
     );
   }
 
+  const showRefreshIndicator = isRefreshing && allPermissions.size > 0;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
@@ -311,6 +280,12 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
+        {showRefreshIndicator && (
+          <div className="flex items-center gap-2 text-sm text-blue-600">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Refreshing...</span>
+          </div>
+        )}
       </div>
 
       {hasChanges && (

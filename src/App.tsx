@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { NumericKeypadProvider } from './contexts/NumericKeypadContext';
 import { PermissionsProvider } from './contexts/PermissionsContext';
+import { PermissionsCacheProvider } from './contexts/PermissionsCacheContext';
 import { NumericKeypad } from './components/NumericKeypad';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
@@ -207,12 +208,14 @@ function App() {
     <ToastProvider>
       <AuthProvider>
         <PermissionsProvider>
-          <SettingsProvider>
-            <NumericKeypadProvider>
-              <AppContent />
-              <NumericKeypad />
-            </NumericKeypadProvider>
-          </SettingsProvider>
+          <PermissionsCacheProvider>
+            <SettingsProvider>
+              <NumericKeypadProvider>
+                <AppContent />
+                <NumericKeypad />
+              </NumericKeypadProvider>
+            </SettingsProvider>
+          </PermissionsCacheProvider>
         </PermissionsProvider>
       </AuthProvider>
     </ToastProvider>
