@@ -469,6 +469,7 @@ export function TipReportWeeklyView({ selectedDate, onDateChange }: TipReportWee
           weeklyData={weeklyData}
           summaries={summaries}
           periodDates={periodDates}
+          mode="revenue"
         />
       </div>
     </div>

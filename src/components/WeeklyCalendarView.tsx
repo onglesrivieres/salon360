@@ -1,15 +1,20 @@
 import React, { useState } from 'react';
 import { Info } from 'lucide-react';
 
+type WeeklyDataTips = Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>>;
+type WeeklyDataRevenue = Map<string, Map<string, Array<{ store_id: string; store_code: string; revenue: number }>>>;
+
 interface WeeklyCalendarViewProps {
   selectedDate: string;
-  weeklyData: Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>>;
+  weeklyData: WeeklyDataTips | WeeklyDataRevenue;
   summaries: Array<{
     technician_id: string;
     technician_name: string;
     tips_total?: number;
+    revenue?: number;
   }>;
   periodDates: string[];
+  mode?: 'tips' | 'revenue';
 }
 
 function abbreviateStoreName(storeCode: string): string {
@@ -29,7 +34,7 @@ function formatDateHeader(dateStr: string): { day: string; date: string } {
   return { day, date };
 }
 
-export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, periodDates }: WeeklyCalendarViewProps) {
+export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, periodDates, mode = 'tips' }: WeeklyCalendarViewProps) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   return (
@@ -84,13 +89,39 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                   {periodDates.map((date) => {
                     const storesArray = techData?.get(date) || [];
 
-                    // Calculate daily totals by summing all stores for this day
+                    if (mode === 'revenue') {
+                      // Revenue mode: simple display
+                      const dailyTotal = storesArray.reduce((sum, store: any) => sum + (store.revenue || 0), 0);
+                      const hasRevenue = dailyTotal > 0;
+
+                      return (
+                        <td
+                          key={date}
+                          className={`border border-gray-300 px-1 py-0.5 text-center ${
+                            hasRevenue ? 'bg-white' : 'bg-gray-50'
+                          }`}
+                        >
+                          {hasRevenue ? (
+                            <div className="flex items-center justify-center gap-0.5">
+                              <span className="text-[9px] text-gray-600">Revenue:</span>
+                              <span className="text-gray-900 text-[10px] font-bold">
+                                ${dailyTotal.toFixed(0)}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-xs">-</span>
+                          )}
+                        </td>
+                      );
+                    }
+
+                    // Tips mode: detailed breakdown
                     let dailyCustomer = 0;
                     let dailyReceptionist = 0;
 
                     for (const storeData of storesArray) {
-                      dailyCustomer += storeData.tips_customer;
-                      dailyReceptionist += storeData.tips_receptionist;
+                      dailyCustomer += (storeData as any).tips_customer || 0;
+                      dailyReceptionist += (storeData as any).tips_receptionist || 0;
                     }
 
                     const hasRevenue = (dailyCustomer + dailyReceptionist) > 0;
@@ -106,7 +137,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                         {hasRevenue ? (
                           hasMultipleStores ? (
                             <div className="space-y-0">
-                              {storesArray.map((storeData, idx) => (
+                              {storesArray.map((storeData: any, idx) => (
                                 <div
                                   key={`${storeData.store_id}-${idx}`}
                                   className={idx > 0 ? 'pt-1 mt-1 border-t border-gray-400' : ''}
@@ -173,21 +204,41 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                   })}
                   <td className="border border-gray-300 bg-blue-50 px-1 py-0.5 text-center">
                     {(() => {
-                      // Aggregate tips by store across all days - ALWAYS use techData for consistency
+                      if (mode === 'revenue') {
+                        // Revenue mode: simple period total
+                        let periodTotal = 0;
+                        for (const storesArray of techData?.values() || []) {
+                          for (const storeData of storesArray) {
+                            periodTotal += (storeData as any).revenue || 0;
+                          }
+                        }
+
+                        return (
+                          <div className="flex items-center justify-center gap-0.5">
+                            <span className="text-[9px] text-gray-600">Revenue:</span>
+                            <span className="text-gray-900 text-[10px] font-bold">
+                              ${periodTotal.toFixed(0)}
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      // Tips mode: detailed breakdown
                       const storeAggregates = new Map<string, { store_code: string; tips_customer: number; tips_receptionist: number }>();
 
                       for (const storesArray of techData?.values() || []) {
                         for (const storeData of storesArray) {
-                          if (!storeAggregates.has(storeData.store_id)) {
-                            storeAggregates.set(storeData.store_id, {
-                              store_code: storeData.store_code,
+                          const data = storeData as any;
+                          if (!storeAggregates.has(data.store_id)) {
+                            storeAggregates.set(data.store_id, {
+                              store_code: data.store_code,
                               tips_customer: 0,
                               tips_receptionist: 0,
                             });
                           }
-                          const agg = storeAggregates.get(storeData.store_id)!;
-                          agg.tips_customer += storeData.tips_customer;
-                          agg.tips_receptionist += storeData.tips_receptionist;
+                          const agg = storeAggregates.get(data.store_id)!;
+                          agg.tips_customer += data.tips_customer || 0;
+                          agg.tips_receptionist += data.tips_receptionist || 0;
                         }
                       }
 
