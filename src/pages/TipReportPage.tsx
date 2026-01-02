@@ -802,7 +802,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
               variant={viewMode === 'detail' ? 'primary' : 'ghost'}
               onClick={() => setViewMode('detail')}
             >
-              Detail Grid
+              Daily
             </Button>
             <Button
               size="sm"
