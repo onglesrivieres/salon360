@@ -3,7 +3,11 @@
 ## Overview
 This fix makes the opening cash validation respect the Configuration setting. When "Require Opening Cash Validation" is turned OFF in the Configuration page, tickets can be created without recording opening cash first.
 
-## Database Migration Required
+## CRITICAL: Database Migration Required
+
+**The database trigger function MUST be updated for this fix to work!**
+
+The frontend code has been updated, but the database trigger is still enforcing validation regardless of the setting. You must execute the SQL below to complete the fix.
 
 Execute the following SQL in your Supabase SQL Editor:
 
@@ -53,10 +57,24 @@ $$;
 
 ## How to Apply
 
-1. Go to your Supabase Dashboard
-2. Navigate to the SQL Editor
-3. Copy and paste the SQL above
-4. Click "Run" to execute
+### Step-by-Step Instructions:
+
+1. **Open Supabase Dashboard**
+   - Go to https://supabase.com/dashboard
+   - Select your project
+
+2. **Navigate to SQL Editor**
+   - Click on "SQL Editor" in the left sidebar
+   - Click "New query" button
+
+3. **Execute the Migration**
+   - Copy the SQL code from the section above (lines 11-52)
+   - Paste it into the SQL Editor
+   - Click "Run" or press Cmd/Ctrl + Enter
+
+4. **Verify Success**
+   - You should see "Success. No rows returned"
+   - If you see an error, check that you copied the complete SQL statement
 
 ## Changes Made
 
@@ -70,6 +88,16 @@ $$;
 - Only validates if setting is `true`
 - Defaults to no validation if setting doesn't exist (backward compatible)
 
+## Verification
+
+After applying the migration, run this verification script:
+
+```bash
+node verify_opening_cash_fix.mjs
+```
+
+This will confirm the trigger function was updated correctly.
+
 ## Testing
 
 After applying the migration:
@@ -79,3 +107,17 @@ After applying the migration:
 3. Try to create a new ticket
 4. It should now work without requiring opening cash count
 5. Turn ON the setting and verify validation is enforced again
+
+## Troubleshooting
+
+**Issue: Still getting "Opening cash count must be recorded" error**
+- Cause: Database migration was not applied
+- Solution: Follow the "How to Apply" steps above to execute the SQL
+
+**Issue: SQL execution fails**
+- Cause: Insufficient permissions
+- Solution: Make sure you're logged in as the project owner in Supabase Dashboard
+
+**Issue: Function doesn't exist error**
+- Cause: Wrong database selected
+- Solution: Verify you're in the correct Supabase project
