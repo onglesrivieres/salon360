@@ -104,8 +104,12 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   }
 
   async function fetchDailyTipData(dateToFetch: string): Promise<Map<string, TechnicianSummary>> {
-    const canViewAll = session?.role_permission ? Permissions.endOfDay.canViewAll(session.role_permission) : false;
-    const isTechnician = !canViewAll;
+    const canViewAll = session?.role_permission ? Permissions.tipReport.canViewAll(session.role_permission) : false;
+    const isRestrictedRole = !canViewAll && (
+      session?.role_permission === 'Technician' ||
+      (session?.role && Array.isArray(session.role) && session.role.includes('Spa Expert'))
+    );
+    const isTechnician = isRestrictedRole;
 
     const { data: allEmployeeStores, error: allEmployeeStoresError } = await supabase
       .from('employee_stores')
@@ -435,8 +439,12 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     try {
       setLoading(true);
 
-      const canViewAll = session?.role_permission ? Permissions.endOfDay.canViewAll(session.role_permission) : false;
-      const isTechnician = !canViewAll;
+      const canViewAll = session?.role_permission ? Permissions.tipReport.canViewAll(session.role_permission) : false;
+      const isRestrictedRole = !canViewAll && (
+        session?.role_permission === 'Technician' ||
+        (session?.role && Array.isArray(session.role) && session.role.includes('Spa Expert'))
+      );
+      const isTechnician = isRestrictedRole;
 
       if (isTechnician && session?.employee_id) {
         const { data: employeeData, error: employeeError } = await supabase
@@ -515,7 +523,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         });
       });
 
-      if (session?.role_permission === 'Technician') {
+      if (isRestrictedRole && session?.employee_id) {
         filteredSummaries = filteredSummaries.filter(
           summary => summary.technician_id === session.employee_id
         );

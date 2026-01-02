@@ -61,7 +61,8 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
         setLoading(true);
       }
 
-      const isTechnician = session?.role_permission === 'Technician';
+      const isRestrictedRole = session?.role_permission === 'Technician' ||
+        (session?.role && Array.isArray(session.role) && session.role.includes('Spa Expert'));
       const isCashier = session?.role_permission === 'Cashier';
 
       // Check if user is a commission employee
@@ -122,8 +123,8 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
       let filteredData = data || [];
 
-      // Filter tickets for technicians and commission employees to show only their work
-      if ((isTechnician || isCommissionEmployee) && session?.employee_id) {
+      // Filter tickets for technicians, spa experts, and commission employees to show only their work
+      if ((isRestrictedRole || isCommissionEmployee) && session?.employee_id) {
         filteredData = filteredData.filter(ticket =>
           ticket.ticket_items && ticket.ticket_items.some((item: any) => item.employee_id === session.employee_id)
         );
