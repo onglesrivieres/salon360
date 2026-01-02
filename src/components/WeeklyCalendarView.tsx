@@ -3,7 +3,7 @@ import { Info } from 'lucide-react';
 
 interface WeeklyCalendarViewProps {
   selectedDate: string;
-  weeklyData: Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_cash: number; tips_card: number; tips_total: number }>>>;
+  weeklyData: Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>>;
   summaries: Array<{
     technician_id: string;
     technician_name: string;
@@ -84,14 +84,16 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                   {periodDates.map((date) => {
                     const storesArray = techData?.get(date) || [];
 
-                    // Calculate daily total by summing all stores for this day
-                    let dailyRevenue = 0;
+                    // Calculate daily totals by summing all stores for this day
+                    let dailyCustomer = 0;
+                    let dailyReceptionist = 0;
 
                     for (const storeData of storesArray) {
-                      dailyRevenue += storeData.tips_total;
+                      dailyCustomer += storeData.tips_customer;
+                      dailyReceptionist += storeData.tips_receptionist;
                     }
 
-                    const hasRevenue = dailyRevenue > 0;
+                    const hasRevenue = (dailyCustomer + dailyReceptionist) > 0;
                     const hasMultipleStores = storesArray.length > 1;
 
                     return (
@@ -109,24 +111,42 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                   key={`${storeData.store_id}-${idx}`}
                                   className={idx > 0 ? 'pt-1 mt-1 border-t border-gray-400' : ''}
                                 >
-                                  <div className="text-center flex items-center justify-center gap-1">
-                                    <span className="text-gray-900 text-[11px]">
-                                      ${storeData.tips_total.toFixed(0)}
-                                    </span>
-                                    {storeData.store_code && (
-                                      <span className="text-[8px] text-gray-600 font-medium">
-                                        [{abbreviateStoreName(storeData.store_code)}]
+                                  <div className="text-center space-y-0.5">
+                                    <div className="flex items-center justify-center gap-0.5">
+                                      <span className="text-[9px] text-gray-600">T.(given)</span>
+                                      <span className="text-gray-900 text-[10px] font-medium">
+                                        ${storeData.tips_customer.toFixed(0)}
                                       </span>
-                                    )}
+                                      {storeData.store_code && (
+                                        <span className="text-[7px] text-gray-600 font-medium">
+                                          [{abbreviateStoreName(storeData.store_code)}]
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center justify-center gap-0.5">
+                                      <span className="text-[9px] text-gray-600">T.(paired)</span>
+                                      <span className="text-gray-900 text-[10px] font-medium">
+                                        ${storeData.tips_receptionist.toFixed(0)}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <div className="text-center">
-                              <span className="text-gray-900 text-[11px]">
-                                ${dailyRevenue.toFixed(0)}
-                              </span>
+                            <div className="text-center space-y-0.5">
+                              <div className="flex items-center justify-center gap-0.5">
+                                <span className="text-[9px] text-gray-600">T.(given)</span>
+                                <span className="text-gray-900 text-[10px] font-medium">
+                                  ${dailyCustomer.toFixed(0)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-center gap-0.5">
+                                <span className="text-[9px] text-gray-600">T.(paired)</span>
+                                <span className="text-gray-900 text-[10px] font-medium">
+                                  ${dailyReceptionist.toFixed(0)}
+                                </span>
+                              </div>
                             </div>
                           )
                         ) : (
@@ -138,18 +158,20 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                   <td className="border border-gray-300 bg-blue-50 px-1 py-0.5 text-center">
                     {(() => {
                       // Aggregate tips by store across all days - ALWAYS use techData for consistency
-                      const storeAggregates = new Map<string, { store_code: string; tips_total: number }>();
+                      const storeAggregates = new Map<string, { store_code: string; tips_customer: number; tips_receptionist: number }>();
 
                       for (const storesArray of techData?.values() || []) {
                         for (const storeData of storesArray) {
                           if (!storeAggregates.has(storeData.store_id)) {
                             storeAggregates.set(storeData.store_id, {
                               store_code: storeData.store_code,
-                              tips_total: 0,
+                              tips_customer: 0,
+                              tips_receptionist: 0,
                             });
                           }
                           const agg = storeAggregates.get(storeData.store_id)!;
-                          agg.tips_total += storeData.tips_total;
+                          agg.tips_customer += storeData.tips_customer;
+                          agg.tips_receptionist += storeData.tips_receptionist;
                         }
                       }
 
@@ -163,24 +185,42 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                               key={`${storeAgg.store_code}-${idx}`}
                               className={idx > 0 ? 'pt-1 mt-1 border-t border-gray-400' : ''}
                             >
-                              <div className="text-center flex items-center justify-center gap-1">
-                                <span className="font-bold text-gray-900 text-[11px]">
-                                  ${storeAgg.tips_total.toFixed(0)}
-                                </span>
-                                {storeAgg.store_code && (
-                                  <span className="text-[8px] text-gray-600 font-medium">
-                                    [{abbreviateStoreName(storeAgg.store_code)}]
+                              <div className="text-center space-y-0.5">
+                                <div className="flex items-center justify-center gap-0.5">
+                                  <span className="text-[9px] text-gray-600">T.(given)</span>
+                                  <span className="font-bold text-gray-900 text-[10px]">
+                                    ${storeAgg.tips_customer.toFixed(0)}
                                   </span>
-                                )}
+                                  {storeAgg.store_code && (
+                                    <span className="text-[7px] text-gray-600 font-medium">
+                                      [{abbreviateStoreName(storeAgg.store_code)}]
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center justify-center gap-0.5">
+                                  <span className="text-[9px] text-gray-600">T.(paired)</span>
+                                  <span className="font-bold text-gray-900 text-[10px]">
+                                    ${storeAgg.tips_receptionist.toFixed(0)}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center">
-                          <span className="font-bold text-gray-900 text-[11px]">
-                            ${(storesList[0]?.tips_total || 0).toFixed(0)}
-                          </span>
+                        <div className="text-center space-y-0.5">
+                          <div className="flex items-center justify-center gap-0.5">
+                            <span className="text-[9px] text-gray-600">T.(given)</span>
+                            <span className="font-bold text-gray-900 text-[10px]">
+                              ${(storesList[0]?.tips_customer || 0).toFixed(0)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-center gap-0.5">
+                            <span className="text-[9px] text-gray-600">T.(paired)</span>
+                            <span className="font-bold text-gray-900 text-[10px]">
+                              ${(storesList[0]?.tips_receptionist || 0).toFixed(0)}
+                            </span>
+                          </div>
                         </div>
                       );
                     })()}
