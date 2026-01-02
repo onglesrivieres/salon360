@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer } from 'lucide-react';
 import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, ViolationReportForApproval, ViolationDecision, ViolationActionType } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -8,11 +8,42 @@ import { useAuth } from '../contexts/AuthContext';
 import { Modal } from '../components/ui/Modal';
 import { getCurrentDateEST } from '../lib/timezone';
 
+interface ViolationHistoryReport {
+  report_id: string;
+  reported_employee_id: string;
+  reported_employee_name: string;
+  reporter_employee_id: string;
+  reporter_employee_name: string;
+  violation_description: string;
+  violation_date: string;
+  queue_position: number | null;
+  status: string;
+  created_at: string;
+  expires_at: string | null;
+  approval_deadline: string | null;
+  reviewed_by_id: string | null;
+  reviewed_by_name: string | null;
+  reviewed_at: string | null;
+  decision: string | null;
+  action_type: string | null;
+  action_details: string | null;
+  manager_notes: string | null;
+  total_required_responders: number;
+  total_responses: number;
+  votes_violation: number;
+  votes_no_violation: number;
+  responses: any;
+}
+
+type TabType = 'tickets' | 'inventory' | 'cash' | 'violations';
+
 export function PendingApprovalsPage() {
+  const [activeTab, setActiveTab] = useState<TabType>('tickets');
   const [tickets, setTickets] = useState<PendingApprovalTicket[]>([]);
   const [inventoryApprovals, setInventoryApprovals] = useState<PendingInventoryApproval[]>([]);
   const [cashTransactionApprovals, setCashTransactionApprovals] = useState<PendingCashTransactionApproval[]>([]);
   const [violationReports, setViolationReports] = useState<ViolationReportForApproval[]>([]);
+  const [violationHistory, setViolationHistory] = useState<ViolationHistoryReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<PendingApprovalTicket | null>(null);
   const [selectedInventory, setSelectedInventory] = useState<PendingInventoryApproval | null>(null);
@@ -29,32 +60,68 @@ export function PendingApprovalsPage() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
   const [approvalStats, setApprovalStats] = useState<ApprovalStatistics | null>(null);
+  const [violationStatusFilter, setViolationStatusFilter] = useState<string>('all');
+  const [violationSearchTerm, setViolationSearchTerm] = useState('');
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
-  useEffect(() => {
-    if (session?.employee_id) {
-      fetchPendingApprovals();
-      fetchInventoryApprovals();
-      fetchCashTransactionApprovals();
-      fetchViolationReports();
-      fetchApprovalStats();
-    }
-  }, [session?.employee_id, selectedStoreId]);
+  const userRoles = session?.role || [];
+  const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab && ['tickets', 'inventory', 'cash', 'violations'].includes(tab)) {
+      setActiveTab(tab as TabType);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isManagement) return;
+
+    if (session?.employee_id) {
+      if (activeTab === 'tickets') {
+        fetchPendingApprovals();
+        fetchApprovalStats();
+      } else if (activeTab === 'inventory') {
+        fetchInventoryApprovals();
+      } else if (activeTab === 'cash') {
+        fetchCashTransactionApprovals();
+      } else if (activeTab === 'violations') {
+        fetchViolationReports();
+        fetchViolationHistory();
+      }
+    }
+  }, [session?.employee_id, selectedStoreId, activeTab, isManagement]);
+
+  useEffect(() => {
+    if (!isManagement) return;
+
     const interval = setInterval(() => {
       if (session?.employee_id) {
-        fetchPendingApprovals();
-        fetchInventoryApprovals();
-        fetchCashTransactionApprovals();
-        fetchViolationReports();
-        fetchApprovalStats();
+        if (activeTab === 'tickets') {
+          fetchPendingApprovals();
+          fetchApprovalStats();
+        } else if (activeTab === 'inventory') {
+          fetchInventoryApprovals();
+        } else if (activeTab === 'cash') {
+          fetchCashTransactionApprovals();
+        } else if (activeTab === 'violations') {
+          fetchViolationReports();
+          fetchViolationHistory();
+        }
       }
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [session?.employee_id, selectedStoreId]);
+  }, [session?.employee_id, selectedStoreId, activeTab, isManagement]);
+
+  function handleTabChange(tab: TabType) {
+    setActiveTab(tab);
+    const params = new URLSearchParams(window.location.search);
+    params.set('tab', tab);
+    window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+  }
 
   async function fetchApprovalStats() {
     if (!selectedStoreId) return;
@@ -80,66 +147,14 @@ export function PendingApprovalsPage() {
     try {
       setLoading(true);
 
-      // Must have store_id to fetch approvals
       if (!selectedStoreId) {
         setTickets([]);
         return;
       }
 
-      // Check if user is a commission employee
-      let isCommissionEmployee = false;
-      if (session?.employee_id) {
-        const { data: employeeData } = await supabase
-          .from('employees')
-          .select('pay_type')
-          .eq('id', session.employee_id)
-          .maybeSingle();
-
-        isCommissionEmployee = employeeData?.pay_type === 'commission';
-      }
-
-      const userRoles = session?.role || [];
-      const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
-      const isSupervisor = userRoles.includes('Supervisor');
-      const isTechnician = userRoles.some(role => ['Technician', 'Spa Expert'].includes(role));
-
-      let allTickets: any[] = [];
-
-      // Commission employees and technicians see only their own ticket approvals
-      if (isTechnician || isCommissionEmployee) {
-        const techResult = await supabase.rpc('get_pending_approvals_for_technician', {
-          p_employee_id: session?.employee_id,
-          p_store_id: selectedStoreId,
-        });
-        if (techResult.error) throw techResult.error;
-        allTickets.push(...(techResult.data || []));
-      }
-
-      // Commission employees should not see supervisor or management approvals
-      // Only non-commission employees with these roles can see them
-      if (isSupervisor && !isCommissionEmployee) {
-        const supervisorResult = await supabase.rpc('get_pending_approvals_for_supervisor', {
-          p_employee_id: session?.employee_id,
-          p_store_id: selectedStoreId,
-        });
-        if (supervisorResult.error) throw supervisorResult.error;
-        allTickets.push(...(supervisorResult.data || []));
-      }
-
-      if (isManagement && !isCommissionEmployee) {
-        const managementResult = await supabase.rpc('get_pending_approvals_for_management', {
-          p_store_id: selectedStoreId,
-        });
-        if (managementResult.error) throw managementResult.error;
-        allTickets.push(...(managementResult.data || []));
-      }
-
-      const uniqueTickets = Array.from(
-        new Map(allTickets.map(ticket => [ticket.ticket_id, ticket])).values()
-      );
-
-      const data = uniqueTickets;
-      const error = null;
+      const { data, error } = await supabase.rpc('get_pending_approvals_for_management', {
+        p_store_id: selectedStoreId,
+      });
 
       if (error) throw error;
       setTickets(data || []);
@@ -155,6 +170,7 @@ export function PendingApprovalsPage() {
     if (!selectedStoreId || !session?.employee_id) return;
 
     try {
+      setLoading(true);
       const { data, error } = await supabase.rpc('get_pending_inventory_approvals', {
         p_employee_id: session.employee_id,
         p_store_id: selectedStoreId,
@@ -164,21 +180,16 @@ export function PendingApprovalsPage() {
       setInventoryApprovals(data || []);
     } catch (error) {
       console.error('Error fetching inventory approvals:', error);
+    } finally {
+      setLoading(false);
     }
   }
 
   async function fetchCashTransactionApprovals() {
     if (!selectedStoreId) return;
 
-    const userRoles = session?.role || [];
-    const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
-
-    if (!isManagement) {
-      setCashTransactionApprovals([]);
-      return;
-    }
-
     try {
+      setLoading(true);
       const { data, error } = await supabase.rpc('get_pending_cash_transaction_approvals', {
         p_store_id: selectedStoreId,
       });
@@ -187,19 +198,13 @@ export function PendingApprovalsPage() {
       setCashTransactionApprovals(data || []);
     } catch (error) {
       console.error('Error fetching cash transaction approvals:', error);
+    } finally {
+      setLoading(false);
     }
   }
 
   async function fetchViolationReports() {
     if (!selectedStoreId) return;
-
-    const userRoles = session?.role || [];
-    const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
-
-    if (!isManagement) {
-      setViolationReports([]);
-      return;
-    }
 
     try {
       const { data, error } = await supabase.rpc('get_violation_reports_for_approval', {
@@ -213,39 +218,27 @@ export function PendingApprovalsPage() {
     }
   }
 
-  async function handleApproveInventory(approval: PendingInventoryApproval) {
-    if (!session?.employee_id) {
-      console.error('❌ No session.employee_id found');
-      return;
-    }
+  async function fetchViolationHistory() {
+    if (!selectedStoreId) return;
 
-    console.log('=== APPROVAL DEBUG START ===');
-    console.log('📋 Session Data:', {
-      employee_id: session.employee_id,
-      display_name: session.display_name,
-      role: session.role,
-      full_session: session,
-    });
-    console.log('📦 Approval Data:', {
-      id: approval.id,
-      transaction_number: approval.transaction_number,
-      requested_by_id: approval.requested_by_id,
-      recipient_id: approval.recipient_id,
-      requires_manager_approval: approval.requires_manager_approval,
-      requires_recipient_approval: approval.requires_recipient_approval,
-    });
-
-    if (approval.requested_by_id === session.employee_id) {
-      await supabase.from('inventory_approval_audit_log').insert({
-        employee_id: session.employee_id,
-        transaction_id: approval.id,
-        store_id: selectedStoreId,
-        action_attempted: 'approve',
-        transaction_type: approval.transaction_type,
-        transaction_number: approval.transaction_number,
-        blocked_reason: 'Self-approval not allowed',
+    try {
+      const { data, error } = await supabase.rpc('get_all_violation_reports_for_management', {
+        p_store_id: selectedStoreId,
+        p_status: violationStatusFilter === 'all' ? null : violationStatusFilter,
+        p_search_employee: violationSearchTerm.trim() || null
       });
 
+      if (error) throw error;
+      setViolationHistory(data || []);
+    } catch (error) {
+      console.error('Error fetching violation history:', error);
+    }
+  }
+
+  async function handleApproveInventory(approval: PendingInventoryApproval) {
+    if (!session?.employee_id) return;
+
+    if (approval.requested_by_id === session.employee_id) {
       showToast('You cannot approve transactions you created', 'error');
       return;
     }
@@ -253,121 +246,22 @@ export function PendingApprovalsPage() {
     try {
       setProcessing(true);
 
-      console.log('🔍 Step 1: Validating employee exists in database...');
-      const { data: employeeData, error: employeeError } = await supabase
-        .from('employees')
-        .select('id, display_name, role, status')
-        .eq('id', session.employee_id)
-        .maybeSingle();
-
-      if (employeeError) {
-        console.error('❌ Employee validation query error:', employeeError);
-        throw new Error(`Employee validation failed: ${employeeError.message}`);
-      }
-
-      if (!employeeData) {
-        console.error('❌ Employee not found in database:', session.employee_id);
-        showToast('Your employee record could not be verified. Please log out and log back in.', 'error');
-        return;
-      }
-
-      console.log('✅ Employee validated:', employeeData);
-
-      console.log('🔍 Step 2: Verifying employee has correct store assignment...');
-      const { data: storeAssignment, error: storeError } = await supabase
-        .from('employee_stores')
-        .select('*')
-        .eq('employee_id', session.employee_id)
-        .eq('store_id', selectedStoreId)
-        .maybeSingle();
-
-      if (storeError) {
-        console.error('❌ Store assignment validation error:', storeError);
-      } else {
-        console.log('✅ Store assignment:', storeAssignment ? 'Found' : 'Not found');
-      }
-
-      const userRoles = session.role || [];
-      const isManager = userRoles.some((role) => ['Manager', 'Owner'].includes(role));
-      const isRecipient = approval.recipient_id && session.employee_id === approval.recipient_id;
-
-      console.log('🔐 Authorization Check:', {
-        userRoles,
-        isManager,
-        isRecipient,
-        canApprove: isManager || isRecipient,
-      });
-
-      if (!isManager && !isRecipient) {
-        console.error('❌ User is neither manager nor recipient');
-        showToast('You do not have permission to approve this transaction', 'error');
-        return;
-      }
-
       const updates: any = { updated_at: new Date().toISOString() };
+      updates.manager_approved = true;
+      updates.manager_approved_at = new Date().toISOString();
+      updates.manager_approved_by_id = session.employee_id;
 
-      if (isManager) {
-        updates.manager_approved = true;
-        updates.manager_approved_at = new Date().toISOString();
-        updates.manager_approved_by_id = session.employee_id;
-        console.log('✅ Adding manager approval fields');
-      }
-
-      if (isRecipient) {
-        updates.recipient_approved = true;
-        updates.recipient_approved_at = new Date().toISOString();
-        updates.recipient_approved_by_id = session.employee_id;
-        console.log('✅ Adding recipient approval fields');
-      }
-
-      console.log('📝 Update object to be sent:', JSON.stringify(updates, null, 2));
-      console.log('🎯 Updating transaction ID:', approval.id);
-
-      console.log('🔍 Step 3: Executing database update...');
-      const { data: updateData, error } = await supabase
+      const { error } = await supabase
         .from('inventory_transactions')
         .update(updates)
-        .eq('id', approval.id)
-        .select();
+        .eq('id', approval.id);
 
-      if (error) {
-        console.error('❌ Database update error:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-          full_error: error,
-        });
-        throw error;
-      }
-
-      console.log('✅ Update successful:', updateData);
-      console.log('=== APPROVAL DEBUG END ===');
+      if (error) throw error;
 
       showToast('Inventory transaction approved', 'success');
       fetchInventoryApprovals();
     } catch (error: any) {
-      console.error('💥 APPROVAL FAILED:', {
-        error_message: error?.message,
-        error_code: error?.code,
-        error_details: error?.details,
-        error_hint: error?.hint,
-        full_error: error,
-      });
-
-      let errorMessage = 'Failed to approve transaction';
-
-      if (error?.code === '23503') {
-        errorMessage = 'Employee verification failed. Please log out and log back in.';
-      } else if (error?.code === '42501') {
-        errorMessage = 'Insufficient permissions to approve this transaction';
-      } else if (error?.code) {
-        errorMessage = `Database error (${error.code}): ${error.message}`;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-
-      showToast(errorMessage, 'error');
+      showToast(error.message || 'Failed to approve transaction', 'error');
     } finally {
       setProcessing(false);
     }
@@ -377,16 +271,6 @@ export function PendingApprovalsPage() {
     if (!session?.employee_id) return;
 
     if (approval.requested_by_id === session.employee_id) {
-      await supabase.from('inventory_approval_audit_log').insert({
-        employee_id: session.employee_id,
-        transaction_id: approval.id,
-        store_id: selectedStoreId,
-        action_attempted: 'reject',
-        transaction_type: approval.transaction_type,
-        transaction_number: approval.transaction_number,
-        blocked_reason: 'Self-rejection not allowed',
-      });
-
       showToast('You cannot reject transactions you created', 'error');
       return;
     }
@@ -428,10 +312,6 @@ export function PendingApprovalsPage() {
     }
   }
 
-  function isOwnTransaction(approval: PendingInventoryApproval): boolean {
-    return approval.requested_by_id === session?.employee_id;
-  }
-
   async function handleApproveCashTransaction(approval: PendingCashTransactionApproval) {
     if (!session?.employee_id) {
       showToast('Session expired. Please log in again.', 'error');
@@ -440,14 +320,6 @@ export function PendingApprovalsPage() {
 
     if (approval.created_by_id === session.employee_id) {
       showToast('You cannot approve transactions you created', 'error');
-      return;
-    }
-
-    const userRoles = session?.role || [];
-    const isManager = userRoles.some((role) => ['Manager', 'Owner'].includes(role));
-
-    if (!isManager) {
-      showToast('You do not have permission to approve cash transactions', 'error');
       return;
     }
 
@@ -470,7 +342,6 @@ export function PendingApprovalsPage() {
       showToast('Cash transaction approved', 'success');
       fetchCashTransactionApprovals();
     } catch (error: any) {
-      console.error('Error approving cash transaction:', error);
       showToast(error.message || 'Failed to approve transaction', 'error');
     } finally {
       setProcessing(false);
@@ -534,6 +405,11 @@ export function PendingApprovalsPage() {
   async function handleSubmitViolationDecision() {
     if (!selectedViolationReport || !session?.employee_id) return;
 
+    if (!violationNotes.trim()) {
+      showToast('Please provide manager notes', 'error');
+      return;
+    }
+
     try {
       setProcessing(true);
 
@@ -541,7 +417,7 @@ export function PendingApprovalsPage() {
         p_violation_report_id: selectedViolationReport.report_id,
         p_reviewer_employee_id: session.employee_id,
         p_decision: violationDecision,
-        p_manager_notes: violationNotes.trim() || null,
+        p_manager_notes: violationNotes.trim(),
         p_action_type: violationDecision === 'violation_confirmed' ? violationAction : 'none',
         p_action_details: violationActionDetails.trim() || null
       });
@@ -556,6 +432,7 @@ export function PendingApprovalsPage() {
       );
 
       await fetchViolationReports();
+      await fetchViolationHistory();
       setShowViolationDecisionModal(false);
       setSelectedViolationReport(null);
     } catch (error: any) {
@@ -564,10 +441,6 @@ export function PendingApprovalsPage() {
     } finally {
       setProcessing(false);
     }
-  }
-
-  function isOwnCashTransaction(approval: PendingCashTransactionApproval): boolean {
-    return approval.created_by_id === session?.employee_id;
   }
 
   function getUrgencyLevel(hoursRemaining: number): 'urgent' | 'warning' | 'normal' {
@@ -602,17 +475,6 @@ export function PendingApprovalsPage() {
         showToast(result.message, 'error');
         return;
       }
-
-      await supabase.from('ticket_activity_log').insert([{
-        ticket_id: ticket.ticket_id,
-        employee_id: session?.employee_id,
-        action: 'approved',
-        description: `${session?.display_name} approved ticket`,
-        changes: {
-          approval_status: 'approved',
-          ticket_no: ticket.ticket_no,
-        },
-      }]);
 
       showToast('Ticket approved successfully', 'success');
       fetchPendingApprovals();
@@ -651,18 +513,6 @@ export function PendingApprovalsPage() {
         return;
       }
 
-      await supabase.from('ticket_activity_log').insert([{
-        ticket_id: selectedTicket.ticket_id,
-        employee_id: session?.employee_id,
-        action: 'rejected',
-        description: `${session?.display_name} rejected ticket: ${rejectionReason}`,
-        changes: {
-          approval_status: 'rejected',
-          rejection_reason: rejectionReason,
-          ticket_no: selectedTicket.ticket_no,
-        },
-      }]);
-
       showToast('Ticket rejected and sent for admin review', 'success');
       setShowRejectModal(false);
       setSelectedTicket(null);
@@ -675,502 +525,732 @@ export function PendingApprovalsPage() {
     }
   }
 
-  if (loading) {
+  const getViolationStatusCounts = () => {
+    return {
+      all: violationHistory.length,
+      collecting_responses: violationHistory.filter(v => v.status === 'collecting_responses').length,
+      pending_approval: violationHistory.filter(v => v.status === 'pending_approval').length,
+      approved: violationHistory.filter(v => v.status === 'approved').length,
+      rejected: violationHistory.filter(v => v.status === 'rejected').length,
+      expired: violationHistory.filter(v => v.status === 'expired').length,
+    };
+  };
+
+  const filteredViolationHistory = violationHistory.filter(report => {
+    if (violationStatusFilter !== 'all' && report.status !== violationStatusFilter) {
+      return false;
+    }
+    return true;
+  });
+
+  if (!isManagement) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading pending approvals...</div>
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
+          <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-700 mb-4">
+            This page is restricted to management personnel only.
+          </p>
+          <p className="text-sm text-gray-600">
+            If you believe you should have access, please contact your administrator.
+          </p>
+        </div>
       </div>
     );
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
+
+  const statusCounts = getViolationStatusCounts();
+
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="mb-4">
-        <h2 className="text-lg font-bold text-gray-900 mb-1">Pending Approvals</h2>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Management Approvals</h2>
         <p className="text-sm text-gray-600">
-          Review and approve tickets that you worked on. Tickets will be automatically approved after 48 hours.
+          Review and approve pending requests across all categories
         </p>
       </div>
 
-      {approvalStats && approvalStats.total_closed > 0 && (
-        <div className="bg-white rounded-lg shadow mb-4 p-4">
-          <h3 className="text-base font-semibold text-gray-900 mb-3">Today's Approval Status</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500 mb-1">Total Closed</p>
-              <p className="text-xl font-bold text-gray-900">{approvalStats.total_closed}</p>
-            </div>
-            <div className="bg-orange-50 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Clock className="w-3 h-3 text-orange-600" />
-                <p className="text-xs text-orange-700 font-medium">Pending</p>
-              </div>
-              <p className="text-xl font-bold text-orange-900">{approvalStats.pending_approval}</p>
-            </div>
-            <div className="bg-green-50 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <CheckCircle className="w-3 h-3 text-green-600" />
-                <p className="text-xs text-green-700 font-medium">Approved</p>
-              </div>
-              <p className="text-xl font-bold text-green-900">{approvalStats.approved}</p>
-            </div>
-            <div className="bg-blue-50 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Clock className="w-3 h-3 text-blue-600" />
-                <p className="text-xs text-blue-700 font-medium">Auto-Approved</p>
-              </div>
-              <p className="text-xl font-bold text-blue-900">{approvalStats.auto_approved}</p>
-            </div>
-            <div className="bg-red-50 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <AlertCircle className="w-3 h-3 text-red-600" />
-                <p className="text-xs text-red-700 font-medium">Rejected</p>
-              </div>
-              <p className="text-xl font-bold text-red-900">{approvalStats.rejected}</p>
-            </div>
-            {approvalStats.requires_review > 0 && (
-              <div className="bg-yellow-50 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertCircle className="w-3 h-3 text-yellow-600" />
-                  <p className="text-xs text-yellow-700 font-medium">Needs Review</p>
-                </div>
-                <p className="text-xl font-bold text-yellow-900">{approvalStats.requires_review}</p>
-              </div>
-            )}
+      <div className="bg-white rounded-lg shadow mb-6">
+        <div className="border-b border-gray-200">
+          <div className="flex flex-wrap gap-1 p-1">
+            <button
+              onClick={() => handleTabChange('tickets')}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'tickets'
+                  ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Tickets
+              {tickets.length > 0 && (
+                <Badge variant="error" className="ml-1">
+                  {tickets.length}
+                </Badge>
+              )}
+            </button>
+            <button
+              onClick={() => handleTabChange('inventory')}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'inventory'
+                  ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Package className="w-4 h-4" />
+              Inventory
+              {inventoryApprovals.length > 0 && (
+                <Badge variant="warning" className="ml-1">
+                  {inventoryApprovals.length}
+                </Badge>
+              )}
+            </button>
+            <button
+              onClick={() => handleTabChange('cash')}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'cash'
+                  ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <DollarSign className="w-4 h-4" />
+              Cash Management
+              {cashTransactionApprovals.length > 0 && (
+                <Badge variant="warning" className="ml-1">
+                  {cashTransactionApprovals.length}
+                </Badge>
+              )}
+            </button>
+            <button
+              onClick={() => handleTabChange('violations')}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'violations'
+                  ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Flag className="w-4 h-4" />
+              Violation History
+              {violationReports.length > 0 && (
+                <Badge variant="error" className="ml-1">
+                  {violationReports.length}
+                </Badge>
+              )}
+            </button>
           </div>
         </div>
-      )}
 
-      {inventoryApprovals.length > 0 && (
-        <div className="mb-6">
-          <div className="mb-3">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <Package className="w-5 h-5" />
-              Pending Inventory Approvals ({inventoryApprovals.length})
-            </h3>
-            <p className="text-sm text-gray-600">
-              Review and approve inventory transactions
-            </p>
-          </div>
-          <div className="space-y-3">
-            {inventoryApprovals.map((approval) => {
-              const isOwn = isOwnTransaction(approval);
-              return (
-                <div
-                  key={approval.id}
-                  className={`bg-white rounded-lg shadow p-4 border-l-4 ${
-                    isOwn ? 'border-gray-400 opacity-75' : 'border-blue-500'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        {approval.transaction_type === 'in' ? (
-                          <PackagePlus className="w-5 h-5 text-green-600" />
-                        ) : (
-                          <PackageMinus className="w-5 h-5 text-orange-600" />
-                        )}
-                        <span className="font-semibold text-gray-900">
-                          {approval.transaction_number}
-                        </span>
-                        <Badge variant={approval.transaction_type === 'in' ? 'success' : 'default'}>
-                          {approval.transaction_type.toUpperCase()}
-                        </Badge>
-                        {isOwn && (
-                          <Badge variant="secondary" className="bg-gray-200 text-gray-700">
-                            Created by you
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        Requested by: <span className="font-medium">{approval.requested_by_name}</span>
-                        {approval.recipient_name && (
-                          <span> → Recipient: <span className="font-medium">{approval.recipient_name}</span></span>
-                        )}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {approval.item_count} item{approval.item_count !== 1 ? 's' : ''} • Total value: ${approval.total_value?.toFixed(2) || '0.00'}
-                      </p>
-                      {approval.notes && (
-                        <p className="text-sm text-gray-600 mt-1 italic">{approval.notes}</p>
-                      )}
-                      <div className="flex items-center gap-2 mt-2">
-                        {approval.requires_manager_approval && !approval.manager_approved && (
-                          <Badge variant="warning" className="text-xs">
-                            Needs Manager Approval
-                          </Badge>
-                        )}
-                        {approval.requires_recipient_approval && !approval.recipient_approved && (
-                          <Badge variant="warning" className="text-xs">
-                            Needs Recipient Approval
-                          </Badge>
-                        )}
-                        {isOwn && (
-                          <p className="text-xs text-gray-500 italic">
-                            Self-approval not allowed for audit compliance
-                          </p>
-                        )}
-                      </div>
+        <div className="p-6">
+          {activeTab === 'tickets' && (
+            <div>
+              {approvalStats && approvalStats.total_closed > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <h3 className="text-base font-semibold text-gray-900 mb-3">Today's Approval Status</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                      <p className="text-xs text-gray-500 mb-1">Total Closed</p>
+                      <p className="text-xl font-bold text-gray-900">{approvalStats.total_closed}</p>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleApproveInventory(approval)}
-                        disabled={processing || isOwn}
-                        title={isOwn ? 'You cannot approve transactions you created' : 'Approve transaction'}
-                      >
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                        Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleRejectInventoryClick(approval)}
-                        disabled={processing || isOwn}
-                        title={isOwn ? 'You cannot reject transactions you created' : 'Reject transaction'}
-                      >
-                        <XCircle className="w-4 h-4 mr-1" />
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {cashTransactionApprovals.length > 0 && (
-        <div className="mb-6">
-          <div className="mb-3">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <DollarSign className="w-5 h-5" />
-              Pending Cash Transaction Approvals ({cashTransactionApprovals.length})
-            </h3>
-            <p className="text-sm text-gray-600">
-              Review and approve cash in/out transactions
-            </p>
-          </div>
-          <div className="space-y-3">
-            {cashTransactionApprovals.map((approval) => {
-              const isOwn = isOwnCashTransaction(approval);
-              return (
-                <div
-                  key={approval.transaction_id}
-                  className={`bg-white rounded-lg shadow p-4 border-l-4 ${
-                    isOwn ? 'border-gray-400 opacity-75' :
-                    approval.transaction_type === 'cash_in' ? 'border-green-500' : 'border-red-500'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        {approval.transaction_type === 'cash_in' ? (
-                          <ArrowDownLeft className="w-5 h-5 text-green-600" />
-                        ) : (
-                          <ArrowUpRight className="w-5 h-5 text-red-600" />
-                        )}
-                        <span className="font-semibold text-gray-900">
-                          ${approval.amount.toFixed(2)}
-                        </span>
-                        <Badge variant={approval.transaction_type === 'cash_in' ? 'success' : 'error'}>
-                          {approval.transaction_type === 'cash_in' ? 'CASH IN' : 'CASH OUT'}
-                        </Badge>
-                        {isOwn && (
-                          <Badge variant="secondary" className="bg-gray-200 text-gray-700">
-                            Created by you
-                          </Badge>
-                        )}
+                    <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Clock className="w-3 h-3 text-orange-600" />
+                        <p className="text-xs text-orange-700 font-medium">Pending</p>
                       </div>
-                      <p className="text-sm text-gray-600 mb-1">
-                        Created by: <span className="font-medium">{approval.created_by_name}</span>
-                      </p>
-                      <p className="text-sm text-gray-900 mb-1">
-                        <span className="font-medium">Description:</span> {approval.description}
-                      </p>
-                      {approval.category && (
-                        <p className="text-sm text-gray-600">
-                          <span className="font-medium">Category:</span> {approval.category}
-                        </p>
-                      )}
-                      <p className="text-xs text-gray-500 mt-2">
-                        Date: {new Date(approval.date).toLocaleDateString()}
-                      </p>
-                      {isOwn && (
-                        <p className="text-xs text-gray-500 italic mt-1">
-                          Self-approval not allowed for audit compliance
-                        </p>
-                      )}
+                      <p className="text-xl font-bold text-orange-900">{approvalStats.pending_approval}</p>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleApproveCashTransaction(approval)}
-                        disabled={processing || isOwn}
-                        title={isOwn ? 'You cannot approve transactions you created' : 'Approve transaction'}
-                      >
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                        Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleRejectCashTransactionClick(approval)}
-                        disabled={processing || isOwn}
-                        title={isOwn ? 'You cannot reject transactions you created' : 'Reject transaction'}
-                      >
-                        <XCircle className="w-4 h-4 mr-1" />
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {violationReports.length > 0 && (
-        <div className="mb-6">
-          <div className="mb-3">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <Flag className="w-5 h-5 text-red-600" />
-              Pending Turn Violation Reports ({violationReports.length})
-            </h3>
-            <p className="text-sm text-gray-600">
-              Review employee votes and make final decision on reported violations
-            </p>
-          </div>
-          <div className="space-y-3">
-            {violationReports.map((report) => {
-              const votesFor = report.votes_for_violation || 0;
-              const votesAgainst = report.votes_against_violation || 0;
-              const totalVotes = votesFor + votesAgainst;
-              const percentageFor = totalVotes > 0 ? Math.round((votesFor / totalVotes) * 100) : 0;
-
-              return (
-                <div
-                  key={report.report_id}
-                  className="bg-white rounded-lg shadow p-4 border-l-4 border-red-500"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Flag className="w-5 h-5 text-red-600" />
-                        <span className="font-semibold text-gray-900">
-                          Turn Violation Report
-                        </span>
-                        <Badge variant="error">PENDING REVIEW</Badge>
+                    <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <CheckCircle className="w-3 h-3 text-green-600" />
+                        <p className="text-xs text-green-700 font-medium">Approved</p>
                       </div>
-                      <p className="text-sm text-gray-900 mb-2">
-                        <span className="font-medium">Reported Employee:</span> {report.reported_employee_name}
-                      </p>
-                      <p className="text-sm text-gray-600 mb-2">
-                        <span className="font-medium">Reported by:</span> {report.reporter_employee_name}
-                      </p>
-                      <p className="text-sm text-gray-900 mb-2">
-                        <span className="font-medium">Description:</span> {report.violation_description}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Date: {new Date(report.violation_date).toLocaleDateString()}
-                      </p>
-
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <p className="text-sm font-medium text-gray-900 mb-2">
-                          Employee Votes ({totalVotes} responses)
-                        </p>
-                        <div className="flex items-center gap-4 mb-2">
-                          <div className="flex items-center gap-2">
-                            <ThumbsUp className="w-4 h-4 text-green-600" />
-                            <span className="text-sm font-medium text-gray-900">
-                              {votesFor} voted violation occurred ({percentageFor}%)
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <ThumbsDown className="w-4 h-4 text-red-600" />
-                            <span className="text-sm font-medium text-gray-900">
-                              {votesAgainst} voted no violation ({100 - percentageFor}%)
-                            </span>
-                          </div>
+                      <p className="text-xl font-bold text-green-900">{approvalStats.approved}</p>
+                    </div>
+                    <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Clock className="w-3 h-3 text-blue-600" />
+                        <p className="text-xs text-blue-700 font-medium">Auto-Approved</p>
+                      </div>
+                      <p className="text-xl font-bold text-blue-900">{approvalStats.auto_approved}</p>
+                    </div>
+                    <div className="bg-red-50 rounded-lg p-3 border border-red-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertCircle className="w-3 h-3 text-red-600" />
+                        <p className="text-xs text-red-700 font-medium">Rejected</p>
+                      </div>
+                      <p className="text-xl font-bold text-red-900">{approvalStats.rejected}</p>
+                    </div>
+                    {approvalStats.requires_review > 0 && (
+                      <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                        <div className="flex items-center gap-2 mb-1">
+                          <AlertCircle className="w-3 h-3 text-yellow-600" />
+                          <p className="text-xs text-yellow-700 font-medium">Needs Review</p>
                         </div>
-                        {report.response_details && report.response_details.length > 0 && (
-                          <div className="mt-2">
-                            <p className="text-xs font-medium text-gray-700 mb-1">Individual Responses:</p>
-                            <div className="max-h-32 overflow-y-auto space-y-1">
-                              {report.response_details.map((response: any, idx: number) => (
-                                <div key={idx} className="text-xs text-gray-600 flex items-center gap-2">
-                                  {response.response ? (
-                                    <CheckCircle className="w-3 h-3 text-green-600" />
-                                  ) : (
-                                    <XCircle className="w-3 h-3 text-red-600" />
-                                  )}
-                                  <span className="font-medium">{response.employee_name}:</span>
-                                  <span>{response.response ? 'Violation occurred' : 'No violation'}</span>
-                                  {response.response_notes && (
-                                    <span className="italic">- {response.response_notes}</span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        <p className="text-xl font-bold text-yellow-900">{approvalStats.requires_review}</p>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleViolationDecisionClick(report)}
-                        disabled={processing}
-                      >
-                        Review & Decide
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {tickets.length === 0 && inventoryApprovals.length === 0 && cashTransactionApprovals.length === 0 && violationReports.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-          <p className="text-lg font-medium text-gray-900 mb-1">All caught up!</p>
-          <p className="text-sm text-gray-500">You have no pending approvals.</p>
-        </div>
-      ) : tickets.length > 0 ? (
-        <div className="mb-3">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Pending Ticket Approvals ({tickets.length})
-          </h3>
-        </div>
-      ) : null}
-
-      {tickets.length > 0 && (
-        <div className="space-y-3">
-          {tickets.map((ticket) => {
-            const urgency = getUrgencyLevel(ticket.hours_remaining);
-            const timeRemaining = formatTimeRemaining(ticket.hours_remaining);
-            const totalTips = ticket.tip_customer + ticket.tip_receptionist;
-            const isHighTip = totalTips > 20;
-
-            return (
-              <div
-                key={ticket.ticket_id}
-                className={`bg-white rounded-lg shadow p-4 border-l-4 ${
-                  urgency === 'urgent'
-                    ? 'border-red-500'
-                    : urgency === 'warning'
-                    ? 'border-yellow-500'
-                    : 'border-green-500'
-                }`}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <Badge variant={urgency === 'urgent' ? 'error' : urgency === 'warning' ? 'warning' : 'default'}>
-                        {urgency === 'urgent' ? (
-                          <AlertTriangle className="w-3 h-3 mr-1" />
-                        ) : (
-                          <Clock className="w-3 h-3 mr-1" />
-                        )}
-                        {timeRemaining}
-                      </Badge>
-                      {ticket.requires_higher_approval && (
-                        <Badge variant="warning">
-                          <AlertCircle className="w-3 h-3 mr-1" />
-                          Requires Management
-                        </Badge>
-                      )}
-                      {isHighTip && (
-                        <Badge variant="error" className="bg-orange-100 text-orange-800 border-orange-300">
-                          <DollarSign className="w-3 h-3 mr-1" />
-                          High Tips: ${totalTips.toFixed(2)}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      Completed by: <span className="font-medium">{ticket.completed_by_name || 'N/A'}</span>
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Closed by: <span className="font-medium">{ticket.closed_by_name}</span>
-                    </p>
-                    {ticket.reason && (
-                      <p className={`text-xs mt-1 flex items-center gap-1 ${
-                        isHighTip ? 'text-orange-600 font-medium' : 'text-blue-600'
-                      }`}>
-                        <AlertCircle className="w-3 h-3" />
-                        {ticket.reason}
-                      </p>
                     )}
                   </div>
                 </div>
+              )}
 
-                <div className="grid grid-cols-2 md:grid-cols-6 gap-3 p-3 bg-gray-50 rounded-lg mb-3">
-                  <div>
-                    <p className="text-xs text-gray-500">Service</p>
-                    <p className="text-sm font-semibold text-gray-900">{ticket.service_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Bill Total</p>
-                    <p className="text-sm font-semibold text-gray-900">${ticket.total.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Tip (Customer) Card</p>
-                    <p className="text-sm font-semibold text-blue-600">
-                      ${(ticket.payment_method === 'Card' ? ticket.tip_customer : 0).toFixed(2)}
+              {tickets.length === 0 ? (
+                <div className="text-center py-12">
+                  <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-3" />
+                  <p className="text-lg font-medium text-gray-900 mb-1">All caught up!</p>
+                  <p className="text-sm text-gray-500">No tickets requiring management approval</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {tickets.map((ticket) => {
+                    const urgency = getUrgencyLevel(ticket.hours_remaining);
+                    const timeRemaining = formatTimeRemaining(ticket.hours_remaining);
+                    const totalTips = ticket.tip_customer + ticket.tip_receptionist;
+                    const isHighTip = totalTips > 20;
+
+                    return (
+                      <div
+                        key={ticket.ticket_id}
+                        className={`bg-white rounded-lg border-2 p-4 ${
+                          urgency === 'urgent'
+                            ? 'border-red-500'
+                            : urgency === 'warning'
+                            ? 'border-yellow-500'
+                            : 'border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                              <Badge variant={urgency === 'urgent' ? 'error' : urgency === 'warning' ? 'warning' : 'default'}>
+                                {urgency === 'urgent' && <AlertTriangle className="w-3 h-3 mr-1" />}
+                                {urgency === 'warning' && <Clock className="w-3 h-3 mr-1" />}
+                                {timeRemaining}
+                              </Badge>
+                              {ticket.requires_higher_approval && (
+                                <Badge variant="warning">
+                                  <AlertCircle className="w-3 h-3 mr-1" />
+                                  Requires Management
+                                </Badge>
+                              )}
+                              {isHighTip && (
+                                <Badge variant="error" className="bg-orange-100 text-orange-800 border-orange-300">
+                                  <DollarSign className="w-3 h-3 mr-1" />
+                                  High Tips: ${totalTips.toFixed(2)}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              Ticket: <span className="font-medium">{ticket.ticket_no}</span>
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              Completed by: <span className="font-medium">{ticket.completed_by_name || 'N/A'}</span>
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              Closed by: <span className="font-medium">{ticket.closed_by_name}</span>
+                            </p>
+                            {ticket.reason && (
+                              <p className={`text-xs mt-1 flex items-center gap-1 ${
+                                isHighTip ? 'text-orange-600 font-medium' : 'text-blue-600'
+                              }`}>
+                                <AlertCircle className="w-3 h-3" />
+                                {ticket.reason}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 p-3 bg-gray-50 rounded-lg mb-3">
+                          <div>
+                            <p className="text-xs text-gray-500">Service</p>
+                            <p className="text-sm font-semibold text-gray-900">{ticket.service_name}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Bill Total</p>
+                            <p className="text-sm font-semibold text-gray-900">${ticket.total.toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Tip (Customer) Card</p>
+                            <p className="text-sm font-semibold text-blue-600">
+                              ${(ticket.payment_method === 'Card' ? ticket.tip_customer : 0).toFixed(2)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Tip (Customer) Cash</p>
+                            <p className="text-sm font-semibold text-green-600">
+                              ${(ticket.payment_method === 'Cash' ? ticket.tip_customer : 0).toFixed(2)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Tip (Receptionist)</p>
+                            <p className="text-sm font-semibold text-green-600">
+                              ${ticket.tip_receptionist.toFixed(2)}
+                            </p>
+                          </div>
+                          <div className={isHighTip ? 'bg-orange-50 rounded px-2 -mx-2' : ''}>
+                            <p className={`text-xs font-medium ${isHighTip ? 'text-orange-700' : 'text-gray-500'}`}>
+                              Total Tips
+                            </p>
+                            <p className={`text-sm font-bold ${isHighTip ? 'text-orange-700' : 'text-gray-900'}`}>
+                              ${totalTips.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => handleApproveClick(ticket)}
+                            className="flex-1"
+                            disabled={processing}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRejectClick(ticket)}
+                            className="flex-1 text-red-600 hover:bg-red-50"
+                            disabled={processing}
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+{activeTab === 'inventory' && (
+            <div>
+              {inventoryApprovals.length === 0 ? (
+                <div className="text-center py-12">
+                  <Package className="w-16 h-16 text-gray-400 mx-auto mb-3" />
+                  <p className="text-lg font-medium text-gray-900 mb-1">No pending inventory transactions</p>
+                  <p className="text-sm text-gray-500">All inventory transactions have been processed</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {inventoryApprovals.map((approval) => (
+                    <div
+                      key={approval.id}
+                      className="bg-white rounded-lg border-2 border-blue-200 p-4"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            {approval.transaction_type === 'in' ? (
+                              <PackagePlus className="w-5 h-5 text-green-600" />
+                            ) : (
+                              <PackageMinus className="w-5 h-5 text-orange-600" />
+                            )}
+                            <span className="font-semibold text-gray-900">
+                              {approval.transaction_number}
+                            </span>
+                            <Badge variant={approval.transaction_type === 'in' ? 'success' : 'default'}>
+                              {approval.transaction_type.toUpperCase()}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            Requested by: <span className="font-medium">{approval.requested_by_name}</span>
+                            {approval.recipient_name && (
+                              <span> → Recipient: <span className="font-medium">{approval.recipient_name}</span></span>
+                            )}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {approval.item_count} item{approval.item_count !== 1 ? 's' : ''} • Total value: ${approval.total_value?.toFixed(2) || '0.00'}
+                          </p>
+                          {approval.notes && (
+                            <p className="text-sm text-gray-600 mt-1 italic">{approval.notes}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleApproveInventory(approval)}
+                            disabled={processing}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleRejectInventoryClick(approval)}
+                            disabled={processing}
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'cash' && (
+            <div>
+              {cashTransactionApprovals.length === 0 ? (
+                <div className="text-center py-12">
+                  <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-3" />
+                  <p className="text-lg font-medium text-gray-900 mb-1">No pending cash transactions</p>
+                  <p className="text-sm text-gray-500">All cash transactions have been processed</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {cashTransactionApprovals.map((approval) => (
+                    <div
+                      key={approval.transaction_id}
+                      className={`bg-white rounded-lg border-2 p-4 ${
+                        approval.transaction_type === 'cash_in' ? 'border-green-200' : 'border-red-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            {approval.transaction_type === 'cash_in' ? (
+                              <ArrowDownLeft className="w-5 h-5 text-green-600" />
+                            ) : (
+                              <ArrowUpRight className="w-5 h-5 text-red-600" />
+                            )}
+                            <span className="font-semibold text-gray-900">
+                              ${approval.amount.toFixed(2)}
+                            </span>
+                            <Badge variant={approval.transaction_type === 'cash_in' ? 'success' : 'error'}>
+                              {approval.transaction_type === 'cash_in' ? 'CASH IN' : 'CASH OUT'}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-1">
+                            Created by: <span className="font-medium">{approval.created_by_name}</span>
+                          </p>
+                          <p className="text-sm text-gray-900 mb-1">
+                            <span className="font-medium">Description:</span> {approval.description}
+                          </p>
+                          {approval.category && (
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Category:</span> {approval.category}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-500 mt-2">
+                            Date: {new Date(approval.date).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleApproveCashTransaction(approval)}
+                            disabled={processing}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleRejectCashTransactionClick(approval)}
+                            disabled={processing}
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'violations' && (
+            <div>
+              {violationReports.length > 0 && (
+                <div className="mb-6">
+                  <div className="mb-3">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <Flag className="w-5 h-5 text-red-600" />
+                      Pending Turn Violation Reports ({violationReports.length})
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Review employee votes and make final decision on reported violations
                     </p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Tip (Customer) Cash</p>
-                    <p className="text-sm font-semibold text-green-600">
-                      ${(ticket.payment_method === 'Cash' ? ticket.tip_customer : 0).toFixed(2)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Tip (Receptionist)</p>
-                    <p className="text-sm font-semibold text-green-600">
-                      ${ticket.tip_receptionist.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className={isHighTip ? 'bg-orange-50 rounded px-2 -mx-2' : ''}>
-                    <p className={`text-xs font-medium ${isHighTip ? 'text-orange-700' : 'text-gray-500'}`}>
-                      Total Tips
-                    </p>
-                    <p className={`text-sm font-bold ${isHighTip ? 'text-orange-700' : 'text-gray-900'}`}>
-                      ${totalTips.toFixed(2)}
-                    </p>
+                  <div className="space-y-3 mb-6">
+                    {violationReports.map((report) => {
+                      const votesFor = report.votes_for_violation || 0;
+                      const votesAgainst = report.votes_against_violation || 0;
+                      const totalVotes = votesFor + votesAgainst;
+                      const percentageFor = totalVotes > 0 ? Math.round((votesFor / totalVotes) * 100) : 0;
+
+                      return (
+                        <div
+                          key={report.report_id}
+                          className="bg-white rounded-lg border-2 border-red-500 p-4"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Flag className="w-5 h-5 text-red-600" />
+                                <span className="font-semibold text-gray-900">
+                                  Turn Violation Report
+                                </span>
+                                <Badge variant="error">PENDING REVIEW</Badge>
+                              </div>
+                              <p className="text-sm text-gray-900 mb-2">
+                                <span className="font-medium">Reported Employee:</span> {report.reported_employee_name}
+                              </p>
+                              <p className="text-sm text-gray-600 mb-2">
+                                <span className="font-medium">Reported by:</span> {report.reporter_employee_name}
+                              </p>
+                              <p className="text-sm text-gray-900 mb-2">
+                                <span className="font-medium">Description:</span> {report.violation_description}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Date: {new Date(report.violation_date).toLocaleDateString()}
+                              </p>
+
+                              <div className="mt-3 pt-3 border-t border-gray-200">
+                                <p className="text-sm font-medium text-gray-900 mb-2">
+                                  Employee Votes ({totalVotes} responses)
+                                </p>
+                                <div className="flex items-center gap-4 mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <ThumbsUp className="w-4 h-4 text-green-600" />
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {votesFor} voted violation occurred ({percentageFor}%)
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <ThumbsDown className="w-4 h-4 text-red-600" />
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {votesAgainst} voted no violation ({100 - percentageFor}%)
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleViolationDecisionClick(report)}
+                                disabled={processing}
+                              >
+                                Review & Decide
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
+              )}
 
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    onClick={() => handleApproveClick(ticket)}
-                    className="flex-1"
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Violation History</h3>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <button
+                    onClick={() => setViolationStatusFilter('all')}
+                    className={`px-3 py-1 text-sm rounded-full ${
+                      violationStatusFilter === 'all'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                   >
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    Approve
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleRejectClick(ticket)}
-                    className="flex-1 text-red-600 hover:bg-red-50"
+                    All ({statusCounts.all})
+                  </button>
+                  <button
+                    onClick={() => setViolationStatusFilter('collecting_responses')}
+                    className={`px-3 py-1 text-sm rounded-full ${
+                      violationStatusFilter === 'collecting_responses'
+                        ? 'bg-gray-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                   >
-                    <XCircle className="w-4 h-4 mr-1" />
-                    Reject
-                  </Button>
+                    Collecting Votes ({statusCounts.collecting_responses})
+                  </button>
+                  <button
+                    onClick={() => setViolationStatusFilter('pending_approval')}
+                    className={`px-3 py-1 text-sm rounded-full ${
+                      violationStatusFilter === 'pending_approval'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Pending Review ({statusCounts.pending_approval})
+                  </button>
+                  <button
+                    onClick={() => setViolationStatusFilter('approved')}
+                    className={`px-3 py-1 text-sm rounded-full ${
+                      violationStatusFilter === 'approved'
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Approved ({statusCounts.approved})
+                  </button>
+                  <button
+                    onClick={() => setViolationStatusFilter('rejected')}
+                    className={`px-3 py-1 text-sm rounded-full ${
+                      violationStatusFilter === 'rejected'
+                        ? 'bg-gray-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Rejected ({statusCounts.rejected})
+                  </button>
+                  <button
+                    onClick={() => setViolationStatusFilter('expired')}
+                    className={`px-3 py-1 text-sm rounded-full ${
+                      violationStatusFilter === 'expired'
+                        ? 'bg-orange-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Expired ({statusCounts.expired})
+                  </button>
                 </div>
               </div>
-            );
-          })}
+
+              {filteredViolationHistory.length === 0 ? (
+                <div className="text-center py-12">
+                  <Flag className="w-16 h-16 text-gray-400 mx-auto mb-3" />
+                  <p className="text-lg font-medium text-gray-900 mb-1">No violation reports found</p>
+                  <p className="text-sm text-gray-500">
+                    {violationStatusFilter !== 'all'
+                      ? 'No reports match the selected filter'
+                      : 'No violation reports have been submitted yet'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredViolationHistory.map((report) => {
+                    const totalVotes = report.votes_violation + report.votes_no_violation;
+                    const percentageFor = totalVotes > 0 ? Math.round((report.votes_violation / totalVotes) * 100) : 0;
+
+                    let borderColor = 'border-gray-200';
+                    let statusBadge = null;
+
+                    if (report.status === 'collecting_responses') {
+                      borderColor = 'border-gray-400';
+                      statusBadge = <Badge variant="secondary">Collecting Votes</Badge>;
+                    } else if (report.status === 'pending_approval') {
+                      borderColor = 'border-red-500';
+                      statusBadge = <Badge variant="error">Needs Decision</Badge>;
+                    } else if (report.status === 'approved') {
+                      borderColor = 'border-green-500';
+                      statusBadge = <Badge variant="success">APPROVED</Badge>;
+                    } else if (report.status === 'rejected') {
+                      borderColor = 'border-gray-400';
+                      statusBadge = <Badge variant="secondary">NO VIOLATION</Badge>;
+                    } else if (report.status === 'expired') {
+                      borderColor = 'border-orange-400';
+                      statusBadge = <Badge className="bg-orange-100 text-orange-800 border-orange-300">EXPIRED</Badge>;
+                    }
+
+                    return (
+                      <div
+                        key={report.report_id}
+                        className={`bg-white rounded-lg border-2 ${borderColor} p-4`}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Flag className="w-4 h-4 text-gray-600" />
+                              {statusBadge}
+                            </div>
+                            <p className="text-sm text-gray-900 mb-1">
+                              <span className="font-medium">Reported Employee:</span> {report.reported_employee_name}
+                            </p>
+                            <p className="text-sm text-gray-600 mb-1">
+                              <span className="font-medium">Reported by:</span> {report.reporter_employee_name}
+                            </p>
+                            <p className="text-sm text-gray-700 mb-2">{report.violation_description}</p>
+                            <p className="text-xs text-gray-500">
+                              Date: {new Date(report.violation_date).toLocaleDateString()}
+                              {report.queue_position !== null && ` • Queue Position: ${report.queue_position}`}
+                            </p>
+
+                            {report.status === 'collecting_responses' && (
+                              <div className="mt-3 pt-3 border-t border-gray-200">
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <Timer className="w-4 h-4" />
+                                  <span>
+                                    {report.total_responses} of {report.total_required_responders} votes collected
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {(report.status === 'pending_approval' || report.status === 'approved' || report.status === 'rejected' || report.status === 'expired') && totalVotes > 0 && (
+                              <div className="mt-3 pt-3 border-t border-gray-200">
+                                <p className="text-sm font-medium text-gray-900 mb-2">
+                                  Vote Results ({totalVotes} responses)
+                                </p>
+                                <div className="flex items-center gap-4">
+                                  <div className="flex items-center gap-2">
+                                    <ThumbsUp className="w-4 h-4 text-green-600" />
+                                    <span className="text-sm text-gray-700">
+                                      {report.votes_violation} voted violation ({percentageFor}%)
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <ThumbsDown className="w-4 h-4 text-red-600" />
+                                    <span className="text-sm text-gray-700">
+                                      {report.votes_no_violation} voted no violation ({100 - percentageFor}%)
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {(report.status === 'approved' || report.status === 'rejected') && (
+                              <div className="mt-3 pt-3 border-t border-gray-200">
+                                <p className="text-sm font-medium text-gray-900 mb-1">Management Decision</p>
+                                <p className="text-xs text-gray-600 mb-1">
+                                  Reviewed by: <span className="font-medium">{report.reviewed_by_name}</span>
+                                  {report.reviewed_at && ` on ${new Date(report.reviewed_at).toLocaleDateString()}`}
+                                </p>
+                                {report.action_type && report.action_type !== 'none' && (
+                                  <p className="text-xs text-gray-700 mb-1">
+                                    <span className="font-medium">Action Taken:</span> {report.action_type.replace('_', ' ')}
+                                    {report.action_details && ` - ${report.action_details}`}
+                                  </p>
+                                )}
+                                {report.manager_notes && (
+                                  <p className="text-xs text-gray-700 italic mt-1">
+                                    "{report.manager_notes}"
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       <Modal
         isOpen={showRejectModal}
@@ -1198,11 +1278,6 @@ export function PendingApprovalsPage() {
                 placeholder="Please explain why you are rejecting this ticket..."
                 disabled={processing}
               />
-            </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-sm text-yellow-800">
-                The ticket will be locked and require admin review before any further action can be taken.
-              </p>
             </div>
           </div>
         )}
@@ -1392,12 +1467,6 @@ export function PendingApprovalsPage() {
                 placeholder="Explain your decision and reasoning..."
                 disabled={processing}
               />
-            </div>
-
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-sm text-yellow-800">
-                Your decision will be recorded and all involved parties will be notified.
-              </p>
             </div>
           </div>
         )}
