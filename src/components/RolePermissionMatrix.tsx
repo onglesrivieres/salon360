@@ -52,7 +52,38 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
 
     setLoading(true);
     try {
-      // Load permissions for all roles in parallel
+      // Try to use the optimized bulk query function first
+      const { data: bulkData, error: bulkError } = await supabase.rpc('get_all_roles_permissions', {
+        p_store_id: storeId
+      });
+
+      // If the new function exists and works, use it
+      if (!bulkError && bulkData) {
+        const rolePermissions = new Map<Role, Map<string, PermissionState>>();
+
+        // Parse the JSONB response
+        ALL_ROLES.forEach((role) => {
+          const roleData = bulkData[role];
+          if (roleData && Array.isArray(roleData)) {
+            const permMap = new Map<string, PermissionState>();
+            roleData.forEach((perm: any) => {
+              permMap.set(perm.permission_key, {
+                permission_key: perm.permission_key,
+                is_enabled: perm.is_enabled,
+                is_default: perm.is_enabled === true && !perm.updated_at,
+                updated_at: perm.updated_at
+              });
+            });
+            rolePermissions.set(role, permMap);
+          }
+        });
+
+        setAllPermissions(rolePermissions);
+        return;
+      }
+
+      // Fallback: Load permissions for all roles in parallel (old method)
+      console.log('Using fallback permission loading method');
       const promises = ALL_ROLES.map(async (role) => {
         const { data, error } = await supabase.rpc('get_role_permissions', {
           p_store_id: storeId,
