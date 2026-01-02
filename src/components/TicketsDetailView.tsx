@@ -379,13 +379,13 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
                         <div className="flex justify-between items-center">
                           <span className="text-[9px] text-gray-600">Sub-total</span>
                           <span className="text-[9px] font-semibold text-gray-900">
-                            {summary.total_revenue.toFixed(0)}
+                            ${summary.total_revenue.toFixed(0)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
                           <span className="text-[9px] font-medium text-gray-900">Total</span>
                           <span className="text-[10px] font-bold text-gray-900">
-                            {summary.total_revenue.toFixed(0)}
+                            ${summary.total_revenue.toFixed(0)}
                           </span>
                         </div>
                       </>
@@ -393,7 +393,7 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
                       <div className="flex justify-between items-center">
                         <span className="text-[9px] font-medium text-gray-900">Total Revenue</span>
                         <span className="text-[10px] font-bold text-gray-900">
-                          {summary.total_revenue.toFixed(0)}
+                          ${summary.total_revenue.toFixed(0)}
                         </span>
                       </div>
                     )}
@@ -451,14 +451,14 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
                             <div className="flex justify-between items-center">
                               <span className="text-[8px] text-gray-600">Sub-total</span>
                               <span className="text-[8px] font-semibold text-gray-900">
-                                {totalRevenue.toFixed(0)}
+                                ${totalRevenue.toFixed(0)}
                               </span>
                             </div>
                           ) : (
                             <div className="flex justify-between items-center">
                               <span className="text-[8px] text-gray-600">Total</span>
                               <span className="text-[8px] font-semibold text-gray-900">
-                                {totalRevenue.toFixed(0)}
+                                ${totalRevenue.toFixed(0)}
                               </span>
                             </div>
                           )}

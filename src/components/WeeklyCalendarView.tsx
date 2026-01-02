@@ -104,7 +104,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                           {hasRevenue ? (
                             <div className="flex items-center justify-center">
                               <span className="text-gray-900 text-[10px] font-bold">
-                                {dailyTotal.toFixed(0)}
+                                ${dailyTotal.toFixed(0)}
                               </span>
                             </div>
                           ) : (
@@ -209,7 +209,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                         return (
                           <div className="flex items-center justify-center">
                             <span className="text-gray-900 text-[10px] font-bold">
-                              {periodTotal.toFixed(0)}
+                              ${periodTotal.toFixed(0)}
                             </span>
                           </div>
                         );
