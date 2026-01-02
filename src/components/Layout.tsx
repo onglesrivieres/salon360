@@ -10,6 +10,8 @@ import { initializeVersionCheck, startVersionCheck } from '../lib/version';
 import { Modal } from './ui/Modal';
 import { TechnicianQueue } from './TechnicianQueue';
 import { getCurrentDateEST } from '../lib/timezone';
+import { ViewAsSelector } from './ViewAsSelector';
+import { ViewAsBanner } from './ViewAsBanner';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,7 +20,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
-  const { session, selectedStoreId, selectStore, logout, t } = useAuth();
+  const { session, selectedStoreId, selectStore, logout, t, viewingAsRole, startViewingAs, stopViewingAs, isViewingAs, effectiveRole } = useAuth();
   const { getSettingBoolean } = useSettings();
   const [currentStore, setCurrentStore] = useState<Store | null>(null);
   const [allStores, setAllStores] = useState<Store[]>([]);
@@ -37,7 +39,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [userQueueStatus, setUserQueueStatus] = useState<'ready' | 'neutral' | 'busy'>('neutral');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const canViewAllQueueStatuses = session?.role && Permissions.queue.canViewAllQueueStatuses(session.role);
+  const canViewAllQueueStatuses = effectiveRole && Permissions.queue.canViewAllQueueStatuses(effectiveRole);
 
   useEffect(() => {
     if (selectedStoreId) {
@@ -47,13 +49,13 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     if (session?.employee_id) {
       fetchAllStores();
     }
-    if (session?.employee_id && session?.role && Permissions.tickets.canViewPendingApprovals(session.role)) {
+    if (session?.employee_id && effectiveRole && Permissions.tickets.canViewPendingApprovals(effectiveRole)) {
       fetchPendingApprovalsCount();
     }
-  }, [selectedStoreId, session]);
+  }, [selectedStoreId, session, effectiveRole]);
 
   useEffect(() => {
-    if (!session?.employee_id || !session?.role || !Permissions.tickets.canViewPendingApprovals(session.role) || !selectedStoreId) return;
+    if (!session?.employee_id || !effectiveRole || !Permissions.tickets.canViewPendingApprovals(effectiveRole) || !selectedStoreId) return;
 
     // Poll every 30 seconds for pending approvals
     const interval = setInterval(() => {
@@ -114,7 +116,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       clearInterval(interval);
       supabase.removeChannel(approvalsChannel);
     };
-  }, [session?.employee_id, session?.role, selectedStoreId]);
+  }, [session?.employee_id, effectiveRole, selectedStoreId]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -379,12 +381,12 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
   useEffect(() => {
     // Fetch initial queue status on mount
-    if (session?.employee_id && selectedStoreId && session?.role && canAccessPage('tickets', session.role)) {
+    if (session?.employee_id && selectedStoreId && effectiveRole && canAccessPage('tickets', effectiveRole)) {
       fetchTechnicianQueue();
     }
 
     // Set up real-time subscription for queue status updates
-    if (!session?.employee_id || !selectedStoreId || !session?.role || !canAccessPage('tickets', session.role)) return;
+    if (!session?.employee_id || !selectedStoreId || !effectiveRole || !canAccessPage('tickets', effectiveRole)) return;
 
     const queueStatusChannel = supabase
       .channel(`queue-status-${selectedStoreId}-${session.employee_id}`)
@@ -405,7 +407,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     return () => {
       supabase.removeChannel(queueStatusChannel);
     };
-  }, [session?.employee_id, selectedStoreId, session?.role]);
+  }, [session?.employee_id, selectedStoreId, effectiveRole]);
 
   useEffect(() => {
     if (!showQueueModal) return;
@@ -531,7 +533,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   {currentStore.name}
                 </span>
               ) : null}
-              {session && session.role && canAccessPage('tickets', session.role) && shouldShowQueueButton && (
+              {session && effectiveRole && canAccessPage('tickets', effectiveRole) && shouldShowQueueButton && (
                 <button
                   onClick={handleOpenQueueModal}
                   className="inline-flex items-center gap-2 px-3 py-1.5 border-2 border-blue-600 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors"
@@ -562,7 +564,14 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   <span className="text-xs font-medium text-gray-700">{googleRating.rating} ({googleRating.reviews})</span>
                 </div>
               )}
-              {session && session.role && canAccessPage('settings', session.role) && (
+              {session && session.role && (session.role.includes('Admin') || session.role.includes('Owner')) && (
+                <ViewAsSelector
+                  currentRole={viewingAsRole}
+                  onSelectRole={startViewingAs}
+                  isViewingAs={isViewingAs}
+                />
+              )}
+              {session && effectiveRole && canAccessPage('settings', effectiveRole) && (
                 <button
                   onClick={() => onNavigate('settings')}
                   className="flex items-center gap-2 px-2 py-1 text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
@@ -584,6 +593,10 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           </div>
         </div>
       </header>
+
+      {isViewingAs && viewingAsRole && (
+        <ViewAsBanner role={viewingAsRole} onExit={stopViewingAs} />
+      )}
 
       {shouldShowOpeningCashBanner && (
         <div className="bg-amber-500 text-white px-3 py-2 md:px-4 md:py-3 border-b border-amber-600">
@@ -611,7 +624,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = currentPage === item.id;
-                const hasAccess = session && session.role && canAccessPage(item.id, session.role);
+                const hasAccess = session && effectiveRole && canAccessPage(item.id, effectiveRole);
 
                 if (!hasAccess) return null;
 

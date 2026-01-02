@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AuthSession, getSession, saveSession, clearSession, updateLastActivity } from '../lib/auth';
 import { Locale, getDeviceLocale, translations } from '../lib/i18n';
+import { Role } from '../lib/permissions';
 
 type TranslationKey = keyof typeof translations.en;
 type NestedTranslation = typeof translations.en[TranslationKey];
@@ -16,27 +17,36 @@ interface AuthContextType {
   setLocale: (locale: Locale) => void;
   t: (key: string) => string;
   isAuthenticated: boolean;
+  viewingAsRole: Role | null;
+  startViewingAs: (role: Role) => void;
+  stopViewingAs: () => void;
+  isViewingAs: boolean;
+  effectiveRole: Role[] | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const LOCALE_KEY = 'salon360_locale';
+const VIEWING_AS_ROLE_KEY = 'salon360_viewing_as_role';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [locale, setLocaleState] = useState<Locale>('en');
   const [isLoading, setIsLoading] = useState(true);
+  const [viewingAsRole, setViewingAsRole] = useState<Role | null>(null);
 
   const logout = useCallback(() => {
     clearSession();
     sessionStorage.removeItem('selected_store_id');
     sessionStorage.removeItem('welcome_shown');
+    sessionStorage.removeItem(VIEWING_AS_ROLE_KEY);
     localStorage.removeItem(LOCALE_KEY);
     const deviceLocale = getDeviceLocale();
     setLocaleState(deviceLocale);
     setSession(null);
     setSelectedStoreId(null);
+    setViewingAsRole(null);
   }, []);
 
   const checkSession = useCallback(() => {
@@ -64,6 +74,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const deviceLocale = getDeviceLocale();
       setLocaleState(deviceLocale);
       localStorage.setItem(LOCALE_KEY, deviceLocale);
+    }
+
+    const savedViewingAsRole = sessionStorage.getItem(VIEWING_AS_ROLE_KEY) as Role | null;
+    if (savedViewingAsRole) {
+      setViewingAsRole(savedViewingAsRole);
     }
 
     setIsLoading(false);
@@ -129,6 +144,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSelectedStoreId(null);
   };
 
+  const startViewingAs = (role: Role) => {
+    sessionStorage.setItem(VIEWING_AS_ROLE_KEY, role);
+    setViewingAsRole(role);
+  };
+
+  const stopViewingAs = () => {
+    sessionStorage.removeItem(VIEWING_AS_ROLE_KEY);
+    setViewingAsRole(null);
+  };
+
+  const isViewingAs = viewingAsRole !== null;
+  const effectiveRole = viewingAsRole ? [viewingAsRole] : session?.role || null;
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -138,7 +166,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, selectedStoreId, locale, login, logout, selectStore, clearStore, setLocale, t, isAuthenticated: !!session }}>
+    <AuthContext.Provider value={{
+      session,
+      selectedStoreId,
+      locale,
+      login,
+      logout,
+      selectStore,
+      clearStore,
+      setLocale,
+      t,
+      isAuthenticated: !!session,
+      viewingAsRole,
+      startViewingAs,
+      stopViewingAs,
+      isViewingAs,
+      effectiveRole
+    }}>
       {children}
     </AuthContext.Provider>
   );
