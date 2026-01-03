@@ -1,3 +1,6 @@
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { format } from 'date-fns';
+
 const EST_TIMEZONE = 'America/New_York';
 
 export function formatTimeEST(date: Date | string, options?: Intl.DateTimeFormatOptions): string {
@@ -60,36 +63,36 @@ export function getESTTimezone(): string {
 
 export function convertToESTDatetimeString(utcDateString: string): string {
   if (!utcDateString) return '';
-  const date = new Date(utcDateString);
 
-  const estDate = new Date(date.toLocaleString('en-US', { timeZone: EST_TIMEZONE }));
-  const year = estDate.getFullYear();
-  const month = String(estDate.getMonth() + 1).padStart(2, '0');
-  const day = String(estDate.getDate()).padStart(2, '0');
-  const hours = String(estDate.getHours()).padStart(2, '0');
-  const minutes = String(estDate.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+  // Parse the UTC date
+  const utcDate = new Date(utcDateString);
+
+  // Convert UTC to EST/EDT
+  const estDate = toZonedTime(utcDate, EST_TIMEZONE);
+
+  // Format for datetime-local input (YYYY-MM-DDTHH:mm)
+  return format(estDate, "yyyy-MM-dd'T'HH:mm");
 }
 
 export function convertESTDatetimeStringToUTC(estDatetimeString: string): string {
   if (!estDatetimeString) return '';
 
+  // Parse the datetime string in format: YYYY-MM-DDTHH:mm
   const parts = estDatetimeString.split('T');
   if (parts.length !== 2) return '';
 
   const [datePart, timePart] = parts;
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hour, minute] = timePart.split(':').map(Number);
 
-  const dateTimeString = `${datePart} ${timePart}:00`;
+  // Create a date object representing the EST time
+  // Note: month is 0-indexed in Date constructor
+  const estDate = new Date(year, month - 1, day, hour, minute, 0);
 
-  const utcDate = new Date(new Date(dateTimeString).toLocaleString('en-US', { timeZone: 'UTC' }));
-  const estDate = new Date(new Date(dateTimeString).toLocaleString('en-US', { timeZone: EST_TIMEZONE }));
+  // Convert EST time to UTC
+  const utcDate = fromZonedTime(estDate, EST_TIMEZONE);
 
-  const diff = utcDate.getTime() - estDate.getTime();
-
-  const localAsEST = new Date(dateTimeString);
-  const correctedUTC = new Date(localAsEST.getTime() - diff);
-
-  return correctedUTC.toISOString();
+  return utcDate.toISOString();
 }
 
 export function formatDateOnly(dateString: string): string {
