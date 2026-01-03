@@ -6,7 +6,7 @@ import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Modal } from '../components/ui/Modal';
-import { getCurrentDateEST, formatDateOnly } from '../lib/timezone';
+import { getCurrentDateEST, formatDateOnly, formatDateTimeEST } from '../lib/timezone';
 import { Permissions } from '../lib/permissions';
 
 interface ViolationHistoryReport {
@@ -1400,7 +1400,7 @@ export function PendingApprovalsPage() {
                             </p>
                             <p className="text-sm text-gray-700 mb-2">{report.violation_description}</p>
                             <p className="text-xs text-gray-500">
-                              Date: {formatDateOnly(report.violation_date)}
+                              Date: {formatDateTimeEST(report.created_at)}
                               {report.queue_position !== null && ` • Queue Position: ${report.queue_position}`}
                             </p>
 
