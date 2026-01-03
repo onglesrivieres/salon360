@@ -123,22 +123,19 @@ export function ShiftDetailModal({
     try {
       setSubmitting(true);
 
-      const workDate = new Date(attendance.work_date);
-      const year = workDate.getFullYear();
-      const month = workDate.getMonth();
-      const day = workDate.getDate();
+      const [year, month, day] = attendance.work_date.split('-').map(Number);
 
       let proposedCheckInISO = null;
       if (checkInChanged && proposedCheckInTime) {
         const [hour, minute] = proposedCheckInTime.split(':').map(Number);
-        const estDatetimeString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        const estDatetimeString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
         proposedCheckInISO = convertESTDatetimeStringToUTC(estDatetimeString);
       }
 
       let proposedCheckOutISO = null;
       if (checkOutChanged && proposedCheckOutTime) {
         const [hour, minute] = proposedCheckOutTime.split(':').map(Number);
-        const estDatetimeString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        const estDatetimeString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
         proposedCheckOutISO = convertESTDatetimeStringToUTC(estDatetimeString);
       }
 
