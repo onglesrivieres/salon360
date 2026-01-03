@@ -153,6 +153,9 @@ export function NumericInput({
 
   const isKeypadActive = useKeypad && shouldUseKeypad && !disabled && !readOnly;
 
+  const hasWidthClass = /\b(w-|min-w-|max-w-)/.test(className);
+  const widthClass = hasWidthClass ? '' : 'w-full';
+
   return (
     <input
       ref={inputRef}
@@ -164,7 +167,7 @@ export function NumericInput({
       onTouchStart={handleTouchStart}
       onMouseDown={handleMouseDown}
       onBlur={handleBlur}
-      className={`w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0 disabled:bg-gray-100 disabled:cursor-not-allowed ${isKeypadActive ? 'cursor-pointer' : ''} ${className}`}
+      className={`${widthClass} px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0 disabled:bg-gray-100 disabled:cursor-not-allowed ${isKeypadActive ? 'cursor-pointer' : ''} ${className}`}
       min={min}
       max={max}
       step={step}
