@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
+import { setCurrentTimezone } from '../lib/timezone';
 
 interface AppSetting {
   id: string;
@@ -22,6 +23,7 @@ interface AppSetting {
 interface SettingsContextType {
   settings: Map<string, boolean | string | number>;
   isLoading: boolean;
+  timezone: string;
   getSetting: (key: string, defaultValue?: boolean | string | number) => boolean | string | number;
   getSettingBoolean: (key: string, defaultValue?: boolean) => boolean;
   getSettingNumber: (key: string, defaultValue?: number) => number;
@@ -35,6 +37,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const { selectedStoreId } = useAuth();
   const [settings, setSettings] = useState<Map<string, boolean | string | number>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
+  const [timezone, setTimezone] = useState<string>('America/New_York');
 
   useEffect(() => {
     if (selectedStoreId) {
@@ -60,6 +63,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
 
       const settingsMap = new Map<string, boolean | string | number>();
+      let storeTimezone = 'America/New_York';
+
       data?.forEach((setting) => {
         // The setting_value comes from JSONB, so it's already the correct type
         // Supabase client automatically parses JSONB to JavaScript types
@@ -74,9 +79,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         }
 
         settingsMap.set(setting.setting_key, value);
+
+        // Extract timezone setting
+        if (setting.setting_key === 'store_timezone' && typeof value === 'string') {
+          storeTimezone = value;
+        }
       });
 
       setSettings(settingsMap);
+      setTimezone(storeTimezone);
+      setCurrentTimezone(storeTimezone);
     } catch (error) {
       console.error('Error loading settings:', error);
     } finally {
@@ -139,6 +151,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       value={{
         settings,
         isLoading,
+        timezone,
         getSetting,
         getSettingBoolean,
         getSettingNumber,

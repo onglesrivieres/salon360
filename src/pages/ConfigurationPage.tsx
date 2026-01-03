@@ -246,6 +246,20 @@ export function ConfigurationPage() {
     }
   }
 
+  function handleStringChange(setting: AppSetting, newValue: string) {
+    if (!canManageSettings) {
+      showToast('You do not have permission to change settings', 'error');
+      return;
+    }
+
+    if (setting.is_critical) {
+      setPendingChange({ setting, newValue });
+      setShowConfirmModal(true);
+    } else {
+      updateSetting(setting, newValue);
+    }
+  }
+
   async function updateSetting(setting: AppSetting, newValue: boolean | string | number) {
     try {
       const { error: updateError } = await supabase
@@ -503,7 +517,28 @@ export function ConfigurationPage() {
                           isEnabled={setting.setting_value}
                         />
                       </div>
-                      {typeof setting.setting_value === 'number' ? (
+                      {setting.setting_key === 'store_timezone' ? (
+                        <select
+                          value={setting.setting_value as string}
+                          onChange={(e) => handleStringChange(setting, e.target.value)}
+                          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                        >
+                          <optgroup label="US Timezones">
+                            <option value="America/New_York">Eastern Time (ET)</option>
+                            <option value="America/Chicago">Central Time (CT)</option>
+                            <option value="America/Denver">Mountain Time (MT)</option>
+                            <option value="America/Phoenix">Mountain Time - Arizona (no DST)</option>
+                            <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                            <option value="America/Anchorage">Alaska Time (AKT)</option>
+                            <option value="Pacific/Honolulu">Hawaii Time (HST)</option>
+                          </optgroup>
+                          <optgroup label="Other North American">
+                            <option value="America/Toronto">Toronto (ET)</option>
+                            <option value="America/Vancouver">Vancouver (PT)</option>
+                            <option value="America/Mexico_City">Mexico City</option>
+                          </optgroup>
+                        </select>
+                      ) : typeof setting.setting_value === 'number' ? (
                         <div className="flex flex-col items-end gap-2">
                           <div className="flex items-center gap-2">
                             <NumericInput
