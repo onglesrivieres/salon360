@@ -29,10 +29,16 @@ export interface TransactionData {
   transactionId?: string;
 }
 
-const CATEGORIES = [
-  'Safe Deposit',
+const CASH_IN_CATEGORIES = [
   'Safe Withdrawal',
   'Bank Deposit',
+  'Tip Payout',
+  'Change Fund',
+  'Other',
+];
+
+const CASH_OUT_CATEGORIES = [
+  'Safe Deposit',
   'Supplies Purchase',
   'Tip Payout',
   'Change Fund',
@@ -113,6 +119,8 @@ export function CashTransactionModal({
     ? (transactionType === 'cash_in' ? 'Edit Cash In Transaction' : 'Edit Cash Out Transaction')
     : (transactionType === 'cash_in' ? 'Add Cash In Transaction' : 'Add Cash Out Transaction');
 
+  const availableCategories = transactionType === 'cash_in' ? CASH_IN_CATEGORIES : CASH_OUT_CATEGORIES;
+
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={title}>
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -151,7 +159,7 @@ export function CashTransactionModal({
             }`}
           >
             <option value="">Select a category...</option>
-            {CATEGORIES.map((cat) => (
+            {availableCategories.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
               </option>
