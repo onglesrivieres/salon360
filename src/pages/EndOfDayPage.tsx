@@ -778,7 +778,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl 2k:max-w-full mx-auto 2k:px-8">
       {!isOpeningCashRecorded && (
         <div className="mb-4 bg-amber-50 border-2 border-amber-400 rounded-lg p-4">
           <div className="flex items-start gap-3">
@@ -861,8 +861,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         </div>
       ) : (
         <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-4">
-            <div className={`bg-white rounded-lg shadow p-3 ${!isOpeningCashRecorded ? 'ring-2 ring-amber-400' : ''}`}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 2k:grid-cols-5 gap-2 2k:gap-3 mb-4">
+            <div className={`bg-white rounded-lg shadow p-3 2k:p-4 ${!isOpeningCashRecorded ? 'ring-2 ring-amber-400' : ''}`}>
               <div className="flex items-center gap-2 mb-2">
                 <DollarSign className="w-4 h-4 text-green-600" />
                 <h3 className="text-sm font-semibold text-gray-900">Opening</h3>
@@ -898,7 +898,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               </div>
             </div>
 
-            <div className="bg-gray-50 rounded-lg shadow p-3">
+            <div className="bg-gray-50 rounded-lg shadow p-3 2k:p-4">
               <div className="flex items-center gap-2 mb-2">
                 <DollarSign className="w-4 h-4 text-gray-700" />
                 <h3 className="text-sm font-semibold text-gray-900">Current Register</h3>
@@ -918,7 +918,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-3">
+            <div className="bg-white rounded-lg shadow p-3 2k:p-4">
               <div className="flex items-center gap-2 mb-2">
                 <ArrowDownLeft className="w-4 h-4 text-green-600" />
                 <h3 className="text-sm font-semibold text-gray-900">Cash In</h3>
@@ -953,7 +953,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-3">
+            <div className="bg-white rounded-lg shadow p-3 2k:p-4">
               <div className="flex items-center gap-2 mb-2">
                 <ArrowUpRight className="w-4 h-4 text-red-600" />
                 <h3 className="text-sm font-semibold text-gray-900">Cash Out</h3>
@@ -988,7 +988,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-3">
+            <div className="bg-white rounded-lg shadow p-3 2k:p-4">
               <div className="flex items-center gap-2 mb-2">
                 <DollarSign className="w-4 h-4 text-blue-600" />
                 <h3 className="text-sm font-semibold text-gray-900">Closing</h3>

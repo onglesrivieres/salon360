@@ -8,6 +8,7 @@ export default {
         'iphone': '390px',
         'ipad': '810px',
         'custom': '956px',
+        '2k': '2160px',
       },
     },
   },
