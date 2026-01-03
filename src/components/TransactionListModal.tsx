@@ -32,10 +32,10 @@ export function TransactionListModal({
   const [employeeNames, setEmployeeNames] = useState<Record<string, string>>({});
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string>('');
-  const { selectedStoreId, employee } = useAuth();
+  const { selectedStoreId, session } = useAuth();
 
-  const canEdit = employee?.role && Permissions.cashTransactions.canEdit(employee.role);
-  const canViewHistory = employee?.role && Permissions.cashTransactions.canViewEditHistory(employee.role);
+  const canEdit = session?.role && Permissions.cashTransactions.canEdit(session.role);
+  const canViewHistory = session?.role && Permissions.cashTransactions.canViewEditHistory(session.role);
 
   useEffect(() => {
     loadEmployeeNames();
