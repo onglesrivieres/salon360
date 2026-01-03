@@ -91,3 +91,19 @@ export function convertESTDatetimeStringToUTC(estDatetimeString: string): string
 
   return correctedUTC.toISOString();
 }
+
+export function formatDateOnly(dateString: string): string {
+  if (!dateString) return '';
+
+  const parts = dateString.split('-');
+  if (parts.length !== 3) return dateString;
+
+  const [year, month, day] = parts;
+  const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+}

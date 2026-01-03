@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PendingViolationResponse } from '../lib/supabase';
+import { formatDateOnly } from '../lib/timezone';
 
 interface ViolationResponseRibbonProps {
   pendingResponses: PendingViolationResponse[];
@@ -237,7 +238,7 @@ export function ViolationResponseRibbon({
                       Violation Date
                     </p>
                     <p className="text-white">
-                      {new Date(currentReport.violation_date).toLocaleDateString()}
+                      {formatDateOnly(currentReport.violation_date)}
                     </p>
                   </div>
 
