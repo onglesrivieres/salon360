@@ -103,7 +103,7 @@ export function CashCountModal({
         <NumericInput
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-20 text-center text-xs py-1 flex-shrink-0"
+          className="w-6 text-center text-xs py-1 flex-shrink-0"
           min="0"
           step="1"
         />
