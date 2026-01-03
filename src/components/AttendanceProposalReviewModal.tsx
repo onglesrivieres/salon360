@@ -101,9 +101,12 @@ export function AttendanceProposalReviewModal({
           updates.check_out_time = proposal.proposed_check_out_time;
         }
 
-        if (proposal.proposed_check_in_time && proposal.proposed_check_out_time) {
-          const checkIn = new Date(proposal.proposed_check_in_time);
-          const checkOut = new Date(proposal.proposed_check_out_time);
+        const finalCheckInTime = proposal.proposed_check_in_time || proposal.current_check_in_time;
+        const finalCheckOutTime = proposal.proposed_check_out_time || proposal.current_check_out_time;
+
+        if (finalCheckInTime && finalCheckOutTime) {
+          const checkIn = new Date(finalCheckInTime);
+          const checkOut = new Date(finalCheckOutTime);
           const diffMs = checkOut.getTime() - checkIn.getTime();
           const totalHours = diffMs / (1000 * 60 * 60);
           updates.total_hours = totalHours;
