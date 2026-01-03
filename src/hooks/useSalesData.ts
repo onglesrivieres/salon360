@@ -136,13 +136,83 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
         const currentItems = currentItemsResult?.data || [];
         const previousItems = previousItemsResult?.data || [];
 
+        const currentTicketDiscountMap = new Map<string, number>();
+        currentTickets.forEach(ticket => {
+          currentTicketDiscountMap.set(ticket.id, ticket.discount || 0);
+        });
+
+        const previousTicketDiscountMap = new Map<string, number>();
+        previousTickets.forEach(ticket => {
+          previousTicketDiscountMap.set(ticket.id, ticket.discount || 0);
+        });
+
+        const currentItemsByTicket = new Map<string, any[]>();
+        currentItems.forEach(item => {
+          if (!currentItemsByTicket.has(item.sale_ticket_id)) {
+            currentItemsByTicket.set(item.sale_ticket_id, []);
+          }
+          currentItemsByTicket.get(item.sale_ticket_id)!.push(item);
+        });
+
+        const previousItemsByTicket = new Map<string, any[]>();
+        previousItems.forEach(item => {
+          if (!previousItemsByTicket.has(item.sale_ticket_id)) {
+            previousItemsByTicket.set(item.sale_ticket_id, []);
+          }
+          previousItemsByTicket.get(item.sale_ticket_id)!.push(item);
+        });
+
+        let currentCardCollectedAfterDiscount = 0;
+        let currentCardTips = 0;
+        currentItemsByTicket.forEach((items, ticketId) => {
+          const totalPayments = items.reduce((sum, item) =>
+            sum + (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0), 0);
+          const cardPayments = items.reduce((sum, item) => sum + (item.payment_card || 0), 0);
+          const cardTips = items.reduce((sum, item) => sum + (item.tip_customer_card || 0), 0);
+
+          const ticketDiscount = currentTicketDiscountMap.get(ticketId) || 0;
+
+          let cardProportion = 0;
+          if (totalPayments > 0) {
+            cardProportion = cardPayments / totalPayments;
+          }
+
+          const cardProportionalDiscount = ticketDiscount * cardProportion;
+          const cardPaymentsAfterDiscount = Math.max(0, cardPayments - cardProportionalDiscount);
+
+          currentCardCollectedAfterDiscount += cardPaymentsAfterDiscount;
+          currentCardTips += cardTips;
+        });
+
+        let previousCardCollectedAfterDiscount = 0;
+        let previousCardTips = 0;
+        previousItemsByTicket.forEach((items, ticketId) => {
+          const totalPayments = items.reduce((sum, item) =>
+            sum + (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0), 0);
+          const cardPayments = items.reduce((sum, item) => sum + (item.payment_card || 0), 0);
+          const cardTips = items.reduce((sum, item) => sum + (item.tip_customer_card || 0), 0);
+
+          const ticketDiscount = previousTicketDiscountMap.get(ticketId) || 0;
+
+          let cardProportion = 0;
+          if (totalPayments > 0) {
+            cardProportion = cardPayments / totalPayments;
+          }
+
+          const cardProportionalDiscount = ticketDiscount * cardProportion;
+          const cardPaymentsAfterDiscount = Math.max(0, cardPayments - cardProportionalDiscount);
+
+          previousCardCollectedAfterDiscount += cardPaymentsAfterDiscount;
+          previousCardTips += cardTips;
+        });
+
         const currentCashCollected = currentItems.reduce((sum, item) => sum + (item.payment_cash || 0) + (item.tip_customer_cash || 0), 0);
-        const currentCardCollected = currentItems.reduce((sum, item) => sum + (item.payment_card || 0) + (item.tip_customer_card || 0), 0);
+        const currentCardCollected = currentCardCollectedAfterDiscount + currentCardTips;
         const currentTipsGiven = currentItems.reduce((sum, item) => sum + (item.tip_customer_cash || 0) + (item.tip_customer_card || 0), 0);
         const currentTipsPaired = currentItems.reduce((sum, item) => sum + (item.tip_receptionist || 0), 0);
 
         const previousCashCollected = previousItems.reduce((sum, item) => sum + (item.payment_cash || 0) + (item.tip_customer_cash || 0), 0);
-        const previousCardCollected = previousItems.reduce((sum, item) => sum + (item.payment_card || 0) + (item.tip_customer_card || 0), 0);
+        const previousCardCollected = previousCardCollectedAfterDiscount + previousCardTips;
         const previousTipsGiven = previousItems.reduce((sum, item) => sum + (item.tip_customer_cash || 0) + (item.tip_customer_card || 0), 0);
         const previousTipsPaired = previousItems.reduce((sum, item) => sum + (item.tip_receptionist || 0), 0);
 
