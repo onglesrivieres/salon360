@@ -30,7 +30,7 @@ export function SalesMetrics({ data }: SalesMetricsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <MetricCard
-        label="Transactions"
+        label="Services"
         value={formatNumber(data.current.transactions)}
         trend={transactionsTrend}
         icon={ShoppingCart}
