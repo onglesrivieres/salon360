@@ -30,9 +30,6 @@ export interface TransactionData {
 }
 
 const CASH_IN_CATEGORIES = [
-  'Safe Withdrawal',
-  'Bank Deposit',
-  'Tip Payout',
   'Change Fund',
   'Other',
 ];
