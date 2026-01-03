@@ -166,7 +166,7 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
         let currentCardTips = 0;
         currentItemsByTicket.forEach((items, ticketId) => {
           const totalPayments = items.reduce((sum, item) =>
-            sum + (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0), 0);
+            sum + (item.payment_cash || 0) + (item.payment_card || 0), 0);
           const cardPayments = items.reduce((sum, item) => sum + (item.payment_card || 0), 0);
           const cardTips = items.reduce((sum, item) => sum + (item.tip_customer_card || 0), 0);
 
@@ -188,7 +188,7 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
         let previousCardTips = 0;
         previousItemsByTicket.forEach((items, ticketId) => {
           const totalPayments = items.reduce((sum, item) =>
-            sum + (item.payment_cash || 0) + (item.payment_card || 0) + (item.payment_gift_card || 0), 0);
+            sum + (item.payment_cash || 0) + (item.payment_card || 0), 0);
           const cardPayments = items.reduce((sum, item) => sum + (item.payment_card || 0), 0);
           const cardTips = items.reduce((sum, item) => sum + (item.tip_customer_card || 0), 0);
 
