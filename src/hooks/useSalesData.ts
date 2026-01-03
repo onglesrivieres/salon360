@@ -86,14 +86,14 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
         const [currentResult, previousResult, currentItemsResult, previousItemsResult] = await Promise.all([
           supabase
             .from('sale_tickets')
-            .select('id, total, tax, discount, closed_at, payment_method')
+            .select('id, total, tax, discount, closed_at')
             .eq('store_id', storeId)
             .gte('ticket_date', dateRange.startDate)
             .lte('ticket_date', dateRange.endDate)
             .not('closed_at', 'is', null),
           supabase
             .from('sale_tickets')
-            .select('id, total, tax, discount, closed_at, payment_method')
+            .select('id, total, tax, discount, closed_at')
             .eq('store_id', storeId)
             .gte('ticket_date', previousRange.startDate)
             .lte('ticket_date', previousRange.endDate)
@@ -136,29 +136,13 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
         const currentItems = currentItemsResult?.data || [];
         const previousItems = previousItemsResult?.data || [];
 
-        const currentTicketPaymentMethods = new Map(
-          currentTickets.map(t => [t.id, t.payment_method])
-        );
-        const previousTicketPaymentMethods = new Map(
-          previousTickets.map(t => [t.id, t.payment_method])
-        );
-
-        const currentCardItems = currentItems.filter(item => {
-          const paymentMethod = currentTicketPaymentMethods.get(item.sale_ticket_id);
-          return paymentMethod === 'Card' || paymentMethod === 'Mixed';
-        });
-        const previousCardItems = previousItems.filter(item => {
-          const paymentMethod = previousTicketPaymentMethods.get(item.sale_ticket_id);
-          return paymentMethod === 'Card' || paymentMethod === 'Mixed';
-        });
-
         const currentCashCollected = currentItems.reduce((sum, item) => sum + (item.payment_cash || 0) + (item.tip_customer_cash || 0), 0);
-        const currentCardCollected = currentCardItems.reduce((sum, item) => sum + (item.payment_card || 0) + (item.tip_customer_card || 0), 0);
+        const currentCardCollected = currentItems.reduce((sum, item) => sum + (item.payment_card || 0) + (item.tip_customer_card || 0), 0);
         const currentTipsGiven = currentItems.reduce((sum, item) => sum + (item.tip_customer_cash || 0) + (item.tip_customer_card || 0), 0);
         const currentTipsPaired = currentItems.reduce((sum, item) => sum + (item.tip_receptionist || 0), 0);
 
         const previousCashCollected = previousItems.reduce((sum, item) => sum + (item.payment_cash || 0) + (item.tip_customer_cash || 0), 0);
-        const previousCardCollected = previousCardItems.reduce((sum, item) => sum + (item.payment_card || 0) + (item.tip_customer_card || 0), 0);
+        const previousCardCollected = previousItems.reduce((sum, item) => sum + (item.payment_card || 0) + (item.tip_customer_card || 0), 0);
         const previousTipsGiven = previousItems.reduce((sum, item) => sum + (item.tip_customer_cash || 0) + (item.tip_customer_card || 0), 0);
         const previousTipsPaired = previousItems.reduce((sum, item) => sum + (item.tip_receptionist || 0), 0);
 
@@ -967,12 +951,11 @@ export function useCardPaymentAnalysis(dateRange: DateRange, storeId: string | n
 
         const ticketsResult = await supabase
           .from('sale_tickets')
-          .select('id, total, payment_method')
+          .select('id, total')
           .eq('store_id', storeId)
           .gte('ticket_date', dateRange.startDate)
           .lte('ticket_date', dateRange.endDate)
-          .not('closed_at', 'is', null)
-          .in('payment_method', ['Card', 'Mixed']);
+          .not('closed_at', 'is', null);
 
         if (cancelled) return;
 
@@ -1013,23 +996,26 @@ export function useCardPaymentAnalysis(dateRange: DateRange, storeId: string | n
 
         tickets.forEach((ticket) => {
           const ticketItems = itemsByTicket[ticket.id] || [];
-          const ticketGrandTotal = ticketItems.reduce(
-            (sum, item) => sum + (item.payment_cash || 0) + (item.payment_card || 0),
-            0
-          );
           const cardAmount = ticketItems.reduce((sum, item) => sum + (item.payment_card || 0), 0);
 
-          const isCredit = Math.random() > 0.5;
-          const cardIndex = Math.floor(Math.random() * (isCredit ? creditCardData.length : debitCardData.length));
+          if (cardAmount > 0) {
+            const ticketGrandTotal = ticketItems.reduce(
+              (sum, item) => sum + (item.payment_cash || 0) + (item.payment_card || 0),
+              0
+            );
 
-          if (isCredit) {
-            creditCardData[cardIndex].transactions += 1;
-            creditCardData[cardIndex].salesTotal += ticketGrandTotal;
-            creditCardData[cardIndex].amountCollected += cardAmount;
-          } else {
-            debitCardData[cardIndex].transactions += 1;
-            debitCardData[cardIndex].salesTotal += ticketGrandTotal;
-            debitCardData[cardIndex].amountCollected += cardAmount;
+            const isCredit = Math.random() > 0.5;
+            const cardIndex = Math.floor(Math.random() * (isCredit ? creditCardData.length : debitCardData.length));
+
+            if (isCredit) {
+              creditCardData[cardIndex].transactions += 1;
+              creditCardData[cardIndex].salesTotal += ticketGrandTotal;
+              creditCardData[cardIndex].amountCollected += cardAmount;
+            } else {
+              debitCardData[cardIndex].transactions += 1;
+              debitCardData[cardIndex].salesTotal += ticketGrandTotal;
+              debitCardData[cardIndex].amountCollected += cardAmount;
+            }
           }
         });
 
