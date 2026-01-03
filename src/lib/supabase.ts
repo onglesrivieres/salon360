@@ -716,7 +716,7 @@ export interface EndOfDayRecord {
   updated_at: string;
 }
 
-export type CashTransactionType = 'cash_in' | 'cash_out';
+export type CashTransactionType = 'cash_in' | 'cash_out' | 'cash_payout';
 export type CashTransactionStatus = 'pending_approval' | 'approved' | 'rejected';
 
 export interface CashTransaction {

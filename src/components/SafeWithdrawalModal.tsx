@@ -18,13 +18,8 @@ export interface WithdrawalData {
 }
 
 const WITHDRAWAL_CATEGORIES = [
-  'Bank Deposit',
-  'Bill Payment',
-  'Store Transfer',
-  'Emergency Expense',
-  'Vendor Payment',
-  'Cash Float Adjustment',
-  'Other',
+  'Payroll',
+  'Tip Payout',
 ];
 
 export function SafeWithdrawalModal({

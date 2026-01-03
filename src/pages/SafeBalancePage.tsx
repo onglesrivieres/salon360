@@ -4,7 +4,7 @@ import { supabase, SafeBalanceSummary, CashTransactionWithDetails } from '../lib
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentDateEST } from '../lib/timezone';
-import { CashTransactionModal, TransactionData } from '../components/CashTransactionModal';
+import { SafeWithdrawalModal, WithdrawalData } from '../components/SafeWithdrawalModal';
 import { Button } from '../components/ui/Button';
 
 interface SafeBalancePageProps {
@@ -92,8 +92,8 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
         `)
         .eq('store_id', selectedStoreId)
         .eq('date', selectedDate)
-        .eq('transaction_type', 'cash_in')
-        .eq('category', 'Safe Withdrawal')
+        .eq('transaction_type', 'cash_payout')
+        .in('category', ['Payroll', 'Tip Payout'])
         .order('created_at', { ascending: false });
 
       if (withdrawalsError) throw withdrawalsError;
@@ -129,7 +129,7 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
     onDateChange(getCurrentDateEST());
   }
 
-  async function handleWithdrawalSubmit(data: TransactionData) {
+  async function handleWithdrawalSubmit(data: WithdrawalData) {
     if (!session?.user?.id || !selectedStoreId) {
       showToast('You must be logged in to record a withdrawal', 'error');
       return;
@@ -139,7 +139,7 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
       const { error } = await supabase.from('cash_transactions').insert({
         store_id: selectedStoreId,
         date: selectedDate,
-        transaction_type: 'cash_in',
+        transaction_type: 'cash_payout',
         category: data.category,
         amount: data.amount,
         description: data.description,
@@ -372,6 +372,11 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
                           </span>
                         </div>
                       </div>
+                      <div className="mb-1">
+                        <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                          {withdrawal.category}
+                        </span>
+                      </div>
                       <p className="text-sm text-gray-900 font-medium">{withdrawal.description}</p>
                       <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
                         <span>By: {withdrawal.created_by_name}</span>
@@ -386,13 +391,11 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
         </>
       )}
 
-      <CashTransactionModal
+      <SafeWithdrawalModal
         isOpen={showWithdrawalModal}
         onClose={() => setShowWithdrawalModal(false)}
         onSubmit={handleWithdrawalSubmit}
-        transactionType="cash_in"
-        defaultCategory="Safe Withdrawal"
-        defaultDescription="Withdrawal from safe"
+        currentBalance={safeBalance?.closing_balance || 0}
       />
     </div>
   );
