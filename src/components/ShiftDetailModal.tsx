@@ -6,7 +6,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { useToast } from './ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
-import { formatTimeEST, formatDateEST } from '../lib/timezone';
+import { formatTimeEST, formatDateEST, convertESTDatetimeStringToUTC } from '../lib/timezone';
 
 interface ShiftDetailModalProps {
   isOpen: boolean;
@@ -131,26 +131,15 @@ export function ShiftDetailModal({
       let proposedCheckInISO = null;
       if (checkInChanged && proposedCheckInTime) {
         const [hour, minute] = proposedCheckInTime.split(':').map(Number);
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-        const estDateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
-        const utcDate = new Date(new Date(estDateString).toLocaleString('en-US', { timeZone: 'UTC' }));
-        const estDate = new Date(new Date(estDateString).toLocaleString('en-US', { timeZone: 'America/New_York' }));
-        const diff = utcDate.getTime() - estDate.getTime();
-        const localAsEST = new Date(estDateString);
-        const correctedUTC = new Date(localAsEST.getTime() - diff);
-        proposedCheckInISO = correctedUTC.toISOString();
+        const estDatetimeString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        proposedCheckInISO = convertESTDatetimeStringToUTC(estDatetimeString);
       }
 
       let proposedCheckOutISO = null;
       if (checkOutChanged && proposedCheckOutTime) {
         const [hour, minute] = proposedCheckOutTime.split(':').map(Number);
-        const estDateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
-        const utcDate = new Date(new Date(estDateString).toLocaleString('en-US', { timeZone: 'UTC' }));
-        const estDate = new Date(new Date(estDateString).toLocaleString('en-US', { timeZone: 'America/New_York' }));
-        const diff = utcDate.getTime() - estDate.getTime();
-        const localAsEST = new Date(estDateString);
-        const correctedUTC = new Date(localAsEST.getTime() - diff);
-        proposedCheckOutISO = correctedUTC.toISOString();
+        const estDatetimeString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        proposedCheckOutISO = convertESTDatetimeStringToUTC(estDatetimeString);
       }
 
       const { error } = await supabase
