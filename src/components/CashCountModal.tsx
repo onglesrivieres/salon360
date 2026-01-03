@@ -115,7 +115,7 @@ export function CashCountModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleCancel} title={title} size="md">
+    <Modal isOpen={isOpen} onClose={handleCancel} title={title} size="sm">
       <div className="space-y-3">
         <div className="space-y-1.5">
           <DenominationInput
