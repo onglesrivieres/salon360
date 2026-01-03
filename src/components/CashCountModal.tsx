@@ -103,7 +103,7 @@ export function CashCountModal({
         <NumericInput
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-2 text-center text-xs py-1 flex-shrink-0"
+          className="w-6 text-center text-xs py-1 flex-shrink-0"
           min="0"
           step="1"
         />
@@ -181,12 +181,13 @@ export function CashCountModal({
         </div>
 
         <div className={`pt-4 border-t-2 border-gray-200 ${colorClasses} rounded-lg p-4`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <DollarSign className={`w-5 h-5 ${colorScheme === 'green' ? 'text-green-600' : 'text-blue-600'}`} />
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 w-20 flex-shrink-0">
+              <DollarSign className={`w-4 h-4 ${colorScheme === 'green' ? 'text-green-600' : 'text-blue-600'}`} />
               <span className="text-sm font-semibold text-gray-900">Total:</span>
             </div>
-            <span className={`text-2xl font-bold ${colorScheme === 'green' ? 'text-green-600' : 'text-blue-600'}`}>
+            <div className="w-6 flex-shrink-0"></div>
+            <span className={`text-xl font-bold w-24 text-right flex-shrink-0 ${colorScheme === 'green' ? 'text-green-600' : 'text-blue-600'}`}>
               ${total.toFixed(2)}
             </span>
           </div>
