@@ -99,15 +99,15 @@ export function CashCountModal({
     const itemTotal = value * denomination;
     return (
       <div className="flex items-center gap-3">
-        <label className="text-xs text-gray-700 w-20 whitespace-nowrap flex-shrink-0">{label}</label>
+        <label className="text-sm font-medium text-gray-700 w-20 whitespace-nowrap flex-shrink-0">{label}</label>
         <NumericInput
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-16 text-center text-xs py-1 flex-shrink-0"
+          className="w-16 text-center text-sm py-1 flex-shrink-0"
           min="0"
           step="1"
         />
-        <span className="text-xs font-semibold text-gray-900 w-24 text-right whitespace-nowrap flex-shrink-0">
+        <span className="text-sm font-semibold text-gray-900 w-24 text-right whitespace-nowrap flex-shrink-0">
           ${itemTotal.toFixed(2)}
         </span>
       </div>
@@ -149,13 +149,13 @@ export function CashCountModal({
             denomination={5}
           />
           <DenominationInput
-            label="$2 Bills"
+            label="$2 Coins"
             value={denominations.bill_2}
             onChange={(v) => updateDenomination('bill_2', v)}
             denomination={2}
           />
           <DenominationInput
-            label="$1 Bills"
+            label="$1 Coins"
             value={denominations.bill_1}
             onChange={(v) => updateDenomination('bill_1', v)}
             denomination={1}
@@ -183,21 +183,21 @@ export function CashCountModal({
         <div className={`pt-4 border-t-2 border-gray-200 ${colorClasses} rounded-lg p-4`}>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 w-20 flex-shrink-0">
-              <DollarSign className={`w-4 h-4 ${colorScheme === 'green' ? 'text-green-600' : 'text-blue-600'}`} />
-              <span className="text-sm font-semibold text-gray-900">Total:</span>
+              <DollarSign className={`w-5 h-5 ${colorScheme === 'green' ? 'text-green-600' : 'text-blue-600'}`} />
+              <span className="text-base font-bold text-gray-900">Total:</span>
             </div>
             <div className="w-16 flex-shrink-0"></div>
-            <span className={`text-xl font-bold w-24 text-right flex-shrink-0 ${colorScheme === 'green' ? 'text-green-600' : 'text-blue-600'}`}>
+            <span className={`text-2xl font-bold w-24 text-right flex-shrink-0 ${colorScheme === 'green' ? 'text-green-600' : 'text-blue-600'}`}>
               ${total.toFixed(2)}
             </span>
           </div>
         </div>
 
         <div className="flex gap-3 pt-2">
-          <Button variant="secondary" onClick={handleCancel} className="flex-1" disabled={isSubmitting}>
+          <Button variant="secondary" onClick={handleCancel} className="px-8" disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSubmit} className="flex-1" disabled={isSubmitting}>
+          <Button variant="primary" onClick={handleSubmit} className="px-8" disabled={isSubmitting}>
             {isSubmitting ? 'Saving...' : 'Submit'}
           </Button>
         </div>
