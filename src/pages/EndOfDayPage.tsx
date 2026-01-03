@@ -79,6 +79,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [isSafeDepositModalOpen, setIsSafeDepositModalOpen] = useState(false);
   const [editingCashTransaction, setEditingCashTransaction] = useState<CashTransaction | null>(null);
   const [isEditingCashTransaction, setIsEditingCashTransaction] = useState(false);
+  const [isAutoFilledFromPreviousDay, setIsAutoFilledFromPreviousDay] = useState(false);
 
   useEffect(() => {
     loadEODData();
@@ -89,6 +90,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
     try {
       setLoading(true);
+      setIsAutoFilledFromPreviousDay(false);
 
       const { data: existingRecord, error: recordError } = await supabase
         .from('end_of_day_records')
@@ -101,18 +103,55 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       if (existingRecord) {
         setEodRecord(existingRecord);
-        setOpeningDenominations({
-          bill_100: existingRecord.bill_100,
-          bill_50: existingRecord.bill_50,
-          bill_20: existingRecord.bill_20,
-          bill_10: existingRecord.bill_10,
-          bill_5: existingRecord.bill_5,
-          bill_2: existingRecord.bill_2,
-          bill_1: existingRecord.bill_1,
-          coin_25: existingRecord.coin_25,
-          coin_10: existingRecord.coin_10,
-          coin_5: existingRecord.coin_5,
-        });
+
+        const hasOpeningCash = (
+          existingRecord.opening_cash_amount > 0 ||
+          existingRecord.bill_100 > 0 ||
+          existingRecord.bill_50 > 0 ||
+          existingRecord.bill_20 > 0 ||
+          existingRecord.bill_10 > 0 ||
+          existingRecord.bill_5 > 0 ||
+          existingRecord.bill_2 > 0 ||
+          existingRecord.bill_1 > 0 ||
+          existingRecord.coin_25 > 0 ||
+          existingRecord.coin_10 > 0 ||
+          existingRecord.coin_5 > 0
+        );
+
+        if (hasOpeningCash) {
+          setOpeningDenominations({
+            bill_100: existingRecord.bill_100,
+            bill_50: existingRecord.bill_50,
+            bill_20: existingRecord.bill_20,
+            bill_10: existingRecord.bill_10,
+            bill_5: existingRecord.bill_5,
+            bill_2: existingRecord.bill_2,
+            bill_1: existingRecord.bill_1,
+            coin_25: existingRecord.coin_25,
+            coin_10: existingRecord.coin_10,
+            coin_5: existingRecord.coin_5,
+          });
+        } else {
+          const previousDayClosing = await fetchPreviousDayClosingCash();
+          if (previousDayClosing) {
+            setOpeningDenominations(previousDayClosing);
+            setIsAutoFilledFromPreviousDay(true);
+          } else {
+            setOpeningDenominations({
+              bill_100: 0,
+              bill_50: 0,
+              bill_20: 0,
+              bill_10: 0,
+              bill_5: 0,
+              bill_2: 0,
+              bill_1: 0,
+              coin_25: 0,
+              coin_10: 0,
+              coin_5: 0,
+            });
+          }
+        }
+
         setClosingDenominations({
           bill_100: existingRecord.closing_bill_100,
           bill_50: existingRecord.closing_bill_50,
@@ -126,6 +165,39 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           coin_5: existingRecord.closing_coin_5,
         });
         setNotes(existingRecord.notes || '');
+      } else {
+        setEodRecord(null);
+        const previousDayClosing = await fetchPreviousDayClosingCash();
+        if (previousDayClosing) {
+          setOpeningDenominations(previousDayClosing);
+          setIsAutoFilledFromPreviousDay(true);
+        } else {
+          setOpeningDenominations({
+            bill_100: 0,
+            bill_50: 0,
+            bill_20: 0,
+            bill_10: 0,
+            bill_5: 0,
+            bill_2: 0,
+            bill_1: 0,
+            coin_25: 0,
+            coin_10: 0,
+            coin_5: 0,
+          });
+        }
+        setClosingDenominations({
+          bill_100: 0,
+          bill_50: 0,
+          bill_20: 0,
+          bill_10: 0,
+          bill_5: 0,
+          bill_2: 0,
+          bill_1: 0,
+          coin_25: 0,
+          coin_10: 0,
+          coin_5: 0,
+        });
+        setNotes('');
       }
 
       const { data: tickets, error: ticketsError } = await supabase
@@ -204,6 +276,64 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       setCashOutTransactions(cashOut);
     } catch (error) {
       console.error('Failed to load cash transactions:', error);
+    }
+  }
+
+  function getPreviousDayDate(dateString: string): string {
+    const date = new Date(dateString + 'T00:00:00');
+    date.setDate(date.getDate() - 1);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  async function fetchPreviousDayClosingCash(): Promise<CashDenominations | null> {
+    if (!selectedStoreId) return null;
+
+    try {
+      const previousDay = getPreviousDayDate(selectedDate);
+
+      const { data: previousRecord, error } = await supabase
+        .from('end_of_day_records')
+        .select('*')
+        .eq('store_id', selectedStoreId)
+        .eq('date', previousDay)
+        .maybeSingle();
+
+      if (error || !previousRecord) return null;
+
+      const hasClosingCash = (
+        previousRecord.closing_cash_amount > 0 ||
+        previousRecord.closing_bill_100 > 0 ||
+        previousRecord.closing_bill_50 > 0 ||
+        previousRecord.closing_bill_20 > 0 ||
+        previousRecord.closing_bill_10 > 0 ||
+        previousRecord.closing_bill_5 > 0 ||
+        previousRecord.closing_bill_2 > 0 ||
+        previousRecord.closing_bill_1 > 0 ||
+        previousRecord.closing_coin_25 > 0 ||
+        previousRecord.closing_coin_10 > 0 ||
+        previousRecord.closing_coin_5 > 0
+      );
+
+      if (!hasClosingCash) return null;
+
+      return {
+        bill_100: previousRecord.closing_bill_100,
+        bill_50: previousRecord.closing_bill_50,
+        bill_20: previousRecord.closing_bill_20,
+        bill_10: previousRecord.closing_bill_10,
+        bill_5: previousRecord.closing_bill_5,
+        bill_2: previousRecord.closing_bill_2,
+        bill_1: previousRecord.closing_bill_1,
+        coin_25: previousRecord.closing_coin_25,
+        coin_10: previousRecord.closing_coin_10,
+        coin_5: previousRecord.closing_coin_5,
+      };
+    } catch (error) {
+      console.error('Failed to fetch previous day closing cash:', error);
+      return null;
     }
   }
 
@@ -337,6 +467,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       }
 
       showToast('Opening cash saved successfully', 'success');
+      setIsAutoFilledFromPreviousDay(false);
       await loadEODData();
 
       window.dispatchEvent(new CustomEvent('openingCashUpdated'));
@@ -655,7 +786,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             <div className="flex-1">
               <h3 className="text-sm font-bold text-amber-900 mb-1">Opening Cash Count Required</h3>
               <p className="text-sm text-amber-800 mb-2">
-                You must count and record the opening cash before creating any sale tickets for today.
+                {isAutoFilledFromPreviousDay
+                  ? "Opening cash has been pre-filled with yesterday's closing balance. Please verify and adjust if needed."
+                  : "You must count and record the opening cash before creating any sale tickets for today."}
               </p>
               <Button
                 variant="primary"
@@ -664,7 +797,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                 className="bg-amber-600 hover:bg-amber-700"
               >
                 <DollarSign className="w-4 h-4 mr-1" />
-                Count Opening Cash Now
+                {isAutoFilledFromPreviousDay ? 'Verify Opening Cash' : 'Count Opening Cash Now'}
               </Button>
             </div>
           </div>
@@ -750,6 +883,11 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                   <div className="mt-2 flex items-center justify-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded">
                     <CheckCircle className="w-3 h-3" />
                     Recorded
+                  </div>
+                ) : isAutoFilledFromPreviousDay ? (
+                  <div className="mt-2 flex items-center justify-center gap-1 text-xs font-medium text-blue-700 bg-blue-100 px-2 py-1 rounded">
+                    <AlertCircle className="w-3 h-3" />
+                    Pre-filled
                   </div>
                 ) : (
                   <div className="mt-2 flex items-center justify-center gap-1 text-xs font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded">
