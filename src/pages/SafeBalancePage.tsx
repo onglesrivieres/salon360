@@ -92,7 +92,7 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
         `)
         .eq('store_id', selectedStoreId)
         .eq('date', selectedDate)
-        .eq('transaction_type', 'cash_out')
+        .eq('transaction_type', 'cash_payout')
         .eq('category', 'Safe Withdrawal')
         .order('created_at', { ascending: false });
 
@@ -139,7 +139,7 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
       const { error } = await supabase.from('cash_transactions').insert({
         store_id: selectedStoreId,
         date: selectedDate,
-        transaction_type: 'cash_out',
+        transaction_type: 'cash_payout',
         category: data.category,
         amount: data.amount,
         description: data.description,
