@@ -861,15 +861,15 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         </div>
       ) : (
         <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-            <div className={`bg-white rounded-lg shadow p-4 ${!isOpeningCashRecorded ? 'ring-2 ring-amber-400' : ''}`}>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-4">
+            <div className={`bg-white rounded-lg shadow p-3 ${!isOpeningCashRecorded ? 'ring-2 ring-amber-400' : ''}`}>
+              <div className="flex items-center gap-2 mb-2">
                 <DollarSign className="w-4 h-4 text-green-600" />
                 <h3 className="text-sm font-semibold text-gray-900">Opening</h3>
               </div>
-              <div className="text-center py-3">
+              <div className="text-center py-2">
                 <p className="text-xs text-gray-600 mb-1">Total Amount</p>
-                <p className="text-2xl font-bold text-green-600 mb-3">${openingCashTotal.toFixed(2)}</p>
+                <p className="text-xl font-bold text-green-600 mb-2">${openingCashTotal.toFixed(2)}</p>
                 <Button
                   variant={!isOpeningCashRecorded ? "primary" : "secondary"}
                   size="sm"
@@ -898,14 +898,14 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               </div>
             </div>
 
-            <div className="bg-gray-50 rounded-lg shadow p-4">
-              <div className="flex items-center gap-2 mb-3">
+            <div className="bg-gray-50 rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-2">
                 <DollarSign className="w-4 h-4 text-gray-700" />
                 <h3 className="text-sm font-semibold text-gray-900">Current Register</h3>
               </div>
-              <div className="text-center py-3">
+              <div className="text-center py-2">
                 <p className="text-xs text-gray-600 mb-1">Current Amount</p>
-                <p className="text-2xl font-bold text-gray-900 mb-3">${netCashCollected.toFixed(2)}</p>
+                <p className="text-xl font-bold text-gray-900 mb-2">${netCashCollected.toFixed(2)}</p>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -918,16 +918,16 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-2 mb-3">
+            <div className="bg-white rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-2">
                 <ArrowDownLeft className="w-4 h-4 text-green-600" />
                 <h3 className="text-sm font-semibold text-gray-900">Cash In</h3>
               </div>
-              <div className="text-center py-3">
+              <div className="text-center py-2">
                 <p className="text-xs text-gray-600 mb-1">Total Amount</p>
                 <button
                   onClick={() => setIsCashInListModalOpen(true)}
-                  className="text-2xl font-bold text-green-600 mb-3 hover:text-green-700 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 rounded px-2"
+                  className="text-xl font-bold text-green-600 mb-2 hover:text-green-700 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 rounded px-2"
                   title="View all Cash In transactions"
                 >
                   ${totalCashIn.toFixed(2)}
@@ -953,16 +953,16 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-2 mb-3">
+            <div className="bg-white rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-2">
                 <ArrowUpRight className="w-4 h-4 text-red-600" />
                 <h3 className="text-sm font-semibold text-gray-900">Cash Out</h3>
               </div>
-              <div className="text-center py-3">
+              <div className="text-center py-2">
                 <p className="text-xs text-gray-600 mb-1">Total Amount</p>
                 <button
                   onClick={() => setIsCashOutListModalOpen(true)}
-                  className="text-2xl font-bold text-red-600 mb-3 hover:text-red-700 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded px-2"
+                  className="text-xl font-bold text-red-600 mb-2 hover:text-red-700 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded px-2"
                   title="View all Cash Out transactions"
                 >
                   ${totalCashOut.toFixed(2)}
@@ -988,14 +988,14 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="flex items-center gap-2 mb-3">
+            <div className="bg-white rounded-lg shadow p-3">
+              <div className="flex items-center gap-2 mb-2">
                 <DollarSign className="w-4 h-4 text-blue-600" />
                 <h3 className="text-sm font-semibold text-gray-900">Closing</h3>
               </div>
-              <div className="text-center py-3">
+              <div className="text-center py-2">
                 <p className="text-xs text-gray-600 mb-1">Total Amount</p>
-                <p className="text-2xl font-bold text-blue-600 mb-3">${closingCashTotal.toFixed(2)}</p>
+                <p className="text-xl font-bold text-blue-600 mb-2">${closingCashTotal.toFixed(2)}</p>
                 <Button
                   variant="secondary"
                   size="sm"
