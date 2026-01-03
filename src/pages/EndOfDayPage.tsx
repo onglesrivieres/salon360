@@ -602,21 +602,23 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
         showToast('Transaction updated successfully', 'success');
       } else {
-        const { error } = await supabase
-          .from('cash_transactions')
-          .insert({
-            store_id: selectedStoreId,
-            date: selectedDate,
-            transaction_type: transactionType,
-            amount: data.amount,
-            description: data.description,
-            category: data.category,
-            created_by_id: session.employee_id,
-            status: 'pending_approval',
-            requires_manager_approval: true,
+        const { data: result, error } = await supabase
+          .rpc('create_cash_transaction_with_validation', {
+            p_store_id: selectedStoreId,
+            p_date: selectedDate,
+            p_transaction_type: transactionType,
+            p_amount: data.amount,
+            p_description: data.description,
+            p_category: data.category,
+            p_created_by_id: session.employee_id,
           });
 
         if (error) throw error;
+
+        if (result && !result.success) {
+          showToast(result.error || 'Failed to create transaction', 'error');
+          return;
+        }
 
         showToast('Transaction submitted for manager approval', 'success');
       }

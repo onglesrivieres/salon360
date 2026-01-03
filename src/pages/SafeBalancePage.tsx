@@ -130,24 +130,29 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
   }
 
   async function handleWithdrawalSubmit(data: WithdrawalData) {
-    if (!session?.user?.id || !selectedStoreId) {
+    if (!session?.employee_id || !selectedStoreId) {
       showToast('You must be logged in to record a withdrawal', 'error');
       return;
     }
 
     try {
-      const { error } = await supabase.from('cash_transactions').insert({
-        store_id: selectedStoreId,
-        date: selectedDate,
-        transaction_type: 'cash_payout',
-        category: data.category,
-        amount: data.amount,
-        description: data.description,
-        status: 'pending_approval',
-        created_by_id: session.user.id,
-      });
+      const { data: result, error } = await supabase
+        .rpc('create_cash_transaction_with_validation', {
+          p_store_id: selectedStoreId,
+          p_date: selectedDate,
+          p_transaction_type: 'cash_payout',
+          p_amount: data.amount,
+          p_description: data.description,
+          p_category: data.category,
+          p_created_by_id: session.employee_id,
+        });
 
       if (error) throw error;
+
+      if (result && !result.success) {
+        showToast(result.error || 'Failed to submit withdrawal', 'error');
+        return;
+      }
 
       showToast('Withdrawal submitted for approval', 'success');
       setShowWithdrawalModal(false);
