@@ -995,7 +995,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                       {cashInTransactions.map((transaction) => (
                         <div
                           key={transaction.id}
-                          className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+                          onClick={() => handleEditCashTransaction(transaction)}
+                          className="p-3 border border-gray-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-colors cursor-pointer"
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -1027,6 +1028,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                                 {new Date(transaction.created_at).toLocaleString()}
                               </p>
                             </div>
+                            <Edit className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
                           </div>
                         </div>
                       ))}
@@ -1048,7 +1050,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                       {cashOutTransactions.map((transaction) => (
                         <div
                           key={transaction.id}
-                          className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+                          onClick={() => handleEditCashTransaction(transaction)}
+                          className="p-3 border border-gray-200 rounded-lg hover:border-red-300 hover:bg-red-50 transition-colors cursor-pointer"
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -1080,6 +1083,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                                 {new Date(transaction.created_at).toLocaleString()}
                               </p>
                             </div>
+                            <Edit className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
                           </div>
                         </div>
                       ))}
