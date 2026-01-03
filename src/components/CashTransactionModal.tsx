@@ -31,6 +31,7 @@ export interface TransactionData {
 
 const CATEGORIES = [
   'Safe Deposit',
+  'Safe Withdrawal',
   'Bank Deposit',
   'Supplies Purchase',
   'Tip Payout',
