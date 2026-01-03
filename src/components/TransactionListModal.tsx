@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Plus, Filter, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Eye, Plus, Filter, CheckCircle, XCircle, Clock, Pencil, History } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { CashTransaction, CashTransactionType, supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDateTimeEST } from '../lib/timezone';
+import { Permissions } from '../lib/permissions';
+import { CashTransactionEditHistoryModal } from './CashTransactionEditHistoryModal';
 
 interface TransactionListModalProps {
   isOpen: boolean;
@@ -13,6 +15,7 @@ interface TransactionListModalProps {
   transactions: CashTransaction[];
   transactionType: CashTransactionType;
   onAddNew: () => void;
+  onEdit?: (transaction: CashTransaction) => void;
 }
 
 type FilterStatus = 'all' | 'approved' | 'pending_approval' | 'rejected';
@@ -23,10 +26,16 @@ export function TransactionListModal({
   transactions,
   transactionType,
   onAddNew,
+  onEdit,
 }: TransactionListModalProps) {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [employeeNames, setEmployeeNames] = useState<Record<string, string>>({});
-  const { selectedStoreId } = useAuth();
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string>('');
+  const { selectedStoreId, employee } = useAuth();
+
+  const canEdit = employee?.role && Permissions.cashTransactions.canEdit(employee.role);
+  const canViewHistory = employee?.role && Permissions.cashTransactions.canViewEditHistory(employee.role);
 
   useEffect(() => {
     loadEmployeeNames();
@@ -208,7 +217,7 @@ export function TransactionListModal({
                 className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all"
               >
                 <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-xl font-bold ${colorClass}`}>
                       ${parseFloat(transaction.amount.toString()).toFixed(2)}
                     </span>
@@ -218,6 +227,34 @@ export function TransactionListModal({
                         {getStatusLabel(transaction.status)}
                       </span>
                     </Badge>
+                    {(transaction as any).last_edited_at && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
+                        Edited
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {canEdit && onEdit && (
+                      <button
+                        onClick={() => onEdit(transaction)}
+                        className="p-1.5 rounded-md hover:bg-gray-100 transition-colors text-gray-600 hover:text-blue-600"
+                        title="Edit transaction"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    )}
+                    {canViewHistory && (transaction as any).last_edited_at && (
+                      <button
+                        onClick={() => {
+                          setSelectedTransactionId(transaction.id);
+                          setIsHistoryModalOpen(true);
+                        }}
+                        className="p-1.5 rounded-md hover:bg-gray-100 transition-colors text-gray-600 hover:text-purple-600"
+                        title="View edit history"
+                      >
+                        <History className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
                 {transaction.description && (
@@ -269,6 +306,12 @@ export function TransactionListModal({
           </Button>
         </div>
       </div>
+
+      <CashTransactionEditHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        transactionId={selectedTransactionId}
+      />
     </Modal>
   );
 }

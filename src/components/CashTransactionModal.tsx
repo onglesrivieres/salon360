@@ -12,12 +12,21 @@ interface CashTransactionModalProps {
   transactionType: CashTransactionType;
   defaultCategory?: string;
   defaultDescription?: string;
+  mode?: 'create' | 'edit';
+  transactionId?: string;
+  initialData?: {
+    amount: number;
+    description?: string;
+    category: string;
+  };
 }
 
 export interface TransactionData {
   amount: number;
   description?: string;
   category: string;
+  editReason?: string;
+  transactionId?: string;
 }
 
 const CATEGORIES = [
@@ -38,18 +47,29 @@ export function CashTransactionModal({
   transactionType,
   defaultCategory,
   defaultDescription,
+  mode = 'create',
+  transactionId,
+  initialData,
 }: CashTransactionModalProps) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  const [editReason, setEditReason] = useState('');
   const [errors, setErrors] = useState<{ amount?: string; category?: string }>({});
 
   React.useEffect(() => {
     if (isOpen) {
-      setDescription(defaultDescription || '');
-      setCategory(defaultCategory || '');
+      if (mode === 'edit' && initialData) {
+        setAmount(initialData.amount.toString());
+        setDescription(initialData.description || '');
+        setCategory(initialData.category);
+        setEditReason('');
+      } else {
+        setDescription(defaultDescription || '');
+        setCategory(defaultCategory || '');
+      }
     }
-  }, [isOpen, defaultCategory, defaultDescription]);
+  }, [isOpen, mode, initialData, defaultCategory, defaultDescription]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -73,6 +93,8 @@ export function CashTransactionModal({
       amount: parseFloat(amount),
       description: description.trim() || undefined,
       category: category,
+      editReason: mode === 'edit' ? editReason.trim() || undefined : undefined,
+      transactionId: mode === 'edit' ? transactionId : undefined,
     });
 
     handleClose();
@@ -82,11 +104,14 @@ export function CashTransactionModal({
     setAmount('');
     setDescription('');
     setCategory('');
+    setEditReason('');
     setErrors({});
     onClose();
   }
 
-  const title = transactionType === 'cash_in' ? 'Add Cash In Transaction' : 'Add Cash Out Transaction';
+  const title = mode === 'edit'
+    ? (transactionType === 'cash_in' ? 'Edit Cash In Transaction' : 'Edit Cash Out Transaction')
+    : (transactionType === 'cash_in' ? 'Add Cash In Transaction' : 'Add Cash Out Transaction');
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={title}>
@@ -149,12 +174,28 @@ export function CashTransactionModal({
           />
         </div>
 
+        {mode === 'edit' && (
+          <div>
+            <label htmlFor="editReason" className="block text-sm font-medium text-gray-700 mb-1">
+              Edit Reason (optional)
+            </label>
+            <textarea
+              id="editReason"
+              value={editReason}
+              onChange={(e) => setEditReason(e.target.value)}
+              placeholder="Why are you editing this transaction?"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={2}
+            />
+          </div>
+        )}
+
         <div className="flex justify-end gap-2 pt-4">
           <Button type="button" variant="secondary" onClick={handleClose}>
             Cancel
           </Button>
           <Button type="submit" variant="primary">
-            Submit for Approval
+            {mode === 'edit' ? 'Update Transaction' : 'Submit for Approval'}
           </Button>
         </div>
       </form>

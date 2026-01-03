@@ -734,6 +734,8 @@ export interface CashTransaction {
   manager_approved_by_id?: string;
   manager_approved_at?: string;
   rejection_reason?: string;
+  last_edited_by_id?: string;
+  last_edited_at?: string;
   created_at: string;
   updated_at: string;
 }

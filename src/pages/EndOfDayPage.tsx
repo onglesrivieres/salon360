@@ -77,6 +77,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [isCashInListModalOpen, setIsCashInListModalOpen] = useState(false);
   const [isCashOutListModalOpen, setIsCashOutListModalOpen] = useState(false);
   const [isSafeDepositModalOpen, setIsSafeDepositModalOpen] = useState(false);
+  const [editingCashTransaction, setEditingCashTransaction] = useState<CashTransaction | null>(null);
+  const [isEditingCashTransaction, setIsEditingCashTransaction] = useState(false);
 
   useEffect(() => {
     loadEODData();
@@ -554,29 +556,90 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     try {
       setSaving(true);
 
-      const { error } = await supabase
-        .from('cash_transactions')
-        .insert({
-          store_id: selectedStoreId,
-          date: selectedDate,
-          transaction_type: transactionType,
-          amount: data.amount,
-          description: data.description,
-          category: data.category,
-          created_by_id: session.employee_id,
-          status: 'pending_approval',
-          requires_manager_approval: true,
-        });
+      if (data.transactionId) {
+        const { data: currentTransaction, error: fetchError } = await supabase
+          .from('cash_transactions')
+          .select('*')
+          .eq('id', data.transactionId)
+          .maybeSingle();
 
-      if (error) throw error;
+        if (fetchError) throw fetchError;
 
-      showToast('Transaction submitted for manager approval', 'success');
+        if (!currentTransaction) {
+          showToast('Transaction not found', 'error');
+          return;
+        }
+
+        const { error: updateError } = await supabase
+          .from('cash_transactions')
+          .update({
+            amount: data.amount,
+            description: data.description,
+            category: data.category,
+            last_edited_by_id: session.employee_id,
+            last_edited_at: new Date().toISOString(),
+          })
+          .eq('id', data.transactionId);
+
+        if (updateError) throw updateError;
+
+        if (data.editReason) {
+          await supabase
+            .from('cash_transaction_edit_history')
+            .insert({
+              transaction_id: data.transactionId,
+              edited_by_id: session.employee_id,
+              edited_at: new Date().toISOString(),
+              old_amount: currentTransaction.amount,
+              new_amount: data.amount,
+              old_description: currentTransaction.description,
+              new_description: data.description,
+              old_category: currentTransaction.category,
+              new_category: data.category,
+              edit_reason: data.editReason,
+            });
+        }
+
+        showToast('Transaction updated successfully', 'success');
+      } else {
+        const { error } = await supabase
+          .from('cash_transactions')
+          .insert({
+            store_id: selectedStoreId,
+            date: selectedDate,
+            transaction_type: transactionType,
+            amount: data.amount,
+            description: data.description,
+            category: data.category,
+            created_by_id: session.employee_id,
+            status: 'pending_approval',
+            requires_manager_approval: true,
+          });
+
+        if (error) throw error;
+
+        showToast('Transaction submitted for manager approval', 'success');
+      }
+
       await loadCashTransactions();
     } catch (error) {
       showToast('Failed to save transaction', 'error');
       console.error(error);
     } finally {
       setSaving(false);
+    }
+  }
+
+  function handleEditCashTransaction(transaction: CashTransaction) {
+    setEditingCashTransaction(transaction);
+    setIsEditingCashTransaction(true);
+
+    if (transaction.transaction_type === 'cash_in') {
+      setIsCashInListModalOpen(false);
+      setIsCashInModalOpen(true);
+    } else {
+      setIsCashOutListModalOpen(false);
+      setIsCashOutModalOpen(true);
     }
   }
 
@@ -1057,16 +1120,46 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       <CashTransactionModal
         isOpen={isCashInModalOpen}
-        onClose={() => setIsCashInModalOpen(false)}
+        onClose={() => {
+          setIsCashInModalOpen(false);
+          setEditingCashTransaction(null);
+          setIsEditingCashTransaction(false);
+        }}
         onSubmit={(data) => handleCashTransactionSubmit('cash_in', data)}
         transactionType="cash_in"
+        mode={isEditingCashTransaction && editingCashTransaction?.transaction_type === 'cash_in' ? 'edit' : 'create'}
+        transactionId={editingCashTransaction?.id}
+        initialData={
+          isEditingCashTransaction && editingCashTransaction?.transaction_type === 'cash_in'
+            ? {
+                amount: parseFloat(editingCashTransaction.amount.toString()),
+                description: editingCashTransaction.description,
+                category: editingCashTransaction.category || '',
+              }
+            : undefined
+        }
       />
 
       <CashTransactionModal
         isOpen={isCashOutModalOpen}
-        onClose={() => setIsCashOutModalOpen(false)}
+        onClose={() => {
+          setIsCashOutModalOpen(false);
+          setEditingCashTransaction(null);
+          setIsEditingCashTransaction(false);
+        }}
         onSubmit={(data) => handleCashTransactionSubmit('cash_out', data)}
         transactionType="cash_out"
+        mode={isEditingCashTransaction && editingCashTransaction?.transaction_type === 'cash_out' ? 'edit' : 'create'}
+        transactionId={editingCashTransaction?.id}
+        initialData={
+          isEditingCashTransaction && editingCashTransaction?.transaction_type === 'cash_out'
+            ? {
+                amount: parseFloat(editingCashTransaction.amount.toString()),
+                description: editingCashTransaction.description,
+                category: editingCashTransaction.category || '',
+              }
+            : undefined
+        }
       />
 
       <CashTransactionModal
@@ -1087,6 +1180,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           setIsCashInListModalOpen(false);
           setIsCashInModalOpen(true);
         }}
+        onEdit={handleEditCashTransaction}
       />
 
       <TransactionListModal
@@ -1098,6 +1192,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           setIsCashOutListModalOpen(false);
           setIsCashOutModalOpen(true);
         }}
+        onEdit={handleEditCashTransaction}
       />
     </div>
   );

@@ -273,6 +273,15 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Owner']);
     },
   },
+
+  cashTransactions: {
+    canEdit: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
+    canViewEditHistory: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
+  },
 };
 
 export function getPermissionMessage(
