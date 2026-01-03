@@ -126,8 +126,18 @@ export function TransactionListModal({
     }
   }
 
+  const headerActions = canEdit && onEdit ? (
+    <button
+      className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+      title="Edit mode enabled - Click any transaction to edit"
+    >
+      <Pencil className="w-4 h-4" />
+      <span>Edit</span>
+    </button>
+  ) : null;
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title={title} size="lg" headerActions={headerActions}>
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
