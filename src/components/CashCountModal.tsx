@@ -103,7 +103,7 @@ export function CashCountModal({
         <NumericInput
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-6 text-center text-xs py-1 flex-shrink-0"
+          className="w-16 text-center text-xs py-1 flex-shrink-0"
           min="0"
           step="1"
         />
@@ -186,7 +186,7 @@ export function CashCountModal({
               <DollarSign className={`w-4 h-4 ${colorScheme === 'green' ? 'text-green-600' : 'text-blue-600'}`} />
               <span className="text-sm font-semibold text-gray-900">Total:</span>
             </div>
-            <div className="w-6 flex-shrink-0"></div>
+            <div className="w-16 flex-shrink-0"></div>
             <span className={`text-xl font-bold w-24 text-right flex-shrink-0 ${colorScheme === 'green' ? 'text-green-600' : 'text-blue-600'}`}>
               ${total.toFixed(2)}
             </span>
