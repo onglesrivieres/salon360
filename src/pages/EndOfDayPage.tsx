@@ -468,6 +468,13 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       showToast('Opening cash saved successfully', 'success');
       setIsAutoFilledFromPreviousDay(false);
+
+      await supabase.rpc('save_safe_balance_snapshot', {
+        p_store_id: selectedStoreId,
+        p_date: selectedDate,
+        p_employee_id: session.employee_id,
+      });
+
       await loadEODData();
 
       window.dispatchEvent(new CustomEvent('openingCashUpdated'));
@@ -541,6 +548,13 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       }
 
       showToast('EOD record saved successfully', 'success');
+
+      await supabase.rpc('save_safe_balance_snapshot', {
+        p_store_id: selectedStoreId,
+        p_date: selectedDate,
+        p_employee_id: session.employee_id,
+      });
+
       loadEODData();
     } catch (error) {
       showToast('Failed to save EOD record', 'error');

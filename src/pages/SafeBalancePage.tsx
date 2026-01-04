@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, TrendingUp, Vault, ChevronLeft, ChevronRight, TrendingDown } from 'lucide-react';
+import { DollarSign, TrendingUp, Vault, ChevronLeft, ChevronRight, TrendingDown, AlertTriangle, History, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase, SafeBalanceSummary, CashTransactionWithDetails } from '../lib/supabase';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,13 +21,17 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
   const [safeWithdrawals, setSafeWithdrawals] = useState<CashTransactionWithDetails[]>([]);
   const [loadingSafeBalance, setLoadingSafeBalance] = useState(false);
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
+  const [balanceWarning, setBalanceWarning] = useState<string | null>(null);
+  const [balanceHistory, setBalanceHistory] = useState<any[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     loadSafeBalanceData();
   }, [selectedDate, selectedStoreId]);
 
   async function loadSafeBalanceData() {
-    if (!selectedStoreId) return;
+    if (!selectedStoreId || !session?.employee_id) return;
 
     try {
       setLoadingSafeBalance(true);
@@ -105,6 +109,39 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
       }));
 
       setSafeWithdrawals(withdrawals);
+
+      await supabase.rpc('save_safe_balance_snapshot', {
+        p_store_id: selectedStoreId,
+        p_date: selectedDate,
+        p_employee_id: session.employee_id,
+      });
+
+      const previousDate = new Date(selectedDate + 'T12:00:00');
+      previousDate.setDate(previousDate.getDate() - 1);
+      const prevDateStr = previousDate.toISOString().split('T')[0];
+
+      const { data: prevSnapshot } = await supabase
+        .from('safe_balance_history')
+        .select('closing_balance, date')
+        .eq('store_id', selectedStoreId)
+        .eq('date', prevDateStr)
+        .maybeSingle();
+
+      if (balanceData && prevSnapshot) {
+        const expectedOpening = parseFloat(prevSnapshot.closing_balance.toString());
+        const actualOpening = parseFloat(balanceData.opening_balance.toString());
+        const difference = Math.abs(expectedOpening - actualOpening);
+
+        if (difference > 0.01) {
+          setBalanceWarning(
+            `Opening balance ($${actualOpening.toFixed(2)}) does not match previous day's closing balance ($${expectedOpening.toFixed(2)}). Difference: $${difference.toFixed(2)}`
+          );
+        } else {
+          setBalanceWarning(null);
+        }
+      } else {
+        setBalanceWarning(null);
+      }
     } catch (error) {
       console.error('Failed to load safe balance data:', error);
       showToast('Failed to load safe balance data', 'error');
@@ -127,6 +164,38 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
 
   function goToToday() {
     onDateChange(getCurrentDateEST());
+  }
+
+  async function loadBalanceHistory() {
+    if (!selectedStoreId) return;
+
+    try {
+      setLoadingHistory(true);
+
+      const { data, error } = await supabase
+        .rpc('get_safe_balance_history', {
+          p_store_id: selectedStoreId,
+          p_start_date: null,
+          p_end_date: null,
+          p_limit: 14,
+        });
+
+      if (error) throw error;
+
+      setBalanceHistory(data || []);
+    } catch (error) {
+      console.error('Failed to load balance history:', error);
+      showToast('Failed to load balance history', 'error');
+    } finally {
+      setLoadingHistory(false);
+    }
+  }
+
+  function toggleHistory() {
+    if (!showHistory && balanceHistory.length === 0) {
+      loadBalanceHistory();
+    }
+    setShowHistory(!showHistory);
   }
 
   async function handleWithdrawalSubmit(data: WithdrawalData) {
@@ -205,6 +274,21 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
           </div>
         </div>
       </div>
+
+      {balanceWarning && (
+        <div className="mb-6 bg-amber-50 border border-amber-300 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-amber-900 mb-1">Balance Mismatch Warning</h3>
+              <p className="text-sm text-amber-800">{balanceWarning}</p>
+              <p className="text-xs text-amber-700 mt-2">
+                This may indicate missing transactions or data inconsistency. Please review the previous day's closing balance.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loadingSafeBalance ? (
         <div className="flex items-center justify-center h-64">
@@ -392,6 +476,104 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow mt-6">
+            <button
+              onClick={toggleHistory}
+              className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5 text-blue-600" />
+                <h3 className="text-lg font-semibold text-gray-900">Balance History</h3>
+                <span className="text-xs text-gray-500">(Last 14 days)</span>
+              </div>
+              {showHistory ? (
+                <ChevronUp className="w-5 h-5 text-gray-600" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-gray-600" />
+              )}
+            </button>
+
+            {showHistory && (
+              <div className="border-t border-gray-200 p-4">
+                {loadingHistory ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <div className="text-sm">Loading history...</div>
+                  </div>
+                ) : balanceHistory.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <History className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm">No balance history available</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-2 px-3 font-semibold text-gray-900">Date</th>
+                          <th className="text-right py-2 px-3 font-semibold text-gray-900">Opening</th>
+                          <th className="text-right py-2 px-3 font-semibold text-gray-900">Deposits</th>
+                          <th className="text-right py-2 px-3 font-semibold text-gray-900">Withdrawals</th>
+                          <th className="text-right py-2 px-3 font-semibold text-gray-900">Closing</th>
+                          <th className="text-right py-2 px-3 font-semibold text-gray-900">Change</th>
+                          <th className="text-left py-2 px-3 font-semibold text-gray-900">Updated By</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {balanceHistory.map((record, index) => {
+                          const isCurrentDate = record.date === selectedDate;
+                          return (
+                            <tr
+                              key={record.id}
+                              className={`border-b border-gray-100 hover:bg-gray-50 ${
+                                isCurrentDate ? 'bg-blue-50' : ''
+                              }`}
+                            >
+                              <td className="py-2 px-3">
+                                <div className="flex items-center gap-2">
+                                  <span className={isCurrentDate ? 'font-semibold text-blue-900' : 'text-gray-900'}>
+                                    {new Date(record.date + 'T12:00:00').toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      year: 'numeric',
+                                    })}
+                                  </span>
+                                  {isCurrentDate && (
+                                    <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">Today</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="text-right py-2 px-3 text-blue-600 font-medium">
+                                ${parseFloat(record.opening_balance).toFixed(2)}
+                              </td>
+                              <td className="text-right py-2 px-3 text-green-600 font-medium">
+                                +${parseFloat(record.total_deposits).toFixed(2)}
+                              </td>
+                              <td className="text-right py-2 px-3 text-red-600 font-medium">
+                                -${parseFloat(record.total_withdrawals).toFixed(2)}
+                              </td>
+                              <td className="text-right py-2 px-3 text-gray-900 font-semibold">
+                                ${parseFloat(record.closing_balance).toFixed(2)}
+                              </td>
+                              <td className={`text-right py-2 px-3 font-medium ${
+                                parseFloat(record.balance_change) >= 0 ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {parseFloat(record.balance_change) >= 0 ? '+' : ''}
+                                ${parseFloat(record.balance_change).toFixed(2)}
+                              </td>
+                              <td className="py-2 px-3 text-gray-600 text-xs">
+                                {record.updated_by_name || record.created_by_name || 'System'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </>
       )}
