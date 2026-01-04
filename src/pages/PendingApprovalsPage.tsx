@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight } from 'lucide-react';
-import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket } from '../lib/supabase';
+import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight, Bell, User, Calendar } from 'lucide-react';
+import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket, AttendanceChangeProposalWithDetails } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Modal } from '../components/ui/Modal';
-import { getCurrentDateEST, formatDateOnly, formatDateTimeEST } from '../lib/timezone';
+import { getCurrentDateEST, formatDateOnly, formatDateTimeEST, formatTimeEST, formatDateEST } from '../lib/timezone';
 import { Permissions } from '../lib/permissions';
 
 interface ViolationHistoryReport {
@@ -35,7 +35,11 @@ interface ViolationHistoryReport {
   responses: any;
 }
 
-type TabType = 'tickets' | 'inventory' | 'cash' | 'violations';
+interface ProposalWithAttendance extends AttendanceChangeProposalWithDetails {
+  work_date?: string;
+}
+
+type TabType = 'tickets' | 'inventory' | 'cash' | 'attendance' | 'violations';
 
 export function PendingApprovalsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('tickets');
@@ -47,6 +51,7 @@ export function PendingApprovalsPage() {
   const [cashTransactionApprovals, setCashTransactionApprovals] = useState<PendingCashTransactionApproval[]>([]);
   const [violationReports, setViolationReports] = useState<ViolationReportForApproval[]>([]);
   const [violationHistory, setViolationHistory] = useState<ViolationHistoryReport[]>([]);
+  const [attendanceProposals, setAttendanceProposals] = useState<ProposalWithAttendance[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<PendingApprovalTicket | null>(null);
   const [selectedInventory, setSelectedInventory] = useState<PendingInventoryApproval | null>(null);
@@ -61,6 +66,8 @@ export function PendingApprovalsPage() {
   const [violationAction, setViolationAction] = useState<ViolationActionType>('none');
   const [violationActionDetails, setViolationActionDetails] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+  const [reviewComment, setReviewComment] = useState('');
+  const [selectedProposal, setSelectedProposal] = useState<ProposalWithAttendance | null>(null);
   const [processing, setProcessing] = useState(false);
   const [approvalStats, setApprovalStats] = useState<ApprovalStatistics | null>(null);
   const [violationStatusFilter, setViolationStatusFilter] = useState<string>('all');
@@ -74,7 +81,7 @@ export function PendingApprovalsPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
-    if (tab && ['tickets', 'inventory', 'cash', 'violations'].includes(tab)) {
+    if (tab && ['tickets', 'inventory', 'cash', 'attendance', 'violations'].includes(tab)) {
       setActiveTab(tab as TabType);
     }
   }, []);
@@ -91,6 +98,8 @@ export function PendingApprovalsPage() {
         fetchInventoryApprovals();
       } else if (activeTab === 'cash') {
         fetchCashTransactionApprovals();
+      } else if (activeTab === 'attendance') {
+        fetchAttendanceProposals();
       } else if (activeTab === 'violations') {
         fetchViolationReports();
         fetchViolationHistory();
@@ -110,6 +119,8 @@ export function PendingApprovalsPage() {
           fetchInventoryApprovals();
         } else if (activeTab === 'cash') {
           fetchCashTransactionApprovals();
+        } else if (activeTab === 'attendance') {
+          fetchAttendanceProposals();
         } else if (activeTab === 'violations') {
           fetchViolationReports();
           fetchViolationHistory();
@@ -235,6 +246,37 @@ export function PendingApprovalsPage() {
       setViolationHistory(data || []);
     } catch (error) {
       console.error('Error fetching violation history:', error);
+    }
+  }
+
+  async function fetchAttendanceProposals() {
+    if (!selectedStoreId) return;
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('attendance_change_proposals')
+        .select(`
+          *,
+          employee:employees!attendance_change_proposals_employee_id_fkey(id, display_name, legal_name),
+          attendance_records!inner(work_date, store_id)
+        `)
+        .eq('attendance_records.store_id', selectedStoreId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const transformedData = (data || []).map((item: any) => ({
+        ...item,
+        work_date: item.attendance_records?.work_date,
+      }));
+
+      setAttendanceProposals(transformedData);
+    } catch (error: any) {
+      console.error('Error fetching attendance proposals:', error);
+      showToast('Failed to load attendance proposals', 'error');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -464,6 +506,79 @@ export function PendingApprovalsPage() {
     } catch (error: any) {
       console.error('Error processing violation decision:', error);
       showToast(error.message || 'Failed to process decision', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function handleReviewAttendanceProposal(proposalId: string, action: 'approve' | 'reject') {
+    if (!session?.employee_id) return;
+
+    try {
+      setProcessing(true);
+
+      const proposal = attendanceProposals.find(p => p.id === proposalId);
+      if (!proposal) return;
+
+      const newStatus = action === 'approve' ? 'approved' : 'rejected';
+
+      const { error: updateError } = await supabase
+        .from('attendance_change_proposals')
+        .update({
+          status: newStatus,
+          reviewed_by_employee_id: session.employee_id,
+          reviewed_at: new Date().toISOString(),
+          review_comment: reviewComment || null,
+        })
+        .eq('id', proposalId);
+
+      if (updateError) throw updateError;
+
+      if (action === 'approve') {
+        const updates: any = {};
+
+        if (proposal.proposed_check_in_time) {
+          updates.check_in_time = proposal.proposed_check_in_time;
+        }
+
+        if (proposal.proposed_check_out_time) {
+          updates.check_out_time = proposal.proposed_check_out_time;
+        }
+
+        const finalCheckInTime = proposal.proposed_check_in_time || proposal.current_check_in_time;
+        const finalCheckOutTime = proposal.proposed_check_out_time || proposal.current_check_out_time;
+
+        if (finalCheckInTime && finalCheckOutTime) {
+          const checkIn = new Date(finalCheckInTime);
+          const checkOut = new Date(finalCheckOutTime);
+          const diffMs = checkOut.getTime() - checkIn.getTime();
+          const totalHours = diffMs / (1000 * 60 * 60);
+          updates.total_hours = totalHours;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          const { error: attendanceError } = await supabase
+            .from('attendance_records')
+            .update(updates)
+            .eq('id', proposal.attendance_record_id);
+
+          if (attendanceError) throw attendanceError;
+        }
+      }
+
+      showToast(
+        action === 'approve'
+          ? 'Proposal approved successfully'
+          : 'Proposal rejected successfully',
+        'success'
+      );
+
+      setReviewComment('');
+      setSelectedProposal(null);
+      await fetchAttendanceProposals();
+    } catch (error: any) {
+      console.error('Error reviewing proposal:', error);
+      showToast(error.message || 'Failed to review proposal', 'error');
     } finally {
       setProcessing(false);
     }
@@ -723,6 +838,22 @@ export function PendingApprovalsPage() {
               {cashTransactionApprovals.length > 0 && (
                 <Badge variant="warning" className="ml-1">
                   {cashTransactionApprovals.length}
+                </Badge>
+              )}
+            </button>
+            <button
+              onClick={() => handleTabChange('attendance')}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                activeTab === 'attendance'
+                  ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Bell className="w-4 h-4" />
+              Review Requests
+              {attendanceProposals.filter(p => p.status === 'pending').length > 0 && (
+                <Badge variant="warning" className="ml-1">
+                  {attendanceProposals.filter(p => p.status === 'pending').length}
                 </Badge>
               )}
             </button>
@@ -1174,6 +1305,250 @@ export function PendingApprovalsPage() {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'attendance' && (
+            <div>
+              {attendanceProposals.filter(p => p.status === 'pending').length === 0 && attendanceProposals.filter(p => p.status !== 'pending').length === 0 ? (
+                <div className="text-center py-12">
+                  <Bell className="w-16 h-16 text-gray-400 mx-auto mb-3" />
+                  <p className="text-lg font-medium text-gray-900 mb-1">No attendance change requests</p>
+                  <p className="text-sm text-gray-500">All requests have been processed</p>
+                </div>
+              ) : (
+                <>
+                  {attendanceProposals.filter(p => p.status === 'pending').length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 text-yellow-600" />
+                        Pending Requests ({attendanceProposals.filter(p => p.status === 'pending').length})
+                      </h3>
+                      <div className="space-y-3">
+                        {attendanceProposals.filter(p => p.status === 'pending').map((proposal) => (
+                          <div
+                            key={proposal.id}
+                            className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <User className="w-4 h-4 text-gray-600" />
+                                  <span className="font-semibold text-gray-900">
+                                    {proposal.employee?.display_name || 'Unknown'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>{proposal.work_date ? formatDateEST(new Date(proposal.work_date), {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                  }) : 'N/A'}</span>
+                                </div>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {new Date(proposal.created_at).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                })}
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 bg-white rounded p-3">
+                              <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block">
+                                  Check In
+                                </label>
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <Clock className="w-3 h-3 text-gray-400" />
+                                    <span className="text-sm text-gray-600 line-through">
+                                      {formatTimeEST(new Date(proposal.current_check_in_time), {
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                        hour12: true,
+                                      })}
+                                    </span>
+                                  </div>
+                                  {proposal.proposed_check_in_time && (
+                                    <div className="flex items-center gap-2">
+                                      <Clock className="w-3 h-3 text-green-600" />
+                                      <span className="text-sm font-semibold text-green-700">
+                                        {formatTimeEST(new Date(proposal.proposed_check_in_time), {
+                                          hour: 'numeric',
+                                          minute: '2-digit',
+                                          hour12: true,
+                                        })}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-xs font-medium text-gray-500 mb-1 block">
+                                  Check Out
+                                </label>
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <Clock className="w-3 h-3 text-gray-400" />
+                                    <span className="text-sm text-gray-600 line-through">
+                                      {proposal.current_check_out_time
+                                        ? formatTimeEST(new Date(proposal.current_check_out_time), {
+                                            hour: 'numeric',
+                                            minute: '2-digit',
+                                            hour12: true,
+                                          })
+                                        : 'Not checked out'}
+                                    </span>
+                                  </div>
+                                  {proposal.proposed_check_out_time && (
+                                    <div className="flex items-center gap-2">
+                                      <Clock className="w-3 h-3 text-green-600" />
+                                      <span className="text-sm font-semibold text-green-700">
+                                        {formatTimeEST(new Date(proposal.proposed_check_out_time), {
+                                          hour: 'numeric',
+                                          minute: '2-digit',
+                                          hour12: true,
+                                        })}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="bg-white rounded p-3">
+                              <label className="text-xs font-medium text-gray-500 mb-1 block">
+                                Reason
+                              </label>
+                              <p className="text-sm text-gray-700">{proposal.reason_comment}</p>
+                            </div>
+
+                            {selectedProposal?.id === proposal.id && (
+                              <div className="bg-white rounded p-3">
+                                <label className="text-xs font-medium text-gray-700 mb-1 block">
+                                  Review Comment (Optional)
+                                </label>
+                                <textarea
+                                  value={reviewComment}
+                                  onChange={(e) => setReviewComment(e.target.value)}
+                                  placeholder="Add a comment about this decision..."
+                                  rows={2}
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  disabled={processing}
+                                />
+                              </div>
+                            )}
+
+                            <div className="flex justify-end gap-2">
+                              {selectedProposal?.id === proposal.id ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => {
+                                      setSelectedProposal(null);
+                                      setReviewComment('');
+                                    }}
+                                    disabled={processing}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => handleReviewAttendanceProposal(proposal.id, 'reject')}
+                                    disabled={processing}
+                                    className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                                  >
+                                    <XCircle className="w-4 h-4 mr-1" />
+                                    Reject
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleReviewAttendanceProposal(proposal.id, 'approve')}
+                                    disabled={processing}
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    <CheckCircle className="w-4 h-4 mr-1" />
+                                    {processing ? 'Processing...' : 'Approve'}
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  onClick={() => setSelectedProposal(proposal)}
+                                  disabled={processing}
+                                >
+                                  Review
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {attendanceProposals.filter(p => p.status !== 'pending').length > 0 && (
+                    <div className="border-t border-gray-200 pt-4">
+                      <h3 className="font-semibold text-gray-700 mb-3">
+                        Previously Reviewed ({attendanceProposals.filter(p => p.status !== 'pending').length})
+                      </h3>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {attendanceProposals.filter(p => p.status !== 'pending').map((proposal) => (
+                          <div
+                            key={proposal.id}
+                            className={`rounded-lg p-3 border ${
+                              proposal.status === 'approved'
+                                ? 'bg-green-50 border-green-200'
+                                : 'bg-red-50 border-red-200'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                {proposal.status === 'approved' ? (
+                                  <CheckCircle className="w-4 h-4 text-green-600" />
+                                ) : (
+                                  <XCircle className="w-4 h-4 text-red-600" />
+                                )}
+                                <span className="text-sm font-medium text-gray-900">
+                                  {proposal.employee?.display_name}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {proposal.work_date ? formatDateEST(new Date(proposal.work_date), {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                  }) : 'N/A'}
+                                </span>
+                              </div>
+                              <span className="text-xs text-gray-500">
+                                {proposal.reviewed_at
+                                  ? new Date(proposal.reviewed_at).toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                    })
+                                  : 'N/A'}
+                              </span>
+                            </div>
+                            {proposal.review_comment && (
+                              <p className="text-xs text-gray-600 mt-2 ml-6">
+                                {proposal.review_comment}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

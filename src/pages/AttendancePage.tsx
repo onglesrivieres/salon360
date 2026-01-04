@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Download, Users, Bell } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Users } from 'lucide-react';
 import { supabase, StoreAttendance } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -7,8 +7,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { formatTimeEST, formatDateEST } from '../lib/timezone';
 import { ShiftDetailModal } from '../components/ShiftDetailModal';
-import { AttendanceProposalReviewModal } from '../components/AttendanceProposalReviewModal';
-import { NotificationBadge } from '../components/ui/NotificationBadge';
 
 interface AttendanceSession {
   attendanceRecordId: string;
@@ -38,8 +36,6 @@ export function AttendancePage() {
   const [loading, setLoading] = useState(false);
   const [selectedAttendance, setSelectedAttendance] = useState<StoreAttendance | null>(null);
   const [isShiftDetailModalOpen, setIsShiftDetailModalOpen] = useState(false);
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [pendingProposalsCount, setPendingProposalsCount] = useState(0);
   const [employeePayType, setEmployeePayType] = useState<'hourly' | 'daily' | 'commission' | null>(null);
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
@@ -47,7 +43,6 @@ export function AttendancePage() {
   useEffect(() => {
     if (selectedStoreId) {
       fetchAttendance();
-      fetchPendingProposalsCount();
     }
   }, [currentDate, selectedStoreId]);
 
@@ -90,28 +85,6 @@ export function AttendancePage() {
       showToast('Failed to load attendance data', 'error');
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function fetchPendingProposalsCount() {
-    if (!selectedStoreId) return;
-
-    try {
-      const { startDate, endDate } = getDateRange();
-
-      const { data, error } = await supabase
-        .from('attendance_change_proposals')
-        .select('id, attendance_records!inner(store_id, work_date)', { count: 'exact', head: true })
-        .eq('attendance_records.store_id', selectedStoreId)
-        .gte('attendance_records.work_date', startDate)
-        .lte('attendance_records.work_date', endDate)
-        .eq('status', 'pending');
-
-      if (error) throw error;
-
-      setPendingProposalsCount(data || 0);
-    } catch (error: any) {
-      console.error('Error fetching pending proposals count:', error);
     }
   }
 
@@ -261,12 +234,6 @@ export function AttendancePage() {
 
   function handleProposalSubmitted() {
     fetchAttendance();
-    fetchPendingProposalsCount();
-  }
-
-  function handleProposalReviewed() {
-    fetchAttendance();
-    fetchPendingProposalsCount();
   }
 
   function exportCSV() {
@@ -355,20 +322,6 @@ export function AttendancePage() {
       <div className="mb-2 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
         <h2 className="text-sm md:text-base font-bold text-gray-900">Attendance Tracking</h2>
         <div className="flex items-center gap-2">
-          {session && session.role && Permissions.endOfDay.canView(session.role) && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setIsReviewModalOpen(true)}
-              className="relative"
-            >
-              <Bell className="w-3 h-3 mr-1" />
-              Review Requests
-              {pendingProposalsCount > 0 && (
-                <NotificationBadge count={pendingProposalsCount} />
-              )}
-            </Button>
-          )}
           {session && session.role && Permissions.endOfDay.canExport(session.role) && (
             <Button variant="secondary" size="sm" onClick={exportCSV}>
               <Download className="w-3 h-3 mr-1" />
@@ -588,15 +541,6 @@ export function AttendancePage() {
         attendance={selectedAttendance}
         onProposalSubmitted={handleProposalSubmitted}
       />
-
-      {session && session.role && (Permissions.endOfDay.canView(session.role)) && (
-        <AttendanceProposalReviewModal
-          isOpen={isReviewModalOpen}
-          onClose={() => setIsReviewModalOpen(false)}
-          storeId={selectedStoreId || ''}
-          onProposalReviewed={handleProposalReviewed}
-        />
-      )}
     </div>
   );
 }
