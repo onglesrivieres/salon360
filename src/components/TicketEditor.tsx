@@ -2542,7 +2542,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                         setTempPaymentData({ ...tempPaymentData, tip_customer_cash: e.target.value })
                       }
                       className="pl-8 pr-3"
-                      placeholder="0.00"
+                      placeholder="All tips must be distributed to technicians"
+                      disabled={true}
                     />
                   </div>
                 </div>
