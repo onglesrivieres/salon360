@@ -173,14 +173,13 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         pay_type: payType
       });
 
-      setShowPinModal(false);
-
       if (selectedAction === 'checkin' || selectedAction === 'checkout' || selectedAction === 'ready') {
         if (hasMultipleStores) {
           const storeIds = employeeStores.map(s => s.id || s.store_id);
           setAvailableStoreIds(storeIds);
           setStoreSelectionContext(selectedAction);
           setPendingEmployeeId(session.employee_id);
+          setShowPinModal(false);
           setShowStoreSelection(true);
         } else {
           if (selectedAction === 'checkin' || selectedAction === 'checkout') {
@@ -191,6 +190,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         }
       } else if (selectedAction === 'report') {
         const storeIds = employeeStores.map(s => s.id || s.store_id);
+        setShowPinModal(false);
         onActionSelected('report', session, storeId, hasMultipleStores, storeIds);
       }
     } catch (error: any) {
@@ -275,7 +275,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           return;
         }
 
-        // Check if within check-in window (15 min before opening)
+        // Check if within check-in window (8:45 AM EST onwards)
         const { data: canCheckIn, error: windowError } = await supabase.rpc('can_checkin_now', {
           p_store_id: storeId
         });
@@ -283,7 +283,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         if (windowError) throw windowError;
 
         if (!canCheckIn) {
-          setPinError('Check-in is only available 15 minutes before opening time');
+          setPinError('Check-in is available starting at 8:45 AM EST daily');
           return;
         }
 
@@ -305,6 +305,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         }
 
         const storeMessage = storeName ? ` at ${storeName}` : '';
+        setShowPinModal(false);
         setSuccessMessage(`${t('home.welcome')} ${displayName}! ${t('home.checkedIn')}${storeMessage}`);
         setShowSuccessModal(true);
       } else if (action === 'checkout') {
@@ -361,6 +362,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         }
 
         const storeMessage = storeName ? ` from ${storeName}` : '';
+        setShowPinModal(false);
         setSuccessMessage(`${t('home.goodbye')} ${displayName}! ${t('home.checkedOut')}${storeMessage}`);
         setShowSuccessModal(true);
       }
@@ -380,6 +382,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       if (checkError) throw checkError;
 
       if (queueStatus?.in_queue) {
+        setShowPinModal(false);
         setShowConfirmModal(true);
       } else {
         const { data: queueResult, error: joinError } = await supabase.rpc('join_ready_queue_with_checkin', {
@@ -409,6 +412,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         }
 
         const storeMessage = storeName ? ` at ${storeName}` : '';
+        setShowPinModal(false);
         setSuccessMessage(`${t('home.joinedQueue')}${storeMessage}`);
         setShowSuccessModal(true);
       }
