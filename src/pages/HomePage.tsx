@@ -175,7 +175,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
       setShowPinModal(false);
 
-      if (selectedAction === 'checkin' || selectedAction === 'checkout' || selectedAction === 'ready') {
+      if (selectedAction === 'checkin' || selectedAction === 'checkout') {
         if (hasMultipleStores) {
           const storeIds = employeeStores.map(s => s.id || s.store_id);
           setAvailableStoreIds(storeIds);
@@ -183,12 +183,10 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           setPendingEmployeeId(session.employee_id);
           setShowStoreSelection(true);
         } else {
-          if (selectedAction === 'checkin' || selectedAction === 'checkout') {
-            await handleCheckInOut(session.employee_id, storeId, displayName, payType, selectedAction);
-          } else if (selectedAction === 'ready') {
-            await handleReady(session.employee_id, storeId);
-          }
+          await handleCheckInOut(session.employee_id, storeId, displayName, payType, selectedAction);
         }
+      } else if (selectedAction === 'ready') {
+        await handleReady(session.employee_id, storeId);
       } else if (selectedAction === 'report') {
         const storeIds = employeeStores.map(s => s.id || s.store_id);
         onActionSelected('report', session, storeId, hasMultipleStores, storeIds);
