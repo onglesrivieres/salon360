@@ -125,6 +125,7 @@ export function EmployeesPage() {
 
   async function fetchServices() {
     try {
+      // Fetch all active, non-archived global services
       const { data, error } = await supabase
         .from('services')
         .select('*')
@@ -235,7 +236,7 @@ export function EmployeesPage() {
         status: 'Active',
         pay_type: 'hourly',
         store_ids: [],
-        service_ids: services.map(s => s.id),
+        service_ids: [], // Default to no services for new employees
         notes: '',
         tip_report_show_details: true,
         tip_paired_enabled: true,
@@ -594,8 +595,13 @@ export function EmployeesPage() {
                 Services
               </label>
               <p className="text-xs text-gray-500 mb-2">
-                Select services this employee can perform
+                Select services this employee can perform across all stores
               </p>
+              <div className="mb-2 bg-blue-50 border border-blue-200 rounded-lg p-2">
+                <p className="text-xs text-blue-800">
+                  Service assignments apply to all stores where this employee works
+                </p>
+              </div>
               <div className="relative">
                 <button
                   type="button"
