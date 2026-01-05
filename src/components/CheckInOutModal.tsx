@@ -74,18 +74,19 @@ export function CheckInOutModal({ onClose, storeId, onCheckInComplete, onCheckOu
       if (error) throw error;
 
       // Automatically join the ready queue after check-in
-      const { error: queueError } = await supabase.rpc('join_ready_queue', {
+      const { data: queueResult, error: queueError } = await supabase.rpc('join_ready_queue_with_checkin', {
         p_employee_id: session.employee_id,
         p_store_id: storeId
       });
 
-      if (queueError) {
-        console.error('Failed to join queue:', queueError);
-      }
-
       const checkInTime = formatTimeEST(new Date());
 
-      showToast(`Welcome to work, ${displayName}! Checked in at ${checkInTime} and added to the ready queue.`, 'success');
+      if (queueError || !queueResult?.success) {
+        console.error('Failed to join queue:', queueError || queueResult?.message);
+        showToast(`Welcome to work, ${displayName}! Checked in at ${checkInTime}. Note: Could not join ready queue automatically.`, 'success');
+      } else {
+        showToast(`Welcome to work, ${displayName}! Checked in at ${checkInTime} and added to the ready queue.`, 'success');
+      }
 
       setTimeout(() => {
         onCheckInComplete?.();
