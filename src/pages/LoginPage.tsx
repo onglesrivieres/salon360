@@ -135,14 +135,17 @@ export function LoginPage({ selectedAction, onCheckOutComplete, onBack }: LoginP
 
         if (checkInError) throw checkInError;
 
-        const { error: queueError } = await supabase.rpc('join_ready_queue', {
+        const { data: queueResult, error: queueError } = await supabase.rpc('join_ready_queue_with_checkin', {
           p_employee_id: session.employee_id,
           p_store_id: storeId
         });
 
-        if (queueError) console.error('Failed to join queue:', queueError);
-
-        showToast(`Welcome ${displayName}! You're checked in and in the ready queue.`, 'success');
+        if (queueError || !queueResult?.success) {
+          console.error('Failed to join queue:', queueError || queueResult?.message);
+          showToast(`Welcome ${displayName}! You're checked in. Note: Could not join ready queue automatically.`, 'success');
+        } else {
+          showToast(`Welcome ${displayName}! You're checked in and in the ready queue.`, 'success');
+        }
         login(session);
       } else {
         console.log('LoginPage attempting to check out:', { employeeId: session.employee_id, storeId });
