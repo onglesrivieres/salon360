@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Search, RefreshCw } from 'lucide-react';
+import { Plus, CreditCard as Edit2, Search, RefreshCw } from 'lucide-react';
 import { supabase, Employee, Store, WeeklySchedule, Service, EmployeeService } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
