@@ -639,7 +639,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
     const storeName = currentStore.name.toLowerCase();
     if (storeName.includes('riviere')) {
-      return { rating: '4.8', reviews: '553' };
+      return { rating: '4.8', reviews: '617' };
     } else if (storeName.includes('maily')) {
       return { rating: '3.9', reviews: '575' };
     } else if (storeName.includes('charlesbourg')) {
