@@ -623,6 +623,35 @@ export function EmployeesPage() {
                   className="service-dropdown hidden absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-96 overflow-y-auto"
                   onClick={(e) => e.stopPropagation()}
                 >
+                  <div className="sticky top-0 bg-white border-b border-gray-200 p-2 flex items-center justify-between gap-2 z-10">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const allServiceIds = services.map(s => s.id);
+                        setFormData({
+                          ...formData,
+                          service_ids: allServiceIds,
+                        });
+                      }}
+                      className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFormData({
+                          ...formData,
+                          service_ids: [],
+                        });
+                      }}
+                      className="flex-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      Deselect All
+                    </button>
+                  </div>
                   <div className="p-2 space-y-3">
                     {Object.entries(servicesByCategory).map(([category, categoryServices]) => {
                       if (categoryServices.length === 0) return null;
@@ -634,16 +663,59 @@ export function EmployeesPage() {
                         'Others': 'text-teal-700 bg-teal-50',
                       };
 
+                      const categoryServiceIds = categoryServices.map(s => s.id);
+                      const selectedInCategory = categoryServiceIds.filter(id =>
+                        formData.service_ids.includes(id)
+                      );
+                      const allSelected = selectedInCategory.length === categoryServiceIds.length;
+                      const someSelected = selectedInCategory.length > 0 && selectedInCategory.length < categoryServiceIds.length;
+
                       return (
                         <div key={category}>
-                          <div className={`text-xs font-semibold px-2 py-1 rounded ${categoryColors[category] || categoryColors['Others']}`}>
-                            {category}
+                          <div
+                            className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:opacity-80 transition-opacity ${categoryColors[category] || categoryColors['Others']}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (allSelected) {
+                                setFormData({
+                                  ...formData,
+                                  service_ids: formData.service_ids.filter(id => !categoryServiceIds.includes(id))
+                                });
+                              } else {
+                                const newServiceIds = [...new Set([...formData.service_ids, ...categoryServiceIds])];
+                                setFormData({
+                                  ...formData,
+                                  service_ids: newServiceIds
+                                });
+                              }
+                            }}
+                          >
+                            <div className="relative flex items-center justify-center">
+                              <input
+                                type="checkbox"
+                                checked={allSelected}
+                                ref={(el) => {
+                                  if (el) {
+                                    el.indeterminate = someSelected;
+                                  }
+                                }}
+                                readOnly
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 pointer-events-none"
+                              />
+                            </div>
+                            <span className="text-xs font-semibold flex-1">
+                              {category}
+                            </span>
+                            <span className="text-xs opacity-70">
+                              ({selectedInCategory.length}/{categoryServiceIds.length})
+                            </span>
                           </div>
                           <div className="mt-1 space-y-1">
                             {categoryServices.map(service => (
                               <label
                                 key={service.id}
                                 className="flex items-center px-2 py-2 hover:bg-gray-50 rounded cursor-pointer min-h-[44px]"
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 <input
                                   type="checkbox"
