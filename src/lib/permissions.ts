@@ -104,7 +104,7 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
     },
     canViewAll: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
     },
     canViewPeriodReports: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
@@ -119,7 +119,7 @@ export const Permissions = {
 
   employees: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
     },
     canCreate: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Owner']);
@@ -140,7 +140,7 @@ export const Permissions = {
 
   services: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
     },
     canCreate: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Manager', 'Supervisor', 'Owner']);
