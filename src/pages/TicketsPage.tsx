@@ -155,8 +155,12 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
       let filteredData = data || [];
 
+      // Check if user has permission to view all tickets
+      const canViewAllTickets = session?.role_permission && Permissions.tickets.canViewAll(session.role_permission);
+
       // Filter tickets for technicians, spa experts, and commission employees to show only their work
-      if ((isRestrictedRole || isCommissionEmployee) && session?.employee_id) {
+      // But allow roles with canViewAll permission (Receptionist, Admin, etc.) to see everything
+      if (!canViewAllTickets && (isRestrictedRole || isCommissionEmployee) && session?.employee_id) {
         filteredData = filteredData.filter(ticket =>
           ticket.ticket_items && ticket.ticket_items.some((item: any) => item.employee_id === session.employee_id)
         );
