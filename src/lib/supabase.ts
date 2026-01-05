@@ -82,6 +82,13 @@ export interface WeeklySchedule {
 
 export type Employee = Technician;
 
+export interface EmployeeService {
+  id: string;
+  employee_id: string;
+  service_id: string;
+  created_at: string;
+}
+
 export interface Service {
   id: string;
   code: string;
