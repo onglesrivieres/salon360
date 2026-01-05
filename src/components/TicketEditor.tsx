@@ -50,6 +50,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const [items, setItems] = useState<TicketItemForm[]>([]);
   const [services, setServices] = useState<StoreServiceWithDetails[]>([]);
   const [employees, setEmployees] = useState<Technician[]>([]);
+  const [employeeServicesMap, setEmployeeServicesMap] = useState<Record<string, string[]>>({});
   const [sortedTechnicians, setSortedTechnicians] = useState<TechnicianWithQueue[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -181,10 +182,17 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   };
 
   const canEmployeePerformService = (employeeId: string, serviceId: string): boolean => {
+    if (!employeeId || !serviceId) return true;
+
     const employee = employees.find(e => e.id === employeeId);
     const service = services.find(s => s.id === serviceId);
 
     if (!employee || !service) return true;
+
+    const assignedServices = employeeServicesMap[employeeId];
+    if (assignedServices && assignedServices.length > 0) {
+      return assignedServices.includes(service.service_id);
+    }
 
     const isSpaExpert = employee.role.includes('Spa Expert');
     if (isSpaExpert) {
@@ -192,7 +200,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       return allowedCategories.includes(service.category);
     }
 
-    // Technicians and other roles can perform all services
     return true;
   };
 
@@ -352,7 +359,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     try {
       setLoading(true);
 
-      const [servicesRes, employeesRes] = await Promise.all([
+      const [servicesRes, employeesRes, employeeServicesRes] = await Promise.all([
         supabase.rpc('get_services_by_popularity', {
           p_store_id: selectedStoreId
         }),
@@ -361,16 +368,31 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           .select('*')
           .or('status.eq.Active,status.eq.active')
           .order('display_name'),
+        supabase
+          .from('employee_services')
+          .select('employee_id, service_id'),
       ]);
 
       if (servicesRes.error) throw servicesRes.error;
       if (employeesRes.error) throw employeesRes.error;
+      if (employeeServicesRes.error) throw employeeServicesRes.error;
 
       setServices(servicesRes.data || []);
 
-      const allEmployees = (employeesRes.data || []).filter(emp =>
-        (emp.role.includes('Technician') || emp.role.includes('Spa Expert')) && !emp.role.includes('Cashier')
-      );
+      const servicesMap: Record<string, string[]> = {};
+      (employeeServicesRes.data || []).forEach(es => {
+        if (!servicesMap[es.employee_id]) {
+          servicesMap[es.employee_id] = [];
+        }
+        servicesMap[es.employee_id].push(es.service_id);
+      });
+      setEmployeeServicesMap(servicesMap);
+
+      const allEmployees = (employeesRes.data || []).filter(emp => {
+        const hasAssignedServices = servicesMap[emp.id] && servicesMap[emp.id].length > 0;
+        const isTraditionalTechnician = (emp.role.includes('Technician') || emp.role.includes('Spa Expert')) && !emp.role.includes('Cashier');
+        return hasAssignedServices || isTraditionalTechnician;
+      });
       const storeFilteredEmployees = selectedStoreId
         ? allEmployees.filter(emp => !emp.store_id || emp.store_id === selectedStoreId)
         : allEmployees;
