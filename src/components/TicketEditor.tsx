@@ -198,12 +198,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       return assignedServices.includes(service.service_id);
     }
 
-    const isSpaExpert = employee.role.includes('Spa Expert');
-    if (isSpaExpert) {
-      const allowedCategories = ['Soins de Pédicure', 'Soins de Manucure', 'Others'];
-      return allowedCategories.includes(service.category);
-    }
-
     return true;
   };
 
