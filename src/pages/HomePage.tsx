@@ -414,7 +414,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       }
     } catch (error: any) {
       console.error('Queue operation failed:', error);
-      setPinError('Failed to process request. Please try again.');
+      setErrorMessage('Failed to process request. Please try again.');
+      setShowErrorModal(true);
     }
   };
 
