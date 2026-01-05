@@ -250,7 +250,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
   useEffect(() => {
     loadData();
-  }, [ticketId]);
+  }, [ticketId, selectedStoreId, selectedDate]);
 
   useEffect(() => {
     if (isSelfServiceMode && !ticketId) {
@@ -360,6 +360,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   }
 
   async function loadData() {
+    if (!selectedStoreId) {
+      return;
+    }
+
     try {
       setLoading(true);
 
