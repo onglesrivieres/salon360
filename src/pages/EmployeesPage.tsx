@@ -235,7 +235,7 @@ export function EmployeesPage() {
         status: 'Active',
         pay_type: 'hourly',
         store_ids: [],
-        service_ids: [],
+        service_ids: services.map(s => s.id),
         notes: '',
         tip_report_show_details: true,
         tip_paired_enabled: true,
