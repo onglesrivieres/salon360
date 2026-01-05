@@ -68,13 +68,13 @@ export function AttendancePage() {
       setLoading(true);
       const { startDate, endDate } = getDateRange();
 
-      const isTechnician = session?.role_permission === 'Technician';
+      const isRestrictedRole = session?.role_permission === 'Technician' || session?.role_permission === 'Receptionist';
 
       const { data, error } = await supabase.rpc('get_store_attendance', {
         p_store_id: selectedStoreId,
         p_start_date: startDate,
         p_end_date: endDate,
-        p_employee_id: isTechnician ? session?.employee_id : null
+        p_employee_id: isRestrictedRole ? session?.employee_id : null
       });
 
       if (error) throw error;
@@ -208,9 +208,9 @@ export function AttendancePage() {
   }
 
   function handleShiftClick(record: AttendanceSession, employeeId: string, employeeName: string, workDate: string) {
-    const isTechnician = session?.role_permission === 'Technician';
+    const isRestrictedRole = session?.role_permission === 'Technician' || session?.role_permission === 'Receptionist';
 
-    if (isTechnician && session?.employee_id !== employeeId) {
+    if (isRestrictedRole && session?.employee_id !== employeeId) {
       return;
     }
 
@@ -292,7 +292,7 @@ export function AttendancePage() {
   const periodRange = `${formatDateEST(parseLocalDate(startDate), { month: 'short', day: 'numeric' })} - ${formatDateEST(parseLocalDate(endDate), { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
   // Check if this is an individual employee view (not management)
-  const isTechnician = session?.role_permission === 'Technician';
+  const isRestrictedRole = session?.role_permission === 'Technician' || session?.role_permission === 'Receptionist';
   const isManagement = session?.role && Permissions.endOfDay.canView(session.role);
 
   // Check if commission employee (and not management)
@@ -410,7 +410,7 @@ export function AttendancePage() {
                           {sessions && sessions.length > 0 ? (
                             <div className="space-y-0.5">
                               {sessions.map((record, sessionIdx) => {
-                                const isClickable = isTechnician
+                                const isClickable = isRestrictedRole
                                   ? employeeId === session?.employee_id
                                   : true;
 
@@ -457,7 +457,7 @@ export function AttendancePage() {
                                         })}
                                       </div>
                                     )}
-                                    {record.totalHours && !(isTechnician && employee.payType === 'daily') && (
+                                    {record.totalHours && !(isRestrictedRole && employee.payType === 'daily') && (
                                       <div className={`text-[9px] font-semibold ${
                                         record.status === 'checked_in'
                                           ? 'text-white'
@@ -486,7 +486,7 @@ export function AttendancePage() {
                       );
                     })}
                     <td className="p-1 text-right text-[11px] font-bold text-gray-900 sticky right-0 bg-white w-[55px] min-w-[55px] max-w-[55px]">
-                      {isTechnician ? (
+                      {isRestrictedRole ? (
                         // Individual employee view - show only relevant metric based on pay type
                         employee.payType === 'daily' ? (
                           <div>{employee.daysPresent}d</div>
