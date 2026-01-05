@@ -51,6 +51,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const [services, setServices] = useState<StoreServiceWithDetails[]>([]);
   const [employees, setEmployees] = useState<Technician[]>([]);
   const [employeeServicesMap, setEmployeeServicesMap] = useState<Record<string, string[]>>({});
+  const [employeeStoresMap, setEmployeeStoresMap] = useState<Record<string, string[]>>({});
   const [sortedTechnicians, setSortedTechnicians] = useState<TechnicianWithQueue[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -185,12 +186,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     if (!employeeId || !serviceId) return true;
 
     const employee = employees.find(e => e.id === employeeId);
-    const service = services.find(s => s.id === serviceId);
+    // serviceId might be either a store service ID or a global service ID
+    // Try to find service by both to handle both cases
+    const service = services.find(s => s.id === serviceId || s.service_id === serviceId);
 
     if (!employee || !service) return true;
 
     const assignedServices = employeeServicesMap[employeeId];
     if (assignedServices && assignedServices.length > 0) {
+      // Check against the global service ID
       return assignedServices.includes(service.service_id);
     }
 
@@ -359,7 +363,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     try {
       setLoading(true);
 
-      const [servicesRes, employeesRes, employeeServicesRes] = await Promise.all([
+      const [servicesRes, employeesRes, employeeServicesRes, employeeStoresRes] = await Promise.all([
         supabase.rpc('get_services_by_popularity', {
           p_store_id: selectedStoreId
         }),
@@ -371,11 +375,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         supabase
           .from('employee_services')
           .select('employee_id, service_id'),
+        supabase
+          .from('employee_stores')
+          .select('employee_id, store_id'),
       ]);
 
       if (servicesRes.error) throw servicesRes.error;
       if (employeesRes.error) throw employeesRes.error;
       if (employeeServicesRes.error) throw employeeServicesRes.error;
+      if (employeeStoresRes.error) throw employeeStoresRes.error;
 
       setServices(servicesRes.data || []);
 
@@ -388,13 +396,36 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       });
       setEmployeeServicesMap(servicesMap);
 
-      const allEmployees = (employeesRes.data || []).filter(emp => {
-        const hasAssignedServices = servicesMap[emp.id] && servicesMap[emp.id].length > 0;
-        const isTraditionalTechnician = (emp.role.includes('Technician') || emp.role.includes('Spa Expert')) && !emp.role.includes('Cashier');
-        return hasAssignedServices || isTraditionalTechnician;
+      const storesMap: Record<string, string[]> = {};
+      (employeeStoresRes.data || []).forEach(es => {
+        if (!storesMap[es.employee_id]) {
+          storesMap[es.employee_id] = [];
+        }
+        storesMap[es.employee_id].push(es.store_id);
       });
+      setEmployeeStoresMap(storesMap);
+
+      const allEmployees = (employeesRes.data || []).filter(emp => {
+        // Include employees who have assigned services (any role can perform services if assigned)
+        const hasAssignedServices = servicesMap[emp.id] && servicesMap[emp.id].length > 0;
+        // Include traditional service-performing roles (even without specific service assignments)
+        const isServicePerformingRole = (
+          emp.role.includes('Technician') ||
+          emp.role.includes('Spa Expert') ||
+          emp.role.includes('Supervisor') ||
+          emp.role.includes('Receptionist')
+        ) && !emp.role.includes('Cashier');
+        return hasAssignedServices || isServicePerformingRole;
+      });
+
+      // Filter employees by store using the employee_stores junction table
       const storeFilteredEmployees = selectedStoreId
-        ? allEmployees.filter(emp => !emp.store_id || emp.store_id === selectedStoreId)
+        ? allEmployees.filter(emp => {
+            const employeeStores = storesMap[emp.id];
+            // Include if employee has no store assignments (works at all stores)
+            // OR if employee is assigned to the selected store
+            return !employeeStores || employeeStores.length === 0 || employeeStores.includes(selectedStoreId);
+          })
         : allEmployees;
 
       setEmployees(storeFilteredEmployees);
