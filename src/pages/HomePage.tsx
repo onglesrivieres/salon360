@@ -70,41 +70,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         return;
       }
 
-      // Check if employee requires check-in for Ready button
-      if (selectedAction === 'ready') {
-        const requiresCheckIn = session.role.some(r =>
-          ['Technician', 'Receptionist', 'Supervisor'].includes(r)
-        );
-
-        if (requiresCheckIn) {
-          const { data: employee } = await supabase
-            .from('employees')
-            .select('pay_type')
-            .eq('id', session.employee_id)
-            .maybeSingle();
-
-          const payType = employee?.pay_type || 'hourly';
-
-          if (payType === 'hourly' || payType === 'daily') {
-            // Check if they're checked in today
-            const today = getCurrentDateEST();
-            const { data: attendance } = await supabase
-              .from('attendance_records')
-              .select('status')
-              .eq('employee_id', session.employee_id)
-              .eq('work_date', today)
-              .eq('status', 'checked_in')
-              .maybeSingle();
-
-            if (!attendance) {
-              setPinError('You must check in before joining the ready queue. Please use the Check In/Out button first.');
-              setIsLoading(false);
-              return;
-            }
-          }
-        }
-      }
-
       let employeeStores: any[] = [];
       let hasMultipleStores = false;
       let storeId: string | undefined;
@@ -186,7 +151,25 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           if (selectedAction === 'checkin' || selectedAction === 'checkout') {
             await handleCheckInOut(session.employee_id, storeId, displayName, payType, selectedAction);
           } else if (selectedAction === 'ready') {
-            await handleReady(session.employee_id, storeId);
+            // For single-store employees, check if they're checked in at their store
+            const today = getCurrentDateEST();
+            const { data: attendance } = await supabase
+              .from('attendance_records')
+              .select('status')
+              .eq('employee_id', session.employee_id)
+              .eq('store_id', storeId)
+              .eq('work_date', today)
+              .eq('status', 'checked_in')
+              .maybeSingle();
+
+            if (!attendance && (payType === 'hourly' || payType === 'daily')) {
+              // Not checked in, automatically check them in first
+              await handleCheckInOut(session.employee_id, storeId, displayName, payType, 'checkin');
+              // Check-in will automatically join the queue via check_in_employee RPC
+            } else {
+              // Already checked in, just join the queue
+              await handleReady(session.employee_id, storeId);
+            }
           }
         }
       } else if (selectedAction === 'report') {
@@ -230,7 +213,32 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           storeName
         );
       } else if (selectedAction === 'ready') {
-        await handleReady(authenticatedSession.employee_id, storeId, storeName);
+        // Check if employee is checked in at THIS specific store
+        const today = getCurrentDateEST();
+        const { data: attendance } = await supabase
+          .from('attendance_records')
+          .select('status')
+          .eq('employee_id', authenticatedSession.employee_id)
+          .eq('store_id', storeId)
+          .eq('work_date', today)
+          .eq('status', 'checked_in')
+          .maybeSingle();
+
+        if (!attendance && (authenticatedSession.pay_type === 'hourly' || authenticatedSession.pay_type === 'daily')) {
+          // Not checked in at this store, automatically check them in first
+          await handleCheckInOut(
+            authenticatedSession.employee_id,
+            storeId,
+            authenticatedSession.display_name,
+            authenticatedSession.pay_type,
+            'checkin',
+            storeName
+          );
+          // Check-in will automatically join the queue via check_in_employee RPC
+        } else {
+          // Already checked in, just join the queue
+          await handleReady(authenticatedSession.employee_id, storeId, storeName);
+        }
       }
     } catch (error) {
       console.error('Error handling store selection:', error);
