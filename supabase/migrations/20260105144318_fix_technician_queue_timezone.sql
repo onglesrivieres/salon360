@@ -1,0 +1,191 @@
+/*
+  # Fix Timezone Mismatch in get_sorted_technicians_for_store
+
+  ## Problem
+  The function was using CURRENT_DATE (database server timezone) to check for
+  attendance records, but check_in_employee creates records using the store's
+  timezone. This caused employees to show as "Not Ready" even after successful
+  check-in when the dates differ (e.g., late evening in EST when UTC is already
+  the next day).
+
+  ## Solution
+  Use the store's timezone to calculate today's date, consistent with how
+  check_in_employee calculates work_date.
+
+  ## Changes
+  - Added v_store_timezone variable
+  - Added v_local_date variable calculated from store timezone
+  - Changed v_day_name calculation to use v_local_date
+  - Changed all attendance record queries to use v_local_date instead of p_date
+*/
+
+-- Drop existing function
+DROP FUNCTION IF EXISTS public.get_sorted_technicians_for_store(uuid, DATE);
+
+-- Create the fixed function with store timezone support
+CREATE FUNCTION public.get_sorted_technicians_for_store(
+  p_store_id uuid,
+  p_date DATE DEFAULT NULL  -- Keep parameter for backwards compatibility but ignore it
+)
+RETURNS TABLE (
+  employee_id uuid,
+  legal_name text,
+  display_name text,
+  queue_status text,
+  queue_position integer,
+  ready_at timestamptz,
+  current_open_ticket_id uuid,
+  open_ticket_count integer,
+  ticket_start_time timestamptz,
+  estimated_duration_min integer,
+  estimated_completion_time timestamptz
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
+AS $$
+DECLARE
+  v_day_name text;
+  v_store_timezone text;
+  v_local_date date;
+BEGIN
+  -- Get store timezone and calculate today's date in that timezone
+  -- This ensures consistency with check_in_employee which uses the same method
+  v_store_timezone := public.get_store_timezone(p_store_id);
+  v_local_date := (CURRENT_TIMESTAMP AT TIME ZONE v_store_timezone)::date;
+
+  -- Calculate day of week from store's local date
+  -- PostgreSQL EXTRACT(DOW) returns: 0=Sunday, 1=Monday, ..., 6=Saturday
+  v_day_name := CASE EXTRACT(DOW FROM v_local_date)::integer
+    WHEN 0 THEN 'sunday'
+    WHEN 1 THEN 'monday'
+    WHEN 2 THEN 'tuesday'
+    WHEN 3 THEN 'wednesday'
+    WHEN 4 THEN 'thursday'
+    WHEN 5 THEN 'friday'
+    WHEN 6 THEN 'saturday'
+  END;
+
+  RETURN QUERY
+  WITH employee_open_tickets AS (
+    SELECT
+      ti.employee_id,
+      COUNT(DISTINCT st.id) as ticket_count,
+      MIN(st.opened_at) as oldest_ticket_at,
+      (array_agg(st.id ORDER BY st.opened_at ASC))[1] as oldest_ticket_id,
+      -- Use LEFT JOIN to handle both regular services and custom services
+      SUM(COALESCE(ss.duration_min, 0) * ti.qty) as total_duration_min
+    FROM public.ticket_items ti
+    JOIN public.sale_tickets st ON ti.sale_ticket_id = st.id
+    -- LEFT JOIN because custom services don't have store_service_id
+    LEFT JOIN public.store_services ss ON ti.store_service_id = ss.id
+    WHERE st.closed_at IS NULL
+      AND st.completed_at IS NULL
+      AND st.store_id = p_store_id
+    GROUP BY ti.employee_id
+  ),
+  queue_positions AS (
+    SELECT
+      trq.employee_id,
+      trq.status,
+      trq.ready_at,
+      trq.current_open_ticket_id,
+      ROW_NUMBER() OVER (ORDER BY trq.ready_at ASC) as position
+    FROM public.technician_ready_queue trq
+    JOIN public.employees e ON trq.employee_id = e.id
+    WHERE trq.store_id = p_store_id
+      AND trq.status = 'ready'
+      AND LOWER(e.status) = 'active'
+      -- Role-based filtering: Technician, Spa Expert, or Supervisor
+      AND (
+        e.role @> ARRAY['Technician']::text[]
+        OR e.role @> ARRAY['Supervisor']::text[]
+        OR e.role @> ARRAY['Spa Expert']::text[]
+      )
+      -- Exclude Cashiers
+      AND NOT e.role @> ARRAY['Cashier']::text[]
+      -- Store filtering
+      AND EXISTS (
+        SELECT 1 FROM public.employee_stores es
+        WHERE es.employee_id = e.id
+        AND es.store_id = p_store_id
+      )
+      -- Schedule filtering: scheduled for today OR checked in today (using store timezone date)
+      AND (
+        COALESCE((e.weekly_schedule->v_day_name->>'is_working')::boolean, false) = true
+        OR EXISTS (
+          SELECT 1 FROM public.attendance_records ar
+          WHERE ar.employee_id = e.id
+          AND ar.store_id = p_store_id
+          AND ar.work_date = v_local_date  -- Use store timezone date
+          AND ar.status = 'checked_in'
+        )
+      )
+  )
+  SELECT
+    e.id as employee_id,
+    e.legal_name,
+    e.display_name,
+    CASE
+      WHEN eot.ticket_count > 0 THEN 'busy'
+      WHEN qp.employee_id IS NOT NULL AND qp.status = 'ready' THEN 'ready'
+      ELSE 'neutral'
+    END as queue_status,
+    COALESCE(qp.position::integer, 0) as queue_position,
+    qp.ready_at,
+    COALESCE(eot.oldest_ticket_id, qp.current_open_ticket_id) as current_open_ticket_id,
+    COALESCE(eot.ticket_count::integer, 0) as open_ticket_count,
+    eot.oldest_ticket_at as ticket_start_time,
+    COALESCE(eot.total_duration_min::integer, 0) as estimated_duration_min,
+    CASE
+      WHEN eot.oldest_ticket_at IS NOT NULL AND eot.total_duration_min IS NOT NULL AND eot.total_duration_min > 0
+      THEN eot.oldest_ticket_at + (eot.total_duration_min || ' minutes')::interval
+      ELSE NULL
+    END as estimated_completion_time
+  FROM public.employees e
+  LEFT JOIN queue_positions qp ON e.id = qp.employee_id
+  LEFT JOIN employee_open_tickets eot ON e.id = eot.employee_id
+  WHERE LOWER(e.status) = 'active'
+    -- Role-based filtering: Technician, Spa Expert, or Supervisor
+    AND (
+      e.role @> ARRAY['Technician']::text[]
+      OR e.role @> ARRAY['Supervisor']::text[]
+      OR e.role @> ARRAY['Spa Expert']::text[]
+    )
+    -- Exclude Cashiers
+    AND NOT e.role @> ARRAY['Cashier']::text[]
+    -- Store filtering
+    AND EXISTS (
+      SELECT 1 FROM public.employee_stores es
+      WHERE es.employee_id = e.id
+      AND es.store_id = p_store_id
+    )
+    -- Schedule filtering: scheduled for today OR checked in today (using store timezone date)
+    AND (
+      COALESCE((e.weekly_schedule->v_day_name->>'is_working')::boolean, false) = true
+      OR EXISTS (
+        SELECT 1 FROM public.attendance_records ar
+        WHERE ar.employee_id = e.id
+        AND ar.store_id = p_store_id
+        AND ar.work_date = v_local_date  -- Use store timezone date
+        AND ar.status = 'checked_in'
+      )
+    )
+  ORDER BY
+    CASE
+      WHEN eot.ticket_count > 0 THEN 3
+      WHEN qp.employee_id IS NOT NULL AND qp.status = 'ready' THEN 1
+      ELSE 2
+    END,
+    qp.position,
+    e.display_name;
+END;
+$$;
+
+-- Add function comment
+COMMENT ON FUNCTION public.get_sorted_technicians_for_store(uuid, DATE) IS
+'Returns sorted technicians for the Ticket Editor queue display. Uses store timezone for date calculations to ensure consistency with check_in_employee. Uses role-based filtering (Technician, Spa Expert, Supervisor) with schedule-based filtering.';
+
+-- Reload schema
+NOTIFY pgrst, 'reload schema';
