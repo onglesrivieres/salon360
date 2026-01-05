@@ -238,17 +238,6 @@ export function ServicesPage() {
           .eq('id', editingService.store_service_id);
 
         if (error) throw error;
-
-        // Sync changes to global service
-        const { error: syncError } = await supabase
-          .rpc('sync_store_service_to_global', {
-            p_store_service_id: editingService.store_service_id,
-          });
-
-        if (syncError) {
-          console.warn('Failed to sync to global service:', syncError);
-        }
-
         showToast('Service updated successfully', 'success');
       } else {
         if (!Permissions.services.canCreate(session.role)) {
@@ -271,23 +260,10 @@ export function ServicesPage() {
           return;
         }
 
-        // Find or create global service
-        const { data: globalServiceId, error: globalServiceError } = await supabase
-          .rpc('find_or_create_global_service', {
-            p_code: formData.code.toUpperCase(),
-            p_name: formData.name,
-            p_category: formData.category,
-            p_base_price: parseFloat(formData.price),
-            p_duration_min: parseInt(formData.duration_min),
-          });
-
-        if (globalServiceError) throw globalServiceError;
-
         const { error: storeServiceError } = await supabase
           .from('store_services')
           .insert({
             store_id: selectedStoreId,
-            service_id: globalServiceId,
             code: formData.code.toUpperCase(),
             name: formData.name,
             category: formData.category,

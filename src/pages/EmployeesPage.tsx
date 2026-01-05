@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CreditCard as Edit2, Search, RefreshCw } from 'lucide-react';
-import { supabase, Employee, Store, WeeklySchedule, Service, EmployeeService } from '../lib/supabase';
+import { Plus, Edit2, Search, RefreshCw } from 'lucide-react';
+import { supabase, Employee, Store, WeeklySchedule } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
@@ -28,9 +28,6 @@ export function EmployeesPage() {
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [employeeStoresMap, setEmployeeStoresMap] = useState<Record<string, string[]>>({});
-  const [services, setServices] = useState<Service[]>([]);
-  const [servicesByCategory, setServicesByCategory] = useState<Record<string, Service[]>>({});
-  const [employeeServicesMap, setEmployeeServicesMap] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -49,7 +46,6 @@ export function EmployeesPage() {
     status: 'Active' as Employee['status'],
     pay_type: 'hourly' as 'hourly' | 'daily' | 'commission',
     store_ids: [] as string[],
-    service_ids: [] as string[],
     notes: '',
     tip_report_show_details: true,
     tip_paired_enabled: true,
@@ -59,22 +55,6 @@ export function EmployeesPage() {
 
   useEffect(() => {
     fetchStores();
-    fetchServices();
-  }, []);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      const dropdowns = document.querySelectorAll('.service-dropdown');
-      dropdowns.forEach(dropdown => {
-        const button = dropdown.previousElementSibling;
-        if (button && !dropdown.contains(event.target as Node) && !button.contains(event.target as Node)) {
-          dropdown.classList.add('hidden');
-        }
-      });
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -123,43 +103,6 @@ export function EmployeesPage() {
     }
   }
 
-  async function fetchServices() {
-    try {
-      // Fetch all active, non-archived global services
-      const { data, error } = await supabase
-        .from('services')
-        .select('*')
-        .eq('active', true)
-        .eq('archived', false)
-        .order('category, name');
-
-      if (error) throw error;
-
-      const allServices = data || [];
-      setServices(allServices);
-
-      const categorized: Record<string, Service[]> = {
-        'Soins de Pédicure': [],
-        'Soins de Manucure': [],
-        'Extensions des Ongles': [],
-        'Others': [],
-      };
-
-      allServices.forEach(service => {
-        const category = service.category || 'Others';
-        if (categorized[category]) {
-          categorized[category].push(service);
-        } else {
-          categorized['Others'].push(service);
-        }
-      });
-
-      setServicesByCategory(categorized);
-    } catch (error) {
-      showToast(t('messages.failed'), 'error');
-    }
-  }
-
   async function fetchEmployees() {
     try {
       const { data, error } = await supabase
@@ -187,20 +130,6 @@ export function EmployeesPage() {
 
       setEmployeeStoresMap(storesMap);
 
-      const { data: employeeServicesData } = await supabase
-        .from('employee_services')
-        .select('employee_id, service_id');
-
-      const servicesMap: Record<string, string[]> = {};
-      employeeServicesData?.forEach(es => {
-        if (!servicesMap[es.employee_id]) {
-          servicesMap[es.employee_id] = [];
-        }
-        servicesMap[es.employee_id].push(es.service_id);
-      });
-
-      setEmployeeServicesMap(servicesMap);
-
       setEmployees(allEmployees);
       setFilteredEmployees(allEmployees);
     } catch (error) {
@@ -214,14 +143,12 @@ export function EmployeesPage() {
     if (employee) {
       setEditingEmployee(employee);
       const storeIds = employeeStoresMap[employee.id] || [];
-      const serviceIds = employeeServicesMap[employee.id] || [];
       setFormData({
         display_name: employee.display_name,
         role: employee.role,
         status: employee.status,
         pay_type: employee.pay_type || 'hourly',
         store_ids: storeIds,
-        service_ids: serviceIds,
         notes: employee.notes,
         tip_report_show_details: employee.tip_report_show_details ?? true,
         tip_paired_enabled: employee.tip_paired_enabled ?? true,
@@ -236,7 +163,6 @@ export function EmployeesPage() {
         status: 'Active',
         pay_type: 'hourly',
         store_ids: [],
-        service_ids: [], // Default to no services for new employees
         notes: '',
         tip_report_show_details: true,
         tip_paired_enabled: true,
@@ -324,26 +250,6 @@ export function EmployeesPage() {
           .insert(employeeStoreRecords);
 
         if (storesError) throw storesError;
-      }
-
-      if (editingEmployee) {
-        await supabase
-          .from('employee_services')
-          .delete()
-          .eq('employee_id', employeeId);
-      }
-
-      if (formData.service_ids.length > 0) {
-        const employeeServiceRecords = formData.service_ids.map(serviceId => ({
-          employee_id: employeeId,
-          service_id: serviceId,
-        }));
-
-        const { error: servicesError } = await supabase
-          .from('employee_services')
-          .insert(employeeServiceRecords);
-
-        if (servicesError) throw servicesError;
       }
 
       showToast(
@@ -451,9 +357,6 @@ export function EmployeesPage() {
                   {t('emp.assignedStores')}
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Services
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Schedule
                 </th>
               </tr>
@@ -498,15 +401,6 @@ export function EmployeesPage() {
                       ) : (
                         <span>{storeNames}</span>
                       )}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-gray-600">
-                      {(() => {
-                        const assignedServices = employeeServicesMap[employee.id] || [];
-                        if (assignedServices.length === 0) {
-                          return <span className="text-gray-400 italic">No services</span>;
-                        }
-                        return <span>{assignedServices.length} services</span>;
-                      })()}
                     </td>
                     <td className="px-3 py-2 text-xs text-gray-600">
                       <span className="font-mono">{formatScheduleDisplay(employee.weekly_schedule)}</span>
@@ -588,168 +482,6 @@ export function EmployeesPage() {
                 { value: 'commission', label: 'Commission' },
               ]}
             />
-          )}
-          {session && session.role && (session.role.includes('Owner') || session.role.includes('Manager')) && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Services
-              </label>
-              <p className="text-xs text-gray-500 mb-2">
-                Select services this employee can perform across all stores
-              </p>
-              <div className="mb-2 bg-blue-50 border border-blue-200 rounded-lg p-2">
-                <p className="text-xs text-blue-800">
-                  Service assignments apply to all stores where this employee works
-                </p>
-              </div>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const dropdown = e.currentTarget.nextElementSibling as HTMLElement;
-                    if (dropdown) {
-                      dropdown.classList.toggle('hidden');
-                    }
-                  }}
-                  className="w-full px-3 py-2 text-left border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-700">
-                      {formData.service_ids.length === 0
-                        ? 'No services selected'
-                        : `${formData.service_ids.length} services selected`}
-                    </span>
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </button>
-                <div
-                  className="service-dropdown hidden absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-96 overflow-y-auto"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="sticky top-0 bg-white border-b border-gray-200 p-2 flex items-center justify-between gap-2 z-10">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const allServiceIds = services.map(s => s.id);
-                        setFormData({
-                          ...formData,
-                          service_ids: allServiceIds,
-                        });
-                      }}
-                      className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                    >
-                      Select All
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFormData({
-                          ...formData,
-                          service_ids: [],
-                        });
-                      }}
-                      className="flex-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                    >
-                      Deselect All
-                    </button>
-                  </div>
-                  <div className="p-2 space-y-3">
-                    {Object.entries(servicesByCategory).map(([category, categoryServices]) => {
-                      if (categoryServices.length === 0) return null;
-
-                      const categoryColors: Record<string, string> = {
-                        'Soins de Pédicure': 'text-blue-700 bg-blue-50',
-                        'Soins de Manucure': 'text-pink-700 bg-pink-50',
-                        'Extensions des Ongles': 'text-purple-700 bg-purple-50',
-                        'Others': 'text-teal-700 bg-teal-50',
-                      };
-
-                      const categoryServiceIds = categoryServices.map(s => s.id);
-                      const selectedInCategory = categoryServiceIds.filter(id =>
-                        formData.service_ids.includes(id)
-                      );
-                      const allSelected = selectedInCategory.length === categoryServiceIds.length;
-                      const someSelected = selectedInCategory.length > 0 && selectedInCategory.length < categoryServiceIds.length;
-
-                      return (
-                        <div key={category}>
-                          <div
-                            className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:opacity-80 transition-opacity ${categoryColors[category] || categoryColors['Others']}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (allSelected) {
-                                setFormData({
-                                  ...formData,
-                                  service_ids: formData.service_ids.filter(id => !categoryServiceIds.includes(id))
-                                });
-                              } else {
-                                const newServiceIds = [...new Set([...formData.service_ids, ...categoryServiceIds])];
-                                setFormData({
-                                  ...formData,
-                                  service_ids: newServiceIds
-                                });
-                              }
-                            }}
-                          >
-                            <div className="relative flex items-center justify-center">
-                              <input
-                                type="checkbox"
-                                checked={allSelected}
-                                ref={(el) => {
-                                  if (el) {
-                                    el.indeterminate = someSelected;
-                                  }
-                                }}
-                                readOnly
-                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 pointer-events-none"
-                              />
-                            </div>
-                            <span className="text-xs font-semibold flex-1">
-                              {category}
-                            </span>
-                            <span className="text-xs opacity-70">
-                              ({selectedInCategory.length}/{categoryServiceIds.length})
-                            </span>
-                          </div>
-                          <div className="mt-1 space-y-1">
-                            {categoryServices.map(service => (
-                              <label
-                                key={service.id}
-                                className="flex items-center px-2 py-2 hover:bg-gray-50 rounded cursor-pointer min-h-[44px]"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={formData.service_ids.includes(service.id)}
-                                  onChange={(e) => {
-                                    const isChecked = e.target.checked;
-                                    setFormData({
-                                      ...formData,
-                                      service_ids: isChecked
-                                        ? [...formData.service_ids, service.id]
-                                        : formData.service_ids.filter(id => id !== service.id)
-                                    });
-                                  }}
-                                  className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                />
-                                <span className="ml-3 text-sm text-gray-700">
-                                  {service.code} - {service.name}
-                                </span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
           )}
           {session && session.role && (session.role.includes('Owner') || session.role.includes('Manager')) && (
             <div>
