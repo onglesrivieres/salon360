@@ -850,7 +850,7 @@ export function PendingApprovalsPage() {
               }`}
             >
               <Bell className="w-4 h-4" />
-              Review Requests
+              Shift Request
               {attendanceProposals.filter(p => p.status === 'pending').length > 0 && (
                 <Badge variant="warning" className="ml-1">
                   {attendanceProposals.filter(p => p.status === 'pending').length}
@@ -866,7 +866,7 @@ export function PendingApprovalsPage() {
               }`}
             >
               <Flag className="w-4 h-4" />
-              Violation History
+              Turn Violation
               {violationReports.length > 0 && (
                 <Badge variant="error" className="ml-1">
                   {violationReports.length}
@@ -1658,7 +1658,7 @@ export function PendingApprovalsPage() {
               )}
 
               <div className="mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Violation History</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Turn Violation</h3>
                 <div className="flex flex-wrap gap-2 mb-4">
                   <button
                     onClick={() => setViolationStatusFilter('all')}

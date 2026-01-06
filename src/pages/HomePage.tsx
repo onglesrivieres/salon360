@@ -70,41 +70,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         return;
       }
 
-      // Check if employee requires check-in for Ready button
-      if (selectedAction === 'ready') {
-        const requiresCheckIn = session.role.some(r =>
-          ['Technician', 'Receptionist', 'Supervisor'].includes(r)
-        );
-
-        if (requiresCheckIn) {
-          const { data: employee } = await supabase
-            .from('employees')
-            .select('pay_type')
-            .eq('id', session.employee_id)
-            .maybeSingle();
-
-          const payType = employee?.pay_type || 'hourly';
-
-          if (payType === 'hourly' || payType === 'daily') {
-            // Check if they're checked in today
-            const today = getCurrentDateEST();
-            const { data: attendance } = await supabase
-              .from('attendance_records')
-              .select('status')
-              .eq('employee_id', session.employee_id)
-              .eq('work_date', today)
-              .eq('status', 'checked_in')
-              .maybeSingle();
-
-            if (!attendance) {
-              setPinError('You must check in before joining the ready queue. Please use the Check In/Out button first.');
-              setIsLoading(false);
-              return;
-            }
-          }
-        }
-      }
-
       let employeeStores: any[] = [];
       let hasMultipleStores = false;
       let storeId: string | undefined;
@@ -186,7 +151,33 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           await handleCheckInOut(session.employee_id, storeId, displayName, payType, selectedAction);
         }
       } else if (selectedAction === 'ready') {
-        await handleReady(session.employee_id, storeId);
+        // Find the store where employee is currently checked in
+        const today = getCurrentDateEST();
+        const { data: activeCheckIn, error: checkInError } = await supabase
+          .from('attendance_records')
+          .select('store_id')
+          .eq('employee_id', session.employee_id)
+          .eq('work_date', today)
+          .eq('status', 'checked_in')
+          .order('check_in_time', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (checkInError) {
+          console.error('Error checking attendance:', checkInError);
+          setPinError('Failed to verify check-in status. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+
+        if (!activeCheckIn) {
+          setPinError('You must check in before joining the ready queue. Please use the Check In/Out button first.');
+          setIsLoading(false);
+          return;
+        }
+
+        // Use the store where they're checked in
+        await handleReady(session.employee_id, activeCheckIn.store_id);
       } else if (selectedAction === 'report') {
         const storeIds = employeeStores.map(s => s.id || s.store_id);
         onActionSelected('report', session, storeId, hasMultipleStores, storeIds);
@@ -369,25 +360,42 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   };
 
   const handleReady = async (employeeId: string, storeId: string, storeName?: string) => {
+    console.log('=== handleReady DEBUG ===');
+    console.log('employeeId:', employeeId);
+    console.log('storeId:', storeId);
+    console.log('storeName:', storeName);
+
     try {
+      console.log('Calling check_queue_status...');
       const { data: queueStatus, error: checkError } = await supabase.rpc('check_queue_status', {
         p_employee_id: employeeId,
         p_store_id: storeId
       });
+      console.log('check_queue_status response:', { queueStatus, checkError });
 
-      if (checkError) throw checkError;
+      if (checkError) {
+        console.error('check_queue_status error:', checkError);
+        throw checkError;
+      }
 
       if (queueStatus?.in_queue) {
+        console.log('User already in queue, showing confirm modal');
         setShowConfirmModal(true);
       } else {
+        console.log('Calling join_ready_queue_with_checkin...');
         const { data: queueResult, error: joinError } = await supabase.rpc('join_ready_queue_with_checkin', {
           p_employee_id: employeeId,
           p_store_id: storeId
         });
+        console.log('join_ready_queue_with_checkin response:', { queueResult, joinError });
 
-        if (joinError) throw joinError;
+        if (joinError) {
+          console.error('join_ready_queue_with_checkin error:', joinError);
+          throw joinError;
+        }
 
         if (!queueResult?.success) {
+          console.log('Join queue failed with result:', queueResult);
           setShowPinModal(false);
 
           if (queueResult?.error === 'COOLDOWN_ACTIVE') {
@@ -406,13 +414,19 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           return;
         }
 
+        console.log('Join queue successful!');
         const storeMessage = storeName ? ` at ${storeName}` : '';
         setSuccessMessage(`${t('home.joinedQueue')}${storeMessage}`);
         setShowSuccessModal(true);
       }
     } catch (error: any) {
-      console.error('Queue operation failed:', error);
-      setErrorMessage('Failed to process request. Please try again.');
+      console.error('=== Queue operation FAILED ===');
+      console.error('Error type:', error?.constructor?.name);
+      console.error('Error message:', error?.message);
+      console.error('Error code:', error?.code);
+      console.error('Error details:', error?.details);
+      console.error('Full error:', error);
+      setErrorMessage(`Failed to process request: ${error?.message || 'Unknown error'}. Please try again.`);
       setShowErrorModal(true);
     }
   };
