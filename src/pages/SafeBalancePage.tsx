@@ -16,7 +16,7 @@ interface SafeBalancePageProps {
 
 export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageProps) {
   const { showToast } = useToast();
-  const { session, selectedStoreId } = useAuth();
+  const { session, selectedStoreId, effectiveRole } = useAuth();
 
   const [safeBalance, setSafeBalance] = useState<SafeBalanceSummary | null>(null);
   const [safeDeposits, setSafeDeposits] = useState<CashTransactionWithDetails[]>([]);
@@ -31,7 +31,7 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
   const [selectedTransaction, setSelectedTransaction] = useState<CashTransactionWithDetails | null>(null);
   const [pendingProposals, setPendingProposals] = useState<Set<string>>(new Set());
 
-  const canCreateChangeProposal = session?.role ? Permissions.cashTransactions.canCreateChangeProposal(session.role) : false;
+  const canCreateChangeProposal = effectiveRole ? Permissions.cashTransactions.canCreateChangeProposal(effectiveRole) : false;
 
   useEffect(() => {
     loadSafeBalanceData();
