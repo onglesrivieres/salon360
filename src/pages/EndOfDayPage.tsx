@@ -802,7 +802,11 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         p_created_by_employee_id: session.employee_id,
       });
 
-      if (error) throw error;
+      if (error) {
+        showToast(error.message || 'Failed to submit void request', 'error');
+        console.error('Void request error:', error);
+        return;
+      }
 
       if (result && !result.success) {
         showToast(result.error || 'Failed to submit void request', 'error');
@@ -811,9 +815,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       showToast('Void request submitted for approval', 'success');
       await loadCashTransactions();
-    } catch (error) {
-      showToast('Failed to submit void request', 'error');
-      console.error(error);
+    } catch (error: any) {
+      showToast(error?.message || 'Failed to submit void request', 'error');
+      console.error('Void request exception:', error);
     } finally {
       setSaving(false);
       setIsCashOutModalOpen(false);
