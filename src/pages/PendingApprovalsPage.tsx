@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight, Bell, User, Calendar } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight, Bell, User, Calendar, History, Download } from 'lucide-react';
 import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket, AttendanceChangeProposalWithDetails } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -39,7 +39,22 @@ interface ProposalWithAttendance extends AttendanceChangeProposalWithDetails {
   work_date?: string;
 }
 
-type TabType = 'tickets' | 'inventory' | 'cash' | 'attendance' | 'violations';
+type TabType = 'tickets' | 'inventory' | 'cash' | 'attendance' | 'violations' | 'queue-history';
+
+interface QueueRemovalRecord {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  employee_code: string;
+  removed_by_employee_id: string;
+  removed_by_name: string;
+  reason: string;
+  notes: string | null;
+  removed_at: string;
+  cooldown_expires_at: string;
+  is_active: boolean;
+  minutes_remaining: number | null;
+}
 
 export function PendingApprovalsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('tickets');
@@ -72,16 +87,21 @@ export function PendingApprovalsPage() {
   const [approvalStats, setApprovalStats] = useState<ApprovalStatistics | null>(null);
   const [violationStatusFilter, setViolationStatusFilter] = useState<string>('all');
   const [violationSearchTerm, setViolationSearchTerm] = useState('');
+  const [queueRemovalRecords, setQueueRemovalRecords] = useState<QueueRemovalRecord[]>([]);
+  const [queueHistoryStartDate, setQueueHistoryStartDate] = useState<string>(getCurrentDateEST());
+  const [queueHistoryEndDate, setQueueHistoryEndDate] = useState<string>(getCurrentDateEST());
+  const [queueHistoryLoading, setQueueHistoryLoading] = useState(false);
   const { showToast } = useToast();
-  const { session, selectedStoreId } = useAuth();
+  const { session, selectedStoreId, effectiveRole } = useAuth();
 
   const userRoles = session?.role || [];
   const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
+  const canViewQueueHistory = effectiveRole && Permissions.queue.canViewRemovalHistory(effectiveRole);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
-    if (tab && ['tickets', 'inventory', 'cash', 'attendance', 'violations'].includes(tab)) {
+    if (tab && ['tickets', 'inventory', 'cash', 'attendance', 'violations', 'queue-history'].includes(tab)) {
       setActiveTab(tab as TabType);
     }
   }, []);
@@ -103,9 +123,11 @@ export function PendingApprovalsPage() {
       } else if (activeTab === 'violations') {
         fetchViolationReports();
         fetchViolationHistory();
+      } else if (activeTab === 'queue-history' && canViewQueueHistory) {
+        fetchQueueRemovalHistory();
       }
     }
-  }, [session?.employee_id, selectedStoreId, selectedDate, activeTab, isManagement]);
+  }, [session?.employee_id, selectedStoreId, selectedDate, activeTab, isManagement, canViewQueueHistory]);
 
   useEffect(() => {
     if (!isManagement) return;
@@ -124,12 +146,14 @@ export function PendingApprovalsPage() {
         } else if (activeTab === 'violations') {
           fetchViolationReports();
           fetchViolationHistory();
+        } else if (activeTab === 'queue-history' && canViewQueueHistory) {
+          fetchQueueRemovalHistory();
         }
       }
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [session?.employee_id, selectedStoreId, activeTab, isManagement]);
+  }, [session?.employee_id, selectedStoreId, activeTab, isManagement, canViewQueueHistory]);
 
   function handleTabChange(tab: TabType) {
     setActiveTab(tab);
@@ -301,6 +325,80 @@ export function PendingApprovalsPage() {
     } catch (error) {
       console.error('Error fetching historical approvals:', error);
     }
+  }
+
+  async function fetchQueueRemovalHistory() {
+    if (!selectedStoreId) return;
+
+    setQueueHistoryLoading(true);
+    try {
+      const { data, error: fetchError } = await supabase.rpc('get_queue_removal_history', {
+        p_store_id: selectedStoreId,
+        p_start_date: queueHistoryStartDate || null,
+        p_end_date: queueHistoryEndDate || null
+      });
+
+      if (fetchError) throw fetchError;
+      setQueueRemovalRecords(data || []);
+    } catch (err: any) {
+      console.error('Error fetching queue removal history:', err);
+      showToast(err.message || 'Failed to load queue removal history', 'error');
+    } finally {
+      setQueueHistoryLoading(false);
+    }
+  }
+
+  function formatQueueRemovalDateTime(dateString: string) {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  }
+
+  function exportQueueHistoryToCSV() {
+    if (queueRemovalRecords.length === 0) return;
+
+    const headers = [
+      'Date/Time',
+      'Technician',
+      'Employee Code',
+      'Removed By',
+      'Reason',
+      'Notes',
+      'Cooldown Status',
+      'Minutes Remaining'
+    ];
+
+    const rows = queueRemovalRecords.map(record => [
+      new Date(record.removed_at).toLocaleString(),
+      record.employee_name,
+      record.employee_code,
+      record.removed_by_name,
+      record.reason,
+      record.notes || '',
+      record.is_active ? 'Active' : 'Expired',
+      record.minutes_remaining?.toString() || 'N/A'
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `queue-removals-${queueHistoryStartDate}-${queueHistoryEndDate}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   }
 
   async function handleApproveInventory(approval: PendingInventoryApproval) {
@@ -873,6 +971,24 @@ export function PendingApprovalsPage() {
                 </Badge>
               )}
             </button>
+            {canViewQueueHistory && (
+              <button
+                onClick={() => handleTabChange('queue-history')}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                  activeTab === 'queue-history'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <History className="w-4 h-4" />
+                Queue History
+                {queueRemovalRecords.length > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {queueRemovalRecords.length}
+                  </Badge>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -1837,6 +1953,149 @@ export function PendingApprovalsPage() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'queue-history' && canViewQueueHistory && (
+            <div>
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Queue Removal History</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  View all technician removals from the queue with reasons and cooldown status
+                </p>
+
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="flex flex-col sm:flex-row gap-4 items-end">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={queueHistoryStartDate}
+                        onChange={(e) => setQueueHistoryStartDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={queueHistoryEndDate}
+                        onChange={(e) => setQueueHistoryEndDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <Button onClick={fetchQueueRemovalHistory} disabled={queueHistoryLoading}>
+                      {queueHistoryLoading ? 'Loading...' : 'Apply Filter'}
+                    </Button>
+                    {queueRemovalRecords.length > 0 && (
+                      <Button variant="secondary" onClick={exportQueueHistoryToCSV}>
+                        <Download className="w-4 h-4 mr-2" />
+                        Export CSV
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {queueHistoryLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : queueRemovalRecords.length === 0 ? (
+                <div className="text-center py-12">
+                  <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-3" />
+                  <p className="text-lg font-medium text-gray-900 mb-1">No removals found</p>
+                  <p className="text-sm text-gray-500">No queue removals found for the selected date range</p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                            Date/Time
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                            Technician
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                            Removed By
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                            Reason
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                            Notes
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                            Status
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {queueRemovalRecords.map((record) => (
+                          <tr key={record.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-gray-400" />
+                                {formatQueueRemovalDateTime(record.removed_at)}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              <div>
+                                <div className="font-medium">{record.employee_name}</div>
+                                <div className="text-xs text-gray-500">{record.employee_code}</div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              <div className="flex items-center gap-2">
+                                <User className="w-4 h-4 text-gray-400" />
+                                {record.removed_by_name}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                {record.reason}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600 max-w-xs">
+                              {record.notes || (
+                                <span className="text-gray-400 italic">No additional notes</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              {record.is_active ? (
+                                <div>
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Active
+                                  </span>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {record.minutes_remaining} min remaining
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                  Expired
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {queueRemovalRecords.length > 0 && (
+                    <div className="px-4 py-3 border-t border-gray-200 text-sm text-gray-600 text-center">
+                      Showing {queueRemovalRecords.length} removal{queueRemovalRecords.length !== 1 ? 's' : ''}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
