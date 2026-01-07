@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, TrendingUp, Vault, ChevronLeft, ChevronRight, TrendingDown, AlertTriangle, History, ChevronDown, ChevronUp } from 'lucide-react';
+import { DollarSign, TrendingUp, Vault, ChevronLeft, ChevronRight, TrendingDown, AlertTriangle, History, ChevronDown, ChevronUp, Edit3, Clock } from 'lucide-react';
 import { supabase, SafeBalanceSummary, CashTransactionWithDetails } from '../lib/supabase';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentDateEST } from '../lib/timezone';
 import { SafeWithdrawalModal, WithdrawalData } from '../components/SafeWithdrawalModal';
+import { CashTransactionChangeRequestModal, ChangeRequestData } from '../components/CashTransactionChangeRequestModal';
 import { Button } from '../components/ui/Button';
+import { Permissions } from '../lib/permissions';
 
 interface SafeBalancePageProps {
   selectedDate: string;
@@ -25,6 +27,11 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
   const [balanceHistory, setBalanceHistory] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showChangeRequestModal, setShowChangeRequestModal] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<CashTransactionWithDetails | null>(null);
+  const [pendingProposals, setPendingProposals] = useState<Set<string>>(new Set());
+
+  const canCreateChangeProposal = session?.role ? Permissions.cashTransactions.canCreateChangeProposal(session.role) : false;
 
   useEffect(() => {
     loadSafeBalanceData();
@@ -109,6 +116,25 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
       }));
 
       setSafeWithdrawals(withdrawals);
+
+      // Load pending change proposals for this store
+      const allTransactionIds = [
+        ...deposits.map(d => d.id),
+        ...withdrawals.map(w => w.id),
+      ];
+
+      if (allTransactionIds.length > 0) {
+        const { data: proposals } = await supabase
+          .from('cash_transaction_change_proposals')
+          .select('cash_transaction_id')
+          .in('cash_transaction_id', allTransactionIds)
+          .eq('status', 'pending');
+
+        const pendingIds = new Set((proposals || []).map(p => p.cash_transaction_id));
+        setPendingProposals(pendingIds);
+      } else {
+        setPendingProposals(new Set());
+      }
 
       await supabase.rpc('save_safe_balance_snapshot', {
         p_store_id: selectedStoreId,
@@ -230,6 +256,45 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
       console.error('Failed to submit withdrawal:', error);
       showToast('Failed to submit withdrawal', 'error');
     }
+  }
+
+  async function handleChangeRequestSubmit(data: ChangeRequestData) {
+    if (!session?.employee_id || !selectedTransaction) {
+      showToast('Unable to submit change request', 'error');
+      return;
+    }
+
+    const { data: result, error } = await supabase.rpc('create_cash_transaction_change_proposal', {
+      p_cash_transaction_id: selectedTransaction.id,
+      p_proposed_amount: data.proposed_amount,
+      p_proposed_category: data.proposed_category,
+      p_proposed_description: data.proposed_description,
+      p_proposed_date: data.proposed_date,
+      p_is_deletion_request: data.is_deletion_request,
+      p_reason_comment: data.reason_comment,
+      p_created_by_employee_id: session.employee_id,
+    });
+
+    if (error) {
+      console.error('Failed to submit change request:', error);
+      showToast('Failed to submit change request', 'error');
+      throw error;
+    }
+
+    if (result && !result.success) {
+      showToast(result.error || 'Failed to submit change request', 'error');
+      throw new Error(result.error);
+    }
+
+    showToast('Change request submitted for approval', 'success');
+    setShowChangeRequestModal(false);
+    setSelectedTransaction(null);
+    loadSafeBalanceData();
+  }
+
+  function openChangeRequestModal(transaction: CashTransactionWithDetails) {
+    setSelectedTransaction(transaction);
+    setShowChangeRequestModal(true);
   }
 
   const todayEST = getCurrentDateEST();
@@ -398,6 +463,25 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
                         <span>By: {deposit.created_by_name}</span>
                         <span>{new Date(deposit.created_at).toLocaleTimeString()}</span>
                       </div>
+                      {/* Request Change button - only for Managers, approved transactions, and no pending proposal */}
+                      {canCreateChangeProposal && deposit.status === 'approved' && (
+                        <div className="mt-2 pt-2 border-t border-gray-100">
+                          {pendingProposals.has(deposit.id) ? (
+                            <span className="flex items-center gap-1 text-xs text-amber-600">
+                              <Clock className="w-3 h-3" />
+                              Change pending
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => openChangeRequestModal(deposit)}
+                              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              Request Change
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -471,6 +555,25 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
                         <span>By: {withdrawal.created_by_name}</span>
                         <span>{new Date(withdrawal.created_at).toLocaleTimeString()}</span>
                       </div>
+                      {/* Request Change button - only for Managers, approved transactions, and no pending proposal */}
+                      {canCreateChangeProposal && withdrawal.status === 'approved' && (
+                        <div className="mt-2 pt-2 border-t border-red-100">
+                          {pendingProposals.has(withdrawal.id) ? (
+                            <span className="flex items-center gap-1 text-xs text-amber-600">
+                              <Clock className="w-3 h-3" />
+                              Change pending
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => openChangeRequestModal(withdrawal)}
+                              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              Request Change
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -583,6 +686,16 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
         onClose={() => setShowWithdrawalModal(false)}
         onSubmit={handleWithdrawalSubmit}
         currentBalance={safeBalance?.closing_balance || 0}
+      />
+
+      <CashTransactionChangeRequestModal
+        isOpen={showChangeRequestModal}
+        onClose={() => {
+          setShowChangeRequestModal(false);
+          setSelectedTransaction(null);
+        }}
+        onSubmit={handleChangeRequestSubmit}
+        transaction={selectedTransaction}
       />
     </div>
   );

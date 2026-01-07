@@ -281,6 +281,12 @@ export const Permissions = {
     canViewEditHistory: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
     },
+    canCreateChangeProposal: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Manager']);
+    },
+    canReviewChangeProposal: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Owner', 'Admin']);
+    },
   },
 };
 

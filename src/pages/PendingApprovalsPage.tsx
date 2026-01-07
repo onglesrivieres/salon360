@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight, Bell, User, Calendar, History, Download } from 'lucide-react';
-import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket, AttendanceChangeProposalWithDetails } from '../lib/supabase';
+import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, PendingCashTransactionChangeProposal, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket, AttendanceChangeProposalWithDetails } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
@@ -39,7 +39,7 @@ interface ProposalWithAttendance extends AttendanceChangeProposalWithDetails {
   work_date?: string;
 }
 
-type TabType = 'tickets' | 'inventory' | 'cash' | 'attendance' | 'violations' | 'queue-history';
+type TabType = 'tickets' | 'inventory' | 'cash' | 'transaction-changes' | 'attendance' | 'violations' | 'queue-history';
 
 interface QueueRemovalRecord {
   id: string;
@@ -91,17 +91,21 @@ export function PendingApprovalsPage() {
   const [queueHistoryStartDate, setQueueHistoryStartDate] = useState<string>(getCurrentDateEST());
   const [queueHistoryEndDate, setQueueHistoryEndDate] = useState<string>(getCurrentDateEST());
   const [queueHistoryLoading, setQueueHistoryLoading] = useState(false);
+  const [transactionChangeProposals, setTransactionChangeProposals] = useState<PendingCashTransactionChangeProposal[]>([]);
+  const [selectedTransactionChangeProposal, setSelectedTransactionChangeProposal] = useState<PendingCashTransactionChangeProposal | null>(null);
+  const [transactionChangeReviewComment, setTransactionChangeReviewComment] = useState('');
   const { showToast } = useToast();
   const { session, selectedStoreId, effectiveRole } = useAuth();
 
   const userRoles = session?.role || [];
   const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
   const canViewQueueHistory = effectiveRole && Permissions.queue.canViewRemovalHistory(effectiveRole);
+  const canReviewTransactionChanges = effectiveRole && Permissions.cashTransactions.canReviewChangeProposal(effectiveRole);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
-    if (tab && ['tickets', 'inventory', 'cash', 'attendance', 'violations', 'queue-history'].includes(tab)) {
+    if (tab && ['tickets', 'inventory', 'cash', 'transaction-changes', 'attendance', 'violations', 'queue-history'].includes(tab)) {
       setActiveTab(tab as TabType);
     }
   }, []);
@@ -123,11 +127,13 @@ export function PendingApprovalsPage() {
       } else if (activeTab === 'violations') {
         fetchViolationReports();
         fetchViolationHistory();
+      } else if (activeTab === 'transaction-changes' && canReviewTransactionChanges) {
+        fetchTransactionChangeProposals();
       } else if (activeTab === 'queue-history' && canViewQueueHistory) {
         fetchQueueRemovalHistory();
       }
     }
-  }, [session?.employee_id, selectedStoreId, selectedDate, activeTab, isManagement, canViewQueueHistory]);
+  }, [session?.employee_id, selectedStoreId, selectedDate, activeTab, isManagement, canViewQueueHistory, canReviewTransactionChanges]);
 
   useEffect(() => {
     if (!isManagement) return;
@@ -146,6 +152,8 @@ export function PendingApprovalsPage() {
         } else if (activeTab === 'violations') {
           fetchViolationReports();
           fetchViolationHistory();
+        } else if (activeTab === 'transaction-changes' && canReviewTransactionChanges) {
+          fetchTransactionChangeProposals();
         } else if (activeTab === 'queue-history' && canViewQueueHistory) {
           fetchQueueRemovalHistory();
         }
@@ -153,7 +161,7 @@ export function PendingApprovalsPage() {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [session?.employee_id, selectedStoreId, activeTab, isManagement, canViewQueueHistory]);
+  }, [session?.employee_id, selectedStoreId, activeTab, isManagement, canViewQueueHistory, canReviewTransactionChanges]);
 
   function handleTabChange(tab: TabType) {
     setActiveTab(tab);
@@ -345,6 +353,91 @@ export function PendingApprovalsPage() {
       showToast(err.message || 'Failed to load queue removal history', 'error');
     } finally {
       setQueueHistoryLoading(false);
+    }
+  }
+
+  async function fetchTransactionChangeProposals() {
+    if (!selectedStoreId) return;
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.rpc('get_pending_cash_transaction_change_proposals', {
+        p_store_id: selectedStoreId,
+      });
+
+      if (error) throw error;
+      setTransactionChangeProposals(data || []);
+    } catch (error) {
+      console.error('Error fetching transaction change proposals:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleApproveTransactionChangeProposal(proposal: PendingCashTransactionChangeProposal) {
+    if (!session?.employee_id) return;
+
+    try {
+      setProcessing(true);
+      const { data, error } = await supabase.rpc('approve_cash_transaction_change_proposal', {
+        p_proposal_id: proposal.proposal_id,
+        p_reviewer_employee_id: session.employee_id,
+        p_review_comment: transactionChangeReviewComment || null,
+      });
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; error?: string; message?: string };
+      if (!result.success) {
+        showToast(result.error || 'Failed to approve proposal', 'error');
+        return;
+      }
+
+      showToast(result.message || 'Transaction change approved', 'success');
+      setSelectedTransactionChangeProposal(null);
+      setTransactionChangeReviewComment('');
+      fetchTransactionChangeProposals();
+    } catch (error: any) {
+      console.error('Error approving transaction change proposal:', error);
+      showToast(error.message || 'Failed to approve proposal', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function handleRejectTransactionChangeProposal(proposal: PendingCashTransactionChangeProposal) {
+    if (!session?.employee_id) return;
+
+    if (!transactionChangeReviewComment.trim()) {
+      showToast('Please provide a rejection reason', 'error');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      const { data, error } = await supabase.rpc('reject_cash_transaction_change_proposal', {
+        p_proposal_id: proposal.proposal_id,
+        p_reviewer_employee_id: session.employee_id,
+        p_review_comment: transactionChangeReviewComment.trim(),
+      });
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; error?: string; message?: string };
+      if (!result.success) {
+        showToast(result.error || 'Failed to reject proposal', 'error');
+        return;
+      }
+
+      showToast(result.message || 'Transaction change request rejected', 'success');
+      setSelectedTransactionChangeProposal(null);
+      setTransactionChangeReviewComment('');
+      fetchTransactionChangeProposals();
+    } catch (error: any) {
+      console.error('Error rejecting transaction change proposal:', error);
+      showToast(error.message || 'Failed to reject proposal', 'error');
+    } finally {
+      setProcessing(false);
     }
   }
 
@@ -939,6 +1032,24 @@ export function PendingApprovalsPage() {
                 </Badge>
               )}
             </button>
+            {canReviewTransactionChanges && (
+              <button
+                onClick={() => handleTabChange('transaction-changes')}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                  activeTab === 'transaction-changes'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                Transaction Changes
+                {transactionChangeProposals.length > 0 && (
+                  <Badge variant="warning" className="ml-1">
+                    {transactionChangeProposals.length}
+                  </Badge>
+                )}
+              </button>
+            )}
             <button
               onClick={() => handleTabChange('attendance')}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
@@ -1418,6 +1529,217 @@ export function PendingApprovalsPage() {
                           </Button>
                         </div>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'transaction-changes' && canReviewTransactionChanges && (
+            <div>
+              {transactionChangeProposals.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-3" />
+                  <p className="text-lg font-medium text-gray-900 mb-1">No pending transaction changes</p>
+                  <p className="text-sm text-gray-500">All change requests have been processed</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {transactionChangeProposals.map((proposal) => (
+                    <div
+                      key={proposal.proposal_id}
+                      className={`bg-white rounded-lg border-2 p-4 ${
+                        proposal.is_deletion_request ? 'border-red-400' : 'border-yellow-400'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          {proposal.is_deletion_request ? (
+                            <AlertOctagon className="w-5 h-5 text-red-600" />
+                          ) : (
+                            <FileText className="w-5 h-5 text-yellow-600" />
+                          )}
+                          <span className="font-semibold text-gray-900">
+                            {proposal.is_deletion_request ? 'Deletion Request' : 'Change Request'}
+                          </span>
+                          <Badge variant={proposal.transaction_type === 'cash_in' ? 'success' : 'danger'}>
+                            {proposal.transaction_type === 'cash_in' ? 'DEPOSIT' : 'WITHDRAWAL'}
+                          </Badge>
+                          {proposal.is_deletion_request && (
+                            <Badge variant="danger">DELETE</Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(proposal.created_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </div>
+                      </div>
+
+                      <p className="text-sm text-gray-600 mb-3">
+                        Requested by: <span className="font-medium">{proposal.created_by_name}</span>
+                      </p>
+
+                      {proposal.is_deletion_request ? (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <AlertTriangle className="w-4 h-4 text-red-600" />
+                            <span className="text-sm font-medium text-red-800">
+                              This request will permanently delete the transaction
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                            <div>
+                              <span className="text-gray-500">Amount:</span>{' '}
+                              <span className="font-medium">${proposal.current_amount.toFixed(2)}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Category:</span>{' '}
+                              <span className="font-medium">{proposal.current_category || '-'}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Date:</span>{' '}
+                              <span className="font-medium">{proposal.current_date}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Description:</span>{' '}
+                              <span className="font-medium">{proposal.current_description}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Current Values</h4>
+                            <div className="space-y-1 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Amount:</span>
+                                <span className={`font-medium ${proposal.proposed_amount !== null ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                                  ${proposal.current_amount.toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Category:</span>
+                                <span className={`font-medium ${proposal.proposed_category !== null ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                                  {proposal.current_category || '-'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Date:</span>
+                                <span className={`font-medium ${proposal.proposed_date !== null ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                                  {proposal.current_date}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Description:</span>
+                                <span className={`font-medium ${proposal.proposed_description !== null ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                                  {proposal.current_description}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="bg-green-50 rounded-lg p-3">
+                            <h4 className="text-xs font-semibold text-green-700 uppercase mb-2">Proposed Changes</h4>
+                            <div className="space-y-1 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Amount:</span>
+                                <span className={`font-semibold ${proposal.proposed_amount !== null ? 'text-green-700' : 'text-gray-400'}`}>
+                                  {proposal.proposed_amount !== null ? `$${proposal.proposed_amount.toFixed(2)}` : 'No change'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Category:</span>
+                                <span className={`font-semibold ${proposal.proposed_category !== null ? 'text-green-700' : 'text-gray-400'}`}>
+                                  {proposal.proposed_category !== null ? proposal.proposed_category : 'No change'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Date:</span>
+                                <span className={`font-semibold ${proposal.proposed_date !== null ? 'text-green-700' : 'text-gray-400'}`}>
+                                  {proposal.proposed_date !== null ? proposal.proposed_date : 'No change'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">Description:</span>
+                                <span className={`font-semibold ${proposal.proposed_description !== null ? 'text-green-700' : 'text-gray-400'}`}>
+                                  {proposal.proposed_description !== null ? proposal.proposed_description : 'No change'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                        <label className="text-xs font-semibold text-yellow-700 uppercase mb-1 block">
+                          Reason for Request
+                        </label>
+                        <p className="text-sm text-gray-700">{proposal.reason_comment}</p>
+                      </div>
+
+                      {selectedTransactionChangeProposal?.proposal_id === proposal.proposal_id ? (
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Review Comment {proposal.is_deletion_request || 'rejection' ? '' : '(Optional)'}
+                            </label>
+                            <textarea
+                              value={transactionChangeReviewComment}
+                              onChange={(e) => setTransactionChangeReviewComment(e.target.value)}
+                              placeholder="Add a comment about this decision..."
+                              rows={2}
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              disabled={processing}
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => {
+                                setSelectedTransactionChangeProposal(null);
+                                setTransactionChangeReviewComment('');
+                              }}
+                              disabled={processing}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleRejectTransactionChangeProposal(proposal)}
+                              disabled={processing}
+                              className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                            >
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Reject
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveTransactionChangeProposal(proposal)}
+                              disabled={processing}
+                              className={proposal.is_deletion_request ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              {processing ? 'Processing...' : proposal.is_deletion_request ? 'Approve Deletion' : 'Approve Changes'}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-end">
+                          <Button
+                            size="sm"
+                            onClick={() => setSelectedTransactionChangeProposal(proposal)}
+                            disabled={processing}
+                          >
+                            Review
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

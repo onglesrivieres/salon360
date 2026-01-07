@@ -790,6 +790,51 @@ export interface SafeTransaction {
   status: string;
 }
 
+// Cash Transaction Change Proposals
+export type CashTransactionChangeProposalStatus = 'pending' | 'approved' | 'rejected';
+
+export interface CashTransactionChangeProposal {
+  id: string;
+  cash_transaction_id: string;
+  store_id: string;
+  current_amount: number;
+  current_category: string | null;
+  current_description: string;
+  current_date: string;
+  proposed_amount: number | null;
+  proposed_category: string | null;
+  proposed_description: string | null;
+  proposed_date: string | null;
+  is_deletion_request: boolean;
+  reason_comment: string;
+  status: CashTransactionChangeProposalStatus;
+  created_by_employee_id: string;
+  reviewed_by_employee_id: string | null;
+  reviewed_at: string | null;
+  review_comment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PendingCashTransactionChangeProposal {
+  proposal_id: string;
+  cash_transaction_id: string;
+  transaction_type: CashTransactionType;
+  current_amount: number;
+  current_category: string | null;
+  current_description: string;
+  current_date: string;
+  proposed_amount: number | null;
+  proposed_category: string | null;
+  proposed_description: string | null;
+  proposed_date: string | null;
+  is_deletion_request: boolean;
+  reason_comment: string;
+  created_by_name: string;
+  created_by_id: string;
+  created_at: string;
+}
+
 export type ViolationReportStatus = 'collecting_responses' | 'pending_approval' | 'approved' | 'rejected' | 'expired';
 export type ViolationDecision = 'violation_confirmed' | 'no_violation';
 export type ViolationActionType = 'none' | 'warning' | 'written_warning' | 'queue_removal' | 'suspension';
