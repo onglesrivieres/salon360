@@ -790,6 +790,38 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     }
   }
 
+  async function handleVoidCashTransaction(reason: string) {
+    if (!editingCashTransaction || !session?.employee_id) return;
+
+    try {
+      setSaving(true);
+      const { data: result, error } = await supabase.rpc('create_cash_transaction_change_proposal', {
+        p_cash_transaction_id: editingCashTransaction.id,
+        p_is_deletion_request: true,
+        p_reason_comment: reason,
+        p_created_by_employee_id: session.employee_id,
+      });
+
+      if (error) throw error;
+
+      if (result && !result.success) {
+        showToast(result.error || 'Failed to submit void request', 'error');
+        return;
+      }
+
+      showToast('Void request submitted for approval', 'success');
+      await loadCashTransactions();
+    } catch (error) {
+      showToast('Failed to submit void request', 'error');
+      console.error(error);
+    } finally {
+      setSaving(false);
+      setIsCashOutModalOpen(false);
+      setEditingCashTransaction(null);
+      setIsEditingCashTransaction(false);
+    }
+  }
+
 
   return (
     <div className="max-w-7xl 2k:max-w-full mx-auto 2k:px-8">
@@ -1261,6 +1293,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               }
             : undefined
         }
+        onVoid={handleVoidCashTransaction}
+        canVoid={session?.role ? Permissions.cashTransactions.canCreateChangeProposal(session.role) : false}
+        transactionStatus={editingCashTransaction?.status}
       />
 
       <CashTransactionModal
