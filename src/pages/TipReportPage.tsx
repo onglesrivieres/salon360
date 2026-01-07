@@ -61,6 +61,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   const [showDetails, setShowDetails] = useState(true);
   const { showToast } = useToast();
   const { session, selectedStoreId, t } = useAuth();
+  const isReceptionist = session?.role_permission === 'Receptionist';
 
   const [totals, setTotals] = useState({
     tips: 0,
@@ -812,13 +813,15 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             >
               Daily
             </Button>
-            <Button
-              size="sm"
-              variant={viewMode === 'weekly' ? 'primary' : 'ghost'}
-              onClick={() => setViewMode('weekly')}
-            >
-              Weekly
-            </Button>
+            {!isReceptionist && (
+              <Button
+                size="sm"
+                variant={viewMode === 'weekly' ? 'primary' : 'ghost'}
+                onClick={() => setViewMode('weekly')}
+              >
+                Weekly
+              </Button>
+            )}
             </div>
           </div>
         </div>
