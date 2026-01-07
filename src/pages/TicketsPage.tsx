@@ -54,8 +54,10 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   }, [session?.employee_id]);
 
   // Management can view all reports, commission employees can view their own Daily/Weekly reports
-  const canViewDailyReport = session?.role ? (Permissions.tipReport.canViewAll(session.role) || isCommissionEmployee) : false;
-  const canViewPeriodReport = session?.role ? (Permissions.tipReport.canViewPeriodReports(session.role) || isCommissionEmployee) : false;
+  // Manager role is excluded from Daily/Period tabs on Tickets page (but can still access Tip Report page)
+  const isManagerOnly = session?.role_permission === 'Manager';
+  const canViewDailyReport = session?.role ? ((Permissions.tipReport.canViewAll(session.role) && !isManagerOnly) || isCommissionEmployee) : false;
+  const canViewPeriodReport = session?.role ? ((Permissions.tipReport.canViewPeriodReports(session.role) && !isManagerOnly) || isCommissionEmployee) : false;
 
   useEffect(() => {
     fetchTickets();

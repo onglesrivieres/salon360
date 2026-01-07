@@ -252,7 +252,7 @@ export const Permissions = {
 
   insights: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Owner']);
     },
   },
 
