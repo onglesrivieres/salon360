@@ -175,6 +175,10 @@ export interface TicketItem {
   tip_customer_cash: number;
   tip_customer_card: number;
   tip_receptionist: number;
+  discount_percentage?: number;
+  discount_amount?: number;
+  discount_percentage_cash?: number;
+  discount_amount_cash?: number;
   notes: string;
   started_at?: string | null;
   completed_at?: string | null;

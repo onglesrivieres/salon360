@@ -219,6 +219,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     tip_receptionist: '',
     discount_percentage: '',
     discount_amount: '',
+    discount_percentage_cash: '',
+    discount_amount_cash: '',
     notes: '',
     opening_time: '',
   });
@@ -235,6 +237,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     tip_receptionist: '',
     discount_amount: '',
     discount_percentage: '',
+    discount_percentage_cash: '',
+    discount_amount_cash: '',
   });
 
   useEffect(() => {
@@ -431,6 +435,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           tip_receptionist: firstItem ? parseFloat(firstItem.tip_receptionist || 0).toString() : '0',
           discount_percentage: firstItem ? parseFloat(firstItem.discount_percentage || 0).toString() : '0',
           discount_amount: firstItem ? parseFloat(firstItem.discount_amount || 0).toString() : '0',
+          discount_percentage_cash: firstItem ? parseFloat(firstItem.discount_percentage_cash || 0).toString() : '0',
+          discount_amount_cash: firstItem ? parseFloat(firstItem.discount_amount_cash || 0).toString() : '0',
           notes: ticketData.notes,
           opening_time: ticketData.opened_at || '',
         });
@@ -663,6 +669,12 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     return percentageDiscount + discountAmount;
   }
 
+  function calculateTotalCashPayment(): number {
+    const paymentCash = parseFloat(tempPaymentData.payment_cash) || 0;
+    const discountAmountCash = parseFloat(tempPaymentData.discount_amount_cash) || 0;
+    return Math.max(0, paymentCash - discountAmountCash);
+  }
+
   function calculateTotalCollected(): number {
     const servicePrice = calculateTotal();
     const tipsExcludingReceptionist = calculateTipsExcludingReceptionist();
@@ -723,7 +735,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                    parseFloat(formData.tip_customer_card || '0') > 0 ||
                    parseFloat(formData.tip_receptionist || '0') > 0;
     const hasDiscounts = parseFloat(formData.discount_amount || '0') > 0 ||
-                        parseFloat(formData.discount_percentage || '0') > 0;
+                        parseFloat(formData.discount_percentage || '0') > 0 ||
+                        parseFloat(formData.discount_percentage_cash || '0') > 0 ||
+                        parseFloat(formData.discount_amount_cash || '0') > 0;
 
     return hasPaymentAmount || hasTips || hasDiscounts;
   }
@@ -742,6 +756,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         tip_receptionist: formData.tip_receptionist || '0',
         discount_amount: formData.discount_amount || '0',
         discount_percentage: formData.discount_percentage || '0',
+        discount_percentage_cash: formData.discount_percentage_cash || '0',
+        discount_amount_cash: formData.discount_amount_cash || '0',
       });
     } else {
       setTempPaymentData({
@@ -753,6 +769,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         tip_receptionist: '',
         discount_amount: '',
         discount_percentage: '',
+        discount_percentage_cash: '',
+        discount_amount_cash: '',
       });
     }
     setFormData({ ...formData, payment_method: method });
@@ -770,6 +788,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       tip_receptionist: tempPaymentData.tip_receptionist,
       discount_amount: tempPaymentData.discount_amount,
       discount_percentage: tempPaymentData.discount_percentage,
+      discount_percentage_cash: tempPaymentData.discount_percentage_cash,
+      discount_amount_cash: tempPaymentData.discount_amount_cash,
     });
     setShowPaymentModal(false);
     showToast('Payment details saved', 'success');
@@ -997,6 +1017,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           tip_receptionist: tipReceptionist,
           discount_amount: parseFloat(formData.discount_amount) || 0,
           discount_percentage: parseFloat(formData.discount_percentage) || 0,
+          discount_percentage_cash: parseFloat(formData.discount_percentage_cash) || 0,
+          discount_amount_cash: parseFloat(formData.discount_amount_cash) || 0,
         });
 
         const existingItemIds = items.filter((item) => item.id).map((item) => item.id);
@@ -1010,6 +1032,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           const addonPrice = parseFloat(item.addon_price) || 0;
           const discountPercentage = parseFloat(formData.discount_percentage) || 0;
           const discountAmount = parseFloat(formData.discount_amount) || 0;
+          const discountPercentageCash = parseFloat(formData.discount_percentage_cash) || 0;
+          const discountAmountCash = parseFloat(formData.discount_amount_cash) || 0;
 
           const itemData = {
             sale_ticket_id: ticketId,
@@ -1028,6 +1052,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             addon_price: addonPrice,
             discount_percentage: discountPercentage,
             discount_amount: discountAmount,
+            discount_percentage_cash: discountPercentageCash,
+            discount_amount_cash: discountAmountCash,
             started_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
@@ -1078,6 +1104,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
         const discountPercentage = parseFloat(formData.discount_percentage) || 0;
         const discountAmount = parseFloat(formData.discount_amount) || 0;
+        const discountPercentageCash = parseFloat(formData.discount_percentage_cash) || 0;
+        const discountAmountCash = parseFloat(formData.discount_amount_cash) || 0;
         const itemsData = items.map((item) => {
           const addonPrice = parseFloat(item.addon_price) || 0;
           return {
@@ -1097,6 +1125,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             addon_price: addonPrice,
             discount_percentage: discountPercentage,
             discount_amount: discountAmount,
+            discount_percentage_cash: discountPercentageCash,
+            discount_amount_cash: discountAmountCash,
             started_at: new Date().toISOString(),
           };
         });
@@ -1120,6 +1150,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           tip_receptionist: tipReceptionist,
           discount_amount: parseFloat(formData.discount_amount) || 0,
           discount_percentage: parseFloat(formData.discount_percentage) || 0,
+          discount_percentage_cash: parseFloat(formData.discount_percentage_cash) || 0,
+          discount_amount_cash: parseFloat(formData.discount_amount_cash) || 0,
         });
 
         showToast('Ticket created successfully', 'success');
@@ -2479,48 +2511,121 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           </div>
 
           <div className="border-t border-gray-200 pt-4">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Discounts</h4>
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">
+              {formData.payment_method === 'Cash' ? 'Cash Discounts' : 'Discounts'}
+            </h4>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Discount Amount
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">$</span>
-                  <NumericInput
-                    step="0.01"
-                    min="0"
-                    value={tempPaymentData.discount_amount}
-                    onChange={(e) =>
-                      setTempPaymentData({ ...tempPaymentData, discount_amount: e.target.value })
-                    }
-                    className="pl-8 pr-3"
-                    placeholder="0.00"
-                  />
+            {formData.payment_method === 'Cash' ? (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cash Discount Amount
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">$</span>
+                      <NumericInput
+                        step="0.01"
+                        min="0"
+                        value={tempPaymentData.discount_amount_cash}
+                        onChange={(e) =>
+                          setTempPaymentData({ ...tempPaymentData, discount_amount_cash: e.target.value })
+                        }
+                        className="pl-8 pr-3"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cash Discount Percentage
+                    </label>
+                    <div className="relative">
+                      <NumericInput
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={tempPaymentData.discount_percentage_cash}
+                        onChange={(e) => {
+                          const percentage = parseFloat(e.target.value) || 0;
+                          const paymentCash = parseFloat(tempPaymentData.payment_cash) || 0;
+                          const calculatedAmount = (paymentCash * percentage / 100).toFixed(2);
+                          setTempPaymentData({
+                            ...tempPaymentData,
+                            discount_percentage_cash: e.target.value,
+                            discount_amount_cash: calculatedAmount
+                          });
+                        }}
+                        className="pl-3 pr-8"
+                        placeholder="0"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">%</span>
+                    </div>
+                  </div>
+                </div>
+
+                {(parseFloat(tempPaymentData.discount_amount_cash) || 0) > 0 && (
+                  <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between text-gray-600">
+                        <span>Cash Payment:</span>
+                        <span>${(parseFloat(tempPaymentData.payment_cash) || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-red-600">
+                        <span>Cash Discount:</span>
+                        <span>-${(parseFloat(tempPaymentData.discount_amount_cash) || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-semibold text-green-700 border-t border-green-200 pt-1">
+                        <span>Total Cash Payment:</span>
+                        <span>${calculateTotalCashPayment().toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Discount Amount
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">$</span>
+                    <NumericInput
+                      step="0.01"
+                      min="0"
+                      value={tempPaymentData.discount_amount}
+                      onChange={(e) =>
+                        setTempPaymentData({ ...tempPaymentData, discount_amount: e.target.value })
+                      }
+                      className="pl-8 pr-3"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Discount Percentage
+                  </label>
+                  <div className="relative">
+                    <NumericInput
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={tempPaymentData.discount_percentage}
+                      onChange={(e) =>
+                        setTempPaymentData({ ...tempPaymentData, discount_percentage: e.target.value })
+                      }
+                      className="pl-3 pr-8"
+                      placeholder="0"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">%</span>
+                  </div>
                 </div>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Discount Percentage
-                </label>
-                <div className="relative">
-                  <NumericInput
-                    step="0.01"
-                    min="0"
-                    max="100"
-                    value={tempPaymentData.discount_percentage}
-                    onChange={(e) =>
-                      setTempPaymentData({ ...tempPaymentData, discount_percentage: e.target.value })
-                    }
-                    className="pl-3 pr-8"
-                    placeholder="0"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">%</span>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
 
           <div className="border-t border-gray-200 pt-4">
