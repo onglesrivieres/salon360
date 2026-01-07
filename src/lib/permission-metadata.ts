@@ -135,7 +135,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'View Pending Approvals',
     description: 'Ability to see tickets awaiting approval',
     isCritical: false,
-    defaultRoles: ['Admin', 'Technician', 'Spa Expert', 'Supervisor', 'Owner']
+    defaultRoles: ['Admin', 'Technician', 'Spa Expert', 'Supervisor', 'Owner', 'Manager']
   },
   {
     key: 'tickets.canReviewRejected',
