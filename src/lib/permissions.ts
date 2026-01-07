@@ -282,7 +282,7 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
     },
     canCreateChangeProposal: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Manager']);
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
     },
     canReviewChangeProposal: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Owner', 'Admin']);
