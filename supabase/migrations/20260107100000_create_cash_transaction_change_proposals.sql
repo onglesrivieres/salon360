@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS public.cash_transaction_change_proposals (
   current_amount decimal(10, 2) NOT NULL,
   current_category text,
   current_description text NOT NULL,
-  current_date date NOT NULL,
+  "current_date" date NOT NULL,
 
   -- Proposed values (NULL means no change to that field)
   proposed_amount decimal(10, 2),
