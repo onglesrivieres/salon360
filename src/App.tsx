@@ -13,6 +13,8 @@ import { TicketsPage } from './pages/TicketsPage';
 import { supabase } from './lib/supabase';
 import { getCurrentDateEST } from './lib/timezone';
 import { StoreSelectionModal } from './components/StoreSelectionModal';
+import { OutsideWorkingHoursPage } from './components/OutsideWorkingHoursPage';
+import { useWorkingHoursCheck } from './hooks/useWorkingHoursCheck';
 
 const EndOfDayPage = lazy(() => import('./pages/EndOfDayPage').then(m => ({ default: m.EndOfDayPage })));
 const SafeBalancePage = lazy(() => import('./pages/SafeBalancePage').then(m => ({ default: m.SafeBalancePage })));
@@ -50,9 +52,9 @@ function AppContent() {
     getCurrentDateEST()
   );
 
-  // Lock Cashiers to today's date only
+  // Lock Cashiers and Receptionists to today's date only
   useEffect(() => {
-    if (session?.role_permission === 'Cashier') {
+    if (session?.role_permission === 'Cashier' || session?.role_permission === 'Receptionist') {
       const today = getCurrentDateEST();
       if (selectedDate !== today) {
         setSelectedDate(today);
@@ -60,14 +62,17 @@ function AppContent() {
     }
   }, [session?.role_permission, selectedDate]);
 
-  // Handle date changes - prevent Cashiers from changing date
+  // Handle date changes - prevent Cashiers and Receptionists from changing date
   const handleDateChange = (newDate: string) => {
-    if (session?.role_permission === 'Cashier') {
-      // Cashiers can only view today - ignore date changes
+    if (session?.role_permission === 'Cashier' || session?.role_permission === 'Receptionist') {
+      // Cashiers and Receptionists can only view today - ignore date changes
       return;
     }
     setSelectedDate(newDate);
   };
+
+  // Check working hours for Receptionist
+  const workingHoursCheck = useWorkingHoursCheck(selectedStoreId, session?.role_permission);
 
   useEffect(() => {
     if (isAuthenticated && !selectedStoreId && session?.employee_id && !showWelcome) {
@@ -164,6 +169,20 @@ function AppContent() {
     />;
   }
 
+  // Block Receptionist access outside working hours
+  if (
+    session?.role_permission === 'Receptionist' &&
+    !workingHoursCheck.isLoading &&
+    !workingHoursCheck.isWithinWorkingHours
+  ) {
+    return (
+      <OutsideWorkingHoursPage
+        openingTime={workingHoursCheck.openingTime || ''}
+        closingTime={workingHoursCheck.closingTime || ''}
+        currentDay={workingHoursCheck.currentDay}
+      />
+    );
+  }
 
   return (
     <>

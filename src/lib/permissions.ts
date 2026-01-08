@@ -31,7 +31,7 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
     },
     canReviewSelfServiceTicket: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
     },
     canEditSelfServiceTicket: (
       roles: Role[] | RolePermission,

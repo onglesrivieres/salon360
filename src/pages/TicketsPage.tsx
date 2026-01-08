@@ -780,7 +780,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
               </div>
             </>
           )}
-          {viewMode !== 'period' && session?.role_permission !== 'Cashier' && (
+          {viewMode !== 'period' && session?.role_permission !== 'Cashier' && session?.role_permission !== 'Receptionist' && (
             <div className="flex items-center gap-2 flex-1 md:flex-initial">
               <button
                 onClick={() => navigateDay('prev')}
@@ -808,6 +808,16 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
               >
                 <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
               </button>
+            </div>
+          )}
+          {session?.role_permission === 'Receptionist' && viewMode !== 'period' && (
+            <div className="flex items-center gap-2 flex-1 md:flex-initial">
+              <input
+                type="date"
+                value={selectedDate}
+                disabled
+                className="px-2 py-1.5 md:py-1 text-sm border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed flex-1 md:flex-initial min-h-[44px] md:min-h-0"
+              />
             </div>
           )}
           {viewMode === 'tickets' && session && session.role_permission && Permissions.tickets.canCreate(session.role_permission) && (

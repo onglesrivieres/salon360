@@ -880,34 +880,45 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
         <h2 className="text-base md:text-lg font-bold text-gray-900">End of Day</h2>
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
-          <div className="flex items-center gap-2 flex-1 md:flex-initial">
-            <button
-              onClick={() => navigateDay('prev')}
-              disabled={!canNavigatePrev()}
-              className="p-2 md:p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors min-h-[44px] md:min-h-[32px] min-w-[44px] md:min-w-[32px] flex items-center justify-center"
-              aria-label="Previous day"
-            >
-              <ChevronLeft className="w-5 h-5 md:w-4 md:h-4" />
-            </button>
+          {session?.role_permission !== 'Receptionist' ? (
+            <div className="flex items-center gap-2 flex-1 md:flex-initial">
+              <button
+                onClick={() => navigateDay('prev')}
+                disabled={!canNavigatePrev()}
+                className="p-2 md:p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors min-h-[44px] md:min-h-[32px] min-w-[44px] md:min-w-[32px] flex items-center justify-center"
+                aria-label="Previous day"
+              >
+                <ChevronLeft className="w-5 h-5 md:w-4 md:h-4" />
+              </button>
+              <div className="flex items-center gap-2 flex-1 md:flex-initial">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => onDateChange(e.target.value)}
+                  min={getMinDate()}
+                  max={getMaxDate()}
+                  className="px-2 py-2 md:py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 md:flex-initial min-h-[44px] md:min-h-0"
+                />
+              </div>
+              <button
+                onClick={() => navigateDay('next')}
+                disabled={!canNavigateNext()}
+                className="p-2 md:p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors min-h-[44px] md:min-h-[32px] min-w-[44px] md:min-w-[32px] flex items-center justify-center"
+                aria-label="Next day"
+              >
+                <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
+              </button>
+            </div>
+          ) : (
             <div className="flex items-center gap-2 flex-1 md:flex-initial">
               <input
                 type="date"
                 value={selectedDate}
-                onChange={(e) => onDateChange(e.target.value)}
-                min={getMinDate()}
-                max={getMaxDate()}
-                className="px-2 py-2 md:py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 md:flex-initial min-h-[44px] md:min-h-0"
+                disabled
+                className="px-2 py-2 md:py-1 text-sm border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed flex-1 md:flex-initial min-h-[44px] md:min-h-0"
               />
             </div>
-            <button
-              onClick={() => navigateDay('next')}
-              disabled={!canNavigateNext()}
-              className="p-2 md:p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors min-h-[44px] md:min-h-[32px] min-w-[44px] md:min-w-[32px] flex items-center justify-center"
-              aria-label="Next day"
-            >
-              <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
-            </button>
-          </div>
+          )}
           {session && session.role && Permissions.endOfDay.canExport(session.role) && (
             <>
               <Button variant="secondary" size="sm" onClick={exportCSV} className="hidden md:flex">
