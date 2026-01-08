@@ -104,7 +104,7 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
         .eq('store_id', selectedStoreId)
         .eq('date', selectedDate)
         .eq('transaction_type', 'cash_payout')
-        .in('category', ['Payroll', 'Tip Payout'])
+        .in('category', ['Payroll', 'Tip Payout', 'Headquarter Deposit'])
         .order('created_at', { ascending: false });
 
       if (withdrawalsError) throw withdrawalsError;

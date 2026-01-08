@@ -2615,9 +2615,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       min="0"
                       max="100"
                       value={tempPaymentData.discount_percentage}
-                      onChange={(e) =>
-                        setTempPaymentData({ ...tempPaymentData, discount_percentage: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const percentage = parseFloat(e.target.value) || 0;
+                        const subtotal = calculateSubtotal();
+                        const calculatedAmount = (subtotal * percentage / 100).toFixed(2);
+                        setTempPaymentData({
+                          ...tempPaymentData,
+                          discount_percentage: e.target.value,
+                          discount_amount: calculatedAmount
+                        });
+                      }}
                       className="pl-3 pr-8"
                       placeholder="0"
                     />

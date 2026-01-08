@@ -20,6 +20,7 @@ export interface WithdrawalData {
 const WITHDRAWAL_CATEGORIES = [
   'Payroll',
   'Tip Payout',
+  'Headquarter Deposit',
 ];
 
 export function SafeWithdrawalModal({
