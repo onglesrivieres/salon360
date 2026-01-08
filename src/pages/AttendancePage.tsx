@@ -524,6 +524,7 @@ export function AttendancePage() {
                                           ? 'text-yellow-900'
                                           : 'text-gray-700'
                                       }`}>
+                                        <span className="font-medium text-blue-600">[{getStoreCodeAbbreviation(record.storeCode)}]</span>
                                         {formatTimeEST(record.checkInTime, {
                                           hour: 'numeric',
                                           minute: '2-digit',
