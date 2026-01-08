@@ -8,6 +8,8 @@ import { Permissions } from '../lib/permissions';
 import { formatTimeEST, formatDateEST } from '../lib/timezone';
 import { ShiftDetailModal } from '../components/ShiftDetailModal';
 
+const OT_THRESHOLD_HOURS = 8;
+
 interface AttendanceSession {
   attendanceRecordId: string;
   checkInTime: string;
@@ -18,6 +20,25 @@ interface AttendanceSession {
   hasPendingProposal?: boolean;
 }
 
+interface DailyHoursSummary {
+  totalHours: number;
+  regularHours: number;
+  overtimeHours: number;
+}
+
+function calculateOvertimeHours(totalHours: number): { regularHours: number; overtimeHours: number } {
+  if (!totalHours || totalHours <= 0) {
+    return { regularHours: 0, overtimeHours: 0 };
+  }
+  if (totalHours <= OT_THRESHOLD_HOURS) {
+    return { regularHours: totalHours, overtimeHours: 0 };
+  }
+  return {
+    regularHours: OT_THRESHOLD_HOURS,
+    overtimeHours: totalHours - OT_THRESHOLD_HOURS
+  };
+}
+
 interface AttendanceSummary {
   [employeeId: string]: {
     employeeName: string;
@@ -26,6 +47,11 @@ interface AttendanceSummary {
       [date: string]: AttendanceSession[];
     };
     totalHours: number;
+    totalRegularHours: number;
+    totalOvertimeHours: number;
+    dailyHours: {
+      [date: string]: DailyHoursSummary;
+    };
     daysPresent: number;
   };
 }
@@ -160,6 +186,9 @@ export function AttendancePage() {
           payType: record.pay_type,
           dates: {},
           totalHours: 0,
+          totalRegularHours: 0,
+          totalOvertimeHours: 0,
+          dailyHours: {},
           daysPresent: 0
         };
       }
@@ -183,12 +212,55 @@ export function AttendancePage() {
       }
     });
 
-    // Calculate days present (unique dates)
+    // Calculate days present, daily hours, and OT for each employee
     Object.values(summary).forEach(employee => {
       employee.daysPresent = Object.keys(employee.dates).length;
+
+      // Calculate daily hours and OT for hourly employees
+      Object.entries(employee.dates).forEach(([date, sessions]) => {
+        const dailyTotal = sessions.reduce((sum, s) => sum + (s.totalHours || 0), 0);
+
+        if (employee.payType === 'hourly') {
+          const { regularHours, overtimeHours } = calculateOvertimeHours(dailyTotal);
+          employee.dailyHours[date] = {
+            totalHours: dailyTotal,
+            regularHours,
+            overtimeHours
+          };
+          employee.totalRegularHours += regularHours;
+          employee.totalOvertimeHours += overtimeHours;
+        } else {
+          // For non-hourly, all hours are regular
+          employee.dailyHours[date] = {
+            totalHours: dailyTotal,
+            regularHours: dailyTotal,
+            overtimeHours: 0
+          };
+          employee.totalRegularHours += dailyTotal;
+        }
+      });
     });
 
     return summary;
+  }
+
+  function groupByPayType(summary: AttendanceSummary): {
+    hourly: [string, AttendanceSummary[string]][];
+    daily: [string, AttendanceSummary[string]][];
+  } {
+    const hourly: [string, AttendanceSummary[string]][] = [];
+    const daily: [string, AttendanceSummary[string]][] = [];
+
+    Object.entries(summary).forEach(([employeeId, employee]) => {
+      if (employee.payType === 'hourly') {
+        hourly.push([employeeId, employee]);
+      } else if (employee.payType === 'daily') {
+        daily.push([employeeId, employee]);
+      }
+      // Commission employees are already filtered out by RPC
+    });
+
+    return { hourly, daily };
   }
 
   function navigatePrevious() {
@@ -207,7 +279,7 @@ export function AttendancePage() {
     setCurrentDate(new Date());
   }
 
-  function handleShiftClick(record: AttendanceSession, employeeId: string, employeeName: string, workDate: string) {
+  function handleShiftClick(record: AttendanceSession, employeeId: string, employeeName: string, workDate: string, payType: string) {
     const isRestrictedRole = session?.role_permission === 'Technician' || session?.role_permission === 'Receptionist';
 
     if (isRestrictedRole && session?.employee_id !== employeeId) {
@@ -223,7 +295,7 @@ export function AttendancePage() {
       check_out_time: record.checkOutTime,
       total_hours: record.totalHours,
       status: record.status,
-      pay_type: '',
+      pay_type: payType,
       store_code: record.storeCode,
       has_pending_proposal: record.hasPendingProposal
     };
@@ -240,12 +312,13 @@ export function AttendancePage() {
     const summary = processAttendanceData();
     const { startDate, endDate } = getDateRange();
 
-    const headers = ['Employee', 'Date', 'Store', 'Check In', 'Check Out', 'Hours', 'Status'];
+    const headers = ['Employee', 'Pay Type', 'Date', 'Store', 'Check In', 'Check Out', 'Total Hours', 'Regular Hours', 'OT Hours', 'Status'];
     const rows: string[][] = [];
 
     Object.values(summary).forEach((employee) => {
       Object.entries(employee.dates).forEach(([date, sessions]) => {
-        sessions.forEach((record) => {
+        const dailyHoursSummary = employee.dailyHours[date];
+        sessions.forEach((record, idx) => {
           const checkIn = formatTimeEST(record.checkInTime);
           const checkOut = record.checkOutTime
             ? formatTimeEST(record.checkOutTime)
@@ -253,14 +326,21 @@ export function AttendancePage() {
           const hours = record.totalHours ? record.totalHours.toFixed(2) : '';
           const store = getStoreCodeAbbreviation(record.storeCode);
 
+          // Only show daily regular/OT hours on the first session of the day
+          const regularHours = idx === 0 && dailyHoursSummary ? dailyHoursSummary.regularHours.toFixed(2) : '';
+          const otHours = idx === 0 && dailyHoursSummary && employee.payType === 'hourly' ? dailyHoursSummary.overtimeHours.toFixed(2) : '0';
+
           rows.push([
             employee.employeeName,
-          date,
-          store,
-          checkIn,
-          checkOut,
-          hours,
-          record.status
+            employee.payType,
+            date,
+            store,
+            checkIn,
+            checkOut,
+            hours,
+            regularHours,
+            otHours,
+            record.status
           ]);
         });
       });
@@ -388,123 +468,165 @@ export function AttendancePage() {
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(summary).map(([employeeId, employee]) => (
-                  <tr key={employeeId} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="p-1 text-[11px] font-medium text-gray-900 sticky left-0 bg-white w-[70px] min-w-[70px] max-w-[70px]">
-                      <div className="truncate" title={employee.employeeName}>
-                        {employee.employeeName}
-                      </div>
-                    </td>
-                    {calendarDays.map((day, index) => {
-                      const dateStr = day.toISOString().split('T')[0];
-                      const sessions = employee.dates[dateStr];
-                      const isToday = day.toDateString() === new Date().toDateString();
+                {(() => {
+                  const { hourly, daily } = groupByPayType(summary);
 
-                      return (
-                        <td
-                          key={index}
-                          className={`p-0.5 text-center align-top w-[48px] min-w-[48px] max-w-[48px] ${
-                            isToday ? 'bg-blue-50' : ''
-                          }`}
-                        >
-                          {sessions && sessions.length > 0 ? (
-                            <div className="space-y-0.5">
-                              {sessions.map((record, sessionIdx) => {
-                                const isClickable = isRestrictedRole
-                                  ? employeeId === session?.employee_id
-                                  : true;
+                  const renderEmployeeRow = ([employeeId, employee]: [string, AttendanceSummary[string]]) => (
+                    <tr key={employeeId} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="p-1 text-[11px] font-medium text-gray-900 sticky left-0 bg-white w-[70px] min-w-[70px] max-w-[70px]">
+                        <div className="truncate" title={employee.employeeName}>
+                          {employee.employeeName}
+                        </div>
+                      </td>
+                      {calendarDays.map((day, index) => {
+                        const dateStr = day.toISOString().split('T')[0];
+                        const sessions = employee.dates[dateStr];
+                        const dailyHoursSummary = employee.dailyHours[dateStr];
+                        const isToday = day.toDateString() === new Date().toDateString();
 
-                                return (
-                                <div
-                                  key={sessionIdx}
-                                  onClick={() => isClickable && handleShiftClick(record, employeeId, employee.employeeName, dateStr)}
-                                  className={`relative group rounded p-0.5 transition-opacity ${
-                                    record.hasPendingProposal
-                                      ? 'bg-yellow-100 animate-pulse cursor-pointer hover:opacity-80'
-                                      : record.status === 'checked_in'
-                                      ? 'bg-green-500 animate-pulse'
-                                      : 'bg-gray-200'
-                                  } ${isClickable ? 'cursor-pointer hover:opacity-80' : ''}`}
-                                >
-                                  <div className="leading-tight">
-                                    <div className={`text-[9px] ${
-                                      record.status === 'checked_in'
-                                        ? 'text-white'
-                                        : record.hasPendingProposal
-                                        ? 'text-yellow-900'
-                                        : 'text-gray-700'
-                                    }`}>
-                                      {formatTimeEST(record.checkInTime, {
-                                        hour: 'numeric',
-                                        minute: '2-digit',
-                                        hour12: false
-                                      })}
-                                    </div>
-                                    {record.checkOutTime && (
+                        return (
+                          <td
+                            key={index}
+                            className={`p-0.5 text-center align-top w-[48px] min-w-[48px] max-w-[48px] ${
+                              isToday ? 'bg-blue-50' : ''
+                            }`}
+                          >
+                            {sessions && sessions.length > 0 ? (
+                              <div className="space-y-0.5">
+                                {sessions.map((record, sessionIdx) => {
+                                  const isClickable = isRestrictedRole
+                                    ? employeeId === session?.employee_id
+                                    : true;
+
+                                  return (
+                                  <div
+                                    key={sessionIdx}
+                                    onClick={() => isClickable && handleShiftClick(record, employeeId, employee.employeeName, dateStr, employee.payType)}
+                                    className={`relative group rounded p-0.5 transition-opacity ${
+                                      record.hasPendingProposal
+                                        ? 'bg-yellow-100 animate-pulse cursor-pointer hover:opacity-80'
+                                        : record.status === 'checked_in'
+                                        ? 'bg-green-500 animate-pulse'
+                                        : 'bg-gray-200'
+                                    } ${isClickable ? 'cursor-pointer hover:opacity-80' : ''}`}
+                                  >
+                                    <div className="leading-tight">
                                       <div className={`text-[9px] ${
                                         record.status === 'checked_in'
                                           ? 'text-white'
                                           : record.hasPendingProposal
                                           ? 'text-yellow-900'
-                                          : record.status === 'auto_checked_out'
-                                          ? 'text-orange-600'
                                           : 'text-gray-700'
                                       }`}>
-                                        {formatTimeEST(record.checkOutTime, {
+                                        {formatTimeEST(record.checkInTime, {
                                           hour: 'numeric',
                                           minute: '2-digit',
                                           hour12: false
                                         })}
                                       </div>
-                                    )}
-                                    {record.totalHours && !(isRestrictedRole && employee.payType === 'daily') && (
-                                      <div className={`text-[9px] font-semibold ${
-                                        record.status === 'checked_in'
-                                          ? 'text-white'
-                                          : record.hasPendingProposal
-                                          ? 'text-yellow-900'
-                                          : 'text-gray-900'
-                                      }`}>
-                                        {record.totalHours.toFixed(1)}h <span className={`text-[8px] ${
+                                      {record.checkOutTime && (
+                                        <div className={`text-[9px] ${
                                           record.status === 'checked_in'
                                             ? 'text-white'
                                             : record.hasPendingProposal
-                                            ? 'text-yellow-700'
-                                            : 'text-gray-500'
-                                        }`}>[{getStoreCodeAbbreviation(record.storeCode)}]</span>
-                                      </div>
+                                            ? 'text-yellow-900'
+                                            : record.status === 'auto_checked_out'
+                                            ? 'text-orange-600'
+                                            : 'text-gray-700'
+                                        }`}>
+                                          {formatTimeEST(record.checkOutTime, {
+                                            hour: 'numeric',
+                                            minute: '2-digit',
+                                            hour12: false
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                                })}
+                                {/* Daily hours summary with OT breakdown for hourly employees */}
+                                {dailyHoursSummary && !(isRestrictedRole && employee.payType === 'daily') && (
+                                  <div className="text-[9px] font-semibold text-gray-900 border-t border-gray-300 pt-0.5 mt-0.5">
+                                    {employee.payType === 'hourly' && dailyHoursSummary.overtimeHours > 0 ? (
+                                      <>
+                                        <span>{dailyHoursSummary.regularHours.toFixed(1)}h</span>
+                                        <span className="text-orange-600">+{dailyHoursSummary.overtimeHours.toFixed(1)}</span>
+                                      </>
+                                    ) : (
+                                      <span>{dailyHoursSummary.totalHours.toFixed(1)}h</span>
                                     )}
                                   </div>
-                                </div>
-                              );
-                              })}
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-gray-300 text-[10px]">-</div>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="p-1 text-right text-[11px] font-bold text-gray-900 sticky right-0 bg-white w-[55px] min-w-[55px] max-w-[55px]">
+                        {isRestrictedRole ? (
+                          // Individual employee view - show only relevant metric based on pay type
+                          employee.payType === 'daily' ? (
+                            <div>{employee.daysPresent}d</div>
+                          ) : employee.payType === 'hourly' ? (
+                            <div>
+                              <div>{employee.totalRegularHours.toFixed(1)}h</div>
+                              {employee.totalOvertimeHours > 0 && (
+                                <div className="text-orange-600 text-[10px]">+{employee.totalOvertimeHours.toFixed(1)} OT</div>
+                              )}
                             </div>
                           ) : (
-                            <div className="text-gray-300 text-[10px]">-</div>
-                          )}
-                        </td>
-                      );
-                    })}
-                    <td className="p-1 text-right text-[11px] font-bold text-gray-900 sticky right-0 bg-white w-[55px] min-w-[55px] max-w-[55px]">
-                      {isRestrictedRole ? (
-                        // Individual employee view - show only relevant metric based on pay type
-                        employee.payType === 'daily' ? (
-                          <div>{employee.daysPresent}d</div>
+                            <div>{employee.totalHours.toFixed(2)}h</div>
+                          )
                         ) : (
-                          <div>{employee.totalHours.toFixed(2)}h</div>
-                        )
-                      ) : (
-                        // Management view - show both metrics
+                          // Management view - show both metrics
+                          <>
+                            {employee.payType === 'hourly' ? (
+                              <div>
+                                <div>{employee.totalRegularHours.toFixed(1)}h</div>
+                                {employee.totalOvertimeHours > 0 && (
+                                  <div className="text-orange-600 text-[10px]">+{employee.totalOvertimeHours.toFixed(1)} OT</div>
+                                )}
+                              </div>
+                            ) : (
+                              <div>{employee.totalHours.toFixed(2)}h</div>
+                            )}
+                            <div className="text-gray-600">{employee.daysPresent}d</div>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+
+                  return (
+                    <>
+                      {/* Hourly Employees Section */}
+                      {hourly.length > 0 && (
                         <>
-                          <div>{employee.totalHours.toFixed(2)}h</div>
-                          <div>
-                            {employee.daysPresent}d
-                          </div>
+                          <tr className="bg-gray-100">
+                            <td colSpan={calendarDays.length + 2} className="p-1 text-xs font-bold text-gray-700">
+                              Hourly Employees
+                            </td>
+                          </tr>
+                          {hourly.map(renderEmployeeRow)}
                         </>
                       )}
-                    </td>
-                  </tr>
-                ))}
+                      {/* Daily Employees Section */}
+                      {daily.length > 0 && (
+                        <>
+                          <tr className="bg-gray-100">
+                            <td colSpan={calendarDays.length + 2} className="p-1 text-xs font-bold text-gray-700">
+                              Daily Employees
+                            </td>
+                          </tr>
+                          {daily.map(renderEmployeeRow)}
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
               </tbody>
             </table>
           </div>
@@ -531,6 +653,13 @@ export function AttendancePage() {
               <span className="text-[9px] font-medium text-orange-600">12:00</span>
             </div>
             <span className="text-[10px] text-gray-600">Auto check-out time</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-12 h-6 bg-gray-100 rounded flex items-center justify-center border border-gray-300">
+              <span className="text-[8px] font-semibold">8h</span>
+              <span className="text-[8px] font-semibold text-orange-600">+1.5</span>
+            </div>
+            <span className="text-[10px] text-gray-600">Overtime (hourly employees)</span>
           </div>
         </div>
       </div>
