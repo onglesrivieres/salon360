@@ -107,7 +107,8 @@ export function PendingApprovalsPage() {
   const { session, selectedStoreId, effectiveRole } = useAuth();
 
   const userRoles = session?.role || [];
-  const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
+  const isManagement = userRoles.some(role => ['Owner', 'Manager', 'Supervisor'].includes(role));
+  const isSupervisor = session?.role_permission === 'Supervisor';
   const canViewQueueHistory = effectiveRole && Permissions.queue.canViewRemovalHistory(effectiveRole);
   const canReviewTransactionChanges = effectiveRole && Permissions.cashTransactions.canReviewChangeProposal(effectiveRole);
 
@@ -123,6 +124,13 @@ export function PendingApprovalsPage() {
   // Fetch all tab counts and auto-navigate to first tab with pending items
   useEffect(() => {
     if (!isManagement || !session?.employee_id || !selectedStoreId || initialTabSet) return;
+
+    // Supervisors can only see cash tab, so navigate there directly
+    if (isSupervisor) {
+      handleTabChange('cash');
+      setInitialTabSet(true);
+      return;
+    }
 
     fetchAllTabCounts().then(counts => {
       if (!counts) {
@@ -148,7 +156,7 @@ export function PendingApprovalsPage() {
       }
       setInitialTabSet(true);
     });
-  }, [isManagement, session?.employee_id, selectedStoreId, initialTabSet]);
+  }, [isManagement, session?.employee_id, selectedStoreId, initialTabSet, isSupervisor]);
 
   useEffect(() => {
     if (!isManagement) return;
@@ -313,7 +321,14 @@ export function PendingApprovalsPage() {
       });
 
       if (error) throw error;
-      setCashTransactionApprovals(data || []);
+
+      // Filter for Supervisors: only show Receptionist-created transactions
+      let filteredData = data || [];
+      if (isSupervisor) {
+        filteredData = filteredData.filter(approval => approval.created_by_role === 'Receptionist');
+      }
+
+      setCashTransactionApprovals(filteredData);
     } catch (error) {
       console.error('Error fetching cash transaction approvals:', error);
     } finally {
@@ -1056,38 +1071,42 @@ export function PendingApprovalsPage() {
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="border-b border-gray-200">
           <div className="flex flex-wrap gap-1 p-1">
-            <button
-              onClick={() => handleTabChange('tickets')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === 'tickets'
-                  ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              Tickets
-              {(activeTab === 'tickets' ? tickets.length : tabCounts.tickets) > 0 && (
-                <Badge variant="error" className="ml-1">
-                  {activeTab === 'tickets' ? tickets.length : tabCounts.tickets}
-                </Badge>
-              )}
-            </button>
-            <button
-              onClick={() => handleTabChange('inventory')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === 'inventory'
-                  ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Package className="w-4 h-4" />
-              Inventory
-              {(activeTab === 'inventory' ? inventoryApprovals.length : tabCounts.inventory) > 0 && (
-                <Badge variant="warning" className="ml-1">
-                  {activeTab === 'inventory' ? inventoryApprovals.length : tabCounts.inventory}
-                </Badge>
-              )}
-            </button>
+            {!isSupervisor && (
+              <button
+                onClick={() => handleTabChange('tickets')}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                  activeTab === 'tickets'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                Tickets
+                {(activeTab === 'tickets' ? tickets.length : tabCounts.tickets) > 0 && (
+                  <Badge variant="error" className="ml-1">
+                    {activeTab === 'tickets' ? tickets.length : tabCounts.tickets}
+                  </Badge>
+                )}
+              </button>
+            )}
+            {!isSupervisor && (
+              <button
+                onClick={() => handleTabChange('inventory')}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                  activeTab === 'inventory'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <Package className="w-4 h-4" />
+                Inventory
+                {(activeTab === 'inventory' ? inventoryApprovals.length : tabCounts.inventory) > 0 && (
+                  <Badge variant="warning" className="ml-1">
+                    {activeTab === 'inventory' ? inventoryApprovals.length : tabCounts.inventory}
+                  </Badge>
+                )}
+              </button>
+            )}
             <button
               onClick={() => handleTabChange('cash')}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
@@ -1104,7 +1123,7 @@ export function PendingApprovalsPage() {
                 </Badge>
               )}
             </button>
-            {canReviewTransactionChanges && (
+            {canReviewTransactionChanges && !isSupervisor && (
               <button
                 onClick={() => handleTabChange('transaction-changes')}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
@@ -1122,39 +1141,43 @@ export function PendingApprovalsPage() {
                 )}
               </button>
             )}
-            <button
-              onClick={() => handleTabChange('attendance')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === 'attendance'
-                  ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Bell className="w-4 h-4" />
-              Shift Request
-              {(activeTab === 'attendance' ? attendanceProposals.filter(p => p.status === 'pending').length : tabCounts.attendance) > 0 && (
-                <Badge variant="warning" className="ml-1">
-                  {activeTab === 'attendance' ? attendanceProposals.filter(p => p.status === 'pending').length : tabCounts.attendance}
-                </Badge>
-              )}
-            </button>
-            <button
-              onClick={() => handleTabChange('violations')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === 'violations'
-                  ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Flag className="w-4 h-4" />
-              Turn Violation
-              {(activeTab === 'violations' ? violationReports.length : tabCounts.violations) > 0 && (
-                <Badge variant="error" className="ml-1">
-                  {activeTab === 'violations' ? violationReports.length : tabCounts.violations}
-                </Badge>
-              )}
-            </button>
-            {canViewQueueHistory && (
+            {!isSupervisor && (
+              <button
+                onClick={() => handleTabChange('attendance')}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                  activeTab === 'attendance'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <Bell className="w-4 h-4" />
+                Shift Request
+                {(activeTab === 'attendance' ? attendanceProposals.filter(p => p.status === 'pending').length : tabCounts.attendance) > 0 && (
+                  <Badge variant="warning" className="ml-1">
+                    {activeTab === 'attendance' ? attendanceProposals.filter(p => p.status === 'pending').length : tabCounts.attendance}
+                  </Badge>
+                )}
+              </button>
+            )}
+            {!isSupervisor && (
+              <button
+                onClick={() => handleTabChange('violations')}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                  activeTab === 'violations'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <Flag className="w-4 h-4" />
+                Turn Violation
+                {(activeTab === 'violations' ? violationReports.length : tabCounts.violations) > 0 && (
+                  <Badge variant="error" className="ml-1">
+                    {activeTab === 'violations' ? violationReports.length : tabCounts.violations}
+                  </Badge>
+                )}
+              </button>
+            )}
+            {canViewQueueHistory && !isSupervisor && (
               <button
                 onClick={() => handleTabChange('queue-history')}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${

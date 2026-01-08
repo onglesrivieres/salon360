@@ -769,6 +769,7 @@ export interface PendingCashTransactionApproval {
   date: string;
   created_by_name: string;
   created_by_id: string;
+  created_by_role: string;
   created_at: string;
   requires_manager_approval: boolean;
 }

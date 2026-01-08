@@ -112,6 +112,7 @@ export function AttendancePage() {
 
       const isRestrictedRole = session?.role_permission === 'Technician' ||
         session?.role_permission === 'Receptionist' ||
+        session?.role_permission === 'Supervisor' ||
         (session?.role && Array.isArray(session.role) && session.role.includes('Spa Expert'));
 
       const { data, error } = await supabase.rpc('get_store_attendance', {
