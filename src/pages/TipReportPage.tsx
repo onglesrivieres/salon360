@@ -104,6 +104,14 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     return dates;
   }
 
+  function getISOWeekNumber(date: Date): number {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return weekNo;
+  }
+
   async function fetchDailyTipData(dateToFetch: string): Promise<Map<string, TechnicianSummary>> {
     const canViewAll = session?.role_permission ? Permissions.tipReport.canViewAll(session.role_permission) : false;
     const isRestrictedRole = !canViewAll && (
@@ -614,16 +622,17 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     const weekDates = getWeekDates(weekStart);
     const startDate = new Date(weekDates[0] + 'T00:00:00');
     const endDate = new Date(weekDates[6] + 'T00:00:00');
+    const weekNumber = getISOWeekNumber(startDate);
 
     const startYear = startDate.getFullYear();
     const endYear = endDate.getFullYear();
 
     if (startYear !== endYear) {
       const formatDateWithYear = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
-      return `${formatDateWithYear(startDate)} - ${formatDateWithYear(endDate)}`;
+      return `W${weekNumber} ${formatDateWithYear(startDate)} - ${formatDateWithYear(endDate)}`;
     } else {
       const formatDate = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
-      return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+      return `W${weekNumber} ${formatDate(startDate)} - ${formatDate(endDate)}`;
     }
   }
 
@@ -770,7 +779,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <span className="text-sm font-medium text-gray-700 min-w-[100px] text-center">
+                <span className="text-sm font-medium text-gray-700 min-w-[130px] text-center">
                   {getCurrentWeekLabel()}
                 </span>
                 <Button
@@ -793,7 +802,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <span className="text-sm font-medium text-gray-700 min-w-[120px] text-center">
+                <span className="text-sm font-medium text-gray-700 min-w-[150px] text-center">
                   {getCurrentWeekLabel()}
                 </span>
                 <Button
