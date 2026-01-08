@@ -211,8 +211,8 @@ export function CashTransactionModal({
   }) => {
     const itemTotal = value * denomination;
     return (
-      <div className="flex items-center">
-        <label className="text-sm font-medium text-gray-700 w-8 whitespace-nowrap flex-shrink-0">{label}</label>
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-medium text-gray-700 w-10 whitespace-nowrap flex-shrink-0">{label}</label>
         <NumericInput
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -220,7 +220,7 @@ export function CashTransactionModal({
           min="0"
           step="1"
         />
-        <span className="text-sm font-semibold text-gray-900 ml-1 whitespace-nowrap">
+        <span className="text-sm font-semibold text-gray-900 w-16 text-right whitespace-nowrap flex-shrink-0">
           ${itemTotal.toFixed(2)}
         </span>
       </div>
