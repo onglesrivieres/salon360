@@ -211,7 +211,7 @@ export function CashTransactionModal({
   }) => {
     const itemTotal = value * denomination;
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center">
         <label className="text-sm font-medium text-gray-700 w-8 whitespace-nowrap flex-shrink-0">{label}</label>
         <NumericInput
           value={value}
@@ -220,7 +220,7 @@ export function CashTransactionModal({
           min="0"
           step="1"
         />
-        <span className="text-sm font-semibold text-gray-900 w-16 text-right whitespace-nowrap flex-shrink-0">
+        <span className="text-sm font-semibold text-gray-900 ml-1 whitespace-nowrap">
           ${itemTotal.toFixed(2)}
         </span>
       </div>
@@ -405,13 +405,13 @@ export function CashTransactionModal({
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
               Description (optional)
             </label>
-            <textarea
+            <input
+              type="text"
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Enter transaction details..."
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={3}
             />
           </div>
 
