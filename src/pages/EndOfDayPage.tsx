@@ -726,6 +726,16 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             category: data.category,
             last_edited_by_id: session.employee_id,
             last_edited_at: new Date().toISOString(),
+            bill_100: data.denominations.bill_100,
+            bill_50: data.denominations.bill_50,
+            bill_20: data.denominations.bill_20,
+            bill_10: data.denominations.bill_10,
+            bill_5: data.denominations.bill_5,
+            bill_2: data.denominations.bill_2,
+            bill_1: data.denominations.bill_1,
+            coin_25: data.denominations.coin_25,
+            coin_10: data.denominations.coin_10,
+            coin_5: data.denominations.coin_5,
           })
           .eq('id', data.transactionId);
 
@@ -759,6 +769,16 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             p_description: data.description,
             p_category: data.category,
             p_created_by_id: session.employee_id,
+            p_bill_100: data.denominations.bill_100,
+            p_bill_50: data.denominations.bill_50,
+            p_bill_20: data.denominations.bill_20,
+            p_bill_10: data.denominations.bill_10,
+            p_bill_5: data.denominations.bill_5,
+            p_bill_2: data.denominations.bill_2,
+            p_bill_1: data.denominations.bill_1,
+            p_coin_25: data.denominations.coin_25,
+            p_coin_10: data.denominations.coin_10,
+            p_coin_5: data.denominations.coin_5,
           });
 
         if (error) throw error;
@@ -1275,6 +1295,18 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                 amount: parseFloat(editingCashTransaction.amount.toString()),
                 description: editingCashTransaction.description,
                 category: editingCashTransaction.category || '',
+                denominations: {
+                  bill_100: editingCashTransaction.bill_100 || 0,
+                  bill_50: editingCashTransaction.bill_50 || 0,
+                  bill_20: editingCashTransaction.bill_20 || 0,
+                  bill_10: editingCashTransaction.bill_10 || 0,
+                  bill_5: editingCashTransaction.bill_5 || 0,
+                  bill_2: editingCashTransaction.bill_2 || 0,
+                  bill_1: editingCashTransaction.bill_1 || 0,
+                  coin_25: editingCashTransaction.coin_25 || 0,
+                  coin_10: editingCashTransaction.coin_10 || 0,
+                  coin_5: editingCashTransaction.coin_5 || 0,
+                },
               }
             : undefined
         }
@@ -1297,6 +1329,18 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                 amount: parseFloat(editingCashTransaction.amount.toString()),
                 description: editingCashTransaction.description,
                 category: editingCashTransaction.category || '',
+                denominations: {
+                  bill_100: editingCashTransaction.bill_100 || 0,
+                  bill_50: editingCashTransaction.bill_50 || 0,
+                  bill_20: editingCashTransaction.bill_20 || 0,
+                  bill_10: editingCashTransaction.bill_10 || 0,
+                  bill_5: editingCashTransaction.bill_5 || 0,
+                  bill_2: editingCashTransaction.bill_2 || 0,
+                  bill_1: editingCashTransaction.bill_1 || 0,
+                  coin_25: editingCashTransaction.coin_25 || 0,
+                  coin_10: editingCashTransaction.coin_10 || 0,
+                  coin_5: editingCashTransaction.coin_5 || 0,
+                },
               }
             : undefined
         }

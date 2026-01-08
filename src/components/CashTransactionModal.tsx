@@ -1,9 +1,35 @@
 import React, { useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, DollarSign } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { NumericInput } from './ui/NumericInput';
 import { CashTransactionType } from '../lib/supabase';
+
+interface CashDenominations {
+  bill_100: number;
+  bill_50: number;
+  bill_20: number;
+  bill_10: number;
+  bill_5: number;
+  bill_2: number;
+  bill_1: number;
+  coin_25: number;
+  coin_10: number;
+  coin_5: number;
+}
+
+const DEFAULT_DENOMINATIONS: CashDenominations = {
+  bill_100: 0,
+  bill_50: 0,
+  bill_20: 0,
+  bill_10: 0,
+  bill_5: 0,
+  bill_2: 0,
+  bill_1: 0,
+  coin_25: 0,
+  coin_10: 0,
+  coin_5: 0,
+};
 
 interface CashTransactionModalProps {
   isOpen: boolean;
@@ -18,6 +44,7 @@ interface CashTransactionModalProps {
     amount: number;
     description?: string;
     category: string;
+    denominations?: CashDenominations;
   };
   onVoid?: (reason: string) => void;
   canVoid?: boolean;
@@ -30,6 +57,7 @@ export interface TransactionData {
   category: string;
   editReason?: string;
   transactionId?: string;
+  denominations: CashDenominations;
 }
 
 const CASH_IN_CATEGORIES = [
@@ -60,7 +88,7 @@ export function CashTransactionModal({
   canVoid,
   transactionStatus,
 }: CashTransactionModalProps) {
-  const [amount, setAmount] = useState('');
+  const [denominations, setDenominations] = useState<CashDenominations>(DEFAULT_DENOMINATIONS);
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [editReason, setEditReason] = useState('');
@@ -71,17 +99,39 @@ export function CashTransactionModal({
 
   const showVoidButton = mode === 'edit' && canVoid && transactionStatus === 'approved' && onVoid;
 
+  function updateDenomination(key: keyof CashDenominations, value: string) {
+    const numValue = parseInt(value) || 0;
+    setDenominations(prev => ({ ...prev, [key]: Math.max(0, numValue) }));
+    if (errors.amount) setErrors({ ...errors, amount: undefined });
+  }
+
+  function calculateTotal(): number {
+    return (
+      denominations.bill_100 * 100 +
+      denominations.bill_50 * 50 +
+      denominations.bill_20 * 20 +
+      denominations.bill_10 * 10 +
+      denominations.bill_5 * 5 +
+      denominations.bill_2 * 2 +
+      denominations.bill_1 * 1 +
+      denominations.coin_25 * 0.25 +
+      denominations.coin_10 * 0.10 +
+      denominations.coin_5 * 0.05
+    );
+  }
+
   React.useEffect(() => {
     if (isOpen) {
       setIsVoidMode(false);
       setVoidReason('');
       setVoidError(null);
       if (mode === 'edit' && initialData) {
-        setAmount(initialData.amount.toString());
+        setDenominations(initialData.denominations || DEFAULT_DENOMINATIONS);
         setDescription(initialData.description || '');
         setCategory(initialData.category);
         setEditReason('');
       } else {
+        setDenominations(DEFAULT_DENOMINATIONS);
         setDescription(defaultDescription || '');
         setCategory(defaultCategory || '');
       }
@@ -92,9 +142,10 @@ export function CashTransactionModal({
     e.preventDefault();
 
     const newErrors: { amount?: string; category?: string } = {};
+    const total = calculateTotal();
 
-    if (!amount || parseFloat(amount) <= 0) {
-      newErrors.amount = 'Please enter a valid amount greater than 0';
+    if (total <= 0) {
+      newErrors.amount = 'Please count at least some cash (total must be greater than 0)';
     }
 
     if (!category) {
@@ -107,18 +158,19 @@ export function CashTransactionModal({
     }
 
     onSubmit({
-      amount: parseFloat(amount),
+      amount: total,
       description: description.trim() || undefined,
       category: category,
       editReason: mode === 'edit' ? editReason.trim() || undefined : undefined,
       transactionId: mode === 'edit' ? transactionId : undefined,
+      denominations: denominations,
     });
 
     handleClose();
   }
 
   function handleClose() {
-    setAmount('');
+    setDenominations(DEFAULT_DENOMINATIONS);
     setDescription('');
     setCategory('');
     setEditReason('');
@@ -145,6 +197,35 @@ export function CashTransactionModal({
     : (transactionType === 'cash_in' ? 'Add Cash In Transaction' : 'Add Cash Out Transaction');
 
   const availableCategories = transactionType === 'cash_in' ? CASH_IN_CATEGORIES : CASH_OUT_CATEGORIES;
+
+  const DenominationInput = ({
+    label,
+    value,
+    onChange,
+    denomination
+  }: {
+    label: string;
+    value: number;
+    onChange: (value: string) => void;
+    denomination: number;
+  }) => {
+    const itemTotal = value * denomination;
+    return (
+      <div className="flex items-center gap-3">
+        <label className="text-sm font-medium text-gray-700 w-20 whitespace-nowrap flex-shrink-0">{label}</label>
+        <NumericInput
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-16 text-center text-sm py-1 flex-shrink-0"
+          min="0"
+          step="1"
+        />
+        <span className="text-sm font-semibold text-gray-900 w-24 text-right whitespace-nowrap flex-shrink-0">
+          ${itemTotal.toFixed(2)}
+        </span>
+      </div>
+    );
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={isVoidMode ? 'Void Transaction' : title}>
@@ -203,22 +284,86 @@ export function CashTransactionModal({
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Cash Count Section */}
           <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
-              Amount *
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Cash Count *
             </label>
-            <NumericInput
-              id="amount"
-              step="0.01"
-              min="0.01"
-              value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value);
-                if (errors.amount) setErrors({ ...errors, amount: undefined });
-              }}
-              placeholder="0.00"
-              className={errors.amount ? 'border-red-500' : ''}
-            />
+            <div className="space-y-1.5 bg-gray-50 rounded-lg p-3">
+              <DenominationInput
+                label="$100 Bills"
+                value={denominations.bill_100}
+                onChange={(v) => updateDenomination('bill_100', v)}
+                denomination={100}
+              />
+              <DenominationInput
+                label="$50 Bills"
+                value={denominations.bill_50}
+                onChange={(v) => updateDenomination('bill_50', v)}
+                denomination={50}
+              />
+              <DenominationInput
+                label="$20 Bills"
+                value={denominations.bill_20}
+                onChange={(v) => updateDenomination('bill_20', v)}
+                denomination={20}
+              />
+              <DenominationInput
+                label="$10 Bills"
+                value={denominations.bill_10}
+                onChange={(v) => updateDenomination('bill_10', v)}
+                denomination={10}
+              />
+              <DenominationInput
+                label="$5 Bills"
+                value={denominations.bill_5}
+                onChange={(v) => updateDenomination('bill_5', v)}
+                denomination={5}
+              />
+              <DenominationInput
+                label="$2 Coins"
+                value={denominations.bill_2}
+                onChange={(v) => updateDenomination('bill_2', v)}
+                denomination={2}
+              />
+              <DenominationInput
+                label="$1 Coins"
+                value={denominations.bill_1}
+                onChange={(v) => updateDenomination('bill_1', v)}
+                denomination={1}
+              />
+              <DenominationInput
+                label="25¢ Coins"
+                value={denominations.coin_25}
+                onChange={(v) => updateDenomination('coin_25', v)}
+                denomination={0.25}
+              />
+              <DenominationInput
+                label="10¢ Coins"
+                value={denominations.coin_10}
+                onChange={(v) => updateDenomination('coin_10', v)}
+                denomination={0.10}
+              />
+              <DenominationInput
+                label="5¢ Coins"
+                value={denominations.coin_5}
+                onChange={(v) => updateDenomination('coin_5', v)}
+                denomination={0.05}
+              />
+            </div>
+
+            {/* Total Display */}
+            <div className={`mt-3 rounded-lg p-3 ${transactionType === 'cash_in' ? 'bg-green-50 border border-green-200' : 'bg-blue-50 border border-blue-200'}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <DollarSign className={`w-5 h-5 ${transactionType === 'cash_in' ? 'text-green-600' : 'text-blue-600'}`} />
+                  <span className="text-base font-bold text-gray-900">Total:</span>
+                </div>
+                <span className={`text-2xl font-bold ${transactionType === 'cash_in' ? 'text-green-600' : 'text-blue-600'}`}>
+                  ${calculateTotal().toFixed(2)}
+                </span>
+              </div>
+            </div>
             {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
           </div>
 

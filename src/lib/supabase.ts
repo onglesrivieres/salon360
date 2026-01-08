@@ -742,6 +742,17 @@ export interface CashTransaction {
   last_edited_at?: string;
   created_at: string;
   updated_at: string;
+  // Denomination fields for cash count
+  bill_100?: number;
+  bill_50?: number;
+  bill_20?: number;
+  bill_10?: number;
+  bill_5?: number;
+  bill_2?: number;
+  bill_1?: number;
+  coin_25?: number;
+  coin_10?: number;
+  coin_5?: number;
 }
 
 export interface CashTransactionWithDetails extends CashTransaction {
