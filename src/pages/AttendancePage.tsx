@@ -53,7 +53,23 @@ interface AttendanceSummary {
       [date: string]: DailyHoursSummary;
     };
     daysPresent: number;
+    isMultiStore: boolean;
   };
+}
+
+function getStoreColor(storeCode: string): string {
+  const codeMap: Record<string, string> = {
+    'OM': 'M',
+    'OC': 'C',
+    'OR': 'R'
+  };
+  const abbrev = codeMap[storeCode] || storeCode;
+  switch (abbrev) {
+    case 'M': return 'text-pink-600';
+    case 'C': return 'text-green-600';
+    case 'R': return 'text-blue-600';
+    default: return 'text-gray-600';
+  }
 }
 
 export function AttendancePage() {
@@ -191,7 +207,8 @@ export function AttendancePage() {
           totalRegularHours: 0,
           totalOvertimeHours: 0,
           dailyHours: {},
-          daysPresent: 0
+          daysPresent: 0,
+          isMultiStore: false
         };
       }
 
@@ -214,9 +231,16 @@ export function AttendancePage() {
       }
     });
 
-    // Calculate days present, daily hours, and OT for each employee
+    // Calculate days present, daily hours, OT, and multi-store status for each employee
     Object.values(summary).forEach(employee => {
       employee.daysPresent = Object.keys(employee.dates).length;
+
+      // Detect if employee works at multiple stores
+      const uniqueStores = new Set<string>();
+      Object.values(employee.dates).forEach(sessions => {
+        sessions.forEach(s => uniqueStores.add(s.storeCode));
+      });
+      employee.isMultiStore = uniqueStores.size > 1;
 
       // Calculate daily hours and OT for hourly employees
       Object.entries(employee.dates).forEach(([date, sessions]) => {
@@ -517,6 +541,11 @@ export function AttendancePage() {
                                     } ${isClickable ? 'cursor-pointer hover:opacity-80' : ''}`}
                                   >
                                     <div className="leading-tight">
+                                      {employee.isMultiStore && (
+                                        <div className={`text-[7px] font-medium ${getStoreColor(record.storeCode)}`}>
+                                          [{getStoreCodeAbbreviation(record.storeCode)}]
+                                        </div>
+                                      )}
                                       <div className={`text-[9px] ${
                                         record.status === 'checked_in'
                                           ? 'text-white'
@@ -524,7 +553,6 @@ export function AttendancePage() {
                                           ? 'text-yellow-900'
                                           : 'text-gray-700'
                                       }`}>
-                                        <span className="font-medium text-blue-600">[{getStoreCodeAbbreviation(record.storeCode)}]</span>
                                         {formatTimeEST(record.checkInTime, {
                                           hour: 'numeric',
                                           minute: '2-digit',
