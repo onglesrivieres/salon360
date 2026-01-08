@@ -545,16 +545,16 @@ export function AttendancePage() {
                                   </div>
                                 );
                                 })}
-                                {/* Daily hours summary with OT breakdown for hourly employees */}
-                                {dailyHoursSummary && !(isRestrictedRole && employee.payType === 'daily') && (
+                                {/* Daily hours summary with OT breakdown for hourly employees only */}
+                                {dailyHoursSummary && employee.payType === 'hourly' && (
                                   <div className="text-[9px] font-semibold text-gray-900 border-t border-gray-300 pt-0.5 mt-0.5">
-                                    {employee.payType === 'hourly' && dailyHoursSummary.overtimeHours > 0 ? (
+                                    {dailyHoursSummary.overtimeHours > 0 ? (
                                       <>
-                                        <span>{dailyHoursSummary.regularHours.toFixed(1)}h</span>
-                                        <span className="text-orange-600">+{dailyHoursSummary.overtimeHours.toFixed(1)}</span>
+                                        <div>{dailyHoursSummary.regularHours.toFixed(2)}</div>
+                                        <div className="text-orange-600">+{dailyHoursSummary.overtimeHours.toFixed(2)} OT</div>
                                       </>
                                     ) : (
-                                      <span>{dailyHoursSummary.totalHours.toFixed(1)}h</span>
+                                      <span>{dailyHoursSummary.totalHours.toFixed(2)}</span>
                                     )}
                                   </div>
                                 )}
@@ -566,35 +566,23 @@ export function AttendancePage() {
                         );
                       })}
                       <td className="p-1 text-right text-[11px] font-bold text-gray-900 sticky right-0 bg-white w-[55px] min-w-[55px] max-w-[55px]">
-                        {isRestrictedRole ? (
-                          // Individual employee view - show only relevant metric based on pay type
-                          employee.payType === 'daily' ? (
-                            <div>{employee.daysPresent}d</div>
-                          ) : employee.payType === 'hourly' ? (
-                            <div>
-                              <div>{employee.totalRegularHours.toFixed(1)}h</div>
-                              {employee.totalOvertimeHours > 0 && (
-                                <div className="text-orange-600 text-[10px]">+{employee.totalOvertimeHours.toFixed(1)} OT</div>
-                              )}
-                            </div>
-                          ) : (
-                            <div>{employee.totalHours.toFixed(2)}h</div>
-                          )
-                        ) : (
-                          // Management view - show both metrics
-                          <>
-                            {employee.payType === 'hourly' ? (
-                              <div>
-                                <div>{employee.totalRegularHours.toFixed(1)}h</div>
-                                {employee.totalOvertimeHours > 0 && (
-                                  <div className="text-orange-600 text-[10px]">+{employee.totalOvertimeHours.toFixed(1)} OT</div>
-                                )}
-                              </div>
-                            ) : (
-                              <div>{employee.totalHours.toFixed(2)}h</div>
+                        {employee.payType === 'daily' ? (
+                          // Daily employees - only show days present
+                          <div>{employee.daysPresent}d</div>
+                        ) : employee.payType === 'hourly' ? (
+                          // Hourly employees - show hours with OT breakdown
+                          <div>
+                            <div>{employee.totalRegularHours.toFixed(2)}</div>
+                            {employee.totalOvertimeHours > 0 && (
+                              <div className="text-orange-600 text-[10px]">+{employee.totalOvertimeHours.toFixed(2)} OT</div>
                             )}
-                            <div className="text-gray-600">{employee.daysPresent}d</div>
-                          </>
+                            {!isRestrictedRole && (
+                              <div className="text-gray-600">{employee.daysPresent}d</div>
+                            )}
+                          </div>
+                        ) : (
+                          // Fallback for other types
+                          <div>{employee.totalHours.toFixed(2)}</div>
                         )}
                       </td>
                     </tr>
@@ -655,9 +643,9 @@ export function AttendancePage() {
             <span className="text-[10px] text-gray-600">Auto check-out time</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-12 h-6 bg-gray-100 rounded flex items-center justify-center border border-gray-300">
-              <span className="text-[8px] font-semibold">8h</span>
-              <span className="text-[8px] font-semibold text-orange-600">+1.5</span>
+            <div className="w-14 h-8 bg-gray-100 rounded flex flex-col items-center justify-center border border-gray-300">
+              <span className="text-[7px] font-semibold">8.00</span>
+              <span className="text-[7px] font-semibold text-orange-600">+1.50 OT</span>
             </div>
             <span className="text-[10px] text-gray-600">Overtime (hourly employees)</span>
           </div>

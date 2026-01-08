@@ -88,6 +88,17 @@ export function EmployeesPage() {
       filtered = filtered.filter((e) => e.role.includes(filterRole as any));
     }
 
+    // Sort by: 1st display_name (A-Z), 2nd status (Active before Inactive)
+    filtered.sort((a, b) => {
+      // First compare by display_name
+      const nameCompare = a.display_name.localeCompare(b.display_name);
+      if (nameCompare !== 0) return nameCompare;
+      // If names are equal, Active comes before Inactive
+      if (a.status === 'Active' && b.status === 'Inactive') return -1;
+      if (a.status === 'Inactive' && b.status === 'Active') return 1;
+      return 0;
+    });
+
     setFilteredEmployees(filtered);
   }, [employees, searchTerm, filterStatus, filterRole, selectedStoreId, employeeStoresMap]);
 
