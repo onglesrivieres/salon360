@@ -94,7 +94,9 @@ export function AttendancePage() {
       setLoading(true);
       const { startDate, endDate } = getDateRange();
 
-      const isRestrictedRole = session?.role_permission === 'Technician' || session?.role_permission === 'Receptionist';
+      const isRestrictedRole = session?.role_permission === 'Technician' ||
+        session?.role_permission === 'Receptionist' ||
+        (session?.role && Array.isArray(session.role) && session.role.includes('Spa Expert'));
 
       const { data, error } = await supabase.rpc('get_store_attendance', {
         p_store_id: selectedStoreId,
@@ -280,7 +282,9 @@ export function AttendancePage() {
   }
 
   function handleShiftClick(record: AttendanceSession, employeeId: string, employeeName: string, workDate: string, payType: string) {
-    const isRestrictedRole = session?.role_permission === 'Technician' || session?.role_permission === 'Receptionist';
+    const isRestrictedRole = session?.role_permission === 'Technician' ||
+      session?.role_permission === 'Receptionist' ||
+      (session?.role && Array.isArray(session.role) && session.role.includes('Spa Expert'));
 
     if (isRestrictedRole && session?.employee_id !== employeeId) {
       return;
@@ -372,7 +376,9 @@ export function AttendancePage() {
   const periodRange = `${formatDateEST(parseLocalDate(startDate), { month: 'short', day: 'numeric' })} - ${formatDateEST(parseLocalDate(endDate), { month: 'short', day: 'numeric', year: 'numeric' })}`;
 
   // Check if this is an individual employee view (not management)
-  const isRestrictedRole = session?.role_permission === 'Technician' || session?.role_permission === 'Receptionist';
+  const isRestrictedRole = session?.role_permission === 'Technician' ||
+    session?.role_permission === 'Receptionist' ||
+    (session?.role && Array.isArray(session.role) && session.role.includes('Spa Expert'));
   const isManagement = session?.role && Permissions.endOfDay.canView(session.role);
 
   // Check if commission employee (and not management)
