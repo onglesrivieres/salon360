@@ -683,15 +683,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
   function calculateTempCashCollected(): number {
     return (
-      (parseFloat(tempPaymentData.payment_cash) || 0) +
-      (parseFloat(tempPaymentData.tip_customer_cash) || 0)
+      (parseFloat(tempPaymentData.payment_cash) || 0) -
+      (parseFloat(tempPaymentData.discount_amount_cash) || 0)
     );
   }
 
   function calculateTempCardCollected(): number {
     return (
-      (parseFloat(tempPaymentData.payment_card) || 0) +
-      (parseFloat(tempPaymentData.tip_customer_card) || 0)
+      (parseFloat(tempPaymentData.payment_card) || 0) -
+      (parseFloat(tempPaymentData.discount_amount) || 0)
     );
   }
 
