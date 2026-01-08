@@ -1280,8 +1280,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           approved_by: null,
           rejection_reason: null,
           requires_admin_review: false,
-          completed_at: null,
-          completed_by: null,
         })
         .eq('id', ticketId)
         .select();
