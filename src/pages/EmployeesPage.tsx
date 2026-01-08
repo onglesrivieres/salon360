@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Search, RefreshCw } from 'lucide-react';
+import { Plus, Edit2, Search, RefreshCw, AlertCircle } from 'lucide-react';
 import { supabase, Employee, Store, WeeklySchedule } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -37,6 +37,8 @@ export function EmployeesPage() {
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetEmployee, setResetEmployee] = useState<Employee | null>(null);
   const [tempPIN, setTempPIN] = useState('');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
   const { showToast } = useToast();
   const { session, selectedStoreId, t } = useAuth();
 
@@ -282,6 +284,38 @@ export function EmployeesPage() {
       }
     } catch (error) {
       showToast('Failed to reset PIN', 'error');
+    }
+  }
+
+  async function handleDeleteEmployee() {
+    if (!deletingEmployee || !session || !Permissions.employees.canDelete(session.role)) {
+      showToast('You do not have permission to delete employees', 'error');
+      return;
+    }
+
+    try {
+      // First delete employee store assignments
+      await supabase
+        .from('employee_stores')
+        .delete()
+        .eq('employee_id', deletingEmployee.id);
+
+      // Then delete the employee
+      const { error } = await supabase
+        .from('employees')
+        .delete()
+        .eq('id', deletingEmployee.id);
+
+      if (error) throw error;
+
+      showToast('Employee deleted successfully', 'success');
+      setDeleteModalOpen(false);
+      setDeletingEmployee(null);
+      closeDrawer();
+      await fetchEmployees();
+    } catch (error: any) {
+      console.error('Error deleting employee:', error);
+      showToast('Failed to delete employee', 'error');
     }
   }
 
@@ -551,6 +585,20 @@ export function EmployeesPage() {
               </button>
             </div>
           )}
+          {editingEmployee && session && Permissions.employees.canDelete(session.role) && (
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeletingEmployee(editingEmployee);
+                  setDeleteModalOpen(true);
+                }}
+                className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+              >
+                Delete Employee
+              </button>
+            </div>
+          )}
           <div className="flex items-center">
             <input
               type="checkbox"
@@ -640,6 +688,48 @@ export function EmployeesPage() {
               }}
             >
               {t('actions.close')}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setDeletingEmployee(null);
+        }}
+        title="Delete Employee"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-900 mb-1">
+                Warning: This action cannot be undone
+              </p>
+              <p className="text-sm text-red-700">
+                You are about to permanently delete <strong>{deletingEmployee?.display_name}</strong> from the system.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setDeleteModalOpen(false);
+                setDeletingEmployee(null);
+              }}
+              className="flex-1"
+            >
+              {t('actions.cancel')}
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleDeleteEmployee}
+              className="flex-1"
+            >
+              Delete
             </Button>
           </div>
         </div>
