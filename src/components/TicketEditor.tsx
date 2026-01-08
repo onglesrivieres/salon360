@@ -2562,25 +2562,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     </div>
                   </div>
                 </div>
-
-                {(parseFloat(tempPaymentData.discount_amount_cash) || 0) > 0 && (
-                  <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between text-gray-600">
-                        <span>Cash Payment:</span>
-                        <span>${(parseFloat(tempPaymentData.payment_cash) || 0).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-red-600">
-                        <span>Cash Discount:</span>
-                        <span>-${(parseFloat(tempPaymentData.discount_amount_cash) || 0).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-semibold text-green-700 border-t border-green-200 pt-1">
-                        <span>Total Cash Payment:</span>
-                        <span>${calculateTotalCashPayment().toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </>
             ) : (
               <div className="grid grid-cols-2 gap-3">
