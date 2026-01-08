@@ -94,6 +94,15 @@ export function PendingApprovalsPage() {
   const [transactionChangeProposals, setTransactionChangeProposals] = useState<PendingCashTransactionChangeProposal[]>([]);
   const [selectedTransactionChangeProposal, setSelectedTransactionChangeProposal] = useState<PendingCashTransactionChangeProposal | null>(null);
   const [transactionChangeReviewComment, setTransactionChangeReviewComment] = useState('');
+  const [tabCounts, setTabCounts] = useState<{
+    tickets: number;
+    inventory: number;
+    cash: number;
+    transactionChanges: number;
+    attendance: number;
+    violations: number;
+  }>({ tickets: 0, inventory: 0, cash: 0, transactionChanges: 0, attendance: 0, violations: 0 });
+  const [initialTabSet, setInitialTabSet] = useState(false);
   const { showToast } = useToast();
   const { session, selectedStoreId, effectiveRole } = useAuth();
 
@@ -107,8 +116,39 @@ export function PendingApprovalsPage() {
     const tab = params.get('tab');
     if (tab && ['tickets', 'inventory', 'cash', 'transaction-changes', 'attendance', 'violations', 'queue-history'].includes(tab)) {
       setActiveTab(tab as TabType);
+      setInitialTabSet(true);
     }
   }, []);
+
+  // Fetch all tab counts and auto-navigate to first tab with pending items
+  useEffect(() => {
+    if (!isManagement || !session?.employee_id || !selectedStoreId || initialTabSet) return;
+
+    fetchAllTabCounts().then(counts => {
+      if (!counts) {
+        setInitialTabSet(true);
+        return;
+      }
+
+      // Priority order for auto-navigation
+      const tabPriority: { tab: TabType; key: keyof typeof counts }[] = [
+        { tab: 'tickets', key: 'tickets' },
+        { tab: 'violations', key: 'violations' },
+        { tab: 'cash', key: 'cash' },
+        { tab: 'inventory', key: 'inventory' },
+        { tab: 'transaction-changes', key: 'transactionChanges' },
+        { tab: 'attendance', key: 'attendance' },
+      ];
+
+      for (const { tab, key } of tabPriority) {
+        if (counts[key] > 0) {
+          handleTabChange(tab);
+          break;
+        }
+      }
+      setInitialTabSet(true);
+    });
+  }, [isManagement, session?.employee_id, selectedStoreId, initialTabSet]);
 
   useEffect(() => {
     if (!isManagement) return;
@@ -140,6 +180,9 @@ export function PendingApprovalsPage() {
 
     const interval = setInterval(() => {
       if (session?.employee_id) {
+        // Refresh all tab counts
+        fetchAllTabCounts();
+
         if (activeTab === 'tickets') {
           fetchPendingApprovals();
           fetchApprovalStats();
@@ -186,6 +229,35 @@ export function PendingApprovalsPage() {
       }
     } catch (error) {
       console.error('Error fetching approval stats:', error);
+    }
+  }
+
+  async function fetchAllTabCounts() {
+    if (!selectedStoreId || !session?.employee_id) return;
+
+    try {
+      const [ticketsRes, inventoryRes, cashRes, transactionChangesRes, attendanceRes, violationsRes] = await Promise.all([
+        supabase.rpc('get_pending_approvals_for_management', { p_store_id: selectedStoreId }),
+        supabase.rpc('get_pending_inventory_approvals', { p_employee_id: session.employee_id, p_store_id: selectedStoreId }),
+        supabase.rpc('get_pending_cash_transaction_approvals', { p_store_id: selectedStoreId }),
+        canReviewTransactionChanges ? supabase.rpc('get_pending_cash_transaction_change_proposals', { p_store_id: selectedStoreId }) : Promise.resolve({ data: [] }),
+        supabase.from('attendance_change_proposals').select('id').eq('store_id', selectedStoreId).eq('status', 'pending'),
+        supabase.rpc('get_violation_reports_for_approval', { p_store_id: selectedStoreId }),
+      ]);
+
+      const counts = {
+        tickets: ticketsRes.data?.length || 0,
+        inventory: inventoryRes.data?.length || 0,
+        cash: cashRes.data?.length || 0,
+        transactionChanges: transactionChangesRes.data?.length || 0,
+        attendance: attendanceRes.data?.length || 0,
+        violations: violationsRes.data?.length || 0,
+      };
+
+      setTabCounts(counts);
+      return counts;
+    } catch (error) {
+      console.error('Error fetching tab counts:', error);
     }
   }
 
@@ -994,9 +1066,9 @@ export function PendingApprovalsPage() {
             >
               <FileText className="w-4 h-4" />
               Tickets
-              {tickets.length > 0 && (
+              {(activeTab === 'tickets' ? tickets.length : tabCounts.tickets) > 0 && (
                 <Badge variant="error" className="ml-1">
-                  {tickets.length}
+                  {activeTab === 'tickets' ? tickets.length : tabCounts.tickets}
                 </Badge>
               )}
             </button>
@@ -1010,9 +1082,9 @@ export function PendingApprovalsPage() {
             >
               <Package className="w-4 h-4" />
               Inventory
-              {inventoryApprovals.length > 0 && (
+              {(activeTab === 'inventory' ? inventoryApprovals.length : tabCounts.inventory) > 0 && (
                 <Badge variant="warning" className="ml-1">
-                  {inventoryApprovals.length}
+                  {activeTab === 'inventory' ? inventoryApprovals.length : tabCounts.inventory}
                 </Badge>
               )}
             </button>
@@ -1026,9 +1098,9 @@ export function PendingApprovalsPage() {
             >
               <DollarSign className="w-4 h-4" />
               Cash Management
-              {cashTransactionApprovals.length > 0 && (
+              {(activeTab === 'cash' ? cashTransactionApprovals.length : tabCounts.cash) > 0 && (
                 <Badge variant="warning" className="ml-1">
-                  {cashTransactionApprovals.length}
+                  {activeTab === 'cash' ? cashTransactionApprovals.length : tabCounts.cash}
                 </Badge>
               )}
             </button>
@@ -1043,9 +1115,9 @@ export function PendingApprovalsPage() {
               >
                 <FileText className="w-4 h-4" />
                 Transaction Changes
-                {transactionChangeProposals.length > 0 && (
+                {(activeTab === 'transaction-changes' ? transactionChangeProposals.length : tabCounts.transactionChanges) > 0 && (
                   <Badge variant="warning" className="ml-1">
-                    {transactionChangeProposals.length}
+                    {activeTab === 'transaction-changes' ? transactionChangeProposals.length : tabCounts.transactionChanges}
                   </Badge>
                 )}
               </button>
@@ -1060,9 +1132,9 @@ export function PendingApprovalsPage() {
             >
               <Bell className="w-4 h-4" />
               Shift Request
-              {attendanceProposals.filter(p => p.status === 'pending').length > 0 && (
+              {(activeTab === 'attendance' ? attendanceProposals.filter(p => p.status === 'pending').length : tabCounts.attendance) > 0 && (
                 <Badge variant="warning" className="ml-1">
-                  {attendanceProposals.filter(p => p.status === 'pending').length}
+                  {activeTab === 'attendance' ? attendanceProposals.filter(p => p.status === 'pending').length : tabCounts.attendance}
                 </Badge>
               )}
             </button>
@@ -1076,9 +1148,9 @@ export function PendingApprovalsPage() {
             >
               <Flag className="w-4 h-4" />
               Turn Violation
-              {violationReports.length > 0 && (
+              {(activeTab === 'violations' ? violationReports.length : tabCounts.violations) > 0 && (
                 <Badge variant="error" className="ml-1">
-                  {violationReports.length}
+                  {activeTab === 'violations' ? violationReports.length : tabCounts.violations}
                 </Badge>
               )}
             </button>
