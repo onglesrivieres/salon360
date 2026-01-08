@@ -14,8 +14,8 @@ export function NumericKeypad() {
       // Center horizontally and position 100px from the top
       const centeredLeft = (viewportWidth - keypadWidth) / 2;
       setPosition({
-        top: 100 + window.scrollY,
-        left: Math.max(20, Math.min(centeredLeft + window.scrollX, viewportWidth - keypadWidth - 20 + window.scrollX)),
+        top: 100,
+        left: Math.max(20, Math.min(centeredLeft, viewportWidth - keypadWidth - 20)),
       });
     }
   }, [isOpen, inputRef]);
