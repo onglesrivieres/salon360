@@ -27,7 +27,10 @@ ALTER TABLE public.cash_transactions ADD COLUMN IF NOT EXISTS coin_25 integer NO
 ALTER TABLE public.cash_transactions ADD COLUMN IF NOT EXISTS coin_10 integer NOT NULL DEFAULT 0;
 ALTER TABLE public.cash_transactions ADD COLUMN IF NOT EXISTS coin_5 integer NOT NULL DEFAULT 0;
 
--- Drop and recreate the function with denomination parameters
+-- Drop the old function signature first (required because we're adding new parameters)
+DROP FUNCTION IF EXISTS public.create_cash_transaction_with_validation(uuid, date, text, numeric, text, text, uuid);
+
+-- Recreate the function with denomination parameters
 CREATE OR REPLACE FUNCTION public.create_cash_transaction_with_validation(
   p_store_id uuid,
   p_date date,

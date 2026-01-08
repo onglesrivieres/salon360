@@ -211,16 +211,16 @@ export function CashTransactionModal({
   }) => {
     const itemTotal = value * denomination;
     return (
-      <div className="flex items-center gap-3">
-        <label className="text-sm font-medium text-gray-700 w-20 whitespace-nowrap flex-shrink-0">{label}</label>
+      <div className="flex items-center gap-2">
+        <label className="text-sm font-medium text-gray-700 w-8 whitespace-nowrap flex-shrink-0">{label}</label>
         <NumericInput
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-16 text-center text-sm py-1 flex-shrink-0"
+          className="w-14 text-center text-sm py-1 flex-shrink-0"
           min="0"
           step="1"
         />
-        <span className="text-sm font-semibold text-gray-900 w-24 text-right whitespace-nowrap flex-shrink-0">
+        <span className="text-sm font-semibold text-gray-900 flex-1 text-right whitespace-nowrap">
           ${itemTotal.toFixed(2)}
         </span>
       </div>
@@ -284,72 +284,81 @@ export function CashTransactionModal({
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Cash Count Section */}
+          {/* Cash Count Section - Two Column Layout */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Cash Count *
             </label>
-            <div className="space-y-1.5 bg-gray-50 rounded-lg p-3">
-              <DenominationInput
-                label="$100 Bills"
-                value={denominations.bill_100}
-                onChange={(v) => updateDenomination('bill_100', v)}
-                denomination={100}
-              />
-              <DenominationInput
-                label="$50 Bills"
-                value={denominations.bill_50}
-                onChange={(v) => updateDenomination('bill_50', v)}
-                denomination={50}
-              />
-              <DenominationInput
-                label="$20 Bills"
-                value={denominations.bill_20}
-                onChange={(v) => updateDenomination('bill_20', v)}
-                denomination={20}
-              />
-              <DenominationInput
-                label="$10 Bills"
-                value={denominations.bill_10}
-                onChange={(v) => updateDenomination('bill_10', v)}
-                denomination={10}
-              />
-              <DenominationInput
-                label="$5 Bills"
-                value={denominations.bill_5}
-                onChange={(v) => updateDenomination('bill_5', v)}
-                denomination={5}
-              />
-              <DenominationInput
-                label="$2 Coins"
-                value={denominations.bill_2}
-                onChange={(v) => updateDenomination('bill_2', v)}
-                denomination={2}
-              />
-              <DenominationInput
-                label="$1 Coins"
-                value={denominations.bill_1}
-                onChange={(v) => updateDenomination('bill_1', v)}
-                denomination={1}
-              />
-              <DenominationInput
-                label="25¢ Coins"
-                value={denominations.coin_25}
-                onChange={(v) => updateDenomination('coin_25', v)}
-                denomination={0.25}
-              />
-              <DenominationInput
-                label="10¢ Coins"
-                value={denominations.coin_10}
-                onChange={(v) => updateDenomination('coin_10', v)}
-                denomination={0.10}
-              />
-              <DenominationInput
-                label="5¢ Coins"
-                value={denominations.coin_5}
-                onChange={(v) => updateDenomination('coin_5', v)}
-                denomination={0.05}
-              />
+            <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-lg p-3">
+              {/* Bills Column */}
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Bills</h4>
+                <DenominationInput
+                  label="$100"
+                  value={denominations.bill_100}
+                  onChange={(v) => updateDenomination('bill_100', v)}
+                  denomination={100}
+                />
+                <DenominationInput
+                  label="$50"
+                  value={denominations.bill_50}
+                  onChange={(v) => updateDenomination('bill_50', v)}
+                  denomination={50}
+                />
+                <DenominationInput
+                  label="$20"
+                  value={denominations.bill_20}
+                  onChange={(v) => updateDenomination('bill_20', v)}
+                  denomination={20}
+                />
+                <DenominationInput
+                  label="$10"
+                  value={denominations.bill_10}
+                  onChange={(v) => updateDenomination('bill_10', v)}
+                  denomination={10}
+                />
+                <DenominationInput
+                  label="$5"
+                  value={denominations.bill_5}
+                  onChange={(v) => updateDenomination('bill_5', v)}
+                  denomination={5}
+                />
+              </div>
+
+              {/* Coins Column */}
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Coins</h4>
+                <DenominationInput
+                  label="$2"
+                  value={denominations.bill_2}
+                  onChange={(v) => updateDenomination('bill_2', v)}
+                  denomination={2}
+                />
+                <DenominationInput
+                  label="$1"
+                  value={denominations.bill_1}
+                  onChange={(v) => updateDenomination('bill_1', v)}
+                  denomination={1}
+                />
+                <DenominationInput
+                  label="25¢"
+                  value={denominations.coin_25}
+                  onChange={(v) => updateDenomination('coin_25', v)}
+                  denomination={0.25}
+                />
+                <DenominationInput
+                  label="10¢"
+                  value={denominations.coin_10}
+                  onChange={(v) => updateDenomination('coin_10', v)}
+                  denomination={0.10}
+                />
+                <DenominationInput
+                  label="5¢"
+                  value={denominations.coin_5}
+                  onChange={(v) => updateDenomination('coin_5', v)}
+                  denomination={0.05}
+                />
+              </div>
             </div>
 
             {/* Total Display */}
