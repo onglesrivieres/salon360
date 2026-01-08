@@ -291,7 +291,7 @@ export function CashTransactionModal({
             </label>
             <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-lg p-3">
               {/* Bills Column */}
-              <div className="space-y-1.5 pr-4 border-r border-gray-300">
+              <div className="flex flex-col justify-between pr-4 border-r border-gray-300">
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Bills</h4>
                 <DenominationInput
                   label="$100"
@@ -326,7 +326,7 @@ export function CashTransactionModal({
               </div>
 
               {/* Coins Column */}
-              <div className="space-y-1.5">
+              <div className="flex flex-col justify-between">
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Coins</h4>
                 <DenominationInput
                   label="$2"
