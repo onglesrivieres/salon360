@@ -45,52 +45,67 @@ ALTER TABLE public.master_inventory_items
 DROP COLUMN IF EXISTS code CASCADE;
 
 -- =====================================================
--- 2. UPDATE SUPPLIERS TABLE
+-- 2. UPDATE SUPPLIERS TABLE (only if table exists)
 -- =====================================================
 
--- Drop code_prefix column and its constraints
-ALTER TABLE public.suppliers 
-DROP CONSTRAINT IF EXISTS suppliers_code_prefix_key;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'suppliers') THEN
+    -- Drop code_prefix column and its constraints
+    ALTER TABLE public.suppliers
+    DROP CONSTRAINT IF EXISTS suppliers_code_prefix_key;
 
-ALTER TABLE public.suppliers 
-DROP COLUMN IF EXISTS code_prefix CASCADE;
+    ALTER TABLE public.suppliers
+    DROP COLUMN IF EXISTS code_prefix CASCADE;
 
--- Add contact and notes columns
-ALTER TABLE public.suppliers 
-ADD COLUMN IF NOT EXISTS contact text,
-ADD COLUMN IF NOT EXISTS notes text;
+    -- Add contact and notes columns
+    ALTER TABLE public.suppliers
+    ADD COLUMN IF NOT EXISTS contact text,
+    ADD COLUMN IF NOT EXISTS notes text;
+  END IF;
+END $$;
 
 -- =====================================================
--- 3. RECREATE INVENTORY_ITEMS VIEW WITHOUT CODE
+-- 3. RECREATE INVENTORY_ITEMS VIEW WITHOUT CODE (only if required tables exist)
 -- =====================================================
 
--- Drop and recreate the view without code column
-DROP VIEW IF EXISTS public.inventory_items CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'store_inventory_stock') THEN
+    RAISE NOTICE 'Skipping inventory_items view - required tables do not exist';
+    RETURN;
+  END IF;
 
-CREATE OR REPLACE VIEW public.inventory_items AS
-SELECT 
-  sis.id,
-  sis.store_id,
-  mi.name,
-  mi.description,
-  mi.category,
-  mi.unit,
-  sis.quantity_on_hand,
-  COALESCE(sis.unit_cost_override, mi.unit_cost) as unit_cost,
-  COALESCE(sis.reorder_level_override, mi.reorder_level) as reorder_level,
-  mi.brand,
-  mi.supplier,
-  mi.is_active,
-  sis.created_at,
-  sis.updated_at,
-  mi.id as master_item_id
-FROM public.store_inventory_stock sis
-JOIN public.master_inventory_items mi ON mi.id = sis.item_id;
+  -- Drop and recreate the view without code column
+  DROP VIEW IF EXISTS public.inventory_items CASCADE;
 
--- Update view comment
-COMMENT ON VIEW public.inventory_items IS
-  'Backward compatibility view. Combines master items with store stock.
-   Simplified without item codes for easier inventory management.';
+  EXECUTE $view$
+    CREATE VIEW public.inventory_items AS
+    SELECT
+      sis.id,
+      sis.store_id,
+      mi.name,
+      mi.description,
+      mi.category,
+      mi.unit,
+      sis.quantity_on_hand,
+      COALESCE(sis.unit_cost_override, mi.unit_cost) as unit_cost,
+      COALESCE(sis.reorder_level_override, mi.reorder_level) as reorder_level,
+      mi.is_active,
+      sis.created_at,
+      sis.updated_at,
+      mi.id as master_item_id
+    FROM public.store_inventory_stock sis
+    JOIN public.master_inventory_items mi ON mi.id = sis.item_id
+  $view$;
+
+  -- Update view comment
+  COMMENT ON VIEW public.inventory_items IS
+    'Backward compatibility view. Combines master items with store stock.
+     Simplified without item codes for easier inventory management.';
+
+  GRANT SELECT ON public.inventory_items TO anon, authenticated;
+END $$;
 
 -- Force PostgREST to reload schema cache
 NOTIFY pgrst, 'reload schema';

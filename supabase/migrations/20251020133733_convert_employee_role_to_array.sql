@@ -54,8 +54,17 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'employees' AND column_name = 'roles'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'employees' AND column_name = 'role'
   ) THEN
     ALTER TABLE employees RENAME COLUMN roles TO role;
+  ELSIF EXISTS (
+     SELECT 1 FROM information_schema.columns
+     WHERE table_name = 'employees' AND column_name = 'roles'
+  ) THEN
+     -- If role already exists (e.g. from previous run), drop the temp roles column
+     ALTER TABLE employees DROP COLUMN roles;
   END IF;
 END $$;
 

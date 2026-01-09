@@ -14,35 +14,48 @@
   - All authenticated users can view suppliers (existing policy)
 */
 
--- Allow Managers and Owners to create suppliers
-CREATE POLICY "Managers can create suppliers"
-  ON public.suppliers
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.employees
-      WHERE employees.id = auth.uid()
-      AND ('Manager' = ANY(employees.role) OR 'Owner' = ANY(employees.role))
-    )
-  );
+-- Only create policies if suppliers table exists
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'suppliers') THEN
+    RAISE NOTICE 'Skipping suppliers policies - table does not exist';
+    RETURN;
+  END IF;
 
--- Allow Managers and Owners to update suppliers
-CREATE POLICY "Managers can update suppliers"
-  ON public.suppliers
-  FOR UPDATE
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.employees
-      WHERE employees.id = auth.uid()
-      AND ('Manager' = ANY(employees.role) OR 'Owner' = ANY(employees.role))
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.employees
-      WHERE employees.id = auth.uid()
-      AND ('Manager' = ANY(employees.role) OR 'Owner' = ANY(employees.role))
-    )
-  );
+  -- Allow Managers and Owners to create suppliers
+  EXECUTE $policy$
+    CREATE POLICY "Managers can create suppliers"
+      ON public.suppliers
+      FOR INSERT
+      TO authenticated
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM public.employees
+          WHERE employees.id = auth.uid()
+          AND ('Manager' = ANY(employees.role) OR 'Owner' = ANY(employees.role))
+        )
+      )
+  $policy$;
+
+  -- Allow Managers and Owners to update suppliers
+  EXECUTE $policy$
+    CREATE POLICY "Managers can update suppliers"
+      ON public.suppliers
+      FOR UPDATE
+      TO authenticated
+      USING (
+        EXISTS (
+          SELECT 1 FROM public.employees
+          WHERE employees.id = auth.uid()
+          AND ('Manager' = ANY(employees.role) OR 'Owner' = ANY(employees.role))
+        )
+      )
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM public.employees
+          WHERE employees.id = auth.uid()
+          AND ('Manager' = ANY(employees.role) OR 'Owner' = ANY(employees.role))
+        )
+      )
+  $policy$;
+END $$;

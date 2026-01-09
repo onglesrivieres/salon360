@@ -29,20 +29,8 @@ ALTER TABLE employees ADD CONSTRAINT employees_role_check
     role <@ ARRAY['Technician', 'Receptionist', 'Manager', 'Owner', 'Spa Expert', 'Supervisor', 'Cashier']::text[]
   );
 
--- Update role_permission check constraint if it exists
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM pg_constraint 
-    WHERE conname = 'employees_role_permission_check' 
-    AND conrelid = 'employees'::regclass
-  ) THEN
-    ALTER TABLE employees DROP CONSTRAINT employees_role_permission_check;
-  END IF;
-END $$;
-
--- Add role_permission constraint that includes Cashier (and includes all existing values)
-ALTER TABLE employees ADD CONSTRAINT employees_role_permission_check 
-  CHECK (
-    role_permission IN ('Admin', 'Receptionist', 'Technician', 'Supervisor', 'Owner', 'Cashier')
-  );
+-- Update role_permission enum type to add new values
+-- Note: ADD VALUE IF NOT EXISTS handles duplicates gracefully
+ALTER TYPE role_permission_type ADD VALUE IF NOT EXISTS 'Supervisor';
+ALTER TYPE role_permission_type ADD VALUE IF NOT EXISTS 'Owner';
+ALTER TYPE role_permission_type ADD VALUE IF NOT EXISTS 'Cashier';

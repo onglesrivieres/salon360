@@ -19,37 +19,22 @@
   - Consistent with app's authentication pattern used across all tables
 */
 
--- Drop existing policies that check auth.uid()
-DROP POLICY IF EXISTS "Managers can create suppliers" ON public.suppliers;
-DROP POLICY IF EXISTS "Managers can update suppliers" ON public.suppliers;
-DROP POLICY IF EXISTS "Authenticated users can view all suppliers" ON public.suppliers;
+-- Only update policies if suppliers table exists
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'suppliers') THEN
+    RAISE NOTICE 'Skipping suppliers policies - table does not exist';
+    RETURN;
+  END IF;
 
--- Create new policies that work with PIN-based authentication
--- SELECT policy (anon can view all suppliers)
-CREATE POLICY "Allow all access to view suppliers"
-  ON public.suppliers
-  FOR SELECT
-  TO public
-  USING (true);
+  -- Drop existing policies that check auth.uid()
+  DROP POLICY IF EXISTS "Managers can create suppliers" ON public.suppliers;
+  DROP POLICY IF EXISTS "Managers can update suppliers" ON public.suppliers;
+  DROP POLICY IF EXISTS "Authenticated users can view all suppliers" ON public.suppliers;
 
--- INSERT policy (anon can create suppliers)
-CREATE POLICY "Allow all access to create suppliers"
-  ON public.suppliers
-  FOR INSERT
-  TO public
-  WITH CHECK (true);
-
--- UPDATE policy (anon can update suppliers)
-CREATE POLICY "Allow all access to update suppliers"
-  ON public.suppliers
-  FOR UPDATE
-  TO public
-  USING (true)
-  WITH CHECK (true);
-
--- DELETE policy (anon can delete suppliers if needed)
-CREATE POLICY "Allow all access to delete suppliers"
-  ON public.suppliers
-  FOR DELETE
-  TO public
-  USING (true);
+  -- Create new policies that work with PIN-based authentication
+  EXECUTE 'CREATE POLICY "Allow all access to view suppliers" ON public.suppliers FOR SELECT TO public USING (true)';
+  EXECUTE 'CREATE POLICY "Allow all access to create suppliers" ON public.suppliers FOR INSERT TO public WITH CHECK (true)';
+  EXECUTE 'CREATE POLICY "Allow all access to update suppliers" ON public.suppliers FOR UPDATE TO public USING (true) WITH CHECK (true)';
+  EXECUTE 'CREATE POLICY "Allow all access to delete suppliers" ON public.suppliers FOR DELETE TO public USING (true)';
+END $$;

@@ -43,45 +43,42 @@
 -- 1. ADD MISSING FOREIGN KEY INDEXES
 -- ============================================================================
 
--- end_of_day_records
-CREATE INDEX IF NOT EXISTS idx_end_of_day_records_updated_by 
-  ON public.end_of_day_records(updated_by);
-
--- inventory_activity_log
-CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_receipt_id 
-  ON public.inventory_activity_log(receipt_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_store_id 
-  ON public.inventory_activity_log(store_id);
-
--- inventory_receipt_items
-CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_item_id 
-  ON public.inventory_receipt_items(item_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_receipt_id 
-  ON public.inventory_receipt_items(receipt_id);
-
--- inventory_receipts
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_created_by 
-  ON public.inventory_receipts(created_by);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_recipient_id 
-  ON public.inventory_receipts(recipient_id);
-
--- inventory_transaction_items
-CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_item_id 
-  ON public.inventory_transaction_items(item_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_transaction_id 
-  ON public.inventory_transaction_items(transaction_id);
-
--- inventory_transactions
-CREATE INDEX IF NOT EXISTS idx_inventory_transactions_requested_by_id 
-  ON public.inventory_transactions(requested_by_id);
-
--- store_inventory_stock
-CREATE INDEX IF NOT EXISTS idx_store_inventory_stock_item_id 
-  ON public.store_inventory_stock(item_id);
+-- All indexes on tables that may not exist are wrapped in conditionals
+DO $$
+BEGIN
+  -- end_of_day_records
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'end_of_day_records') THEN
+    CREATE INDEX IF NOT EXISTS idx_end_of_day_records_updated_by ON public.end_of_day_records(updated_by);
+  END IF;
+  -- inventory_activity_log
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_activity_log') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_receipt_id ON public.inventory_activity_log(receipt_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_store_id ON public.inventory_activity_log(store_id);
+  END IF;
+  -- inventory_receipt_items
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_receipt_items') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_item_id ON public.inventory_receipt_items(item_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_receipt_id ON public.inventory_receipt_items(receipt_id);
+  END IF;
+  -- inventory_receipts
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_receipts') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_created_by ON public.inventory_receipts(created_by);
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_recipient_id ON public.inventory_receipts(recipient_id);
+  END IF;
+  -- inventory_transaction_items
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transaction_items') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_item_id ON public.inventory_transaction_items(item_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_transaction_id ON public.inventory_transaction_items(transaction_id);
+  END IF;
+  -- inventory_transactions
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transactions') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_transactions_requested_by_id ON public.inventory_transactions(requested_by_id);
+  END IF;
+  -- store_inventory_stock
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'store_inventory_stock') THEN
+    CREATE INDEX IF NOT EXISTS idx_store_inventory_stock_item_id ON public.store_inventory_stock(item_id);
+  END IF;
+END $$;
 
 -- ticket_items (Note: This index was already created and then removed as unused)
 -- We're adding it back because it's a foreign key that should be indexed
@@ -120,30 +117,39 @@ DROP POLICY IF EXISTS "Allow all access to store_services" ON public.store_servi
 -- 4. FIX SECURITY DEFINER VIEW
 -- ============================================================================
 
--- Drop and recreate the inventory_items view without SECURITY DEFINER
-DROP VIEW IF EXISTS public.inventory_items CASCADE;
+-- Drop and recreate the inventory_items view without SECURITY DEFINER (only if tables exist)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'store_inventory_stock') THEN
+    RAISE NOTICE 'Skipping inventory_items view - required tables do not exist';
+    RETURN;
+  END IF;
 
-CREATE VIEW public.inventory_items AS
-SELECT 
-  sis.id,
-  sis.store_id,
-  mi.code,
-  mi.name,
-  mi.description,
-  mi.category,
-  mi.unit,
-  sis.quantity_on_hand,
-  COALESCE(sis.unit_cost_override, mi.unit_cost) AS unit_cost,
-  COALESCE(sis.reorder_level_override, mi.reorder_level) AS reorder_level,
-  mi.is_active,
-  sis.created_at,
-  sis.updated_at,
-  mi.id AS master_item_id
-FROM public.store_inventory_stock sis
-JOIN public.master_inventory_items mi ON mi.id = sis.item_id;
+  DROP VIEW IF EXISTS public.inventory_items CASCADE;
 
--- Grant appropriate access
-GRANT SELECT ON public.inventory_items TO anon, authenticated;
+  EXECUTE $view$
+    CREATE VIEW public.inventory_items AS
+    SELECT
+      sis.id,
+      sis.store_id,
+      mi.code,
+      mi.name,
+      mi.description,
+      mi.category,
+      mi.unit,
+      sis.quantity_on_hand,
+      COALESCE(sis.unit_cost_override, mi.unit_cost) AS unit_cost,
+      COALESCE(sis.reorder_level_override, mi.reorder_level) AS reorder_level,
+      mi.is_active,
+      sis.created_at,
+      sis.updated_at,
+      mi.id AS master_item_id
+    FROM public.store_inventory_stock sis
+    JOIN public.master_inventory_items mi ON mi.id = sis.item_id
+  $view$;
+
+  GRANT SELECT ON public.inventory_items TO anon, authenticated;
+END $$;
 
 -- ============================================================================
 -- 5. FIX FUNCTION SEARCH PATH

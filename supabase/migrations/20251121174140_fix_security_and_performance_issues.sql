@@ -24,10 +24,16 @@
 */
 
 -- Add missing foreign key indexes for performance
-CREATE INDEX IF NOT EXISTS idx_end_of_day_records_updated_by 
-  ON public.end_of_day_records(updated_by);
+-- Note: end_of_day_records table may not exist in all environments
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'end_of_day_records') THEN
+    CREATE INDEX IF NOT EXISTS idx_end_of_day_records_updated_by
+      ON public.end_of_day_records(updated_by);
+  END IF;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_ticket_items_completed_by 
+CREATE INDEX IF NOT EXISTS idx_ticket_items_completed_by
   ON public.ticket_items(completed_by);
 
 -- Remove unused indexes

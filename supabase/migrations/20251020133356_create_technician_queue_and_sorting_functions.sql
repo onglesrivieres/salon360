@@ -25,6 +25,9 @@
 */
 
 -- Function: Get services sorted by popularity (usage count)
+-- Function: Get services sorted by popularity (usage count)
+DROP FUNCTION IF EXISTS get_services_by_popularity(uuid);
+
 CREATE OR REPLACE FUNCTION get_services_by_popularity(
   p_store_id uuid DEFAULT NULL
 )
@@ -32,13 +35,13 @@ RETURNS TABLE (
   id uuid,
   code text,
   name text,
-  base_price numeric,
+  base_price numeric(10,2),
   duration_min integer,
   category text,
   active boolean,
   created_at timestamptz,
   updated_at timestamptz,
-  usage_count bigint
+  usage_count numeric
 )
 LANGUAGE plpgsql
 STABLE
@@ -76,6 +79,8 @@ END;
 $$;
 
 -- Function: Get sorted technicians for ticket editor
+DROP FUNCTION IF EXISTS get_sorted_technicians_for_store(uuid);
+
 CREATE OR REPLACE FUNCTION get_sorted_technicians_for_store(
   p_store_id uuid
 )

@@ -29,86 +29,113 @@
 */
 
 -- =====================================================
--- 1. ADD MISSING FOREIGN KEY INDEXES
+-- 1. ADD MISSING FOREIGN KEY INDEXES (conditional)
 -- =====================================================
 
-CREATE INDEX IF NOT EXISTS idx_approval_status_correction_audit_approved_by 
-  ON public.approval_status_correction_audit(approved_by);
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'approval_status_correction_audit') THEN
+    CREATE INDEX IF NOT EXISTS idx_approval_status_correction_audit_approved_by
+      ON public.approval_status_correction_audit(approved_by);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_employee_inventory_lots_store_id_fk 
-  ON public.employee_inventory_lots(store_id);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'employee_inventory_lots') THEN
+    CREATE INDEX IF NOT EXISTS idx_employee_inventory_lots_store_id_fk
+      ON public.employee_inventory_lots(store_id);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_end_of_day_records_created_by_fk 
-  ON public.end_of_day_records(created_by);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'end_of_day_records') THEN
+    CREATE INDEX IF NOT EXISTS idx_end_of_day_records_created_by_fk
+      ON public.end_of_day_records(created_by);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_performed_by_fk 
-  ON public.inventory_activity_log(performed_by);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_activity_log') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_performed_by_fk
+      ON public.inventory_activity_log(performed_by);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_approval_audit_log_store_id_fk 
-  ON public.inventory_approval_audit_log(store_id);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_approval_audit_log') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_approval_audit_log_store_id_fk
+      ON public.inventory_approval_audit_log(store_id);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_audits_approved_by_id_fk 
-  ON public.inventory_audits(approved_by_id);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_audits') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_audits_approved_by_id_fk
+      ON public.inventory_audits(approved_by_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_audits_audited_by_id_fk
+      ON public.inventory_audits(audited_by_id);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_audits_audited_by_id_fk 
-  ON public.inventory_audits(audited_by_id);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_distributions') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_distributions_distributed_by_id_fk
+      ON public.inventory_distributions(distributed_by_id);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_distributions_distributed_by_id_fk 
-  ON public.inventory_distributions(distributed_by_id);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_purchase_lots') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_created_by_id_fk
+      ON public.inventory_purchase_lots(created_by_id);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_created_by_id_fk 
-  ON public.inventory_purchase_lots(created_by_id);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_receipts') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_approved_by_management_fk
+      ON public.inventory_receipts(approved_by_management);
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_approved_by_recipient_fk
+      ON public.inventory_receipts(approved_by_recipient);
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_rejected_by_fk
+      ON public.inventory_receipts(rejected_by);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_approved_by_management_fk 
-  ON public.inventory_receipts(approved_by_management);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transaction_items') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_item_id_fk
+      ON public.inventory_transaction_items(item_id);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_approved_by_recipient_fk 
-  ON public.inventory_receipts(approved_by_recipient);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transactions') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_transactions_manager_approved_by_id_fk
+      ON public.inventory_transactions(manager_approved_by_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_transactions_recipient_approved_by_id_fk
+      ON public.inventory_transactions(recipient_approved_by_id);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_rejected_by_fk 
-  ON public.inventory_receipts(rejected_by);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_item_id_fk 
-  ON public.inventory_transaction_items(item_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_transactions_manager_approved_by_id_fk 
-  ON public.inventory_transactions(manager_approved_by_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_transactions_recipient_approved_by_id_fk 
-  ON public.inventory_transactions(recipient_approved_by_id);
-
-CREATE INDEX IF NOT EXISTS idx_store_product_preferences_last_used_purchase_unit_id_fk 
-  ON public.store_product_preferences(last_used_purchase_unit_id);
-
-CREATE INDEX IF NOT EXISTS idx_store_product_preferences_updated_by_id_fk 
-  ON public.store_product_preferences(updated_by_id);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'store_product_preferences') THEN
+    CREATE INDEX IF NOT EXISTS idx_store_product_preferences_last_used_purchase_unit_id_fk
+      ON public.store_product_preferences(last_used_purchase_unit_id);
+    CREATE INDEX IF NOT EXISTS idx_store_product_preferences_updated_by_id_fk
+      ON public.store_product_preferences(updated_by_id);
+  END IF;
+END $$;
 
 -- =====================================================
--- 2. FIX RLS PERFORMANCE ISSUES
+-- 2. FIX RLS PERFORMANCE ISSUES (conditional)
 -- =====================================================
 
--- Drop and recreate inventory_approval_audit_log policies with optimized auth calls
-DROP POLICY IF EXISTS "Managers can view audit records" ON public.inventory_approval_audit_log;
-DROP POLICY IF EXISTS "Authenticated users can insert audit records" ON public.inventory_approval_audit_log;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_approval_audit_log') THEN
+    -- Drop and recreate inventory_approval_audit_log policies with optimized auth calls
+    DROP POLICY IF EXISTS "Managers can view audit records" ON public.inventory_approval_audit_log;
+    DROP POLICY IF EXISTS "Authenticated users can insert audit records" ON public.inventory_approval_audit_log;
 
-CREATE POLICY "Managers can view audit records"
-  ON public.inventory_approval_audit_log
-  FOR SELECT
-  TO anon
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.employees
-      WHERE employees.id = (SELECT auth.uid())
-      AND 'manager' = ANY(employees.role)
-      AND employees.status = 'active'
-    )
-  );
+    CREATE POLICY "Managers can view audit records"
+      ON public.inventory_approval_audit_log
+      FOR SELECT
+      TO anon
+      USING (
+        EXISTS (
+          SELECT 1 FROM public.employees
+          WHERE employees.id = (SELECT auth.uid())
+          AND 'manager' = ANY(employees.role)
+          AND employees.status = 'active'
+        )
+      );
 
-CREATE POLICY "Authenticated users can insert audit records"
-  ON public.inventory_approval_audit_log
-  FOR INSERT
-  TO anon
-  WITH CHECK (true);
+    CREATE POLICY "Authenticated users can insert audit records"
+      ON public.inventory_approval_audit_log
+      FOR INSERT
+      TO anon
+      WITH CHECK (true);
+  END IF;
+END $$;
 
 -- =====================================================
 -- 3. REMOVE UNUSED INDEXES

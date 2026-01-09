@@ -85,7 +85,7 @@ CREATE POLICY "Admin and Owner can insert role permissions"
   WITH CHECK (EXISTS (
     SELECT 1 FROM public.employees e
     JOIN public.employee_stores es ON e.id = es.employee_id
-    WHERE e.id = auth.uid() AND es.store_id = store_id
+    WHERE e.id = auth.uid() AND es.store_id = role_permissions.store_id
     AND (e.role @> ARRAY['Admin'] OR e.role @> ARRAY['Owner'])
   ));
 
@@ -95,13 +95,13 @@ CREATE POLICY "Admin and Owner can update role permissions"
   USING (EXISTS (
     SELECT 1 FROM public.employees e
     JOIN public.employee_stores es ON e.id = es.employee_id
-    WHERE e.id = auth.uid() AND es.store_id = store_id
+    WHERE e.id = auth.uid() AND es.store_id = role_permissions.store_id
     AND (e.role @> ARRAY['Admin'] OR e.role @> ARRAY['Owner'])
   ))
   WITH CHECK (EXISTS (
     SELECT 1 FROM public.employees e
     JOIN public.employee_stores es ON e.id = es.employee_id
-    WHERE e.id = auth.uid() AND es.store_id = store_id
+    WHERE e.id = auth.uid() AND es.store_id = role_permissions.store_id
     AND (e.role @> ARRAY['Admin'] OR e.role @> ARRAY['Owner'])
   ));
 

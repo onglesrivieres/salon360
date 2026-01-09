@@ -38,140 +38,190 @@
 -- 1. ADD MISSING INDEXES FOR FOREIGN KEYS
 -- =====================================================
 
--- end_of_day_records indexes
-CREATE INDEX IF NOT EXISTS idx_end_of_day_records_created_by 
-  ON public.end_of_day_records(created_by);
+-- end_of_day_records indexes (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'end_of_day_records') THEN
+    CREATE INDEX IF NOT EXISTS idx_end_of_day_records_created_by
+      ON public.end_of_day_records(created_by);
+  END IF;
+END $$;
 
--- inventory_activity_log indexes
-CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_item_id 
-  ON public.inventory_activity_log(item_id);
+-- inventory_activity_log indexes (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_activity_log') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_item_id
+      ON public.inventory_activity_log(item_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_performed_by
+      ON public.inventory_activity_log(performed_by);
+  END IF;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_performed_by 
-  ON public.inventory_activity_log(performed_by);
+-- inventory_receipts indexes (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_receipts') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_approved_by_management
+      ON public.inventory_receipts(approved_by_management);
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_approved_by_recipient
+      ON public.inventory_receipts(approved_by_recipient);
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_rejected_by
+      ON public.inventory_receipts(rejected_by);
+  END IF;
+END $$;
 
--- inventory_receipts indexes
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_approved_by_management 
-  ON public.inventory_receipts(approved_by_management);
+-- inventory_transaction_items indexes (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transaction_items') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_master_item_id
+      ON public.inventory_transaction_items(master_item_id);
+  END IF;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_approved_by_recipient 
-  ON public.inventory_receipts(approved_by_recipient);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_rejected_by 
-  ON public.inventory_receipts(rejected_by);
-
--- inventory_transaction_items indexes
-CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_master_item_id 
-  ON public.inventory_transaction_items(master_item_id);
-
--- inventory_transactions indexes
-CREATE INDEX IF NOT EXISTS idx_inventory_transactions_manager_approved_by 
-  ON public.inventory_transactions(manager_approved_by_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_transactions_recipient_approved_by 
-  ON public.inventory_transactions(recipient_approved_by_id);
+-- inventory_transactions indexes (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transactions') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_transactions_manager_approved_by
+      ON public.inventory_transactions(manager_approved_by_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_transactions_recipient_approved_by
+      ON public.inventory_transactions(recipient_approved_by_id);
+  END IF;
+END $$;
 
 -- =====================================================
 -- 2. FIX AUTH RLS INITIALIZATION ISSUES
 -- =====================================================
 
--- Drop and recreate inventory_receipts policies with optimized auth calls
+-- Skip ALL inventory-related policy updates if tables don't exist
+-- This section requires inventory_receipts, inventory_receipt_items tables
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_receipts') THEN
+    RAISE NOTICE 'Skipping inventory policies - tables do not exist';
+    RETURN;
+  END IF;
 
-DROP POLICY IF EXISTS "Receptionists and management can create receipts" ON public.inventory_receipts;
-CREATE POLICY "Receptionists and management can create receipts"
-  ON public.inventory_receipts FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.employees
-      WHERE employees.id = (select auth.uid())
-      AND (
-        'Receptionist' = ANY(employees.role) OR
-        'Manager' = ANY(employees.role) OR
-        'Owner' = ANY(employees.role)
+  -- inventory_receipts policies
+  EXECUTE 'DROP POLICY IF EXISTS "Receptionists and management can create receipts" ON public.inventory_receipts';
+  EXECUTE $policy$
+    CREATE POLICY "Receptionists and management can create receipts"
+      ON public.inventory_receipts FOR INSERT
+      TO authenticated
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM public.employees
+          WHERE employees.id = (select auth.uid())
+          AND (
+            'Receptionist' = ANY(employees.role) OR
+            'Manager' = ANY(employees.role) OR
+            'Owner' = ANY(employees.role)
+          )
+        )
       )
-    )
-  );
+  $policy$;
 
-DROP POLICY IF EXISTS "Creators and management can update receipts" ON public.inventory_receipts;
-CREATE POLICY "Creators and management can update receipts"
-  ON public.inventory_receipts FOR UPDATE
-  TO authenticated
-  USING (
-    created_by = (select auth.uid()) OR
-    EXISTS (
-      SELECT 1 FROM public.employees
-      WHERE employees.id = (select auth.uid())
-      AND ('Manager' = ANY(employees.role) OR 'Owner' = ANY(employees.role))
-    )
-  );
+  EXECUTE 'DROP POLICY IF EXISTS "Creators and management can update receipts" ON public.inventory_receipts';
+  EXECUTE $policy$
+    CREATE POLICY "Creators and management can update receipts"
+      ON public.inventory_receipts FOR UPDATE
+      TO authenticated
+      USING (
+        created_by = (select auth.uid()) OR
+        EXISTS (
+          SELECT 1 FROM public.employees
+          WHERE employees.id = (select auth.uid())
+          AND ('Manager' = ANY(employees.role) OR 'Owner' = ANY(employees.role))
+        )
+      )
+  $policy$;
 
-DROP POLICY IF EXISTS "Management can delete receipts" ON public.inventory_receipts;
-CREATE POLICY "Management can delete receipts"
-  ON public.inventory_receipts FOR DELETE
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.employees
-      WHERE employees.id = (select auth.uid())
-      AND ('Manager' = ANY(employees.role) OR 'Owner' = ANY(employees.role))
-    )
-  );
+  EXECUTE 'DROP POLICY IF EXISTS "Management can delete receipts" ON public.inventory_receipts';
+  EXECUTE $policy$
+    CREATE POLICY "Management can delete receipts"
+      ON public.inventory_receipts FOR DELETE
+      TO authenticated
+      USING (
+        EXISTS (
+          SELECT 1 FROM public.employees
+          WHERE employees.id = (select auth.uid())
+          AND ('Manager' = ANY(employees.role) OR 'Owner' = ANY(employees.role))
+        )
+      )
+  $policy$;
+END $$;
 
 -- Drop and recreate inventory_receipt_items policies with optimized auth calls
+-- Skip if table doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_receipt_items') THEN
+    RAISE NOTICE 'Skipping inventory_receipt_items policies - table does not exist';
+    RETURN;
+  END IF;
 
-DROP POLICY IF EXISTS "Receptionists and management can create receipt items" ON public.inventory_receipt_items;
-CREATE POLICY "Receptionists and management can create receipt items"
-  ON public.inventory_receipt_items FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.employees
-      WHERE employees.id = (select auth.uid())
-      AND (
-        'Receptionist' = ANY(employees.role) OR
-        'Manager' = ANY(employees.role) OR
-        'Owner' = ANY(employees.role)
-      )
-    )
-  );
-
-DROP POLICY IF EXISTS "Creators can update receipt items" ON public.inventory_receipt_items;
-CREATE POLICY "Creators can update receipt items"
-  ON public.inventory_receipt_items FOR UPDATE
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.inventory_receipts
-      WHERE inventory_receipts.id = inventory_receipt_items.receipt_id
-      AND (
-        inventory_receipts.created_by = (select auth.uid()) OR
+  EXECUTE 'DROP POLICY IF EXISTS "Receptionists and management can create receipt items" ON public.inventory_receipt_items';
+  EXECUTE $policy$
+    CREATE POLICY "Receptionists and management can create receipt items"
+      ON public.inventory_receipt_items FOR INSERT
+      TO authenticated
+      WITH CHECK (
         EXISTS (
           SELECT 1 FROM public.employees
           WHERE employees.id = (select auth.uid())
-          AND ('Manager' = ANY(employees.role) OR 'Owner' = ANY(employees.role))
+          AND (
+            'Receptionist' = ANY(employees.role) OR
+            'Manager' = ANY(employees.role) OR
+            'Owner' = ANY(employees.role)
+          )
         )
       )
-    )
-  );
+  $policy$;
 
-DROP POLICY IF EXISTS "Creators can delete receipt items" ON public.inventory_receipt_items;
-CREATE POLICY "Creators can delete receipt items"
-  ON public.inventory_receipt_items FOR DELETE
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.inventory_receipts
-      WHERE inventory_receipts.id = inventory_receipt_items.receipt_id
-      AND (
-        inventory_receipts.created_by = (select auth.uid()) OR
+  EXECUTE 'DROP POLICY IF EXISTS "Creators can update receipt items" ON public.inventory_receipt_items';
+  EXECUTE $policy$
+    CREATE POLICY "Creators can update receipt items"
+      ON public.inventory_receipt_items FOR UPDATE
+      TO authenticated
+      USING (
         EXISTS (
-          SELECT 1 FROM public.employees
-          WHERE employees.id = (select auth.uid())
-          AND ('Manager' = ANY(employees.role) OR 'Owner' = ANY(employees.role))
+          SELECT 1 FROM public.inventory_receipts
+          WHERE inventory_receipts.id = inventory_receipt_items.receipt_id
+          AND (
+            inventory_receipts.created_by = (select auth.uid()) OR
+            EXISTS (
+              SELECT 1 FROM public.employees
+              WHERE employees.id = (select auth.uid())
+              AND ('Manager' = ANY(employees.role) OR 'Owner' = ANY(employees.role))
+            )
+          )
         )
       )
-    )
-  );
+  $policy$;
+
+  EXECUTE 'DROP POLICY IF EXISTS "Creators can delete receipt items" ON public.inventory_receipt_items';
+  EXECUTE $policy$
+    CREATE POLICY "Creators can delete receipt items"
+      ON public.inventory_receipt_items FOR DELETE
+      TO authenticated
+      USING (
+        EXISTS (
+          SELECT 1 FROM public.inventory_receipts
+          WHERE inventory_receipts.id = inventory_receipt_items.receipt_id
+          AND (
+            inventory_receipts.created_by = (select auth.uid()) OR
+            EXISTS (
+              SELECT 1 FROM public.employees
+              WHERE employees.id = (select auth.uid())
+              AND ('Manager' = ANY(employees.role) OR 'Owner' = ANY(employees.role))
+            )
+          )
+        )
+      )
+  $policy$;
+END $$;
 
 -- =====================================================
 -- 3. REMOVE UNUSED INDEXES
@@ -236,8 +286,13 @@ DROP INDEX IF EXISTS public.idx_sale_tickets_self_service;
 -- Fix stores table - remove duplicate policy
 DROP POLICY IF EXISTS "Allow all access to stores" ON public.stores;
 
--- Fix suppliers table - remove one duplicate policy
-DROP POLICY IF EXISTS "Anyone can view active suppliers" ON public.suppliers;
+-- Fix suppliers table - remove one duplicate policy (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'suppliers') THEN
+    DROP POLICY IF EXISTS "Anyone can view active suppliers" ON public.suppliers;
+  END IF;
+END $$;
 
 -- =====================================================
 -- 5. REMOVE DUPLICATE INDEXES
@@ -250,30 +305,39 @@ DROP INDEX IF EXISTS public.idx_inventory_items_store_id;
 -- 6. FIX SECURITY DEFINER VIEW
 -- =====================================================
 
--- Recreate inventory_items view without SECURITY DEFINER
-DROP VIEW IF EXISTS public.inventory_items CASCADE;
+-- Recreate inventory_items view without SECURITY DEFINER (only if tables exist)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'store_inventory_stock') THEN
+    RAISE NOTICE 'Skipping inventory_items view - required tables do not exist';
+    RETURN;
+  END IF;
 
-CREATE VIEW public.inventory_items AS
-SELECT 
-  sis.id,
-  sis.store_id,
-  mi.code,
-  mi.name,
-  mi.description,
-  mi.category,
-  mi.unit,
-  sis.quantity_on_hand,
-  COALESCE(sis.unit_cost_override, mi.unit_cost) as unit_cost,
-  COALESCE(sis.reorder_level_override, mi.reorder_level) as reorder_level,
-  mi.is_active,
-  sis.created_at,
-  sis.updated_at,
-  mi.id as master_item_id
-FROM public.store_inventory_stock sis
-JOIN public.master_inventory_items mi ON mi.id = sis.item_id;
+  DROP VIEW IF EXISTS public.inventory_items CASCADE;
 
--- Grant select on the view
-GRANT SELECT ON public.inventory_items TO anon, authenticated;
+  EXECUTE $view$
+    CREATE VIEW public.inventory_items AS
+    SELECT
+      sis.id,
+      sis.store_id,
+      mi.code,
+      mi.name,
+      mi.description,
+      mi.category,
+      mi.unit,
+      sis.quantity_on_hand,
+      COALESCE(sis.unit_cost_override, mi.unit_cost) as unit_cost,
+      COALESCE(sis.reorder_level_override, mi.reorder_level) as reorder_level,
+      mi.is_active,
+      sis.created_at,
+      sis.updated_at,
+      mi.id as master_item_id
+    FROM public.store_inventory_stock sis
+    JOIN public.master_inventory_items mi ON mi.id = sis.item_id
+  $view$;
+
+  GRANT SELECT ON public.inventory_items TO anon, authenticated;
+END $$;
 
 -- =====================================================
 -- 7. FIX FUNCTION SEARCH PATH ISSUES

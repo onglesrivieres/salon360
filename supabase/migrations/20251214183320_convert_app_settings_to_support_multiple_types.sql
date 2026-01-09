@@ -1,94 +1,85 @@
 /*
   # Convert app_settings to Support Multiple Data Types
 
-  1. Schema Changes
-    - Change setting_value from boolean to JSONB to support boolean, number, and string
-    - Change default_value from boolean to JSONB
-    - Migrate existing boolean values to JSONB format
-    - Add validation to ensure JSONB values are primitives (not objects/arrays)
-    
-  2. Data Migration
-    - Convert all existing boolean true → JSONB true
-    - Convert all existing boolean false → JSONB false
-    
-  3. Impact
-    - Enables numeric settings like auto_approval_minutes
-    - Maintains backward compatibility with boolean settings
-    - Frontend already expects union type: boolean | string | number
+  Note: This migration is conditional and only runs if app_settings table exists.
 */
 
--- Step 1: Add temporary columns for migration
-ALTER TABLE public.app_settings 
-ADD COLUMN IF NOT EXISTS setting_value_new jsonb,
-ADD COLUMN IF NOT EXISTS default_value_new jsonb;
+DO $$
+BEGIN
+  -- Skip if app_settings table doesn't exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'app_settings') THEN
+    RAISE NOTICE 'Skipping app_settings conversion - table does not exist';
+    RETURN;
+  END IF;
 
--- Step 2: Migrate existing boolean data to JSONB
-UPDATE public.app_settings
-SET 
-  setting_value_new = to_jsonb(setting_value),
-  default_value_new = to_jsonb(default_value);
+  -- Check if already migrated (setting_value is jsonb)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'app_settings' AND column_name = 'setting_value' AND data_type = 'jsonb'
+  ) THEN
+    RAISE NOTICE 'app_settings already has jsonb columns - skipping conversion';
+    RETURN;
+  END IF;
 
--- Step 3: Drop old columns and rename new ones
-ALTER TABLE public.app_settings 
-DROP COLUMN setting_value,
-DROP COLUMN default_value;
+  -- Add temporary columns for migration
+  ALTER TABLE public.app_settings
+  ADD COLUMN IF NOT EXISTS setting_value_new jsonb,
+  ADD COLUMN IF NOT EXISTS default_value_new jsonb;
 
-ALTER TABLE public.app_settings 
-RENAME COLUMN setting_value_new TO setting_value;
+  -- Migrate existing boolean data to JSONB
+  UPDATE public.app_settings
+  SET
+    setting_value_new = to_jsonb(setting_value),
+    default_value_new = to_jsonb(default_value);
 
-ALTER TABLE public.app_settings 
-RENAME COLUMN default_value_new TO default_value;
+  -- Drop old columns and rename new ones
+  ALTER TABLE public.app_settings
+  DROP COLUMN IF EXISTS setting_value CASCADE,
+  DROP COLUMN IF EXISTS default_value CASCADE;
 
--- Step 4: Set NOT NULL constraints and defaults
-ALTER TABLE public.app_settings 
-ALTER COLUMN setting_value SET NOT NULL,
-ALTER COLUMN setting_value SET DEFAULT 'false'::jsonb,
-ALTER COLUMN default_value SET NOT NULL,
-ALTER COLUMN default_value SET DEFAULT 'false'::jsonb;
+  ALTER TABLE public.app_settings
+  RENAME COLUMN setting_value_new TO setting_value;
 
--- Step 5: Add check constraint to ensure values are primitives (boolean, number, string, null)
-ALTER TABLE public.app_settings
-ADD CONSTRAINT check_setting_value_is_primitive
-CHECK (
-  jsonb_typeof(setting_value) IN ('boolean', 'number', 'string', 'null')
-);
+  ALTER TABLE public.app_settings
+  RENAME COLUMN default_value_new TO default_value;
 
-ALTER TABLE public.app_settings
-ADD CONSTRAINT check_default_value_is_primitive
-CHECK (
-  jsonb_typeof(default_value) IN ('boolean', 'number', 'string', 'null')
-);
+  -- Set NOT NULL constraints and defaults
+  ALTER TABLE public.app_settings
+  ALTER COLUMN setting_value SET NOT NULL,
+  ALTER COLUMN setting_value SET DEFAULT 'false'::jsonb,
+  ALTER COLUMN default_value SET NOT NULL,
+  ALTER COLUMN default_value SET DEFAULT 'false'::jsonb;
 
--- Update the app_settings_audit table similarly
-ALTER TABLE public.app_settings_audit
-ADD COLUMN IF NOT EXISTS old_value_new jsonb,
-ADD COLUMN IF NOT EXISTS new_value_new jsonb;
+  -- Add check constraints
+  ALTER TABLE public.app_settings
+  ADD CONSTRAINT check_setting_value_is_primitive
+  CHECK (jsonb_typeof(setting_value) IN ('boolean', 'number', 'string', 'null'));
 
-UPDATE public.app_settings_audit
-SET 
-  old_value_new = to_jsonb(old_value),
-  new_value_new = to_jsonb(new_value);
+  ALTER TABLE public.app_settings
+  ADD CONSTRAINT check_default_value_is_primitive
+  CHECK (jsonb_typeof(default_value) IN ('boolean', 'number', 'string', 'null'));
 
-ALTER TABLE public.app_settings_audit
-DROP COLUMN old_value,
-DROP COLUMN new_value;
+  -- Update audit table if exists
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'app_settings_audit') THEN
+    ALTER TABLE public.app_settings_audit
+    ADD COLUMN IF NOT EXISTS old_value_new jsonb,
+    ADD COLUMN IF NOT EXISTS new_value_new jsonb;
 
-ALTER TABLE public.app_settings_audit
-RENAME COLUMN old_value_new TO old_value;
+    UPDATE public.app_settings_audit
+    SET
+      old_value_new = to_jsonb(old_value),
+      new_value_new = to_jsonb(new_value);
 
-ALTER TABLE public.app_settings_audit
-RENAME COLUMN new_value_new TO new_value;
+    ALTER TABLE public.app_settings_audit
+    DROP COLUMN IF EXISTS old_value CASCADE,
+    DROP COLUMN IF EXISTS new_value CASCADE;
 
-ALTER TABLE public.app_settings_audit
-ALTER COLUMN old_value SET NOT NULL,
-ALTER COLUMN new_value SET NOT NULL;
+    ALTER TABLE public.app_settings_audit
+    RENAME COLUMN old_value_new TO old_value;
 
--- Add comments
-COMMENT ON COLUMN public.app_settings.setting_value IS 
-'Current value of the setting. Stored as JSONB to support boolean, number, string, or null values.';
+    ALTER TABLE public.app_settings_audit
+    RENAME COLUMN new_value_new TO new_value;
+  END IF;
 
-COMMENT ON COLUMN public.app_settings.default_value IS 
-'Default value of the setting. Stored as JSONB to support boolean, number, string, or null values.';
-
-COMMENT ON CONSTRAINT check_setting_value_is_primitive ON public.app_settings IS 
-'Ensures setting_value is a primitive type (boolean, number, string, null) and not a complex object or array.';
+  RAISE NOTICE 'app_settings conversion completed';
+END $$;

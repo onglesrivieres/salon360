@@ -234,6 +234,8 @@ DROP TABLE IF EXISTS temp_approval_routing;
 -- ============================================================================
 
 -- Technician approval function - shows tickets where they worked and level is 'technician'
+DROP FUNCTION IF EXISTS get_pending_approvals_for_technician(uuid, uuid);
+
 CREATE OR REPLACE FUNCTION get_pending_approvals_for_technician(
   p_employee_id uuid,
   p_store_id uuid
@@ -359,4 +361,4 @@ BEGIN
 END;
 $$;
 
-COMMENT ON MIGRATION IS 'Final fix: Corrects trigger logic, fixes all existing tickets, simplifies approval functions to trust the data';
+

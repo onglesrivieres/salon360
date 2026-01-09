@@ -153,22 +153,47 @@ CREATE TRIGGER trigger_create_lots_from_approved_transaction
   FOR EACH ROW
   EXECUTE FUNCTION public.create_lots_from_approved_transaction();
 
--- Step 4: Add supplier_id and invoice_reference to inventory_transactions table
-ALTER TABLE public.inventory_transactions
-ADD COLUMN IF NOT EXISTS supplier_id uuid REFERENCES public.suppliers(id) ON DELETE SET NULL;
+-- Step 4: Add supplier_id and invoice_reference to inventory_transactions table (only if tables exist)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transactions') THEN
+    -- Add invoice_reference column (always safe)
+    ALTER TABLE public.inventory_transactions
+    ADD COLUMN IF NOT EXISTS invoice_reference text;
 
-ALTER TABLE public.inventory_transactions
-ADD COLUMN IF NOT EXISTS invoice_reference text;
+    -- Add supplier_id column without FK first
+    ALTER TABLE public.inventory_transactions
+    ADD COLUMN IF NOT EXISTS supplier_id uuid;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_transactions_supplier_id
-  ON public.inventory_transactions(supplier_id);
+    -- Only add FK constraint if suppliers table exists
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'suppliers') THEN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'inventory_transactions_supplier_id_fkey'
+        AND table_name = 'inventory_transactions'
+      ) THEN
+        ALTER TABLE public.inventory_transactions
+        ADD CONSTRAINT inventory_transactions_supplier_id_fkey
+        FOREIGN KEY (supplier_id) REFERENCES public.suppliers(id) ON DELETE SET NULL;
+      END IF;
+    END IF;
+
+    CREATE INDEX IF NOT EXISTS idx_inventory_transactions_supplier_id
+      ON public.inventory_transactions(supplier_id);
+  END IF;
+END $$;
 
 -- Step 5: Add helpful comments
 COMMENT ON FUNCTION public.create_lots_from_approved_transaction IS
   'Automatically creates purchase lots when inventory IN transactions are approved, enabling lot tracking and FIFO costing';
 
-COMMENT ON COLUMN public.inventory_transactions.supplier_id IS
-  'Optional supplier reference for IN transactions to track purchase source';
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transactions') THEN
+    COMMENT ON COLUMN public.inventory_transactions.supplier_id IS
+      'Optional supplier reference for IN transactions to track purchase source';
 
-COMMENT ON COLUMN public.inventory_transactions.invoice_reference IS
-  'Invoice or PO number for tracking purchases';
+    COMMENT ON COLUMN public.inventory_transactions.invoice_reference IS
+      'Invoice or PO number for tracking purchases';
+  END IF;
+END $$;

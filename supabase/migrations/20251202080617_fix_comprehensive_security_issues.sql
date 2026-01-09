@@ -61,41 +61,32 @@
 -- SECTION 1: Add Missing Indexes for Foreign Keys
 -- ============================================================================
 
--- Index for end_of_day_records.updated_by
-CREATE INDEX IF NOT EXISTS idx_end_of_day_records_updated_by 
-  ON public.end_of_day_records(updated_by);
-
--- Indexes for inventory_activity_log
-CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_receipt_id 
-  ON public.inventory_activity_log(receipt_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_store_id 
-  ON public.inventory_activity_log(store_id);
-
--- Indexes for inventory_receipt_items
-CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_item_id 
-  ON public.inventory_receipt_items(item_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_receipt_id 
-  ON public.inventory_receipt_items(receipt_id);
-
--- Indexes for inventory_receipts
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_created_by 
-  ON public.inventory_receipts(created_by);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_recipient_id 
-  ON public.inventory_receipts(recipient_id);
-
--- Indexes for inventory_transaction_items
-CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_item_id 
-  ON public.inventory_transaction_items(item_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_transaction_id 
-  ON public.inventory_transaction_items(transaction_id);
-
--- Index for inventory_transactions
-CREATE INDEX IF NOT EXISTS idx_inventory_transactions_requested_by_id 
-  ON public.inventory_transactions(requested_by_id);
+-- All indexes wrapped in conditionals for tables that may not exist
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'end_of_day_records') THEN
+    CREATE INDEX IF NOT EXISTS idx_end_of_day_records_updated_by ON public.end_of_day_records(updated_by);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_activity_log') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_receipt_id ON public.inventory_activity_log(receipt_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_store_id ON public.inventory_activity_log(store_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_receipt_items') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_item_id ON public.inventory_receipt_items(item_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_receipt_id ON public.inventory_receipt_items(receipt_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_receipts') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_created_by ON public.inventory_receipts(created_by);
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_recipient_id ON public.inventory_receipts(recipient_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transaction_items') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_item_id ON public.inventory_transaction_items(item_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_transaction_id ON public.inventory_transaction_items(transaction_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transactions') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_transactions_requested_by_id ON public.inventory_transactions(requested_by_id);
+  END IF;
+END $$;
 
 -- ============================================================================
 -- SECTION 2: Remove Unused Indexes

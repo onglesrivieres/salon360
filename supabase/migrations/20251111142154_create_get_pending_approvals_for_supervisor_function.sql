@@ -35,6 +35,9 @@
   - Cannot approve tickets they closed themselves
 */
 
+-- Drop existing function if return type changed
+DROP FUNCTION IF EXISTS get_pending_approvals_for_supervisor(uuid, uuid);
+
 -- Create function for supervisor-level approvals
 CREATE OR REPLACE FUNCTION get_pending_approvals_for_supervisor(
   p_employee_id uuid,

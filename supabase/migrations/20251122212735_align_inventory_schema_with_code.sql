@@ -54,58 +54,80 @@ BEGIN
   END IF;
 END $$;
 
--- Step 4: Rename columns
-ALTER TABLE public.inventory_items 
-RENAME COLUMN sku TO code;
+-- Step 4: Rename columns (only if old columns exist)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'sku') THEN
+    ALTER TABLE public.inventory_items RENAME COLUMN sku TO code;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'current_stock') THEN
+    ALTER TABLE public.inventory_items RENAME COLUMN current_stock TO quantity_on_hand;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'min_stock_level') THEN
+    ALTER TABLE public.inventory_items RENAME COLUMN min_stock_level TO reorder_level;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'unit_price') THEN
+    ALTER TABLE public.inventory_items RENAME COLUMN unit_price TO unit_cost;
+  END IF;
+END $$;
 
-ALTER TABLE public.inventory_items 
-RENAME COLUMN current_stock TO quantity_on_hand;
+-- Step 5: Change column types to numeric(10,2) (only if columns exist)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'quantity_on_hand') THEN
+    ALTER TABLE public.inventory_items ALTER COLUMN quantity_on_hand TYPE numeric(10,2);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'reorder_level') THEN
+    ALTER TABLE public.inventory_items ALTER COLUMN reorder_level TYPE numeric(10,2);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'unit_cost') THEN
+    ALTER TABLE public.inventory_items ALTER COLUMN unit_cost TYPE numeric(10,2);
+  END IF;
+END $$;
 
-ALTER TABLE public.inventory_items 
-RENAME COLUMN min_stock_level TO reorder_level;
+-- Step 6: Add new unique constraint with renamed column (only if not exists)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'inventory_items_store_id_code_key') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'code') THEN
+      ALTER TABLE public.inventory_items ADD CONSTRAINT inventory_items_store_id_code_key UNIQUE (store_id, code);
+    END IF;
+  END IF;
+END $$;
 
-ALTER TABLE public.inventory_items 
-RENAME COLUMN unit_price TO unit_cost;
+-- Step 7: Update defaults to match expected schema (only if columns exist)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'quantity_on_hand') THEN
+    ALTER TABLE public.inventory_items ALTER COLUMN quantity_on_hand SET DEFAULT 0;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'reorder_level') THEN
+    ALTER TABLE public.inventory_items ALTER COLUMN reorder_level SET DEFAULT 0;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'unit_cost') THEN
+    ALTER TABLE public.inventory_items ALTER COLUMN unit_cost SET DEFAULT 0;
+  END IF;
+END $$;
 
--- Step 5: Change column types to numeric(10,2)
-ALTER TABLE public.inventory_items 
-ALTER COLUMN quantity_on_hand TYPE numeric(10,2);
-
-ALTER TABLE public.inventory_items 
-ALTER COLUMN reorder_level TYPE numeric(10,2);
-
-ALTER TABLE public.inventory_items 
-ALTER COLUMN unit_cost TYPE numeric(10,2);
-
--- Step 6: Add new unique constraint with renamed column
-ALTER TABLE public.inventory_items 
-ADD CONSTRAINT inventory_items_store_id_code_key UNIQUE (store_id, code);
-
--- Step 7: Update defaults to match expected schema
-ALTER TABLE public.inventory_items 
-ALTER COLUMN quantity_on_hand SET DEFAULT 0;
-
-ALTER TABLE public.inventory_items 
-ALTER COLUMN reorder_level SET DEFAULT 0;
-
-ALTER TABLE public.inventory_items 
-ALTER COLUMN unit_cost SET DEFAULT 0;
-
--- Step 8: Ensure NOT NULL constraints match expected schema
-ALTER TABLE public.inventory_items 
-ALTER COLUMN code SET NOT NULL;
-
-ALTER TABLE public.inventory_items 
-ALTER COLUMN quantity_on_hand SET NOT NULL;
-
-ALTER TABLE public.inventory_items 
-ALTER COLUMN reorder_level SET NOT NULL;
-
-ALTER TABLE public.inventory_items 
-ALTER COLUMN unit_cost SET NOT NULL;
-
-ALTER TABLE public.inventory_items 
-ALTER COLUMN unit SET NOT NULL;
+-- Step 8: Ensure NOT NULL constraints match expected schema (only if columns exist)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'code') THEN
+    ALTER TABLE public.inventory_items ALTER COLUMN code SET NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'quantity_on_hand') THEN
+    ALTER TABLE public.inventory_items ALTER COLUMN quantity_on_hand SET NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'reorder_level') THEN
+    ALTER TABLE public.inventory_items ALTER COLUMN reorder_level SET NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'unit_cost') THEN
+    ALTER TABLE public.inventory_items ALTER COLUMN unit_cost SET NOT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inventory_items' AND column_name = 'unit') THEN
+    ALTER TABLE public.inventory_items ALTER COLUMN unit SET NOT NULL;
+  END IF;
+END $$;
 
 -- Step 9: Force PostgREST to reload schema cache
 NOTIFY pgrst, 'reload schema';

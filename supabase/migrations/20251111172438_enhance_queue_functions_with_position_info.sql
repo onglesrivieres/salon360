@@ -27,6 +27,8 @@
 -- ENHANCE check_queue_status FUNCTION TO RETURN POSITION INFO
 -- ============================================================================
 
+DROP FUNCTION IF EXISTS public.check_queue_status(uuid, uuid);
+
 CREATE OR REPLACE FUNCTION public.check_queue_status(
   p_employee_id uuid,
   p_store_id uuid
@@ -93,6 +95,8 @@ COMMENT ON FUNCTION public.check_queue_status IS 'Checks if employee is in ready
 -- ============================================================================
 -- ENHANCE join_ready_queue_with_checkin FUNCTION TO RETURN POSITION INFO
 -- ============================================================================
+
+DROP FUNCTION IF EXISTS public.join_ready_queue_with_checkin(uuid, uuid);
 
 CREATE OR REPLACE FUNCTION public.join_ready_queue_with_checkin(
   p_employee_id uuid,

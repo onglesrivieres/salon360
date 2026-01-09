@@ -156,6 +156,8 @@ CREATE TRIGGER trigger_set_approval_deadline
 -- PART 2: UPDATE SUPERVISOR APPROVAL QUEUE FUNCTION
 -- ============================================================================
 
+DROP FUNCTION IF EXISTS get_pending_approvals_for_supervisor(uuid, uuid);
+
 CREATE OR REPLACE FUNCTION get_pending_approvals_for_supervisor(
   p_employee_id uuid,
   p_store_id uuid
@@ -226,6 +228,8 @@ $$;
 -- PART 3: UPDATE TECHNICIAN APPROVAL QUEUE FUNCTION
 -- ============================================================================
 
+DROP FUNCTION IF EXISTS get_pending_approvals_for_technician(uuid, uuid);
+
 CREATE OR REPLACE FUNCTION get_pending_approvals_for_technician(
   p_employee_id uuid,
   p_store_id uuid
@@ -295,6 +299,8 @@ $$;
 -- ============================================================================
 -- PART 4: UPDATE MANAGEMENT APPROVAL QUEUE FUNCTION
 -- ============================================================================
+
+DROP FUNCTION IF EXISTS get_pending_approvals_for_management(uuid);
 
 CREATE OR REPLACE FUNCTION get_pending_approvals_for_management(
   p_store_id uuid

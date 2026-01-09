@@ -31,21 +31,24 @@
   - No breaking changes to existing functionality
 */
 
--- Add $100 and $50 bill columns for opening cash
-ALTER TABLE end_of_day_records
-  ADD COLUMN IF NOT EXISTS bill_100 integer DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS bill_50 integer DEFAULT 0;
+-- Add $100 and $50 bill columns for opening cash (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'end_of_day_records') THEN
+    ALTER TABLE end_of_day_records
+      ADD COLUMN IF NOT EXISTS bill_100 integer DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS bill_50 integer DEFAULT 0;
 
--- Add $100 and $50 bill columns for closing cash
-ALTER TABLE end_of_day_records
-  ADD COLUMN IF NOT EXISTS closing_bill_100 integer DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS closing_bill_50 integer DEFAULT 0;
+    ALTER TABLE end_of_day_records
+      ADD COLUMN IF NOT EXISTS closing_bill_100 integer DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS closing_bill_50 integer DEFAULT 0;
 
--- Add comments to document the new columns
-COMMENT ON COLUMN end_of_day_records.bill_100 IS 'Count of $100 bills in opening cash';
-COMMENT ON COLUMN end_of_day_records.bill_50 IS 'Count of $50 bills in opening cash';
-COMMENT ON COLUMN end_of_day_records.closing_bill_100 IS 'Count of $100 bills in closing cash';
-COMMENT ON COLUMN end_of_day_records.closing_bill_50 IS 'Count of $50 bills in closing cash';
+    COMMENT ON COLUMN end_of_day_records.bill_100 IS 'Count of $100 bills in opening cash';
+    COMMENT ON COLUMN end_of_day_records.bill_50 IS 'Count of $50 bills in opening cash';
+    COMMENT ON COLUMN end_of_day_records.closing_bill_100 IS 'Count of $100 bills in closing cash';
+    COMMENT ON COLUMN end_of_day_records.closing_bill_50 IS 'Count of $50 bills in closing cash';
+  END IF;
+END $$;
 
 -- Update the opening cash validation function to include new denominations
 CREATE OR REPLACE FUNCTION check_opening_cash_recorded(

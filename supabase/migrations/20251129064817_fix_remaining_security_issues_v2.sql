@@ -35,48 +35,79 @@
 -- 1. ADD MISSING FOREIGN KEY INDEXES
 -- =====================================================
 
--- end_of_day_records
-CREATE INDEX IF NOT EXISTS idx_end_of_day_records_updated_by 
-  ON public.end_of_day_records(updated_by);
+-- end_of_day_records (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'end_of_day_records') THEN
+    CREATE INDEX IF NOT EXISTS idx_end_of_day_records_updated_by
+      ON public.end_of_day_records(updated_by);
+  END IF;
+END $$;
 
--- inventory_activity_log
-CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_receipt_id 
-  ON public.inventory_activity_log(receipt_id);
+-- inventory_activity_log (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_activity_log') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_receipt_id
+      ON public.inventory_activity_log(receipt_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_store_id
+      ON public.inventory_activity_log(store_id);
+  END IF;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_store_id 
-  ON public.inventory_activity_log(store_id);
+-- inventory_receipt_items (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_receipt_items') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_item_id
+      ON public.inventory_receipt_items(item_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_receipt_id
+      ON public.inventory_receipt_items(receipt_id);
+  END IF;
+END $$;
 
--- inventory_receipt_items
-CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_item_id 
-  ON public.inventory_receipt_items(item_id);
+-- inventory_receipts (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_receipts') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_created_by
+      ON public.inventory_receipts(created_by);
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_recipient_id
+      ON public.inventory_receipts(recipient_id);
+  END IF;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_receipt_id 
-  ON public.inventory_receipt_items(receipt_id);
+-- inventory_transaction_items (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transaction_items') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_item_id
+      ON public.inventory_transaction_items(item_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_transaction_id
+      ON public.inventory_transaction_items(transaction_id);
+  END IF;
+END $$;
 
--- inventory_receipts
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_created_by 
-  ON public.inventory_receipts(created_by);
+-- inventory_transactions (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transactions') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_transactions_requested_by_id
+      ON public.inventory_transactions(requested_by_id);
+  END IF;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_recipient_id 
-  ON public.inventory_receipts(recipient_id);
-
--- inventory_transaction_items
-CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_item_id 
-  ON public.inventory_transaction_items(item_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_transaction_id 
-  ON public.inventory_transaction_items(transaction_id);
-
--- inventory_transactions
-CREATE INDEX IF NOT EXISTS idx_inventory_transactions_requested_by_id 
-  ON public.inventory_transactions(requested_by_id);
-
--- store_inventory_stock
-CREATE INDEX IF NOT EXISTS idx_store_inventory_stock_item_id 
-  ON public.store_inventory_stock(item_id);
+-- store_inventory_stock (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'store_inventory_stock') THEN
+    CREATE INDEX IF NOT EXISTS idx_store_inventory_stock_item_id
+      ON public.store_inventory_stock(item_id);
+  END IF;
+END $$;
 
 -- ticket_items
-CREATE INDEX IF NOT EXISTS idx_ticket_items_completed_by 
+CREATE INDEX IF NOT EXISTS idx_ticket_items_completed_by
   ON public.ticket_items(completed_by);
 
 -- =====================================================
@@ -98,30 +129,40 @@ DROP INDEX IF EXISTS public.idx_inventory_transactions_recipient_approved_by;
 -- 3. FIX SECURITY DEFINER VIEW
 -- =====================================================
 
--- Drop and recreate without SECURITY DEFINER (it's the default not to have it)
-DROP VIEW IF EXISTS public.inventory_items CASCADE;
+-- Drop and recreate without SECURITY DEFINER (only if required tables exist)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'store_inventory_stock') THEN
+    RAISE NOTICE 'Skipping inventory_items view - required tables do not exist';
+    RETURN;
+  END IF;
 
-CREATE VIEW public.inventory_items AS
-SELECT 
-  sis.id,
-  sis.store_id,
-  mi.code,
-  mi.name,
-  mi.description,
-  mi.category,
-  mi.unit,
-  sis.quantity_on_hand,
-  COALESCE(sis.unit_cost_override, mi.unit_cost) as unit_cost,
-  COALESCE(sis.reorder_level_override, mi.reorder_level) as reorder_level,
-  mi.is_active,
-  sis.created_at,
-  sis.updated_at,
-  mi.id as master_item_id
-FROM public.store_inventory_stock sis
-JOIN public.master_inventory_items mi ON mi.id = sis.item_id;
+  DROP VIEW IF EXISTS public.inventory_items CASCADE;
 
--- Grant select on the view
-GRANT SELECT ON public.inventory_items TO anon, authenticated;
+  EXECUTE $view$
+    CREATE VIEW public.inventory_items AS
+    SELECT
+      sis.id,
+      sis.store_id,
+      mi.code,
+      mi.name,
+      mi.description,
+      mi.category,
+      mi.unit,
+      sis.quantity_on_hand,
+      COALESCE(sis.unit_cost_override, mi.unit_cost) as unit_cost,
+      COALESCE(sis.reorder_level_override, mi.reorder_level) as reorder_level,
+      mi.is_active,
+      sis.created_at,
+      sis.updated_at,
+      mi.id as master_item_id
+    FROM public.store_inventory_stock sis
+    JOIN public.master_inventory_items mi ON mi.id = sis.item_id
+  $view$;
+
+  -- Grant select on the view
+  GRANT SELECT ON public.inventory_items TO anon, authenticated;
+END $$;
 
 -- =====================================================
 -- 4. FIX FUNCTION SEARCH PATHS (REBUILD WITH PROPER SETTINGS)

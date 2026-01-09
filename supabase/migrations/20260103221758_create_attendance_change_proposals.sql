@@ -43,6 +43,7 @@ CREATE INDEX IF NOT EXISTS idx_attendance_change_proposals_reviewed_by
 ALTER TABLE public.attendance_change_proposals ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Employees can view their own proposals
+DROP POLICY IF EXISTS "Employees can view own proposals" ON public.attendance_change_proposals;
 CREATE POLICY "Employees can view own proposals"
   ON public.attendance_change_proposals
   FOR SELECT
@@ -54,6 +55,7 @@ CREATE POLICY "Employees can view own proposals"
   );
 
 -- Policy: Employees can create proposals for their own attendance records
+DROP POLICY IF EXISTS "Employees can create own proposals" ON public.attendance_change_proposals;
 CREATE POLICY "Employees can create own proposals"
   ON public.attendance_change_proposals
   FOR INSERT
@@ -68,6 +70,7 @@ CREATE POLICY "Employees can create own proposals"
   );
 
 -- Policy: Managers and supervisors can view all proposals in their stores
+DROP POLICY IF EXISTS "Managers can view store proposals" ON public.attendance_change_proposals;
 CREATE POLICY "Managers can view store proposals"
   ON public.attendance_change_proposals
   FOR SELECT
@@ -84,6 +87,7 @@ CREATE POLICY "Managers can view store proposals"
   );
 
 -- Policy: Managers and supervisors can update (review) proposals in their stores
+DROP POLICY IF EXISTS "Managers can update store proposals" ON public.attendance_change_proposals;
 CREATE POLICY "Managers can update store proposals"
   ON public.attendance_change_proposals
   FOR UPDATE
@@ -122,6 +126,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS update_attendance_change_proposals_updated_at ON public.attendance_change_proposals;
 CREATE TRIGGER update_attendance_change_proposals_updated_at
   BEFORE UPDATE ON public.attendance_change_proposals
   FOR EACH ROW

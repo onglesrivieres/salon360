@@ -27,6 +27,12 @@ DO $$
 DECLARE
   store_record RECORD;
 BEGIN
+  -- Skip if app_settings table doesn't exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'app_settings') THEN
+    RAISE NOTICE 'Skipping app_settings inserts - table does not exist';
+    RETURN;
+  END IF;
+
   FOR store_record IN SELECT id FROM public.stores WHERE active = true
   LOOP
     -- Tickets Category - Customer Requirements
@@ -104,17 +110,24 @@ BEGIN
   END LOOP;
 END $$;
 
--- Add dependencies for new settings
-UPDATE public.app_settings
-SET dependencies = '[
-  {"key": "enable_cash_payments", "type": "requires", "label": "Enable cash payments"},
-  {"key": "enable_card_payments", "type": "requires", "label": "Enable card payments"},
-  {"key": "enable_gift_card_payments", "type": "requires", "label": "Enable gift card payments"}
-]'::jsonb
-WHERE setting_key = 'enable_mixed_payment_methods';
+-- Add dependencies for new settings (conditional)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'app_settings') THEN
+    RETURN;
+  END IF;
 
-UPDATE public.app_settings
-SET dependencies = '[
-  {"key": "auto_approve_after_48_hours", "type": "requires", "label": "Auto-approve after 48 hours"}
-]'::jsonb
-WHERE setting_key = 'enable_approval_deadline_warnings';
+  UPDATE public.app_settings
+  SET dependencies = '[
+    {"key": "enable_cash_payments", "type": "requires", "label": "Enable cash payments"},
+    {"key": "enable_card_payments", "type": "requires", "label": "Enable card payments"},
+    {"key": "enable_gift_card_payments", "type": "requires", "label": "Enable gift card payments"}
+  ]'::jsonb
+  WHERE setting_key = 'enable_mixed_payment_methods';
+
+  UPDATE public.app_settings
+  SET dependencies = '[
+    {"key": "auto_approve_after_48_hours", "type": "requires", "label": "Auto-approve after 48 hours"}
+  ]'::jsonb
+  WHERE setting_key = 'enable_approval_deadline_warnings';
+END $$;

@@ -29,37 +29,58 @@
 -- 1. ADD MISSING FOREIGN KEY INDEXES
 -- =====================================================
 
--- end_of_day_records
-CREATE INDEX IF NOT EXISTS idx_end_of_day_records_created_by 
-  ON public.end_of_day_records(created_by);
+-- end_of_day_records (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'end_of_day_records') THEN
+    CREATE INDEX IF NOT EXISTS idx_end_of_day_records_created_by
+      ON public.end_of_day_records(created_by);
+  END IF;
+END $$;
 
--- inventory_activity_log
-CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_item_id 
-  ON public.inventory_activity_log(item_id);
+-- inventory_activity_log (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_activity_log') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_item_id
+      ON public.inventory_activity_log(item_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_performed_by
+      ON public.inventory_activity_log(performed_by);
+  END IF;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_performed_by 
-  ON public.inventory_activity_log(performed_by);
+-- inventory_receipts (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_receipts') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_approved_by_management
+      ON public.inventory_receipts(approved_by_management);
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_approved_by_recipient
+      ON public.inventory_receipts(approved_by_recipient);
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_rejected_by
+      ON public.inventory_receipts(rejected_by);
+  END IF;
+END $$;
 
--- inventory_receipts
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_approved_by_management 
-  ON public.inventory_receipts(approved_by_management);
+-- inventory_transaction_items (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transaction_items') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_master_item_id
+      ON public.inventory_transaction_items(master_item_id);
+  END IF;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_approved_by_recipient 
-  ON public.inventory_receipts(approved_by_recipient);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_rejected_by 
-  ON public.inventory_receipts(rejected_by);
-
--- inventory_transaction_items
-CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_master_item_id 
-  ON public.inventory_transaction_items(master_item_id);
-
--- inventory_transactions
-CREATE INDEX IF NOT EXISTS idx_inventory_transactions_manager_approved_by 
-  ON public.inventory_transactions(manager_approved_by_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_transactions_recipient_approved_by 
-  ON public.inventory_transactions(recipient_approved_by_id);
+-- inventory_transactions (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transactions') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_transactions_manager_approved_by
+      ON public.inventory_transactions(manager_approved_by_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_transactions_recipient_approved_by
+      ON public.inventory_transactions(recipient_approved_by_id);
+  END IF;
+END $$;
 
 -- =====================================================
 -- 2. REMOVE ALL UNUSED INDEXES
@@ -85,31 +106,38 @@ DROP INDEX IF EXISTS public.idx_ticket_items_completed_by;
 -- 3. FIX SECURITY DEFINER VIEW
 -- =====================================================
 
--- First check if the view exists and what its definition is
+-- First check if required tables exist, then recreate view
 DO $$
 BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'store_inventory_stock') THEN
+    RAISE NOTICE 'Skipping inventory_items view - required tables do not exist';
+    RETURN;
+  END IF;
+
   -- Drop the view completely and recreate it without SECURITY DEFINER
   DROP VIEW IF EXISTS public.inventory_items CASCADE;
-  
-  -- Recreate the view (views are SECURITY INVOKER by default)
-  CREATE VIEW public.inventory_items AS
-  SELECT 
-    sis.id,
-    sis.store_id,
-    mi.code,
-    mi.name,
-    mi.description,
-    mi.category,
-    mi.unit,
-    sis.quantity_on_hand,
-    COALESCE(sis.unit_cost_override, mi.unit_cost) as unit_cost,
-    COALESCE(sis.reorder_level_override, mi.reorder_level) as reorder_level,
-    mi.is_active,
-    sis.created_at,
-    sis.updated_at,
-    mi.id as master_item_id
-  FROM public.store_inventory_stock sis
-  JOIN public.master_inventory_items mi ON mi.id = sis.item_id;
+
+  -- Recreate the view using EXECUTE (views are SECURITY INVOKER by default)
+  EXECUTE $view$
+    CREATE VIEW public.inventory_items AS
+    SELECT
+      sis.id,
+      sis.store_id,
+      mi.code,
+      mi.name,
+      mi.description,
+      mi.category,
+      mi.unit,
+      sis.quantity_on_hand,
+      COALESCE(sis.unit_cost_override, mi.unit_cost) as unit_cost,
+      COALESCE(sis.reorder_level_override, mi.reorder_level) as reorder_level,
+      mi.is_active,
+      sis.created_at,
+      sis.updated_at,
+      mi.id as master_item_id
+    FROM public.store_inventory_stock sis
+    JOIN public.master_inventory_items mi ON mi.id = sis.item_id
+  $view$;
 
   -- Grant appropriate permissions
   GRANT SELECT ON public.inventory_items TO anon, authenticated;

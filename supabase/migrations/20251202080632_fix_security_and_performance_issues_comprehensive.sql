@@ -43,40 +43,37 @@
 -- 1. ADD MISSING FOREIGN KEY INDEXES
 -- =====================================================
 
-CREATE INDEX IF NOT EXISTS idx_end_of_day_records_updated_by 
-  ON public.end_of_day_records(updated_by);
+-- All indexes wrapped in conditionals for tables that may not exist
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'end_of_day_records') THEN
+    CREATE INDEX IF NOT EXISTS idx_end_of_day_records_updated_by ON public.end_of_day_records(updated_by);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_activity_log') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_receipt_id ON public.inventory_activity_log(receipt_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_store_id ON public.inventory_activity_log(store_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_receipt_items') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_item_id ON public.inventory_receipt_items(item_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_receipt_id ON public.inventory_receipt_items(receipt_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_receipts') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_created_by ON public.inventory_receipts(created_by);
+    CREATE INDEX IF NOT EXISTS idx_inventory_receipts_recipient_id ON public.inventory_receipts(recipient_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transaction_items') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_item_id ON public.inventory_transaction_items(item_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_transaction_id ON public.inventory_transaction_items(transaction_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transactions') THEN
+    CREATE INDEX IF NOT EXISTS idx_inventory_transactions_requested_by_id ON public.inventory_transactions(requested_by_id);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'store_inventory_stock') THEN
+    CREATE INDEX IF NOT EXISTS idx_store_inventory_stock_item_id ON public.store_inventory_stock(item_id);
+  END IF;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_receipt_id 
-  ON public.inventory_activity_log(receipt_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_activity_log_store_id 
-  ON public.inventory_activity_log(store_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_item_id 
-  ON public.inventory_receipt_items(item_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_receipt_items_receipt_id 
-  ON public.inventory_receipt_items(receipt_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_created_by 
-  ON public.inventory_receipts(created_by);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_receipts_recipient_id 
-  ON public.inventory_receipts(recipient_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_item_id 
-  ON public.inventory_transaction_items(item_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_transaction_id 
-  ON public.inventory_transaction_items(transaction_id);
-
-CREATE INDEX IF NOT EXISTS idx_inventory_transactions_requested_by_id 
-  ON public.inventory_transactions(requested_by_id);
-
-CREATE INDEX IF NOT EXISTS idx_store_inventory_stock_item_id 
-  ON public.store_inventory_stock(item_id);
-
-CREATE INDEX IF NOT EXISTS idx_ticket_items_completed_by 
+CREATE INDEX IF NOT EXISTS idx_ticket_items_completed_by
   ON public.ticket_items(completed_by);
 
 -- =====================================================

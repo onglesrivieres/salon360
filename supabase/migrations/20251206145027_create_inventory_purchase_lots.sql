@@ -39,71 +39,104 @@
   - Maintain purchase history with supplier metadata
 */
 
--- Step 1: Create inventory_purchase_lots table
-CREATE TABLE IF NOT EXISTS public.inventory_purchase_lots (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  lot_number text NOT NULL UNIQUE,
-  store_id uuid NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
-  master_item_id uuid NOT NULL REFERENCES public.master_inventory_items(id) ON DELETE RESTRICT,
-  supplier_id uuid REFERENCES public.suppliers(id) ON DELETE SET NULL,
-  quantity_received numeric(10,2) NOT NULL,
-  quantity_remaining numeric(10,2) NOT NULL,
-  unit_cost numeric(10,2) NOT NULL DEFAULT 0,
-  purchase_date timestamptz NOT NULL DEFAULT now(),
-  expiration_date timestamptz,
-  batch_number text,
-  invoice_reference text,
-  notes text DEFAULT '',
-  status text NOT NULL DEFAULT 'active',
-  created_by_id uuid REFERENCES public.employees(id) ON DELETE SET NULL,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
-  CONSTRAINT inventory_purchase_lots_lot_number_not_empty CHECK (lot_number <> ''),
-  CONSTRAINT inventory_purchase_lots_quantity_received_positive CHECK (quantity_received > 0),
-  CONSTRAINT inventory_purchase_lots_quantity_remaining_non_negative CHECK (quantity_remaining >= 0),
-  CONSTRAINT inventory_purchase_lots_quantity_remaining_valid CHECK (quantity_remaining <= quantity_received),
-  CONSTRAINT inventory_purchase_lots_unit_cost_non_negative CHECK (unit_cost >= 0),
-  CONSTRAINT inventory_purchase_lots_status_valid CHECK (status IN ('active', 'depleted', 'expired', 'archived'))
-);
+-- Step 1: Create inventory_purchase_lots table (only if required tables exist)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'master_inventory_items') THEN
+    RAISE NOTICE 'Skipping inventory_purchase_lots - master_inventory_items table does not exist';
+    RETURN;
+  END IF;
 
--- Step 2: Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_store_id ON public.inventory_purchase_lots(store_id);
-CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_master_item_id ON public.inventory_purchase_lots(master_item_id);
-CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_supplier_id ON public.inventory_purchase_lots(supplier_id);
-CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_status ON public.inventory_purchase_lots(status);
-CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_purchase_date ON public.inventory_purchase_lots(purchase_date);
-CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_expiration_date ON public.inventory_purchase_lots(expiration_date) WHERE expiration_date IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_store_item_status ON public.inventory_purchase_lots(store_id, master_item_id, status);
+  -- Create the table without supplier_id FK initially
+  CREATE TABLE IF NOT EXISTS public.inventory_purchase_lots (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    lot_number text NOT NULL UNIQUE,
+    store_id uuid NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
+    master_item_id uuid NOT NULL REFERENCES public.master_inventory_items(id) ON DELETE RESTRICT,
+    supplier_id uuid, -- FK added conditionally below
+    quantity_received numeric(10,2) NOT NULL,
+    quantity_remaining numeric(10,2) NOT NULL,
+    unit_cost numeric(10,2) NOT NULL DEFAULT 0,
+    purchase_date timestamptz NOT NULL DEFAULT now(),
+    expiration_date timestamptz,
+    batch_number text,
+    invoice_reference text,
+    notes text DEFAULT '',
+    status text NOT NULL DEFAULT 'active',
+    created_by_id uuid REFERENCES public.employees(id) ON DELETE SET NULL,
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now(),
+    CONSTRAINT inventory_purchase_lots_lot_number_not_empty CHECK (lot_number <> ''),
+    CONSTRAINT inventory_purchase_lots_quantity_received_positive CHECK (quantity_received > 0),
+    CONSTRAINT inventory_purchase_lots_quantity_remaining_non_negative CHECK (quantity_remaining >= 0),
+    CONSTRAINT inventory_purchase_lots_quantity_remaining_valid CHECK (quantity_remaining <= quantity_received),
+    CONSTRAINT inventory_purchase_lots_unit_cost_non_negative CHECK (unit_cost >= 0),
+    CONSTRAINT inventory_purchase_lots_status_valid CHECK (status IN ('active', 'depleted', 'expired', 'archived'))
+  );
 
--- Step 3: Add lot_id to inventory_transaction_items for traceability
-ALTER TABLE public.inventory_transaction_items
-ADD COLUMN IF NOT EXISTS lot_id uuid REFERENCES public.inventory_purchase_lots(id) ON DELETE SET NULL;
+  -- Add suppliers FK only if suppliers table exists
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'suppliers') THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.table_constraints
+      WHERE constraint_name = 'inventory_purchase_lots_supplier_id_fkey'
+      AND table_name = 'inventory_purchase_lots'
+    ) THEN
+      ALTER TABLE public.inventory_purchase_lots
+      ADD CONSTRAINT inventory_purchase_lots_supplier_id_fkey
+      FOREIGN KEY (supplier_id) REFERENCES public.suppliers(id) ON DELETE SET NULL;
+    END IF;
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_lot_id ON public.inventory_transaction_items(lot_id);
+  -- Create indexes
+  CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_store_id ON public.inventory_purchase_lots(store_id);
+  CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_master_item_id ON public.inventory_purchase_lots(master_item_id);
+  CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_supplier_id ON public.inventory_purchase_lots(supplier_id);
+  CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_status ON public.inventory_purchase_lots(status);
+  CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_purchase_date ON public.inventory_purchase_lots(purchase_date);
+  CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_expiration_date ON public.inventory_purchase_lots(expiration_date) WHERE expiration_date IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS idx_inventory_purchase_lots_store_item_status ON public.inventory_purchase_lots(store_id, master_item_id, status);
+END $$;
 
--- Step 4: Enable RLS
-ALTER TABLE public.inventory_purchase_lots ENABLE ROW LEVEL SECURITY;
+-- Step 3: Add lot_id to inventory_transaction_items for traceability (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_transaction_items')
+     AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_purchase_lots') THEN
+    ALTER TABLE public.inventory_transaction_items
+    ADD COLUMN IF NOT EXISTS lot_id uuid REFERENCES public.inventory_purchase_lots(id) ON DELETE SET NULL;
+    CREATE INDEX IF NOT EXISTS idx_inventory_transaction_items_lot_id ON public.inventory_transaction_items(lot_id);
+  END IF;
+END $$;
 
--- Step 5: Create RLS policies for inventory_purchase_lots
+-- Step 4: Enable RLS and create policies (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_purchase_lots') THEN
+    ALTER TABLE public.inventory_purchase_lots ENABLE ROW LEVEL SECURITY;
 
--- All authenticated users can view active lots for their stores
-CREATE POLICY "Users can view inventory purchase lots"
-  ON public.inventory_purchase_lots FOR SELECT
-  TO anon, authenticated
-  USING (true);
+    -- All authenticated users can view active lots for their stores
+    DROP POLICY IF EXISTS "Users can view inventory purchase lots" ON public.inventory_purchase_lots;
+    CREATE POLICY "Users can view inventory purchase lots"
+      ON public.inventory_purchase_lots FOR SELECT
+      TO anon, authenticated
+      USING (true);
 
--- Managers and Owners can create lots
-CREATE POLICY "Managers can create lots"
-  ON public.inventory_purchase_lots FOR INSERT
-  TO anon, authenticated
-  WITH CHECK (true);
+    -- Managers and Owners can create lots
+    DROP POLICY IF EXISTS "Managers can create lots" ON public.inventory_purchase_lots;
+    CREATE POLICY "Managers can create lots"
+      ON public.inventory_purchase_lots FOR INSERT
+      TO anon, authenticated
+      WITH CHECK (true);
 
--- Managers and Owners can update lots
-CREATE POLICY "Managers can update lots"
-  ON public.inventory_purchase_lots FOR UPDATE
-  TO anon, authenticated
-  USING (true)
-  WITH CHECK (true);
+    -- Managers and Owners can update lots
+    DROP POLICY IF EXISTS "Managers can update lots" ON public.inventory_purchase_lots;
+    CREATE POLICY "Managers can update lots"
+      ON public.inventory_purchase_lots FOR UPDATE
+      TO anon, authenticated
+      USING (true)
+      WITH CHECK (true);
+  END IF;
+END $$;
 
 -- Step 6: Create function to generate lot numbers
 CREATE OR REPLACE FUNCTION public.generate_lot_number(
@@ -171,12 +204,17 @@ BEGIN
 END;
 $$;
 
--- Create trigger to update lot status
-DROP TRIGGER IF EXISTS trigger_update_lot_status ON public.inventory_purchase_lots;
-CREATE TRIGGER trigger_update_lot_status
-  BEFORE UPDATE ON public.inventory_purchase_lots
-  FOR EACH ROW
-  EXECUTE FUNCTION public.update_lot_status();
+-- Create trigger to update lot status (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_purchase_lots') THEN
+    DROP TRIGGER IF EXISTS trigger_update_lot_status ON public.inventory_purchase_lots;
+    CREATE TRIGGER trigger_update_lot_status
+      BEFORE UPDATE ON public.inventory_purchase_lots
+      FOR EACH ROW
+      EXECUTE FUNCTION public.update_lot_status();
+  END IF;
+END $$;
 
 -- Step 8: Create function to get available lots for an item using FIFO
 CREATE OR REPLACE FUNCTION public.get_available_lots_fifo(
@@ -243,19 +281,24 @@ BEGIN
 END;
 $$;
 
--- Step 10: Add helpful comments
-COMMENT ON TABLE public.inventory_purchase_lots IS
-  'Purchase lot tracking for variable cost inventory. Each bulk purchase is tracked
-   as a distinct lot with its actual invoice cost, enabling FIFO costing and lot recall.';
+-- Step 10: Add helpful comments (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'inventory_purchase_lots') THEN
+    COMMENT ON TABLE public.inventory_purchase_lots IS
+      'Purchase lot tracking for variable cost inventory. Each bulk purchase is tracked
+       as a distinct lot with its actual invoice cost, enabling FIFO costing and lot recall.';
 
-COMMENT ON COLUMN public.inventory_purchase_lots.lot_number IS
-  'Unique lot identifier in format: PREFIX-YYYY-NNN (e.g., SUP-2024-001)';
+    COMMENT ON COLUMN public.inventory_purchase_lots.lot_number IS
+      'Unique lot identifier in format: PREFIX-YYYY-NNN (e.g., SUP-2024-001)';
 
-COMMENT ON COLUMN public.inventory_purchase_lots.quantity_remaining IS
-  'Current available quantity. Decreases as items are distributed to employees or stores.';
+    COMMENT ON COLUMN public.inventory_purchase_lots.quantity_remaining IS
+      'Current available quantity. Decreases as items are distributed to employees or stores.';
 
-COMMENT ON COLUMN public.inventory_purchase_lots.status IS
-  'Lot status: active (available), depleted (empty), expired (past expiration), archived (historical)';
+    COMMENT ON COLUMN public.inventory_purchase_lots.status IS
+      'Lot status: active (available), depleted (empty), expired (past expiration), archived (historical)';
+  END IF;
+END $$;
 
 COMMENT ON FUNCTION public.get_available_lots_fifo IS
   'Returns available lots for an item ordered by FIFO (First In, First Out) for cost tracking';
