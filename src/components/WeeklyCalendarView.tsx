@@ -154,17 +154,19 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                   className={idx > 0 ? 'pt-1 mt-1 border-t border-gray-400' : ''}
                                 >
                                   <div className="text-center space-y-0.5">
-                                    <div className="flex items-center justify-center gap-0.5">
-                                      <span className="text-green-700 text-[10px] font-medium">
-                                        {storeData.tips_customer.toFixed(0)}
-                                      </span>
-                                      {isMultiStoreEmployee && storeData.store_code && (
+                                    {isMultiStoreEmployee && storeData.store_code && (
+                                      <div className="flex items-center justify-center">
                                         <span className={`text-[7px] font-medium ${getStoreColor(storeData.store_code)}`}>
                                           [{abbreviateStoreName(storeData.store_code)}]
                                         </span>
-                                      )}
+                                      </div>
+                                    )}
+                                    <div className="flex items-center justify-center">
+                                      <span className="text-green-700 text-[10px] font-medium">
+                                        {storeData.tips_customer.toFixed(0)}
+                                      </span>
                                     </div>
-                                    <div className="flex items-center justify-center gap-0.5">
+                                    <div className="flex items-center justify-center">
                                       <span className="text-blue-700 text-[10px] font-medium">
                                         {storeData.tips_receptionist.toFixed(0)}
                                       </span>
@@ -182,23 +184,25 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                             </div>
                           ) : (
                             <div className="text-center space-y-0.5">
-                              <div className="flex items-center justify-center gap-0.5">
-                                <span className="text-green-700 text-[10px] font-medium">
-                                  {dailyCustomer.toFixed(0)}
-                                </span>
-                                {isMultiStoreEmployee && storesArray[0]?.store_code && (
+                              {isMultiStoreEmployee && storesArray[0]?.store_code && (
+                                <div className="flex items-center justify-center">
                                   <span className={`text-[7px] font-medium ${getStoreColor(storesArray[0].store_code)}`}>
                                     [{abbreviateStoreName(storesArray[0].store_code)}]
                                   </span>
-                                )}
+                                </div>
+                              )}
+                              <div className="flex items-center justify-center">
+                                <span className="text-green-700 text-[10px] font-medium">
+                                  {dailyCustomer.toFixed(0)}
+                                </span>
                               </div>
-                              <div className="flex items-center justify-center gap-0.5">
+                              <div className="flex items-center justify-center">
                                 <span className="text-blue-700 text-[10px] font-medium">
                                   {dailyReceptionist.toFixed(0)}
                                 </span>
                               </div>
                               <div className="pt-0.5 mt-0.5 border-t border-gray-300">
-                                <div className="flex items-center justify-center gap-0.5">
+                                <div className="flex items-center justify-center">
                                   <span className="text-gray-900 text-[10px] font-bold">
                                     {(dailyCustomer + dailyReceptionist).toFixed(0)}
                                   </span>
@@ -267,17 +271,19 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                               className={idx > 0 ? 'pt-1 mt-1 border-t border-gray-400' : ''}
                             >
                               <div className="text-center space-y-0.5">
-                                <div className="flex items-center justify-center gap-0.5">
-                                  <span className="font-bold text-green-700 text-[10px]">
-                                    {storeAgg.tips_customer.toFixed(0)}
-                                  </span>
-                                  {isMultiStoreEmployee && storeAgg.store_code && (
+                                {isMultiStoreEmployee && storeAgg.store_code && (
+                                  <div className="flex items-center justify-center">
                                     <span className={`text-[7px] font-medium ${getStoreColor(storeAgg.store_code)}`}>
                                       [{abbreviateStoreName(storeAgg.store_code)}]
                                     </span>
-                                  )}
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-center">
+                                  <span className="font-bold text-green-700 text-[10px]">
+                                    {storeAgg.tips_customer.toFixed(0)}
+                                  </span>
                                 </div>
-                                <div className="flex items-center justify-center gap-0.5">
+                                <div className="flex items-center justify-center">
                                   <span className="font-bold text-blue-700 text-[10px]">
                                     {storeAgg.tips_receptionist.toFixed(0)}
                                   </span>
@@ -295,23 +301,25 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                         </div>
                       ) : (
                         <div className="text-center space-y-0.5">
-                          <div className="flex items-center justify-center gap-0.5">
-                            <span className="font-bold text-green-700 text-[10px]">
-                              {(storesList[0]?.tips_customer || 0).toFixed(0)}
-                            </span>
-                            {isMultiStoreEmployee && storesList[0]?.store_code && (
+                          {isMultiStoreEmployee && storesList[0]?.store_code && (
+                            <div className="flex items-center justify-center">
                               <span className={`text-[7px] font-medium ${getStoreColor(storesList[0].store_code)}`}>
                                 [{abbreviateStoreName(storesList[0].store_code)}]
                               </span>
-                            )}
+                            </div>
+                          )}
+                          <div className="flex items-center justify-center">
+                            <span className="font-bold text-green-700 text-[10px]">
+                              {(storesList[0]?.tips_customer || 0).toFixed(0)}
+                            </span>
                           </div>
-                          <div className="flex items-center justify-center gap-0.5">
+                          <div className="flex items-center justify-center">
                             <span className="font-bold text-blue-700 text-[10px]">
                               {(storesList[0]?.tips_receptionist || 0).toFixed(0)}
                             </span>
                           </div>
                           <div className="pt-0.5 mt-0.5 border-t border-gray-300">
-                            <div className="flex items-center justify-center gap-0.5">
+                            <div className="flex items-center justify-center">
                               <span className="text-gray-900 text-[10px] font-bold">
                                 {periodTotal.toFixed(0)}
                               </span>
