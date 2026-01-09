@@ -1,4 +1,4 @@
-# Salon360 Database Migration Guide
+# Salon365 Database Migration Guide
 
 ## Quick Start
 

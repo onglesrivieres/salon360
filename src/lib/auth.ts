@@ -10,8 +10,8 @@ export interface AuthSession {
   store_id?: string;
 }
 
-const SESSION_KEY = 'salon360_session';
-const LAST_ACTIVITY_KEY = 'salon360_last_activity';
+const SESSION_KEY = 'salon365_session';
+const LAST_ACTIVITY_KEY = 'salon365_last_activity';
 const AUTO_LOCK_TIMEOUT = 5 * 60 * 1000;
 
 export async function hashPIN(pin: string): Promise<string> {

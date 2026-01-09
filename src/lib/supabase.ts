@@ -14,7 +14,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'x-application-name': 'salon360',
+      'x-application-name': 'salon365',
     },
   },
   db: {

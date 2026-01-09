@@ -1,8 +1,8 @@
 /*
-  # Salon360 Initial Database Schema
+  # Salon365 Initial Database Schema
 
   ## Overview
-  Creates the core tables for the Salon360 sale ticket tracking system:
+  Creates the core tables for the Salon365 sale ticket tracking system:
   - Employees: Staff members who perform services
   - Services: Catalog of available services
   - Sale Tickets: Customer transactions/visits

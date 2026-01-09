@@ -123,7 +123,7 @@ export const translations = {
       durationOverride: 'Duration Override',
     },
     auth: {
-      welcome: 'Welcome to Salon360',
+      welcome: 'Welcome to Salon365',
       enterPIN: 'Enter your 4-digit PIN',
       invalidPIN: 'Invalid PIN - Try again.',
       locked: 'Session locked',
@@ -174,7 +174,7 @@ export const translations = {
       selectAction: 'Select an action to continue',
     },
     home: {
-      title: 'Salon360',
+      title: 'Salon365',
       subtitle: 'Complete salon management system for scheduling, tracking, and reporting',
       enterPinFor: 'Enter PIN for',
       checkedIn: 'checked in and in the ready queue',
@@ -382,7 +382,7 @@ export const translations = {
       durationOverride: 'Remplacement de durée',
     },
     auth: {
-      welcome: 'Bienvenue à Salon360',
+      welcome: 'Bienvenue à Salon365',
       enterPIN: 'Entrez votre NIP à 4 chiffres',
       invalidPIN: 'NIP invalide - Réessayez.',
       locked: 'Session verrouillée',
@@ -433,7 +433,7 @@ export const translations = {
       selectAction: 'Sélectionnez une action pour continuer',
     },
     home: {
-      title: 'Salon360',
+      title: 'Salon365',
       subtitle: 'Système complet de gestion de salon pour la planification, le suivi et les rapports',
       enterPinFor: 'Entrez le NIP pour',
       checkedIn: 'pointé et dans la file d\'attente',
@@ -641,7 +641,7 @@ export const translations = {
       durationOverride: 'Ghi đè thời lượng',
     },
     auth: {
-      welcome: 'Chào mừng đến Salon360',
+      welcome: 'Chào mừng đến Salon365',
       enterPIN: 'Nhập mã PIN 4 số',
       invalidPIN: 'PIN không đúng - Thử lại.',
       locked: 'Phiên bị khoá',
@@ -692,7 +692,7 @@ export const translations = {
       selectAction: 'Chọn một hành động để tiếp tục',
     },
     home: {
-      title: 'Salon360',
+      title: 'Salon365',
       subtitle: 'Hệ thống quản lý salon toàn diện cho lịch hẹn, theo dõi và báo cáo',
       enterPinFor: 'Nhập PIN cho',
       checkedIn: 'đã điểm danh và vào hàng đợi',

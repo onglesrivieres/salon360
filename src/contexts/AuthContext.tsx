@@ -26,8 +26,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const LOCALE_KEY = 'salon360_locale';
-const VIEWING_AS_ROLE_KEY = 'salon360_viewing_as_role';
+const LOCALE_KEY = 'salon365_locale';
+const VIEWING_AS_ROLE_KEY = 'salon365_viewing_as_role';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
