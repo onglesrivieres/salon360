@@ -78,6 +78,16 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     return codeMap[storeCode.toUpperCase()] || storeCode;
   }
 
+  function getStoreColor(storeCode: string): string {
+    const abbrev = abbreviateStoreName(storeCode);
+    switch (abbrev) {
+      case 'M': return 'text-pink-600';
+      case 'C': return 'text-green-600';
+      case 'R': return 'text-blue-600';
+      default: return 'text-gray-600';
+    }
+  }
+
   useEffect(() => {
     if (viewMode === 'weekly') {
       fetchWeeklyData();
@@ -944,7 +954,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                       {openTime.replace(/\s/g, '')}
                                     </span>
                                     {item.store_code && (
-                                      <span className="text-[7px] text-gray-400">
+                                      <span className={`text-[7px] font-medium ${getStoreColor(item.store_code)}`}>
                                         [{abbreviateStoreName(item.store_code)}]
                                       </span>
                                     )}

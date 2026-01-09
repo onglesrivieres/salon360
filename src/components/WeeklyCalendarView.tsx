@@ -26,6 +26,16 @@ function abbreviateStoreName(storeCode: string): string {
   return codeMap[storeCode.toUpperCase()] || storeCode.substring(0, 1).toUpperCase();
 }
 
+function getStoreColor(storeCode: string): string {
+  const abbrev = abbreviateStoreName(storeCode);
+  switch (abbrev) {
+    case 'M': return 'text-pink-600';
+    case 'C': return 'text-green-600';
+    case 'R': return 'text-blue-600';
+    default: return 'text-gray-600';
+  }
+}
+
 function formatDateHeader(dateStr: string): { day: string; date: string } {
   const d = new Date(dateStr + 'T00:00:00');
   const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -147,7 +157,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                         {storeData.tips_customer.toFixed(0)}
                                       </span>
                                       {storeData.store_code && (
-                                        <span className="text-[7px] text-gray-600 font-medium">
+                                        <span className={`text-[7px] font-medium ${getStoreColor(storeData.store_code)}`}>
                                           [{abbreviateStoreName(storeData.store_code)}]
                                         </span>
                                       )}
@@ -174,6 +184,11 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                 <span className="text-green-700 text-[10px] font-medium">
                                   {dailyCustomer.toFixed(0)}
                                 </span>
+                                {storesArray[0]?.store_code && (
+                                  <span className={`text-[7px] font-medium ${getStoreColor(storesArray[0].store_code)}`}>
+                                    [{abbreviateStoreName(storesArray[0].store_code)}]
+                                  </span>
+                                )}
                               </div>
                               <div className="flex items-center justify-center gap-0.5">
                                 <span className="text-blue-700 text-[10px] font-medium">
@@ -255,7 +270,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                     {storeAgg.tips_customer.toFixed(0)}
                                   </span>
                                   {storeAgg.store_code && (
-                                    <span className="text-[7px] text-gray-600 font-medium">
+                                    <span className={`text-[7px] font-medium ${getStoreColor(storeAgg.store_code)}`}>
                                       [{abbreviateStoreName(storeAgg.store_code)}]
                                     </span>
                                   )}
@@ -282,6 +297,11 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                             <span className="font-bold text-green-700 text-[10px]">
                               {(storesList[0]?.tips_customer || 0).toFixed(0)}
                             </span>
+                            {storesList[0]?.store_code && (
+                              <span className={`text-[7px] font-medium ${getStoreColor(storesList[0].store_code)}`}>
+                                [{abbreviateStoreName(storesList[0].store_code)}]
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center justify-center gap-0.5">
                             <span className="font-bold text-blue-700 text-[10px]">
