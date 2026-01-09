@@ -15,6 +15,7 @@ interface WeeklyCalendarViewProps {
   }>;
   periodDates: string[];
   mode?: 'tips' | 'revenue';
+  multiStoreEmployeeIds?: Set<string>;
 }
 
 function abbreviateStoreName(storeCode: string): string {
@@ -44,7 +45,7 @@ function formatDateHeader(dateStr: string): { day: string; date: string } {
   return { day, date };
 }
 
-export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, periodDates, mode = 'tips' }: WeeklyCalendarViewProps) {
+export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, periodDates, mode = 'tips', multiStoreEmployeeIds = new Set() }: WeeklyCalendarViewProps) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   return (
@@ -90,6 +91,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
           <tbody>
             {summaries.map((summary) => {
               const techData = weeklyData.get(summary.technician_id);
+              const isMultiStoreEmployee = multiStoreEmployeeIds.has(summary.technician_id);
 
               return (
                 <tr key={summary.technician_id}>
@@ -156,7 +158,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                       <span className="text-green-700 text-[10px] font-medium">
                                         {storeData.tips_customer.toFixed(0)}
                                       </span>
-                                      {storeData.store_code && (
+                                      {isMultiStoreEmployee && storeData.store_code && (
                                         <span className={`text-[7px] font-medium ${getStoreColor(storeData.store_code)}`}>
                                           [{abbreviateStoreName(storeData.store_code)}]
                                         </span>
@@ -184,7 +186,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                 <span className="text-green-700 text-[10px] font-medium">
                                   {dailyCustomer.toFixed(0)}
                                 </span>
-                                {storesArray[0]?.store_code && (
+                                {isMultiStoreEmployee && storesArray[0]?.store_code && (
                                   <span className={`text-[7px] font-medium ${getStoreColor(storesArray[0].store_code)}`}>
                                     [{abbreviateStoreName(storesArray[0].store_code)}]
                                   </span>
@@ -269,7 +271,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                                   <span className="font-bold text-green-700 text-[10px]">
                                     {storeAgg.tips_customer.toFixed(0)}
                                   </span>
-                                  {storeAgg.store_code && (
+                                  {isMultiStoreEmployee && storeAgg.store_code && (
                                     <span className={`text-[7px] font-medium ${getStoreColor(storeAgg.store_code)}`}>
                                       [{abbreviateStoreName(storeAgg.store_code)}]
                                     </span>
@@ -297,7 +299,7 @@ export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, period
                             <span className="font-bold text-green-700 text-[10px]">
                               {(storesList[0]?.tips_customer || 0).toFixed(0)}
                             </span>
-                            {storesList[0]?.store_code && (
+                            {isMultiStoreEmployee && storesList[0]?.store_code && (
                               <span className={`text-[7px] font-medium ${getStoreColor(storesList[0].store_code)}`}>
                                 [{abbreviateStoreName(storesList[0].store_code)}]
                               </span>

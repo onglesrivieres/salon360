@@ -68,6 +68,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     tips_cash: 0,
     tips_card: 0,
   });
+  const [multiStoreEmployeeIds, setMultiStoreEmployeeIds] = useState<Set<string>>(new Set());
 
   function abbreviateStoreName(storeCode: string): string {
     const codeMap: Record<string, string> = {
@@ -152,6 +153,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         multiStoreEmployees.add(empId);
       }
     }
+    setMultiStoreEmployeeIds(multiStoreEmployees);
 
     let storeIds: string[] = [];
 
@@ -871,6 +873,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
               weeklyData={weeklyData}
               summaries={summaries}
               periodDates={getWeekDates(getWeekStartDate(selectedDate))}
+              multiStoreEmployeeIds={multiStoreEmployeeIds}
             />
           </div>
         ) : (
@@ -953,7 +956,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                     <span className="truncate">
                                       {openTime.replace(/\s/g, '')}
                                     </span>
-                                    {item.store_code && (
+                                    {multiStoreEmployeeIds.has(summary.technician_id) && item.store_code && (
                                       <span className={`text-[7px] font-medium ${getStoreColor(item.store_code)}`}>
                                         [{abbreviateStoreName(item.store_code)}]
                                       </span>
