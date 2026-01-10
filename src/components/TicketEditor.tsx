@@ -114,6 +114,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const [showCustomService, setShowCustomService] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+  // Category options for filtering services
+  const categoryOptions = ['all', 'Manicure', 'Pedicure', 'Extensions des Cils', 'Epilation'];
 
   const calculateTimeRemaining = (tech: TechnicianWithQueue): string => {
     if (!tech.ticket_start_time || !tech.estimated_duration_min) {
@@ -1829,10 +1833,32 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             {items.length === 0 ? (
               <div className="border border-gray-200 rounded-lg p-3 bg-white">
                 {!isTicketClosed && services.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {services
-                      .filter(service => canEmployeePerformService(selectedTechnicianId || lastUsedEmployeeId, service.service_id))
-                      .map((service) => (
+                  <>
+                    {/* Category Filter Pills */}
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {categoryOptions.map((category) => (
+                        <button
+                          key={category}
+                          type="button"
+                          onClick={() => setSelectedCategory(category)}
+                          className={`px-3 py-1.5 text-xs rounded-full font-medium transition-colors ${
+                            selectedCategory === category
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {category === 'all' ? 'All' : category}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Service Buttons - Top 10 most popular */}
+                    <div className="flex flex-wrap gap-2">
+                      {services
+                        .filter(service => selectedCategory === 'all' || service.category === selectedCategory)
+                        .filter(service => canEmployeePerformService(selectedTechnicianId || lastUsedEmployeeId, service.service_id))
+                        .slice(0, 10)
+                        .map((service) => (
                       <button
                         key={service.store_service_id}
                         type="button"
@@ -1886,7 +1912,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     >
                       CUSTOM
                     </button>
-                  </div>
+                    </div>
+                  </>
                 )}
               </div>
             ) : (
@@ -1933,6 +1960,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                             value={item.service_id}
                             onChange={(e) => updateItem(index, 'service_id', e.target.value)}
                             options={services
+                              .filter(s => selectedCategory === 'all' || s.category === selectedCategory)
                               .filter(s => canEmployeePerformService(item?.employee_id || selectedTechnicianId || lastUsedEmployeeId, s.id))
                               .map((s) => ({
                                 value: s.id,
