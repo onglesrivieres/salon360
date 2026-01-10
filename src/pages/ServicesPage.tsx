@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Store as StoreIcon, Archive, Calculator, X, Check } from 'lucide-react';
+import { Plus, Search, Store as StoreIcon, Archive, Calculator, X, Check, ChevronUp, ChevronDown, Settings, Pencil } from 'lucide-react';
 import { supabase, StoreServiceWithDetails, StoreServiceCategory } from '../lib/supabase';
+import { CATEGORY_COLORS, getCategoryBadgeClasses, CategoryColorKey } from '../lib/category-colors';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { NumericInput } from '../components/ui/NumericInput';
@@ -12,6 +13,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 
 type ServiceStatus = 'active' | 'inactive' | 'archived';
+type SortColumn = 'code' | 'name' | 'category' | 'price' | 'duration_min' | 'status';
+type SortDirection = 'asc' | 'desc';
 
 export function ServicesPage() {
   const [services, setServices] = useState<StoreServiceWithDetails[]>([]);
@@ -19,10 +22,20 @@ export function ServicesPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | ServiceStatus>('all');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingService, setEditingService] = useState<StoreServiceWithDetails | null>(null);
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
+
+  // Category modal state
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState('');
+  const [editCategoryColor, setEditCategoryColor] = useState<CategoryColorKey>('pink');
+  const [savingCategoryEdit, setSavingCategoryEdit] = useState(false);
 
   // Category dropdown state
   const [categories, setCategories] = useState<StoreServiceCategory[]>([]);
@@ -68,13 +81,170 @@ export function ServicesPage() {
       filtered = filtered.filter((s) => getServiceStatus(s) === filterStatus);
     }
 
+    if (filterCategory !== 'all') {
+      filtered = filtered.filter((s) => s.category === filterCategory);
+    }
+
+    // Apply sorting
+    if (sortColumn) {
+      filtered = [...filtered].sort((a, b) => {
+        let aVal: string | number;
+        let bVal: string | number;
+
+        if (sortColumn === 'status') {
+          aVal = getServiceStatus(a);
+          bVal = getServiceStatus(b);
+        } else if (sortColumn === 'price' || sortColumn === 'duration_min') {
+          aVal = a[sortColumn];
+          bVal = b[sortColumn];
+        } else {
+          aVal = a[sortColumn]?.toLowerCase() || '';
+          bVal = b[sortColumn]?.toLowerCase() || '';
+        }
+
+        if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
     setFilteredServices(filtered);
-  }, [services, searchTerm, filterStatus]);
+  }, [services, searchTerm, filterStatus, filterCategory, sortColumn, sortDirection]);
 
   function getServiceStatus(service: StoreServiceWithDetails): ServiceStatus {
     if (service.archived) return 'archived';
     if (service.active) return 'active';
     return 'inactive';
+  }
+
+  function handleSort(column: SortColumn) {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  }
+
+  function getCategoryColor(categoryName: string): string {
+    const category = categories.find((c) => c.name === categoryName);
+    return category?.color || 'pink';
+  }
+
+  function openCategoryModal() {
+    setEditingCategoryId(null);
+    setEditCategoryName('');
+    setEditCategoryColor('pink');
+    setIsCategoryModalOpen(true);
+  }
+
+  function startEditCategory(category: StoreServiceCategory) {
+    setEditingCategoryId(category.id);
+    setEditCategoryName(category.name);
+    setEditCategoryColor((category.color as CategoryColorKey) || 'pink');
+  }
+
+  function cancelEditCategory() {
+    setEditingCategoryId(null);
+    setEditCategoryName('');
+    setEditCategoryColor('pink');
+  }
+
+  async function handleSaveCategoryEdit(categoryId: string, originalName: string) {
+    if (!selectedStoreId) return;
+
+    const trimmedName = editCategoryName.trim();
+    if (!trimmedName) {
+      showToast('Category name cannot be empty', 'error');
+      return;
+    }
+
+    const existingCategory = categories.find(
+      (cat) => cat.id !== categoryId && cat.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (existingCategory) {
+      showToast('A category with this name already exists', 'error');
+      return;
+    }
+
+    try {
+      setSavingCategoryEdit(true);
+
+      const { error: updateError } = await supabase
+        .from('store_service_categories')
+        .update({
+          name: trimmedName,
+          color: editCategoryColor,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', categoryId);
+
+      if (updateError) throw updateError;
+
+      if (trimmedName !== originalName) {
+        await supabase
+          .from('store_services')
+          .update({ category: trimmedName })
+          .eq('store_id', selectedStoreId)
+          .eq('category', originalName);
+      }
+
+      await fetchCategories();
+      await fetchServices();
+      setEditingCategoryId(null);
+      showToast('Category updated successfully', 'success');
+    } catch (error: any) {
+      console.error('Error updating category:', error);
+      showToast(error.message || 'Failed to update category', 'error');
+    } finally {
+      setSavingCategoryEdit(false);
+    }
+  }
+
+  async function handleAddNewCategoryInModal() {
+    if (!selectedStoreId) return;
+
+    const trimmedName = editCategoryName.trim();
+    if (!trimmedName) {
+      showToast('Category name cannot be empty', 'error');
+      return;
+    }
+
+    const existingCategory = categories.find(
+      (cat) => cat.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (existingCategory) {
+      showToast('A category with this name already exists', 'error');
+      return;
+    }
+
+    try {
+      setSavingCategoryEdit(true);
+
+      const { error } = await supabase
+        .from('store_service_categories')
+        .insert({
+          store_id: selectedStoreId,
+          name: trimmedName,
+          color: editCategoryColor,
+          display_order: categories.length,
+          is_active: true,
+        });
+
+      if (error) throw error;
+
+      await fetchCategories();
+      setEditCategoryName('');
+      setEditCategoryColor('pink');
+      showToast('Category created successfully', 'success');
+    } catch (error: any) {
+      console.error('Error creating category:', error);
+      showToast(error.message || 'Failed to create category', 'error');
+    } finally {
+      setSavingCategoryEdit(false);
+    }
   }
 
   async function fetchServices() {
@@ -479,10 +649,16 @@ export function ServicesPage() {
           </p>
         </div>
         {canManage && (
-          <Button onClick={openDrawerForNew} size="sm">
-            <Plus className="w-4 h-4 mr-1" />
-            Add Service
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={openCategoryModal} size="sm" variant="ghost">
+              <Settings className="w-4 h-4 mr-1" />
+              Manage Categories
+            </Button>
+            <Button onClick={openDrawerForNew} size="sm">
+              <Plus className="w-4 h-4 mr-1" />
+              Add Service
+            </Button>
+          </div>
         )}
       </div>
 
@@ -501,10 +677,21 @@ export function ServicesPage() {
             </div>
           </div>
           <Select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+          >
+            <option value="all">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.name}>
+                {cat.name}
+              </option>
+            ))}
+          </Select>
+          <Select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
             options={[
-              { value: 'all', label: 'All Services' },
+              { value: 'all', label: 'All Status' },
               { value: 'active', label: 'Active Only' },
               { value: 'inactive', label: 'Inactive Only' },
               { value: 'archived', label: 'Archived Only' },
@@ -516,23 +703,71 @@ export function ServicesPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Code
+                <th
+                  className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('code')}
+                >
+                  <div className="flex items-center gap-1">
+                    Code
+                    {sortColumn === 'code' && (
+                      sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                    )}
+                  </div>
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
+                <th
+                  className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('name')}
+                >
+                  <div className="flex items-center gap-1">
+                    Name
+                    {sortColumn === 'name' && (
+                      sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                    )}
+                  </div>
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
+                <th
+                  className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('category')}
+                >
+                  <div className="flex items-center gap-1">
+                    Category
+                    {sortColumn === 'category' && (
+                      sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                    )}
+                  </div>
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Price
+                <th
+                  className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('price')}
+                >
+                  <div className="flex items-center gap-1">
+                    Price
+                    {sortColumn === 'price' && (
+                      sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                    )}
+                  </div>
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Duration
+                <th
+                  className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('duration_min')}
+                >
+                  <div className="flex items-center gap-1">
+                    Duration
+                    {sortColumn === 'duration_min' && (
+                      sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                    )}
+                  </div>
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                <th
+                  className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('status')}
+                >
+                  <div className="flex items-center gap-1">
+                    Status
+                    {sortColumn === 'status' && (
+                      sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                    )}
+                  </div>
                 </th>
               </tr>
             </thead>
@@ -553,8 +788,12 @@ export function ServicesPage() {
                     <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
                       {service.name}
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600">
-                      {service.category}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getCategoryBadgeClasses(getCategoryColor(service.category))}`}
+                      >
+                        {service.category}
+                      </span>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
                       ${service.price.toFixed(2)}
@@ -813,6 +1052,154 @@ export function ServicesPage() {
           </div>
         </form>
       </Drawer>
+
+      {/* Category Management Modal */}
+      {isCategoryModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div
+              className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
+              onClick={() => setIsCategoryModalOpen(false)}
+            />
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            <div className="inline-block w-full max-w-lg p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-lg relative">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Manage Service Categories</h3>
+                <button
+                  onClick={() => setIsCategoryModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Category List */}
+              <div className="space-y-2 mb-4 max-h-64 overflow-y-auto">
+                {categories.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No categories yet. Add one below.</p>
+                ) : (
+                  categories.map((category) => (
+                    <div
+                      key={category.id}
+                      className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                    >
+                      {editingCategoryId === category.id ? (
+                        <>
+                          <Input
+                            value={editCategoryName}
+                            onChange={(e) => setEditCategoryName(e.target.value)}
+                            placeholder="Category name"
+                            className="flex-1"
+                            disabled={savingCategoryEdit}
+                          />
+                          <div className="flex gap-1">
+                            {CATEGORY_COLORS.map((color) => (
+                              <button
+                                key={color.key}
+                                type="button"
+                                onClick={() => setEditCategoryColor(color.key)}
+                                className={`w-6 h-6 rounded-full ${color.bgClass} border-2 ${
+                                  editCategoryColor === color.key
+                                    ? 'ring-2 ring-offset-1 ring-blue-500'
+                                    : 'border-transparent'
+                                }`}
+                                title={color.label}
+                              />
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveCategoryEdit(category.id, category.name)}
+                            disabled={savingCategoryEdit || !editCategoryName.trim()}
+                            className="text-green-600 hover:text-green-700 p-1 disabled:text-gray-400"
+                            title="Save"
+                          >
+                            <Check className="w-5 h-5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelEditCategory}
+                            disabled={savingCategoryEdit}
+                            className="text-gray-600 hover:text-gray-700 p-1"
+                            title="Cancel"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getCategoryBadgeClasses(category.color || 'pink')}`}
+                          >
+                            {category.name}
+                          </span>
+                          <div className="flex-1" />
+                          <button
+                            type="button"
+                            onClick={() => startEditCategory(category)}
+                            className="text-gray-500 hover:text-gray-700 p-1"
+                            title="Edit"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Add New Category */}
+              <div className="border-t border-gray-200 pt-4">
+                <p className="text-sm font-medium text-gray-700 mb-2">Add New Category</p>
+                <div className="flex items-center gap-3">
+                  <Input
+                    value={editingCategoryId ? '' : editCategoryName}
+                    onChange={(e) => {
+                      if (!editingCategoryId) setEditCategoryName(e.target.value);
+                    }}
+                    placeholder="New category name"
+                    className="flex-1"
+                    disabled={savingCategoryEdit || !!editingCategoryId}
+                  />
+                  <div className="flex gap-1">
+                    {CATEGORY_COLORS.map((color) => (
+                      <button
+                        key={color.key}
+                        type="button"
+                        onClick={() => {
+                          if (!editingCategoryId) setEditCategoryColor(color.key);
+                        }}
+                        disabled={!!editingCategoryId}
+                        className={`w-6 h-6 rounded-full ${color.bgClass} border-2 ${
+                          !editingCategoryId && editCategoryColor === color.key
+                            ? 'ring-2 ring-offset-1 ring-blue-500'
+                            : 'border-transparent'
+                        } ${editingCategoryId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title={color.label}
+                      />
+                    ))}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleAddNewCategoryInModal}
+                    disabled={savingCategoryEdit || !editCategoryName.trim() || !!editingCategoryId}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-4 pt-4 border-t border-gray-200">
+                <Button variant="ghost" onClick={() => setIsCategoryModalOpen(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

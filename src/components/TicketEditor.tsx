@@ -10,6 +10,7 @@ import {
   TicketActivityLog,
   TechnicianWithQueue,
 } from '../lib/supabase';
+import { getCategoryColorClasses } from '../lib/category-colors';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
@@ -51,6 +52,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const [services, setServices] = useState<StoreServiceWithDetails[]>([]);
   const [employees, setEmployees] = useState<Technician[]>([]);
   const [sortedTechnicians, setSortedTechnicians] = useState<TechnicianWithQueue[]>([]);
+  const [categoryColors, setCategoryColors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [lastUsedEmployeeId, setLastUsedEmployeeId] = useState<string>('');
@@ -197,13 +199,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   };
 
   const getServiceColor = (category: string): string => {
-    const colorMap: Record<string, string> = {
-      'Soins de Pédicure': 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-2 border-blue-300',
-      'Soins de Manucure': 'bg-pink-100 text-pink-800 hover:bg-pink-200 border-2 border-pink-300',
-      'Extensions des Ongles': 'bg-purple-100 text-purple-800 hover:bg-purple-200 border-2 border-purple-300',
-      'Others': 'bg-teal-100 text-teal-800 hover:bg-teal-200 border-2 border-teal-300',
-    };
-    return colorMap[category] || 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-300';
+    const colorKey = categoryColors[category] || 'pink';
+    return `${getCategoryColorClasses(colorKey)} border-2`;
   };
 
   const [formData, setFormData] = useState({
@@ -356,7 +353,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     try {
       setLoading(true);
 
-      const [servicesRes, employeesRes] = await Promise.all([
+      const [servicesRes, employeesRes, categoriesRes] = await Promise.all([
         supabase.rpc('get_services_by_popularity', {
           p_store_id: selectedStoreId
         }),
@@ -365,12 +362,26 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           .select('*')
           .or('status.eq.Active,status.eq.active')
           .order('display_name'),
+        supabase
+          .from('store_service_categories')
+          .select('name, color')
+          .eq('store_id', selectedStoreId)
+          .eq('is_active', true),
       ]);
 
       if (servicesRes.error) throw servicesRes.error;
       if (employeesRes.error) throw employeesRes.error;
 
       setServices(servicesRes.data || []);
+
+      // Build category color map
+      if (categoriesRes.data) {
+        const colorMap: Record<string, string> = {};
+        categoriesRes.data.forEach((cat: { name: string; color: string }) => {
+          colorMap[cat.name] = cat.color;
+        });
+        setCategoryColors(colorMap);
+      }
 
       const allEmployees = (employeesRes.data || []).filter(emp =>
         (emp.role.includes('Technician') || emp.role.includes('Spa Expert')) && !emp.role.includes('Cashier')
