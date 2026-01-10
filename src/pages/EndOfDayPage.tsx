@@ -481,9 +481,10 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       await loadEODData();
 
       window.dispatchEvent(new CustomEvent('openingCashUpdated'));
-    } catch (error) {
-      showToast('Failed to save opening cash', 'error');
-      console.error(error);
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.error_description || 'Unknown error';
+      showToast(`Failed to save opening cash: ${errorMessage}`, 'error');
+      console.error('Opening cash save error:', error);
     } finally {
       setSaving(false);
     }
