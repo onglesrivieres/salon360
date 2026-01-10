@@ -260,10 +260,24 @@ export function ServicesPage() {
           return;
         }
 
+        // First, find or create the global service to get service_id
+        const { data: serviceId, error: globalServiceError } = await supabase
+          .rpc('find_or_create_global_service', {
+            p_code: formData.code.toUpperCase(),
+            p_name: formData.name,
+            p_category: formData.category,
+            p_base_price: parseFloat(formData.price),
+            p_duration_min: parseInt(formData.duration_min)
+          });
+
+        if (globalServiceError) throw globalServiceError;
+
+        // Then insert into store_services with the service_id
         const { error: storeServiceError } = await supabase
           .from('store_services')
           .insert({
             store_id: selectedStoreId,
+            service_id: serviceId,
             code: formData.code.toUpperCase(),
             name: formData.name,
             category: formData.category,
