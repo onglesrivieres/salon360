@@ -183,11 +183,24 @@ export function ServicesPage() {
       if (updateError) throw updateError;
 
       if (trimmedName !== originalName) {
-        await supabase
+        const { data: updateData, error: updateError } = await supabase
           .from('store_services')
           .update({ category: trimmedName })
           .eq('store_id', selectedStoreId)
           .eq('category', originalName);
+
+        if (updateError) {
+          console.error('Error updating services for renamed category:', updateError);
+          // Rollback: revert the category name back to originalName
+          await supabase
+            .from('store_service_categories')
+            .update({
+              name: originalName,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', categoryId);
+          throw new Error(`Failed to update services with new category name: ${updateError.message}`);
+        }
       }
 
       await fetchCategories();

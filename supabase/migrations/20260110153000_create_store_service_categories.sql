@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS public.store_service_categories (
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now(),
   CONSTRAINT store_service_categories_name_not_empty CHECK (name <> ''),
+  CONSTRAINT store_service_categories_valid_color CHECK (color IN ('pink', 'blue', 'purple', 'green', 'yellow')),
   CONSTRAINT store_service_categories_unique_name UNIQUE (store_id, name)
 );
 
