@@ -1854,12 +1854,12 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       ))}
                     </div>
 
-                    {/* Service Buttons - Top 10 most popular */}
+                    {/* Service Buttons - Top 10 for Popular, all for other categories */}
                     <div className="flex flex-wrap gap-2">
                       {services
                         .filter(service => selectedCategory === 'all' || service.category === selectedCategory)
                         .filter(service => canEmployeePerformService(selectedTechnicianId || lastUsedEmployeeId, service.service_id))
-                        .slice(0, 10)
+                        .slice(0, selectedCategory === 'all' ? 10 : undefined)
                         .map((service) => (
                       <button
                         key={service.store_service_id}
