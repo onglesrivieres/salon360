@@ -53,6 +53,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const [employees, setEmployees] = useState<Technician[]>([]);
   const [sortedTechnicians, setSortedTechnicians] = useState<TechnicianWithQueue[]>([]);
   const [categoryColors, setCategoryColors] = useState<Record<string, string>>({});
+  const [categoryOptions, setCategoryOptions] = useState<string[]>(['all']);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [lastUsedEmployeeId, setLastUsedEmployeeId] = useState<string>('');
@@ -115,9 +116,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-
-  // Category options for filtering services
-  const categoryOptions = ['all', 'Manicure', 'Pedicure', 'Extensions des Cils', 'Epilation'];
 
   const calculateTimeRemaining = (tech: TechnicianWithQueue): string => {
     if (!tech.ticket_start_time || !tech.estimated_duration_min) {
@@ -370,7 +368,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           .from('store_service_categories')
           .select('name, color')
           .eq('store_id', selectedStoreId)
-          .eq('is_active', true),
+          .eq('is_active', true)
+          .order('display_order', { ascending: true }),
       ]);
 
       if (servicesRes.error) throw servicesRes.error;
@@ -378,13 +377,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
       setServices(servicesRes.data || []);
 
-      // Build category color map
+      // Build category color map and options
       if (categoriesRes.data) {
         const colorMap: Record<string, string> = {};
+        const options: string[] = ['all'];
         categoriesRes.data.forEach((cat: { name: string; color: string }) => {
           colorMap[cat.name] = cat.color;
+          options.push(cat.name);
         });
         setCategoryColors(colorMap);
+        setCategoryOptions(options);
       }
 
       const allEmployees = (employeesRes.data || []).filter(emp =>
