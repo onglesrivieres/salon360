@@ -10,6 +10,7 @@
   - `id` (uuid, primary key) - Unique identifier
   - `store_id` (uuid) - Store this category belongs to
   - `name` (text) - Category name
+  - `color` (text) - Category color key (pink, blue, purple, green, yellow)
   - `display_order` (integer) - Sort order in UI
   - `is_active` (boolean) - Whether category is available for selection
   - `created_at` / `updated_at` timestamps
@@ -25,6 +26,7 @@ CREATE TABLE IF NOT EXISTS public.store_service_categories (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   store_id uuid NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
   name text NOT NULL,
+  color text NOT NULL DEFAULT 'pink',
   display_order integer NOT NULL DEFAULT 0,
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamptz DEFAULT now(),
@@ -100,6 +102,12 @@ FROM public.store_services
 WHERE category IS NOT NULL AND category <> ''
 ON CONFLICT (store_id, name) DO NOTHING;
 
+-- Step 6b: Set colors for seeded categories based on their names
+UPDATE public.store_service_categories SET color = 'blue' WHERE name ILIKE '%pédicure%' OR name ILIKE '%pedicure%';
+UPDATE public.store_service_categories SET color = 'pink' WHERE name ILIKE '%manucure%' OR name ILIKE '%manicure%';
+UPDATE public.store_service_categories SET color = 'purple' WHERE name ILIKE '%extension%';
+UPDATE public.store_service_categories SET color = 'green' WHERE name = 'Others';
+
 -- Step 7: Add helpful comments
 COMMENT ON TABLE public.store_service_categories IS
   'Store-specific service category definitions for dropdown selection';
@@ -112,3 +120,6 @@ COMMENT ON COLUMN public.store_service_categories.name IS
 
 COMMENT ON COLUMN public.store_service_categories.display_order IS
   'Sort order for dropdown display (lower numbers appear first)';
+
+COMMENT ON COLUMN public.store_service_categories.color IS
+  'Category color key: pink, blue, purple, green, yellow';
