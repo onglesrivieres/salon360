@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Store as StoreIcon, Archive, Calculator } from 'lucide-react';
-import { supabase, StoreServiceWithDetails } from '../lib/supabase';
+import { Plus, Search, Store as StoreIcon, Archive, Calculator, X, Check } from 'lucide-react';
+import { supabase, StoreServiceWithDetails, StoreServiceCategory } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { NumericInput } from '../components/ui/NumericInput';
@@ -24,6 +24,13 @@ export function ServicesPage() {
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
+  // Category dropdown state
+  const [categories, setCategories] = useState<StoreServiceCategory[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [savingCategory, setSavingCategory] = useState(false);
+
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -42,6 +49,7 @@ export function ServicesPage() {
   useEffect(() => {
     if (selectedStoreId) {
       fetchServices();
+      fetchCategories();
     }
   }, [selectedStoreId]);
 
@@ -89,6 +97,110 @@ export function ServicesPage() {
       showToast('Failed to load services', 'error');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchCategories() {
+    if (!selectedStoreId) return;
+
+    try {
+      setLoadingCategories(true);
+      const { data, error } = await supabase
+        .from('store_service_categories')
+        .select('*')
+        .eq('store_id', selectedStoreId)
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      showToast('Failed to load categories', 'error');
+    } finally {
+      setLoadingCategories(false);
+    }
+  }
+
+  function handleCategoryDropdownChange(value: string) {
+    if (value === '__add_new__') {
+      setIsAddingCategory(true);
+      setNewCategoryName('');
+    } else {
+      setFormData({ ...formData, category: value });
+      setIsAddingCategory(false);
+    }
+  }
+
+  async function handleSaveNewCategory() {
+    if (!selectedStoreId) {
+      showToast('No store selected', 'error');
+      return;
+    }
+
+    const trimmedName = newCategoryName.trim();
+    if (!trimmedName) {
+      showToast('Category name cannot be empty', 'error');
+      return;
+    }
+
+    // Check for duplicate (case-insensitive)
+    const existingCategory = categories.find(
+      (cat) => cat.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (existingCategory) {
+      // Use existing category instead of creating duplicate
+      setFormData({ ...formData, category: existingCategory.name });
+      setIsAddingCategory(false);
+      setNewCategoryName('');
+      showToast(`Using existing category: ${existingCategory.name}`, 'info');
+      return;
+    }
+
+    try {
+      setSavingCategory(true);
+
+      const { data, error } = await supabase
+        .from('store_service_categories')
+        .insert({
+          store_id: selectedStoreId,
+          name: trimmedName,
+          display_order: categories.length,
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '23505') {
+          // Unique constraint violation - category already exists
+          showToast('A category with this name already exists', 'error');
+          return;
+        }
+        throw error;
+      }
+
+      // Update categories list and select the new category
+      setCategories((prev) => [...prev, data]);
+      setFormData({ ...formData, category: data.name });
+      setIsAddingCategory(false);
+      setNewCategoryName('');
+      showToast('Category created successfully', 'success');
+    } catch (error: any) {
+      console.error('Error creating category:', error);
+      showToast(error.message || 'Failed to create category', 'error');
+    } finally {
+      setSavingCategory(false);
+    }
+  }
+
+  function handleCancelAddCategory() {
+    setIsAddingCategory(false);
+    setNewCategoryName('');
+    // Reset to empty if no category was previously selected
+    if (!formData.category || formData.category === '__add_new__') {
+      setFormData({ ...formData, category: '' });
     }
   }
 
@@ -143,12 +255,14 @@ export function ServicesPage() {
     }
     setEditingService(null);
     setAverageDuration(null);
+    setIsAddingCategory(false);
+    setNewCategoryName('');
     setFormData({
       code: '',
       name: '',
       price: '',
       duration_min: '30',
-      category: 'Extensions des Ongles',
+      category: '',
       status: 'active',
     });
     setIsDrawerOpen(true);
@@ -161,6 +275,8 @@ export function ServicesPage() {
     }
     setEditingService(service);
     setAverageDuration(null);
+    setIsAddingCategory(false);
+    setNewCategoryName('');
     setFormData({
       code: service.code,
       name: service.name,
@@ -176,6 +292,8 @@ export function ServicesPage() {
     setIsDrawerOpen(false);
     setEditingService(null);
     setAverageDuration(null);
+    setIsAddingCategory(false);
+    setNewCategoryName('');
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -491,12 +609,67 @@ export function ServicesPage() {
             placeholder="e.g., Classic Manicure"
             required
           />
-          <Input
-            label="Category"
-            value={formData.category}
-            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-            placeholder="e.g., Extensions des Ongles"
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Category
+            </label>
+            {isAddingCategory ? (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Enter new category name"
+                    autoFocus
+                    disabled={savingCategory}
+                    className="flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveNewCategory}
+                    disabled={savingCategory || !newCategoryName.trim()}
+                    className="text-green-600 hover:text-green-700 p-2 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    title="Save"
+                  >
+                    <Check className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelAddCategory}
+                    disabled={savingCategory}
+                    className="text-gray-600 hover:text-gray-700 p-2"
+                    title="Cancel"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                {categories.length > 0 && (
+                  <p className="text-xs text-gray-500">
+                    Existing: {categories.map((c) => c.name).join(', ')}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <Select
+                value={formData.category}
+                onChange={(e) => handleCategoryDropdownChange(e.target.value)}
+                disabled={loadingCategories}
+              >
+                <option value="">Select Category</option>
+                <option value="__add_new__" className="text-blue-600 font-medium">
+                  + Add New Category
+                </option>
+                {categories.length > 0 && (
+                  <option disabled>──────────</option>
+                )}
+                {categories.map((category) => (
+                  <option key={category.id} value={category.name}>
+                    {category.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Price *</label>
             <NumericInput
