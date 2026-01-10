@@ -1849,7 +1849,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                         >
-                          {category === 'all' ? 'All' : category}
+                          {category === 'all' ? 'Popular' : category}
                         </button>
                       ))}
                     </div>
