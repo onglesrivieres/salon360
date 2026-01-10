@@ -506,8 +506,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         <div className="text-center mb-6 sm:mb-8">
           <div className="inline-flex items-center justify-center mb-3 sm:mb-4">
             <img
-              src="/frame (3) copy.png"
-              alt="QR Code"
+              src="/salon365-logo.png"
+              alt="Salon365 Logo"
               className="w-32 h-32 sm:w-40 sm:h-40"
             />
           </div>
