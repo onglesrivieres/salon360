@@ -123,6 +123,16 @@ export interface StoreServiceWithDetails {
   usage_count?: number;
 }
 
+export interface StoreServiceCategory {
+  id: string;
+  store_id: string;
+  name: string;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export type ApprovalStatus = 'pending_approval' | 'approved' | 'rejected' | 'auto_approved';
 
 export interface SaleTicket {
