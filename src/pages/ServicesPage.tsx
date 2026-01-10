@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Store as StoreIcon, Archive, Calculator, X, Check, ChevronUp, ChevronDown, Settings, Pencil } from 'lucide-react';
+import { Plus, Search, Store as StoreIcon, Archive, Calculator, X, Check, ChevronUp, ChevronDown, Settings, Pencil, Trash2 } from 'lucide-react';
 import { supabase, StoreServiceWithDetails, StoreServiceCategory } from '../lib/supabase';
 import { CATEGORY_COLORS, getCategoryBadgeClasses, CategoryColorKey } from '../lib/category-colors';
 import { Button } from '../components/ui/Button';
@@ -7,6 +7,7 @@ import { Input } from '../components/ui/Input';
 import { NumericInput } from '../components/ui/NumericInput';
 import { Select } from '../components/ui/Select';
 import { Drawer } from '../components/ui/Drawer';
+import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -36,6 +37,8 @@ export function ServicesPage() {
   const [editCategoryName, setEditCategoryName] = useState('');
   const [editCategoryColor, setEditCategoryColor] = useState<CategoryColorKey>('pink');
   const [savingCategoryEdit, setSavingCategoryEdit] = useState(false);
+  const [deleteCategoryModalOpen, setDeleteCategoryModalOpen] = useState(false);
+  const [deletingCategory, setDeletingCategory] = useState<StoreServiceCategory | null>(null);
 
   // Category dropdown state
   const [categories, setCategories] = useState<StoreServiceCategory[]>([]);
@@ -129,6 +132,10 @@ export function ServicesPage() {
   function getCategoryColor(categoryName: string): string {
     const category = categories.find((c) => c.name === categoryName);
     return category?.color || 'pink';
+  }
+
+  function getServiceCountByCategory(categoryName: string): number {
+    return services.filter(s => s.category === categoryName).length;
   }
 
   function openCategoryModal() {
@@ -242,6 +249,78 @@ export function ServicesPage() {
     } catch (error: any) {
       console.error('Error creating category:', error);
       showToast(error.message || 'Failed to create category', 'error');
+    } finally {
+      setSavingCategoryEdit(false);
+    }
+  }
+
+  function openDeleteCategoryModal(category: StoreServiceCategory) {
+    setDeletingCategory(category);
+    setDeleteCategoryModalOpen(true);
+  }
+
+  async function handleDeleteCategory() {
+    if (!deletingCategory || !selectedStoreId) return;
+
+    try {
+      setSavingCategoryEdit(true);
+
+      // Move services to uncategorized
+      await supabase
+        .from('store_services')
+        .update({ category: '' })
+        .eq('store_id', selectedStoreId)
+        .eq('category', deletingCategory.name);
+
+      // Delete the category
+      const { error } = await supabase
+        .from('store_service_categories')
+        .delete()
+        .eq('id', deletingCategory.id);
+
+      if (error) throw error;
+
+      await fetchCategories();
+      await fetchServices();
+      setDeleteCategoryModalOpen(false);
+      setDeletingCategory(null);
+      showToast('Category deleted successfully', 'success');
+    } catch (error: any) {
+      console.error('Error deleting category:', error);
+      showToast(error.message || 'Failed to delete category', 'error');
+    } finally {
+      setSavingCategoryEdit(false);
+    }
+  }
+
+  async function handleMoveCategory(categoryId: string, direction: 'up' | 'down') {
+    const currentIndex = categories.findIndex(c => c.id === categoryId);
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= categories.length) return;
+
+    try {
+      setSavingCategoryEdit(true);
+
+      const currentCategory = categories[currentIndex];
+      const swapCategory = categories[newIndex];
+
+      // Swap display_order values
+      await supabase
+        .from('store_service_categories')
+        .update({ display_order: newIndex })
+        .eq('id', currentCategory.id);
+
+      await supabase
+        .from('store_service_categories')
+        .update({ display_order: currentIndex })
+        .eq('id', swapCategory.id);
+
+      await fetchCategories();
+    } catch (error: any) {
+      console.error('Error reordering category:', error);
+      showToast('Failed to reorder category', 'error');
     } finally {
       setSavingCategoryEdit(false);
     }
@@ -1078,10 +1157,10 @@ export function ServicesPage() {
                 {categories.length === 0 ? (
                   <p className="text-sm text-gray-500 text-center py-4">No categories yet. Add one below.</p>
                 ) : (
-                  categories.map((category) => (
+                  categories.map((category, index) => (
                     <div
                       key={category.id}
-                      className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                      className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg"
                     >
                       {editingCategoryId === category.id ? (
                         <>
@@ -1136,11 +1215,37 @@ export function ServicesPage() {
                           <div className="flex-1" />
                           <button
                             type="button"
+                            onClick={() => handleMoveCategory(category.id, 'up')}
+                            disabled={index === 0 || savingCategoryEdit}
+                            className={`p-1 ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'}`}
+                            title="Move up"
+                          >
+                            <ChevronUp className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveCategory(category.id, 'down')}
+                            disabled={index === categories.length - 1 || savingCategoryEdit}
+                            className={`p-1 ${index === categories.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'}`}
+                            title="Move down"
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => startEditCategory(category)}
                             className="text-gray-500 hover:text-gray-700 p-1"
                             title="Edit"
                           >
                             <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openDeleteCategoryModal(category)}
+                            className="text-gray-500 hover:text-red-600 p-1"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </>
                       )}
@@ -1200,6 +1305,29 @@ export function ServicesPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Category Confirmation Modal */}
+      <Modal
+        isOpen={deleteCategoryModalOpen}
+        onClose={() => {
+          setDeleteCategoryModalOpen(false);
+          setDeletingCategory(null);
+        }}
+        title="Delete Category"
+        onConfirm={handleDeleteCategory}
+        confirmText={savingCategoryEdit ? 'Deleting...' : 'Delete'}
+        confirmVariant="danger"
+        cancelText="Cancel"
+      >
+        <p className="text-gray-600">
+          Are you sure you want to delete <strong>"{deletingCategory?.name}"</strong>?
+        </p>
+        {deletingCategory && getServiceCountByCategory(deletingCategory.name) > 0 && (
+          <p className="text-gray-600 mt-2">
+            {getServiceCountByCategory(deletingCategory.name)} service(s) will be moved to uncategorized.
+          </p>
+        )}
+      </Modal>
     </div>
   );
 }
