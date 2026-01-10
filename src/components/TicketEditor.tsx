@@ -672,12 +672,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   }
 
   function calculateTotalDiscount(): number {
-    const subtotal = calculateSubtotal();
-    const discountPercentage = parseFloat(formData.discount_percentage) || 0;
     const discountAmount = parseFloat(formData.discount_amount) || 0;
-
-    const percentageDiscount = (subtotal * discountPercentage) / 100;
-    return percentageDiscount + discountAmount;
+    const discountAmountCash = parseFloat(formData.discount_amount_cash) || 0;
+    return discountAmount + discountAmountCash;
   }
 
   function calculateTotalCashPayment(): number {
@@ -929,6 +926,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       const difference = subtotalAfterDiscount - totalPayments;
       if (difference > 0) {
         showToast(`Payment amount ($${totalPayments.toFixed(2)}) is less than service total ($${subtotalAfterDiscount.toFixed(2)}). Please adjust payment amounts.`, 'error');
+        return;
       }
     }
 
@@ -984,6 +982,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_phone: formData.customer_phone,
           payment_method: formData.payment_method || null,
           total,
+          discount: calculateTotalDiscount(),
           notes: formData.notes,
           saved_by: session?.employee_id,
           updated_at: new Date().toISOString(),
@@ -1093,6 +1092,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_phone: formData.customer_phone,
           payment_method: formData.payment_method || null,
           total,
+          discount: calculateTotalDiscount(),
           notes: formData.notes,
           store_id: selectedStoreId || null,
           created_by: session?.employee_id,
@@ -2558,8 +2558,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                         value={tempPaymentData.discount_percentage_cash}
                         onChange={(e) => {
                           const percentage = parseFloat(e.target.value) || 0;
-                          const paymentCash = parseFloat(tempPaymentData.payment_cash) || 0;
-                          const calculatedAmount = (paymentCash * percentage / 100).toFixed(2);
+                          const subtotal = calculateSubtotal();
+                          const calculatedAmount = (subtotal * percentage / 100).toFixed(2);
                           setTempPaymentData({
                             ...tempPaymentData,
                             discount_percentage_cash: e.target.value,

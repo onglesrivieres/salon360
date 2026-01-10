@@ -221,7 +221,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   }
 
   function getSubtotal(ticket: SaleTicket): number {
-    return ticket.total + ticket.discount;
+    return (ticket.total || 0) + (ticket.discount || 0);
   }
 
   function getApprovalStatusBadge(ticket: SaleTicket) {
