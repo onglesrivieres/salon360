@@ -127,6 +127,7 @@ export interface StoreServiceCategory {
   id: string;
   store_id: string;
   name: string;
+  color: string;
   display_order: number;
   is_active: boolean;
   created_at: string;
