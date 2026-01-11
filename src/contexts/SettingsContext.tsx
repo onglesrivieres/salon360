@@ -129,6 +129,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   function getSettingBoolean(key: string, defaultValue: boolean = false): boolean {
     const value = getSetting(key, defaultValue);
+    // Handle string "true"/"false" values (from incorrect migrations)
+    if (typeof value === 'string') {
+      return value.toLowerCase() === 'true';
+    }
     return Boolean(value);
   }
 
