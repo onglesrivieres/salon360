@@ -80,6 +80,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const showCustomerName = getSettingBoolean('show_customer_name_field', true);
   const showCustomerPhone = getSettingBoolean('show_customer_phone_field', true);
   const showTodaysColor = getSettingBoolean('show_todays_color_field', true);
+  const requireTodaysColor = getSettingBoolean('require_todays_color_on_tickets', false);
 
   const isApproved = ticket?.approval_status === 'approved' || ticket?.approval_status === 'auto_approved';
 
@@ -119,6 +120,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const canReopen = session && session.role_permission && Permissions.tickets.canReopen(session.role_permission);
 
   const canDelete = session && session.role_permission && Permissions.tickets.canDelete(session.role_permission);
+
+  // Check if user is Spa Expert or Technician (restricted roles for customer info)
+  const isRestrictedCustomerInfoRole = session?.role &&
+    (session.role.includes('Spa Expert') || session.role.includes('Technician'));
 
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>('');
   const [showCustomService, setShowCustomService] = useState(false);
@@ -985,6 +990,22 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       return;
     }
 
+    // Customer info validation - only when settings require them
+    if (requireCustomerName && showCustomerName && (!formData.customer_name || formData.customer_name.trim() === '')) {
+      showToast('Customer name is required', 'error');
+      return;
+    }
+
+    if (requireCustomerPhone && showCustomerPhone && (!formData.customer_phone || formData.customer_phone.trim() === '')) {
+      showToast('Customer phone number is required', 'error');
+      return;
+    }
+
+    if (requireTodaysColor && showTodaysColor && (!formData.todays_color || formData.todays_color.trim() === '')) {
+      showToast('Today\'s Color is required', 'error');
+      return;
+    }
+
     if (!selectedTechnicianId) {
       showToast('Technician is required', 'error');
       return;
@@ -1284,13 +1305,18 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       return;
     }
 
-    if (requireCustomerName && (!formData.customer_name || formData.customer_name.trim() === '')) {
+    if (requireCustomerName && showCustomerName && (!formData.customer_name || formData.customer_name.trim() === '')) {
       showToast('Customer name is required to close this ticket', 'error');
       return;
     }
 
-    if (requireCustomerPhone && (!formData.customer_phone || formData.customer_phone.trim() === '')) {
+    if (requireCustomerPhone && showCustomerPhone && (!formData.customer_phone || formData.customer_phone.trim() === '')) {
       showToast('Customer phone number is required to close this ticket', 'error');
+      return;
+    }
+
+    if (requireTodaysColor && showTodaysColor && (!formData.todays_color || formData.todays_color.trim() === '')) {
+      showToast('Today\'s Color is required to close this ticket', 'error');
       return;
     }
 
@@ -1879,25 +1905,36 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                         Customer Phone {requireCustomerPhone && <span className="text-red-600">*</span>}
                       </label>
                       <div className="relative">
-                        <input
-                          type="tel"
-                          value={formatPhoneNumber(formData.customer_phone)}
-                          onChange={(e) => {
-                            const digits = normalizePhoneNumber(e.target.value);
-                            setFormData({ ...formData, customer_phone: digits });
-                          }}
-                          disabled={isTicketClosed || isReadOnly}
-                          placeholder="(514) 123-4567"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                        />
-                        {clientLookup.isLoading && (
-                          <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                          </div>
+                        {isRestrictedCustomerInfoRole ? (
+                          <input
+                            type="text"
+                            value={formData.customer_phone ? '**********' : ''}
+                            disabled
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                          />
+                        ) : (
+                          <>
+                            <input
+                              type="tel"
+                              value={formatPhoneNumber(formData.customer_phone)}
+                              onChange={(e) => {
+                                const digits = normalizePhoneNumber(e.target.value);
+                                setFormData({ ...formData, customer_phone: digits });
+                              }}
+                              disabled={isTicketClosed || isReadOnly}
+                              placeholder="(514) 123-4567"
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            />
+                            {clientLookup.isLoading && (
+                              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
-                      {/* Client status indicator */}
-                      {showCustomerPhone && hasEnoughDigitsForLookup(formData.customer_phone) && !clientLookup.isLoading && !isTicketClosed && (
+                      {/* Client status indicator - hidden for restricted roles */}
+                      {!isRestrictedCustomerInfoRole && showCustomerPhone && hasEnoughDigitsForLookup(formData.customer_phone) && !clientLookup.isLoading && !isTicketClosed && (
                         <div className="mt-1">
                           {linkedClient ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
@@ -1927,16 +1964,19 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                         type="text"
                         value={formData.customer_name}
                         onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                        disabled={isTicketClosed || isReadOnly}
+                        disabled={isTicketClosed || isReadOnly || isRestrictedCustomerInfoRole}
                         placeholder="Enter customer name"
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
+                      {isRestrictedCustomerInfoRole && (
+                        <p className="text-xs text-gray-500 mt-1">Contact front desk to update</p>
+                      )}
                     </div>
                   )}
                   {showTodaysColor && (
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                        Today's Color
+                        Today's Color {requireTodaysColor && <span className="text-red-600">*</span>}
                       </label>
                       <input
                         type="text"
@@ -1950,16 +1990,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   )}
                 </div>
 
-                {/* Blacklist Warning */}
-                {linkedClient?.is_blacklisted && (
+                {/* Blacklist Warning - hidden for restricted roles */}
+                {!isRestrictedCustomerInfoRole && linkedClient?.is_blacklisted && (
                   <BlacklistWarning
                     client={linkedClient}
                     blacklistedByName={blacklistedByName}
                   />
                 )}
 
-                {/* Last Color Used */}
-                {linkedClient && clientLookup.lastColor && !isTicketClosed && (
+                {/* Last Color Used - hidden for restricted roles */}
+                {!isRestrictedCustomerInfoRole && linkedClient && clientLookup.lastColor && !isTicketClosed && (
                   <ColorDisplay
                     colorHistory={clientLookup.lastColor}
                     compact={true}
@@ -2273,7 +2313,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             )}
           </div>
 
-          {ticketId && (
+          {ticketId && !isRestrictedCustomerInfoRole && (
             <div className="border border-gray-200 rounded-lg p-2 bg-green-50">
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 Payment Method <span className="text-red-600">*</span>
