@@ -43,6 +43,7 @@ interface AttendanceSummary {
   [employeeId: string]: {
     employeeName: string;
     payType: string;
+    countOt: boolean;
     dates: {
       [date: string]: AttendanceSession[];
     };
@@ -79,6 +80,7 @@ export function AttendancePage() {
   const [selectedAttendance, setSelectedAttendance] = useState<StoreAttendance | null>(null);
   const [isShiftDetailModalOpen, setIsShiftDetailModalOpen] = useState(false);
   const [employeePayType, setEmployeePayType] = useState<'hourly' | 'daily' | 'commission' | null>(null);
+  const [employeeCountOtMap, setEmployeeCountOtMap] = useState<Record<string, boolean>>({});
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
@@ -125,6 +127,23 @@ export function AttendancePage() {
       if (error) throw error;
 
       setAttendanceData(data || []);
+
+      // Fetch count_ot values for all employees in the attendance data
+      if (data && data.length > 0) {
+        const employeeIds = [...new Set(data.map((r: StoreAttendance) => r.employee_id))];
+        const { data: employeesData } = await supabase
+          .from('employees')
+          .select('id, count_ot')
+          .in('id', employeeIds);
+
+        if (employeesData) {
+          const countOtMap: Record<string, boolean> = {};
+          employeesData.forEach((emp: { id: string; count_ot: boolean | null }) => {
+            countOtMap[emp.id] = emp.count_ot ?? true; // Default to true if not set
+          });
+          setEmployeeCountOtMap(countOtMap);
+        }
+      }
     } catch (error: any) {
       console.error('Error fetching attendance:', error);
       showToast('Failed to load attendance data', 'error');
@@ -203,6 +222,7 @@ export function AttendancePage() {
         summary[record.employee_id] = {
           employeeName: record.employee_name,
           payType: record.pay_type,
+          countOt: employeeCountOtMap[record.employee_id] ?? true,
           dates: {},
           totalHours: 0,
           totalRegularHours: 0,
@@ -243,11 +263,12 @@ export function AttendancePage() {
       });
       employee.isMultiStore = uniqueStores.size > 1;
 
-      // Calculate daily hours and OT for hourly employees
+      // Calculate daily hours and OT for hourly employees (only when countOt is enabled)
       Object.entries(employee.dates).forEach(([date, sessions]) => {
         const dailyTotal = sessions.reduce((sum, s) => sum + (s.totalHours || 0), 0);
 
-        if (employee.payType === 'hourly') {
+        if (employee.payType === 'hourly' && employee.countOt) {
+          // Hourly with OT counting enabled - calculate regular vs overtime
           const { regularHours, overtimeHours } = calculateOvertimeHours(dailyTotal);
           employee.dailyHours[date] = {
             totalHours: dailyTotal,
@@ -257,7 +278,7 @@ export function AttendancePage() {
           employee.totalRegularHours += regularHours;
           employee.totalOvertimeHours += overtimeHours;
         } else {
-          // For non-hourly, all hours are regular
+          // For non-hourly or when countOt is disabled, all hours are combined
           employee.dailyHours[date] = {
             totalHours: dailyTotal,
             regularHours: dailyTotal,
@@ -581,10 +602,10 @@ export function AttendancePage() {
                                   </div>
                                 );
                                 })}
-                                {/* Daily hours summary with OT breakdown for hourly employees only */}
+                                {/* Daily hours summary for hourly employees */}
                                 {dailyHoursSummary && employee.payType === 'hourly' && (
                                   <div className="text-[9px] font-semibold text-gray-900 border-t border-gray-300 pt-0.5 mt-0.5">
-                                    {dailyHoursSummary.overtimeHours > 0 ? (
+                                    {employee.countOt && dailyHoursSummary.overtimeHours > 0 ? (
                                       <>
                                         <div>{dailyHoursSummary.regularHours.toFixed(2)}</div>
                                         <div className="text-orange-600">+{dailyHoursSummary.overtimeHours.toFixed(2)} OT</div>
@@ -606,11 +627,17 @@ export function AttendancePage() {
                           // Daily employees - only show days present
                           <div>{employee.daysPresent}d</div>
                         ) : employee.payType === 'hourly' ? (
-                          // Hourly employees - show hours with OT breakdown
+                          // Hourly employees - show hours with OT breakdown if countOt is enabled
                           <div>
-                            <div>{employee.totalRegularHours.toFixed(2)}</div>
-                            {employee.totalOvertimeHours > 0 && (
-                              <div className="text-orange-600 text-[10px]">+{employee.totalOvertimeHours.toFixed(2)} OT</div>
+                            {employee.countOt ? (
+                              <>
+                                <div>{employee.totalRegularHours.toFixed(2)}</div>
+                                {employee.totalOvertimeHours > 0 && (
+                                  <div className="text-orange-600 text-[10px]">+{employee.totalOvertimeHours.toFixed(2)} OT</div>
+                                )}
+                              </>
+                            ) : (
+                              <div>{employee.totalHours.toFixed(2)}</div>
                             )}
                             {!isRestrictedRole && (
                               <div className="text-gray-600">{employee.daysPresent}d</div>
