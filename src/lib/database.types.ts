@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       app_versions: {
@@ -905,6 +880,127 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      end_of_day_records: {
+        Row: {
+          bill_1: number | null
+          bill_10: number | null
+          bill_100: number | null
+          bill_2: number | null
+          bill_20: number | null
+          bill_5: number | null
+          bill_50: number | null
+          closing_bill_1: number | null
+          closing_bill_10: number | null
+          closing_bill_100: number | null
+          closing_bill_2: number | null
+          closing_bill_20: number | null
+          closing_bill_5: number | null
+          closing_bill_50: number | null
+          closing_cash_amount: number | null
+          closing_coin_10: number | null
+          closing_coin_25: number | null
+          closing_coin_5: number | null
+          coin_10: number | null
+          coin_25: number | null
+          coin_5: number | null
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          notes: string | null
+          opening_cash_amount: number | null
+          store_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          bill_1?: number | null
+          bill_10?: number | null
+          bill_100?: number | null
+          bill_2?: number | null
+          bill_20?: number | null
+          bill_5?: number | null
+          bill_50?: number | null
+          closing_bill_1?: number | null
+          closing_bill_10?: number | null
+          closing_bill_100?: number | null
+          closing_bill_2?: number | null
+          closing_bill_20?: number | null
+          closing_bill_5?: number | null
+          closing_bill_50?: number | null
+          closing_cash_amount?: number | null
+          closing_coin_10?: number | null
+          closing_coin_25?: number | null
+          closing_coin_5?: number | null
+          coin_10?: number | null
+          coin_25?: number | null
+          coin_5?: number | null
+          created_at?: string
+          created_by?: string | null
+          date: string
+          id?: string
+          notes?: string | null
+          opening_cash_amount?: number | null
+          store_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          bill_1?: number | null
+          bill_10?: number | null
+          bill_100?: number | null
+          bill_2?: number | null
+          bill_20?: number | null
+          bill_5?: number | null
+          bill_50?: number | null
+          closing_bill_1?: number | null
+          closing_bill_10?: number | null
+          closing_bill_100?: number | null
+          closing_bill_2?: number | null
+          closing_bill_20?: number | null
+          closing_bill_5?: number | null
+          closing_bill_50?: number | null
+          closing_cash_amount?: number | null
+          closing_coin_10?: number | null
+          closing_coin_25?: number | null
+          closing_coin_5?: number | null
+          coin_10?: number | null
+          coin_25?: number | null
+          coin_5?: number | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          notes?: string | null
+          opening_cash_amount?: number | null
+          store_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "end_of_day_records_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "end_of_day_records_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "end_of_day_records_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]
@@ -2307,6 +2403,7 @@ export type Database = {
       }
       store_service_categories: {
         Row: {
+          color: string
           created_at: string | null
           display_order: number
           id: string
@@ -2316,6 +2413,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          color?: string
           created_at?: string | null
           display_order?: number
           id?: string
@@ -2325,6 +2423,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          color?: string
           created_at?: string | null
           display_order?: number
           id?: string
@@ -2582,7 +2681,7 @@ export type Database = {
           sale_ticket_id: string
           service_id: string | null
           started_at: string | null
-          store_service_id: string
+          store_service_id: string | null
           tip_customer_card: number | null
           tip_customer_cash: number | null
           tip_receptionist: number | null
@@ -2610,7 +2709,7 @@ export type Database = {
           sale_ticket_id: string
           service_id?: string | null
           started_at?: string | null
-          store_service_id: string
+          store_service_id?: string | null
           tip_customer_card?: number | null
           tip_customer_cash?: number | null
           tip_receptionist?: number | null
@@ -2638,7 +2737,7 @@ export type Database = {
           sale_ticket_id?: string
           service_id?: string | null
           started_at?: string | null
-          store_service_id?: string
+          store_service_id?: string | null
           tip_customer_card?: number | null
           tip_customer_cash?: number | null
           tip_receptionist?: number | null
@@ -3878,9 +3977,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       role_permission_type: [
