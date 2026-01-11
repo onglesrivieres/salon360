@@ -1559,7 +1559,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           </div>
         </div>
 
-        <div className="p-3 md:p-4 space-y-2.5 pb-20 md:pb-4">
+        <div className="p-3 md:p-4 space-y-2 pb-20 md:pb-4">
 
           {ticket?.approval_status === 'rejected' && ticket.requires_admin_review && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -1758,7 +1758,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             )}
           </div>
 
-          <div className="border border-gray-200 rounded-lg p-3 bg-purple-50">
+          <div className="border border-gray-200 rounded-lg p-2 bg-purple-50">
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Customer Type <span className="text-red-600">*</span>
             </label>
@@ -1846,7 +1846,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             )}
           </div>
 
-          <div className="border border-gray-200 rounded-lg p-3 bg-yellow-50">
+          <div className="border border-gray-200 rounded-lg p-2 bg-yellow-50">
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Service Item <span className="text-red-600">*</span>
             </label>
@@ -1937,10 +1937,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 )}
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {items.map((item, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-3 space-y-3 bg-white">
-                    <div className="flex items-center justify-between mb-2">
+                  <div key={index} className="border border-gray-200 rounded-lg p-2 space-y-2 bg-white">
+                    <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-semibold text-gray-600">
                         Service {items.length > 1 ? `#${index + 1}` : ''}
                       </span>
@@ -1979,18 +1979,27 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                             label="Service"
                             value={item.service_id}
                             onChange={(e) => updateItem(index, 'service_id', e.target.value)}
-                            options={[
-                              { value: '', label: '-- Select Service --' },
-                              ...services
-                                .filter(s => selectedCategory === 'all' || s.category === selectedCategory)
-                                .filter(s => canEmployeePerformService(item?.employee_id || selectedTechnicianId || lastUsedEmployeeId, s.id))
-                                .map((s) => ({
-                                  value: s.id,
-                                  label: `${s.code} - ${s.name}`,
-                                }))
-                            ]}
                             disabled={isTicketClosed || isReadOnly}
-                          />
+                          >
+                            <option value="">-- Select Service --</option>
+                            {categoryOptions
+                              .filter(cat => cat !== 'all')
+                              .map(category => {
+                                const categoryServices = services
+                                  .filter(s => s.category === category)
+                                  .filter(s => canEmployeePerformService(item?.employee_id || selectedTechnicianId || lastUsedEmployeeId, s.id));
+                                if (categoryServices.length === 0) return null;
+                                return (
+                                  <optgroup key={category} label={category}>
+                                    {categoryServices.map(s => (
+                                      <option key={s.id} value={s.id}>
+                                        {s.code} - {s.name}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                );
+                              })}
+                          </Select>
                         )}
                       </div>
                       <div className="w-24">
@@ -2097,7 +2106,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           </div>
 
           {ticketId && (
-            <div className="border border-gray-200 rounded-lg p-3 bg-green-50">
+            <div className="border border-gray-200 rounded-lg p-2 bg-green-50">
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 Payment Method <span className="text-red-600">*</span>
               </label>
