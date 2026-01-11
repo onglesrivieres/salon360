@@ -683,12 +683,18 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   }
 
   function calculateTotalDiscount(): number {
-    const subtotal = calculateSubtotal();
-    const discountPercentage = parseFloat(formData.discount_percentage) || 0;
-    const discountAmount = parseFloat(formData.discount_amount) || 0;
+    const cashDiscountAmount = parseFloat(formData.discount_amount_cash) || 0;
+    const cardDiscountAmount = parseFloat(formData.discount_amount) || 0;
 
-    const percentageDiscount = (subtotal * discountPercentage) / 100;
-    return percentageDiscount + discountAmount;
+    if (formData.payment_method === 'Cash') {
+      return cashDiscountAmount;
+    } else if (formData.payment_method === 'Card') {
+      return cardDiscountAmount;
+    } else if (formData.payment_method === 'Mixed') {
+      return cashDiscountAmount + cardDiscountAmount;
+    }
+
+    return 0;
   }
 
   function calculateTotalCashPayment(): number {
