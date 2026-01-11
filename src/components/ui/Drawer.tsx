@@ -7,9 +7,10 @@ interface DrawerProps {
   title: string;
   children: React.ReactNode;
   position?: 'left' | 'right';
+  headerActions?: React.ReactNode;
 }
 
-export function Drawer({ isOpen, onClose, title, children, position = 'right' }: DrawerProps) {
+export function Drawer({ isOpen, onClose, title, children, position = 'right', headerActions }: DrawerProps) {
   if (!isOpen) return null;
 
   const positionStyles = position === 'right' ? 'right-0' : 'left-0';
@@ -26,12 +27,15 @@ export function Drawer({ isOpen, onClose, title, children, position = 'right' }:
       >
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-1"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {headerActions}
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         <div className="px-6 py-4">
           {children}

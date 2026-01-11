@@ -57,6 +57,7 @@ export interface Technician {
   tip_report_show_details?: boolean;
   tip_paired_enabled?: boolean;
   attendance_display?: boolean;
+  count_ot?: boolean;
   weekly_schedule?: WeeklySchedule;
   created_at: string;
   updated_at: string;
