@@ -937,6 +937,14 @@ export interface ClientColorHistory {
   created_at: string;
 }
 
+export interface ClientColorHistoryWithDetails extends ClientColorHistory {
+  ticket_date: string | null;
+  services: Array<{
+    name: string;
+    employee_name: string;
+  }>;
+}
+
 export interface ClientWithStats extends Client {
   last_visit?: string;
   total_visits?: number;
