@@ -71,6 +71,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const requireCustomerPhone = getSettingBoolean('require_customer_phone_on_tickets', false);
   const requireEmployeeCheckin = getSettingBoolean('require_employee_checkin_before_tickets', true);
   const requireOpeningCashValidation = getSettingBoolean('require_opening_cash_validation', false);
+  const showCustomerName = getSettingBoolean('show_customer_name_field', true);
+  const showCustomerPhone = getSettingBoolean('show_customer_phone_field', true);
+  const showTodaysColor = getSettingBoolean('show_todays_color_field', true);
 
   const isApproved = ticket?.approval_status === 'approved' || ticket?.approval_status === 'auto_approved';
 
@@ -209,6 +212,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     customer_type: 'Assigned' as '' | 'Appointment' | 'Requested' | 'Assigned',
     customer_name: '',
     customer_phone: '',
+    todays_color: '',
     payment_method: '' as '' | 'Cash' | 'Card' | 'Mixed',
     payment_cash: '',
     payment_card: '',
@@ -443,6 +447,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_type: ticketData.customer_type || '',
           customer_name: ticketData.customer_name,
           customer_phone: ticketData.customer_phone || '',
+          todays_color: (ticketData as any).todays_color || '',
           payment_method: ticketData.payment_method || '',
           payment_cash: firstItem ? parseFloat(firstItem.payment_cash || 0).toString() : '0',
           payment_card: firstItem ? parseFloat(firstItem.payment_card || 0).toString() : '0',
@@ -988,6 +993,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_type: formData.customer_type || null,
           customer_name: formData.customer_name,
           customer_phone: formData.customer_phone,
+          todays_color: formData.todays_color,
           payment_method: formData.payment_method || null,
           total,
           notes: formData.notes,
@@ -1097,6 +1103,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_type: formData.customer_type || null,
           customer_name: formData.customer_name,
           customer_phone: formData.customer_phone,
+          todays_color: formData.todays_color,
           payment_method: formData.payment_method || null,
           total,
           notes: formData.notes,
@@ -1782,6 +1789,57 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 Requested
               </button>
             </div>
+
+            {/* Customer Info Fields */}
+            {(showCustomerName || showCustomerPhone || showTodaysColor) && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
+                {showCustomerName && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                      Customer Name {requireCustomerName && <span className="text-red-600">*</span>}
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.customer_name}
+                      onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                      disabled={isTicketClosed || isReadOnly}
+                      placeholder="Enter customer name"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                )}
+                {showCustomerPhone && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                      Customer Phone {requireCustomerPhone && <span className="text-red-600">*</span>}
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.customer_phone}
+                      onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
+                      disabled={isTicketClosed || isReadOnly}
+                      placeholder="Enter phone number"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                )}
+                {showTodaysColor && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                      Today's Color
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.todays_color}
+                      onChange={(e) => setFormData({ ...formData, todays_color: e.target.value })}
+                      disabled={isTicketClosed || isReadOnly}
+                      placeholder="Enter color"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="border border-gray-200 rounded-lg p-3 bg-blue-50">
@@ -1969,7 +2027,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                               .map(category => {
                                 const categoryServices = services
                                   .filter(s => s.category === category)
-                                  .filter(s => canEmployeePerformService(item?.employee_id || selectedTechnicianId || lastUsedEmployeeId, s.id));
+                                  .filter(s => canEmployeePerformService(item?.employee_id || selectedTechnicianId || lastUsedEmployeeId, s.id))
+                                  .sort((a, b) => b.price - a.price);
                                 if (categoryServices.length === 0) return null;
                                 return (
                                   <optgroup key={category} label={category}>
