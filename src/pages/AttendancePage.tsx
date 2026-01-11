@@ -295,20 +295,23 @@ export function AttendancePage() {
   function groupByPayType(summary: AttendanceSummary): {
     hourly: [string, AttendanceSummary[string]][];
     daily: [string, AttendanceSummary[string]][];
+    commission: [string, AttendanceSummary[string]][];
   } {
     const hourly: [string, AttendanceSummary[string]][] = [];
     const daily: [string, AttendanceSummary[string]][] = [];
+    const commission: [string, AttendanceSummary[string]][] = [];
 
     Object.entries(summary).forEach(([employeeId, employee]) => {
       if (employee.payType === 'hourly') {
         hourly.push([employeeId, employee]);
       } else if (employee.payType === 'daily') {
         daily.push([employeeId, employee]);
+      } else if (employee.payType === 'commission') {
+        commission.push([employeeId, employee]);
       }
-      // Commission employees are already filtered out by RPC
     });
 
-    return { hourly, daily };
+    return { hourly, daily, commission };
   }
 
   function navigatePrevious() {
@@ -427,7 +430,7 @@ export function AttendancePage() {
     (session?.role && Array.isArray(session.role) && session.role.includes('Spa Expert'));
   const isManagement = session?.role && Permissions.endOfDay.canView(session.role);
 
-  if (session && session.role && !Permissions.endOfDay.canView(session.role)) {
+  if (session && session.role && !Permissions.attendance.canView(session.role, employeePayType || undefined)) {
     return (
       <div className="max-w-7xl mx-auto">
         <div className="bg-white rounded-lg shadow p-8 text-center">
@@ -509,7 +512,7 @@ export function AttendancePage() {
               </thead>
               <tbody>
                 {(() => {
-                  const { hourly, daily } = groupByPayType(summary);
+                  const { hourly, daily, commission } = groupByPayType(summary);
 
                   const renderEmployeeRow = ([employeeId, employee]: [string, AttendanceSummary[string]]) => (
                     <tr key={employeeId} className="border-b border-gray-100 hover:bg-gray-50">
@@ -661,6 +664,17 @@ export function AttendancePage() {
                             </td>
                           </tr>
                           {daily.map(renderEmployeeRow)}
+                        </>
+                      )}
+                      {/* Commission Employees Section */}
+                      {commission.length > 0 && (
+                        <>
+                          <tr className="bg-gray-100">
+                            <td colSpan={calendarDays.length + 2} className="p-1 text-xs font-bold text-gray-700">
+                              Commission Employees
+                            </td>
+                          </tr>
+                          {commission.map(renderEmployeeRow)}
                         </>
                       )}
                     </>
