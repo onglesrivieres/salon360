@@ -598,7 +598,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     newItems[index] = { ...newItems[index], [field]: value };
 
     if (field === 'service_id') {
-      const service = services.find((s) => s.service_id === value);
+      const service = services.find((s) => s.id === value);
       newItems[index].price_each = service?.price.toString() || '0';
       newItems[index].service = service as any;
     }
@@ -1961,13 +1961,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                             label="Service"
                             value={item.service_id}
                             onChange={(e) => updateItem(index, 'service_id', e.target.value)}
-                            options={services
-                              .filter(s => selectedCategory === 'all' || s.category === selectedCategory)
-                              .filter(s => canEmployeePerformService(item?.employee_id || selectedTechnicianId || lastUsedEmployeeId, s.id))
-                              .map((s) => ({
-                                value: s.id,
-                                label: `${s.code} - ${s.name}`,
-                              }))}
+                            options={[
+                              { value: '', label: '-- Select Service --' },
+                              ...services
+                                .filter(s => selectedCategory === 'all' || s.category === selectedCategory)
+                                .filter(s => canEmployeePerformService(item?.employee_id || selectedTechnicianId || lastUsedEmployeeId, s.id))
+                                .map((s) => ({
+                                  value: s.id,
+                                  label: `${s.code} - ${s.name}`,
+                                }))
+                            ]}
                             disabled={isTicketClosed || isReadOnly}
                           />
                         )}
