@@ -911,3 +911,42 @@ export interface ViolationReportForApproval {
   threshold_met: boolean;
   insufficient_responders: boolean;
 }
+
+// Client Management Types
+export interface Client {
+  id: string;
+  store_id: string;
+  name: string;
+  phone_number: string;
+  notes: string;
+  is_blacklisted: boolean;
+  blacklist_reason: string | null;
+  blacklist_date: string | null;
+  blacklisted_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClientColorHistory {
+  id: string;
+  client_id: string;
+  ticket_id: string | null;
+  color: string;
+  service_type: string | null;
+  applied_date: string;
+  created_at: string;
+}
+
+export interface ClientWithStats extends Client {
+  last_visit?: string;
+  total_visits?: number;
+  last_color?: string;
+  blacklisted_by_name?: string;
+}
+
+export interface ClientLookupResult {
+  client: Client | null;
+  lastColor: ClientColorHistory | null;
+  totalVisits: number;
+  lastVisit: string | null;
+}
