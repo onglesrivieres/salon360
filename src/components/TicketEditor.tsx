@@ -678,8 +678,26 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   }
 
   function calculateTotalDiscount(): number {
-    const discountAmount = parseFloat(formData.discount_amount) || 0;
-    const discountAmountCash = parseFloat(formData.discount_amount_cash) || 0;
+    let discountAmount = parseFloat(formData.discount_amount) || 0;
+    let discountAmountCash = parseFloat(formData.discount_amount_cash) || 0;
+
+    // Fallback to percentage-based calculation if amount is 0 but percentage is set
+    if (discountAmount === 0) {
+      const discountPercentage = parseFloat(formData.discount_percentage) || 0;
+      if (discountPercentage > 0) {
+        const subtotal = calculateSubtotal();
+        discountAmount = (subtotal * discountPercentage) / 100;
+      }
+    }
+
+    if (discountAmountCash === 0) {
+      const discountPercentageCash = parseFloat(formData.discount_percentage_cash) || 0;
+      if (discountPercentageCash > 0) {
+        const subtotal = calculateSubtotal();
+        discountAmountCash = (subtotal * discountPercentageCash) / 100;
+      }
+    }
+
     return discountAmount + discountAmountCash;
   }
 

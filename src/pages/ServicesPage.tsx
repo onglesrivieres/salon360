@@ -199,13 +199,28 @@ export function ServicesPage() {
         if (updateServicesError) {
           console.error('Error updating services for renamed category:', updateServicesError);
           // Rollback: revert the category name back to originalName
-          await supabase
+          const { error: rollbackError } = await supabase
             .from('store_service_categories')
             .update({
               name: originalName,
               updated_at: new Date().toISOString(),
             })
             .eq('id', categoryId);
+          
+          if (rollbackError) {
+            console.error('Rollback failed for store_service_categories:', {
+              categoryId,
+              selectedStoreId,
+              originalName,
+              trimmedName,
+              rollbackError,
+            });
+            throw new Error(
+              `Failed to update services with new category name: ${updateServicesError.message}. ` +
+              `Rollback also failed: ${rollbackError.message}`
+            );
+          }
+          
           throw new Error(`Failed to update services with new category name: ${updateServicesError.message}`);
         }
       }

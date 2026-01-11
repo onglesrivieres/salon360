@@ -59,6 +59,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session, logout]);
 
   useEffect(() => {
+    // One-time migration: copy old localStorage keys to new ones if needed
+    const oldLocaleKey = 'salon360_locale';
+    const oldViewingAsRoleKey = 'salon360_viewing_as_role';
+    
+    if (!localStorage.getItem(LOCALE_KEY)) {
+      const oldLocaleValue = localStorage.getItem(oldLocaleKey);
+      if (oldLocaleValue) {
+        localStorage.setItem(LOCALE_KEY, oldLocaleValue);
+        localStorage.removeItem(oldLocaleKey);
+      }
+    } else {
+      localStorage.removeItem(oldLocaleKey);
+    }
+    
+    if (!sessionStorage.getItem(VIEWING_AS_ROLE_KEY)) {
+      const oldViewingAsRoleValue = sessionStorage.getItem(oldViewingAsRoleKey);
+      if (oldViewingAsRoleValue) {
+        sessionStorage.setItem(VIEWING_AS_ROLE_KEY, oldViewingAsRoleValue);
+        sessionStorage.removeItem(oldViewingAsRoleKey);
+      }
+    } else {
+      sessionStorage.removeItem(oldViewingAsRoleKey);
+    }
+
     const currentSession = getSession();
     setSession(currentSession);
 

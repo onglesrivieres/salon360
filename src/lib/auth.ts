@@ -12,6 +12,8 @@ export interface AuthSession {
 
 const SESSION_KEY = 'salon365_session';
 const LAST_ACTIVITY_KEY = 'salon365_last_activity';
+const LEGACY_SESSION_KEY = 'salon360_session';
+const LEGACY_LAST_ACTIVITY_KEY = 'salon360_last_activity';
 const AUTO_LOCK_TIMEOUT = 5 * 60 * 1000;
 
 export async function hashPIN(pin: string): Promise<string> {
@@ -34,10 +36,32 @@ export function saveSession(session: AuthSession): void {
 }
 
 export function getSession(): AuthSession | null {
-  const sessionData = localStorage.getItem(SESSION_KEY);
+  let sessionData = localStorage.getItem(SESSION_KEY);
+  
+  // Migrate legacy key if new key doesn't exist
+  if (!sessionData) {
+    const legacySessionData = localStorage.getItem(LEGACY_SESSION_KEY);
+    if (legacySessionData) {
+      sessionData = legacySessionData;
+      localStorage.setItem(SESSION_KEY, legacySessionData);
+      localStorage.removeItem(LEGACY_SESSION_KEY);
+    }
+  }
+  
   if (!sessionData) return null;
 
-  const lastActivity = localStorage.getItem(LAST_ACTIVITY_KEY);
+  let lastActivity = localStorage.getItem(LAST_ACTIVITY_KEY);
+  
+  // Migrate legacy last activity key if new key doesn't exist
+  if (!lastActivity) {
+    const legacyLastActivity = localStorage.getItem(LEGACY_LAST_ACTIVITY_KEY);
+    if (legacyLastActivity) {
+      lastActivity = legacyLastActivity;
+      localStorage.setItem(LAST_ACTIVITY_KEY, legacyLastActivity);
+      localStorage.removeItem(LEGACY_LAST_ACTIVITY_KEY);
+    }
+  }
+  
   if (lastActivity) {
     const timeSinceActivity = Date.now() - parseInt(lastActivity, 10);
     if (timeSinceActivity > AUTO_LOCK_TIMEOUT) {

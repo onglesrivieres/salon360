@@ -4,25 +4,55 @@ ALTER TABLE "public"."store_service_categories" ADD COLUMN IF NOT EXISTS "color"
 
 alter table "public"."store_service_categories" enable row level security;
 
-CREATE INDEX idx_store_service_categories_store_active ON public.store_service_categories USING btree (store_id, is_active) WHERE (is_active = true);
+DO $$ BEGIN
+  CREATE INDEX idx_store_service_categories_store_active ON public.store_service_categories USING btree (store_id, is_active) WHERE (is_active = true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE INDEX idx_store_service_categories_store_id ON public.store_service_categories USING btree (store_id);
+DO $$ BEGIN
+  CREATE INDEX idx_store_service_categories_store_id ON public.store_service_categories USING btree (store_id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE UNIQUE INDEX store_service_categories_pkey ON public.store_service_categories USING btree (id);
+DO $$ BEGIN
+  CREATE UNIQUE INDEX store_service_categories_pkey ON public.store_service_categories USING btree (id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE UNIQUE INDEX store_service_categories_unique_name ON public.store_service_categories USING btree (store_id, name);
+DO $$ BEGIN
+  CREATE UNIQUE INDEX store_service_categories_unique_name ON public.store_service_categories USING btree (store_id, name);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-alter table "public"."store_service_categories" add constraint "store_service_categories_pkey" PRIMARY KEY using index "store_service_categories_pkey";
+DO $$ BEGIN
+  ALTER TABLE "public"."store_service_categories" ADD CONSTRAINT "store_service_categories_pkey" PRIMARY KEY USING INDEX "store_service_categories_pkey";
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-alter table "public"."store_service_categories" add constraint "store_service_categories_name_not_empty" CHECK ((name <> ''::text)) not valid;
+DO $$ BEGIN
+  ALTER TABLE "public"."store_service_categories" ADD CONSTRAINT "store_service_categories_name_not_empty" CHECK ((name <> ''::text)) NOT VALID;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-alter table "public"."store_service_categories" validate constraint "store_service_categories_name_not_empty";
+DO $$ BEGIN
+  ALTER TABLE "public"."store_service_categories" VALIDATE CONSTRAINT "store_service_categories_name_not_empty";
+EXCEPTION WHEN others THEN NULL;
+END $$;
 
-alter table "public"."store_service_categories" add constraint "store_service_categories_store_id_fkey" FOREIGN KEY (store_id) REFERENCES public.stores(id) ON DELETE CASCADE not valid;
+DO $$ BEGIN
+  ALTER TABLE "public"."store_service_categories" ADD CONSTRAINT "store_service_categories_store_id_fkey" FOREIGN KEY (store_id) REFERENCES public.stores(id) ON DELETE CASCADE NOT VALID;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-alter table "public"."store_service_categories" validate constraint "store_service_categories_store_id_fkey";
+DO $$ BEGIN
+  ALTER TABLE "public"."store_service_categories" VALIDATE CONSTRAINT "store_service_categories_store_id_fkey";
+EXCEPTION WHEN others THEN NULL;
+END $$;
 
-alter table "public"."store_service_categories" add constraint "store_service_categories_unique_name" UNIQUE using index "store_service_categories_unique_name";
+DO $$ BEGIN
+  ALTER TABLE "public"."store_service_categories" ADD CONSTRAINT "store_service_categories_unique_name" UNIQUE USING INDEX "store_service_categories_unique_name";
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 set check_function_bodies = off;
 
