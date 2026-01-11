@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, User, Phone, FileText, Calendar, Hash, AlertTriangle, Palette, Edit2 } from 'lucide-react';
-import { ClientWithStats, ClientColorHistory, supabase } from '../../lib/supabase';
+import { ClientWithStats, ClientColorHistoryWithDetails, supabase } from '../../lib/supabase';
 import { formatPhoneNumber } from '../../lib/phoneUtils';
 
 interface ClientDetailsModalProps {
@@ -19,7 +19,7 @@ export function ClientDetailsModal({
   onEdit,
 }: ClientDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>('details');
-  const [colorHistory, setColorHistory] = useState<ClientColorHistory[]>([]);
+  const [colorHistory, setColorHistory] = useState<ClientColorHistoryWithDetails[]>([]);
   const [isLoadingColors, setIsLoadingColors] = useState(false);
 
   // Fetch color history when colors tab is selected
@@ -39,7 +39,8 @@ export function ClientDetailsModal({
   const fetchColorHistory = async () => {
     setIsLoadingColors(true);
     try {
-      const { data, error } = await supabase
+      // Fetch color history entries
+      const { data: colorData, error } = await supabase
         .from('client_color_history')
         .select('*')
         .eq('client_id', client.id)
@@ -47,7 +48,44 @@ export function ClientDetailsModal({
         .limit(20);
 
       if (error) throw error;
-      setColorHistory(data || []);
+
+      // For each entry with a ticket_id, fetch ticket details
+      const colorHistoryWithDetails = await Promise.all(
+        (colorData || []).map(async (entry) => {
+          if (!entry.ticket_id) {
+            return { ...entry, ticket_date: null, services: [] };
+          }
+
+          // Get ticket date
+          const { data: ticketData } = await supabase
+            .from('sale_tickets')
+            .select('ticket_date')
+            .eq('id', entry.ticket_id)
+            .maybeSingle();
+
+          // Get services and employees from ticket_items
+          const { data: ticketItems } = await supabase
+            .from('ticket_items')
+            .select(`
+              service:store_services(name),
+              employee:employees(display_name)
+            `)
+            .eq('sale_ticket_id', entry.ticket_id);
+
+          const services = ticketItems?.map((item: any) => ({
+            name: item.service?.name || 'Unknown Service',
+            employee_name: item.employee?.display_name || 'Unknown',
+          })) || [];
+
+          return {
+            ...entry,
+            ticket_date: ticketData?.ticket_date || null,
+            services,
+          };
+        })
+      );
+
+      setColorHistory(colorHistoryWithDetails);
     } catch (err) {
       console.error('Error fetching color history:', err);
     } finally {
@@ -244,19 +282,31 @@ export function ClientDetailsModal({
                 ) : (
                   <div className="space-y-3">
                     {colorHistory.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="flex items-start justify-between p-3 bg-gray-50 rounded-lg"
-                      >
-                        <div>
+                      <div key={entry.id} className="p-3 bg-gray-50 rounded-lg space-y-2">
+                        {/* Color and Date Header */}
+                        <div className="flex items-start justify-between">
                           <p className="text-sm font-medium text-gray-900">{entry.color}</p>
-                          {entry.service_type && (
-                            <p className="text-xs text-gray-500 mt-0.5">{entry.service_type}</p>
-                          )}
+                          <span className="text-xs text-gray-400">
+                            {formatDate(entry.ticket_date || entry.applied_date)}
+                          </span>
                         </div>
-                        <span className="text-xs text-gray-400">
-                          {formatDate(entry.applied_date)}
-                        </span>
+
+                        {/* Services with Employees */}
+                        {entry.services.length > 0 && (
+                          <div className="text-xs text-gray-600 space-y-1">
+                            {entry.services.map((svc, idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <span className="text-gray-500">{svc.name}</span>
+                                <span className="text-blue-600">by {svc.employee_name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Service type fallback if no ticket linked */}
+                        {entry.services.length === 0 && entry.service_type && (
+                          <p className="text-xs text-gray-500">{entry.service_type}</p>
+                        )}
                       </div>
                     ))}
                   </div>
