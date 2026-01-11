@@ -54,9 +54,9 @@ CREATE POLICY "Users can view service categories"
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM public.store_staff
-      WHERE store_staff.store_id = store_service_categories.store_id
-      AND store_staff.employee_id = (auth.jwt() ->> 'user_id')::uuid
+      SELECT 1 FROM public.employee_stores
+      WHERE employee_stores.store_id = store_service_categories.store_id
+      AND employee_stores.employee_id = (auth.jwt() ->> 'user_id')::uuid
     )
   );
 
@@ -66,9 +66,9 @@ CREATE POLICY "Staff can create service categories"
   TO authenticated
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM public.store_staff
-      WHERE store_staff.store_id = store_service_categories.store_id
-      AND store_staff.employee_id = (auth.jwt() ->> 'user_id')::uuid
+      SELECT 1 FROM public.employee_stores
+      WHERE employee_stores.store_id = store_service_categories.store_id
+      AND employee_stores.employee_id = (auth.jwt() ->> 'user_id')::uuid
     )
   );
 
@@ -78,16 +78,16 @@ CREATE POLICY "Staff can update service categories"
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM public.store_staff
-      WHERE store_staff.store_id = store_service_categories.store_id
-      AND store_staff.employee_id = (auth.jwt() ->> 'user_id')::uuid
+      SELECT 1 FROM public.employee_stores
+      WHERE employee_stores.store_id = store_service_categories.store_id
+      AND employee_stores.employee_id = (auth.jwt() ->> 'user_id')::uuid
     )
   )
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM public.store_staff
-      WHERE store_staff.store_id = store_service_categories.store_id
-      AND store_staff.employee_id = (auth.jwt() ->> 'user_id')::uuid
+      SELECT 1 FROM public.employee_stores
+      WHERE employee_stores.store_id = store_service_categories.store_id
+      AND employee_stores.employee_id = (auth.jwt() ->> 'user_id')::uuid
     )
   );
 
@@ -97,9 +97,9 @@ CREATE POLICY "Staff can delete service categories"
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM public.store_staff
-      WHERE store_staff.store_id = store_service_categories.store_id
-      AND store_staff.employee_id = (auth.jwt() ->> 'user_id')::uuid
+      SELECT 1 FROM public.employee_stores
+      WHERE employee_stores.store_id = store_service_categories.store_id
+      AND employee_stores.employee_id = (auth.jwt() ->> 'user_id')::uuid
     )
   );
 
