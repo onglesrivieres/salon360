@@ -47,13 +47,7 @@ CREATE POLICY "Allow all access to clients" ON clients FOR ALL USING (true) WITH
 ALTER TABLE client_color_history ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all access to client_color_history" ON client_color_history FOR ALL USING (true) WITH CHECK (true);
 
--- 6. Updated_at trigger for clients table
-CREATE TRIGGER update_clients_updated_at
-  BEFORE UPDATE ON clients
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
--- 7. Add comments for documentation
+-- 6. Add comments for documentation
 COMMENT ON TABLE clients IS 'Stores client information per store with blacklist tracking';
 COMMENT ON TABLE client_color_history IS 'Tracks color history for clients from ticket services';
 COMMENT ON COLUMN clients.phone_number IS 'Normalized phone number (digits only) for consistent lookup';
