@@ -204,10 +204,13 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
   function getServiceName(ticket: any): string {
     if (!ticket.ticket_items || ticket.ticket_items.length === 0) return '-';
-    const firstItem = ticket.ticket_items[0];
-    if (firstItem?.custom_service_name) return firstItem.custom_service_name;
-    const service = firstItem?.service;
-    return service ? service.code : '-';
+    const serviceNames = ticket.ticket_items
+      .map((item: any) => {
+        if (item?.custom_service_name) return item.custom_service_name;
+        return item?.service?.code || null;
+      })
+      .filter((name: string | null) => name !== null);
+    return serviceNames.length > 0 ? serviceNames.join(' | ') : '-';
   }
 
   function getTechnicianName(ticket: any): string {
