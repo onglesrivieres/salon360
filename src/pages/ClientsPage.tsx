@@ -42,6 +42,7 @@ export function ClientsPage() {
   const canCreate = session?.role_permission && Permissions.clients.canCreate(session.role_permission);
   const canBlacklist = session?.role_permission && Permissions.clients.canBlacklist(session.role_permission);
   const canDelete = session?.role_permission && Permissions.clients.canDelete(session.role_permission);
+  const canViewFullPhone = session?.role_permission && Permissions.clients.canViewFullPhone(session.role_permission);
 
   // Filter clients based on tab (active means not blacklisted)
   const filteredClients = filterTab === 'active'
@@ -90,10 +91,6 @@ export function ClientsPage() {
   };
 
   const handleDeleteClient = async (client: ClientWithStats) => {
-    if (!window.confirm(`Are you sure you want to delete ${client.name}? This cannot be undone.`)) {
-      return;
-    }
-
     const result = await deleteClient(client.id);
     if (result.success) {
       showToast('Client deleted', 'success');
@@ -194,9 +191,7 @@ export function ClientsPage() {
         clients={filteredClients}
         isLoading={isLoading}
         onViewDetails={handleViewDetails}
-        onEdit={handleEditClient}
-        onBlacklistToggle={canBlacklist ? handleBlacklistToggle : undefined}
-        onDelete={canDelete ? handleDeleteClient : undefined}
+        canViewFullPhone={canViewFullPhone}
       />
 
       {/* Editor Modal */}
@@ -212,6 +207,12 @@ export function ClientsPage() {
           client={editingClient}
           employeeId={session?.employee_id}
           canBlacklist={canBlacklist}
+          canDelete={canDelete}
+          onDelete={(client) => {
+            handleDeleteClient(client);
+            setShowEditorModal(false);
+            setEditingClient(null);
+          }}
         />
       )}
 
@@ -228,6 +229,7 @@ export function ClientsPage() {
             setShowDetailsModal(false);
             handleEditClient(selectedClient);
           }}
+          canViewFullPhone={canViewFullPhone}
         />
       )}
     </div>

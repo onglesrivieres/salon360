@@ -32,6 +32,18 @@ export function formatPhoneNumber(phone: string): string {
 }
 
 /**
+ * Mask phone number to show only last 4 digits
+ * @param phone - The phone number in any format
+ * @returns Masked phone number: ***-***-4567
+ */
+export function maskPhoneNumber(phone: string): string {
+  const digits = normalizePhoneNumber(phone);
+  if (digits.length < 4) return '****';
+  const lastFour = digits.slice(-4);
+  return `***-***-${lastFour}`;
+}
+
+/**
  * Format phone number as user types (for input onChange)
  * @param phone - Current input value
  * @param previousPhone - Previous input value (to detect backspace)

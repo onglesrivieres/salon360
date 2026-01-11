@@ -1,29 +1,20 @@
-import { useState } from 'react';
-import { MoreVertical, Eye, Edit2, Ban, Trash2, CheckCircle } from 'lucide-react';
+import { Ban, CheckCircle } from 'lucide-react';
 import { ClientWithStats } from '../../lib/supabase';
-import { formatPhoneNumber } from '../../lib/phoneUtils';
+import { formatPhoneNumber, maskPhoneNumber } from '../../lib/phoneUtils';
 
 interface ClientsTableProps {
   clients: ClientWithStats[];
   isLoading: boolean;
   onViewDetails: (client: ClientWithStats) => void;
-  onEdit: (client: ClientWithStats) => void;
-  onBlacklistToggle?: (client: ClientWithStats, reason?: string) => void;
-  onDelete?: (client: ClientWithStats) => void;
+  canViewFullPhone?: boolean;
 }
 
 export function ClientsTable({
   clients,
   isLoading,
   onViewDetails,
-  onEdit,
-  onBlacklistToggle,
-  onDelete,
+  canViewFullPhone = false,
 }: ClientsTableProps) {
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const [blacklistReason, setBlacklistReason] = useState('');
-  const [showBlacklistInput, setShowBlacklistInput] = useState<string | null>(null);
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Never';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -31,14 +22,6 @@ export function ClientsTable({
       day: 'numeric',
       year: 'numeric',
     });
-  };
-
-  const handleBlacklistSubmit = (client: ClientWithStats) => {
-    if (blacklistReason.trim() && onBlacklistToggle) {
-      onBlacklistToggle(client, blacklistReason.trim());
-      setBlacklistReason('');
-      setShowBlacklistInput(null);
-    }
   };
 
   if (isLoading) {
@@ -88,9 +71,6 @@ export function ClientsTable({
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Actions
-              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -114,7 +94,11 @@ export function ClientsTable({
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-sm text-gray-700">{formatPhoneNumber(client.phone_number)}</span>
+                  <span className="text-sm text-gray-700">
+                    {canViewFullPhone
+                      ? formatPhoneNumber(client.phone_number)
+                      : maskPhoneNumber(client.phone_number)}
+                  </span>
                 </td>
                 <td className="px-4 py-3">
                   <span className="text-sm text-gray-600">{formatDate(client.last_visit)}</span>
@@ -134,109 +118,6 @@ export function ClientsTable({
                       Active
                     </span>
                   )}
-                </td>
-                <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                  <div className="relative inline-block">
-                    <button
-                      onClick={() => setOpenDropdown(openDropdown === client.id ? null : client.id)}
-                      className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      <MoreVertical className="w-4 h-4 text-gray-500" />
-                    </button>
-
-                    {openDropdown === client.id && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-10"
-                          onClick={() => {
-                            setOpenDropdown(null);
-                            setShowBlacklistInput(null);
-                          }}
-                        />
-                        <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
-                          <button
-                            onClick={() => {
-                              onViewDetails(client);
-                              setOpenDropdown(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                          >
-                            <Eye className="w-4 h-4" />
-                            View Details
-                          </button>
-                          <button
-                            onClick={() => {
-                              onEdit(client);
-                              setOpenDropdown(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                            Edit
-                          </button>
-                          {onBlacklistToggle && (
-                            <>
-                              {client.is_blacklisted ? (
-                                <button
-                                  onClick={() => {
-                                    onBlacklistToggle(client);
-                                    setOpenDropdown(null);
-                                  }}
-                                  className="w-full px-4 py-2 text-left text-sm text-green-700 hover:bg-green-50 flex items-center gap-2"
-                                >
-                                  <CheckCircle className="w-4 h-4" />
-                                  Remove from Blacklist
-                                </button>
-                              ) : (
-                                <>
-                                  {showBlacklistInput === client.id ? (
-                                    <div className="px-4 py-2 space-y-2">
-                                      <input
-                                        type="text"
-                                        value={blacklistReason}
-                                        onChange={(e) => setBlacklistReason(e.target.value)}
-                                        placeholder="Reason..."
-                                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-red-500"
-                                        autoFocus
-                                        onClick={(e) => e.stopPropagation()}
-                                      />
-                                      <button
-                                        onClick={() => handleBlacklistSubmit(client)}
-                                        disabled={!blacklistReason.trim()}
-                                        className="w-full px-2 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      >
-                                        Confirm Blacklist
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <button
-                                      onClick={() => setShowBlacklistInput(client.id)}
-                                      className="w-full px-4 py-2 text-left text-sm text-red-700 hover:bg-red-50 flex items-center gap-2"
-                                    >
-                                      <Ban className="w-4 h-4" />
-                                      Blacklist
-                                    </button>
-                                  )}
-                                </>
-                              )}
-                            </>
-                          )}
-                          {onDelete && (
-                            <button
-                              onClick={() => {
-                                onDelete(client);
-                                setOpenDropdown(null);
-                              }}
-                              className="w-full px-4 py-2 text-left text-sm text-red-700 hover:bg-red-50 flex items-center gap-2"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
                 </td>
               </tr>
             ))}

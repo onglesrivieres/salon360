@@ -12,6 +12,8 @@ interface ClientEditorModalProps {
   client?: ClientWithStats | null;
   employeeId?: string;
   canBlacklist?: boolean;
+  onDelete?: (client: ClientWithStats) => void;
+  canDelete?: boolean;
 }
 
 export function ClientEditorModal({
@@ -22,6 +24,8 @@ export function ClientEditorModal({
   client,
   employeeId,
   canBlacklist = false,
+  onDelete,
+  canDelete = false,
 }: ClientEditorModalProps) {
   const isEditMode = !!client;
 
@@ -277,18 +281,34 @@ export function ClientEditorModal({
 
             {/* Actions */}
             <div className="flex gap-3 pt-2">
+              {/* Delete button - only in edit mode */}
+              {isEditMode && canDelete && onDelete && client && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`Delete ${client.name}? This cannot be undone.`)) {
+                      onDelete(client);
+                    }
+                  }}
+                  disabled={isLoading}
+                  className="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  Delete
+                </button>
+              )}
+              <div className="flex-1" />
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isLoading}
-                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>

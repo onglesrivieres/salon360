@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { X, User, Phone, FileText, Calendar, Hash, AlertTriangle, Palette, Edit2 } from 'lucide-react';
 import { ClientWithStats, ClientColorHistoryWithDetails, supabase } from '../../lib/supabase';
-import { formatPhoneNumber } from '../../lib/phoneUtils';
+import { formatPhoneNumber, maskPhoneNumber } from '../../lib/phoneUtils';
 
 interface ClientDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   client: ClientWithStats;
   onEdit: () => void;
+  canViewFullPhone?: boolean;
 }
 
 type Tab = 'details' | 'colors';
@@ -17,6 +18,7 @@ export function ClientDetailsModal({
   onClose,
   client,
   onEdit,
+  canViewFullPhone = false,
 }: ClientDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [colorHistory, setColorHistory] = useState<ClientColorHistoryWithDetails[]>([]);
@@ -67,8 +69,8 @@ export function ClientDetailsModal({
           const { data: ticketItems } = await supabase
             .from('ticket_items')
             .select(`
-              service:store_services(name),
-              employee:employees(display_name)
+              service:store_services!ticket_items_store_service_id_fkey(name),
+              employee:employees!ticket_items_employee_id_fkey(display_name)
             `)
             .eq('sale_ticket_id', entry.ticket_id);
 
@@ -124,7 +126,13 @@ export function ClientDetailsModal({
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">{client.name}</h2>
-                <p className="text-sm text-gray-500">{formatPhoneNumber(client.phone_number)}</p>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                  client.is_blacklisted
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-green-100 text-green-700'
+                }`}>
+                  {client.is_blacklisted ? 'Blacklisted' : 'Active'}
+                </span>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -238,12 +246,16 @@ export function ClientDetailsModal({
                   </div>
                   <div className="flex items-center gap-3 text-gray-700">
                     <Phone className="w-4 h-4 text-gray-400" />
-                    <a
-                      href={`tel:${client.phone_number}`}
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      {formatPhoneNumber(client.phone_number)}
-                    </a>
+                    {canViewFullPhone ? (
+                      <a
+                        href={`tel:${client.phone_number}`}
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        {formatPhoneNumber(client.phone_number)}
+                      </a>
+                    ) : (
+                      <span className="text-sm text-gray-500">{maskPhoneNumber(client.phone_number)}</span>
+                    )}
                   </div>
                 </div>
 
