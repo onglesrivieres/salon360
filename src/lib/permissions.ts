@@ -168,12 +168,7 @@ export const Permissions = {
       if (hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner'])) {
         return true;
       }
-      // For non-management roles, check pay type
-      // Commission employees cannot view attendance
-      if (payType === 'commission') {
-        return false;
-      }
-      // Hourly and daily employees can view attendance
+      // All pay types (hourly, daily, commission) can view attendance
       return hasAnyRole(roles, ['Technician', 'Spa Expert']);
     },
     canComment: (roles: Role[] | RolePermission): boolean => {

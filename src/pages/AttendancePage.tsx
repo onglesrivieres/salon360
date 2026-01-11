@@ -427,18 +427,6 @@ export function AttendancePage() {
     (session?.role && Array.isArray(session.role) && session.role.includes('Spa Expert'));
   const isManagement = session?.role && Permissions.endOfDay.canView(session.role);
 
-  // Check if commission employee (and not management)
-  if (employeePayType === 'commission' && !isManagement) {
-    return (
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <p className="text-gray-600 mb-4">Attendance tracking is not available for commission-based employees.</p>
-          <p className="text-gray-600">Please view your sales performance in the Tickets page under Daily and Weekly reports.</p>
-        </div>
-      </div>
-    );
-  }
-
   if (session && session.role && !Permissions.endOfDay.canView(session.role)) {
     return (
       <div className="max-w-7xl mx-auto">
