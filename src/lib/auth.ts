@@ -43,8 +43,14 @@ export function getSession(): AuthSession | null {
     const legacySessionData = localStorage.getItem(LEGACY_SESSION_KEY);
     if (legacySessionData) {
       sessionData = legacySessionData;
-      localStorage.setItem(SESSION_KEY, legacySessionData);
-      localStorage.removeItem(LEGACY_SESSION_KEY);
+      try {
+        JSON.parse(legacySessionData);
+        localStorage.setItem(SESSION_KEY, legacySessionData);
+        localStorage.removeItem(LEGACY_SESSION_KEY);
+      } catch {
+        localStorage.removeItem(LEGACY_SESSION_KEY);
+        return null;
+      }
     }
   }
   
@@ -57,13 +63,30 @@ export function getSession(): AuthSession | null {
     const legacyLastActivity = localStorage.getItem(LEGACY_LAST_ACTIVITY_KEY);
     if (legacyLastActivity) {
       lastActivity = legacyLastActivity;
-      localStorage.setItem(LAST_ACTIVITY_KEY, legacyLastActivity);
-      localStorage.removeItem(LEGACY_LAST_ACTIVITY_KEY);
+      try {
+        const parsedTime = parseInt(lastActivity, 10);
+        if (!isNaN(parsedTime)) {
+          localStorage.setItem(LAST_ACTIVITY_KEY, legacyLastActivity);
+          localStorage.removeItem(LEGACY_LAST_ACTIVITY_KEY);
+        } else {
+          localStorage.removeItem(LEGACY_LAST_ACTIVITY_KEY);
+          lastActivity = null;
+        }
+      } catch {
+        localStorage.removeItem(LEGACY_LAST_ACTIVITY_KEY);
+        lastActivity = null;
+      }
     }
   }
   
   if (lastActivity) {
-    const timeSinceActivity = Date.now() - parseInt(lastActivity, 10);
+    const parsedTime = parseInt(lastActivity, 10);
+    if (isNaN(parsedTime)) {
+      // Invalid lastActivity, remove it
+      localStorage.removeItem(LAST_ACTIVITY_KEY);
+      return null;
+    }
+    const timeSinceActivity = Date.now() - parsedTime;
     if (timeSinceActivity > AUTO_LOCK_TIMEOUT) {
       clearSession();
       return null;
@@ -73,6 +96,9 @@ export function getSession(): AuthSession | null {
   try {
     return JSON.parse(sessionData);
   } catch {
+    // JSON parse failed, clear the bad session data
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(LAST_ACTIVITY_KEY);
     return null;
   }
 }

@@ -63,8 +63,8 @@ CREATE TABLE IF NOT EXISTS public.end_of_day_records (
 
   -- Metadata
   notes text,
-  created_by uuid REFERENCES public.employees(id),
-  updated_by uuid REFERENCES public.employees(id),
+  created_by uuid REFERENCES public.employees(id) ON DELETE SET NULL,
+  updated_by uuid REFERENCES public.employees(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
 
@@ -76,6 +76,68 @@ CREATE TABLE IF NOT EXISTS public.end_of_day_records (
 COMMENT ON TABLE public.end_of_day_records IS 'Daily opening and closing cash count records for each store';
 COMMENT ON COLUMN public.end_of_day_records.opening_cash_amount IS 'Total opening cash amount (calculated from denominations)';
 COMMENT ON COLUMN public.end_of_day_records.closing_cash_amount IS 'Total closing cash amount (calculated from denominations)';
+
+-- ============================================================================
+-- TRIGGER FUNCTIONS FOR CALCULATING CASH AMOUNTS
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION public.calculate_opening_cash_amount()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  NEW.opening_cash_amount := (
+    (COALESCE(NEW.bill_100, 0) * 100.00) +
+    (COALESCE(NEW.bill_50, 0) * 50.00) +
+    (COALESCE(NEW.bill_20, 0) * 20.00) +
+    (COALESCE(NEW.bill_10, 0) * 10.00) +
+    (COALESCE(NEW.bill_5, 0) * 5.00) +
+    (COALESCE(NEW.bill_2, 0) * 2.00) +
+    (COALESCE(NEW.bill_1, 0) * 1.00) +
+    (COALESCE(NEW.coin_25, 0) * 0.25) +
+    (COALESCE(NEW.coin_10, 0) * 0.10) +
+    (COALESCE(NEW.coin_5, 0) * 0.05)
+  )::numeric(10, 2);
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.calculate_closing_cash_amount()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  NEW.closing_cash_amount := (
+    (COALESCE(NEW.closing_bill_100, 0) * 100.00) +
+    (COALESCE(NEW.closing_bill_50, 0) * 50.00) +
+    (COALESCE(NEW.closing_bill_20, 0) * 20.00) +
+    (COALESCE(NEW.closing_bill_10, 0) * 10.00) +
+    (COALESCE(NEW.closing_bill_5, 0) * 5.00) +
+    (COALESCE(NEW.closing_bill_2, 0) * 2.00) +
+    (COALESCE(NEW.closing_bill_1, 0) * 1.00) +
+    (COALESCE(NEW.closing_coin_25, 0) * 0.25) +
+    (COALESCE(NEW.closing_coin_10, 0) * 0.10) +
+    (COALESCE(NEW.closing_coin_5, 0) * 0.05)
+  )::numeric(10, 2);
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_calculate_opening_cash_amount ON public.end_of_day_records;
+CREATE TRIGGER trg_calculate_opening_cash_amount
+  BEFORE INSERT OR UPDATE ON public.end_of_day_records
+  FOR EACH ROW
+  EXECUTE FUNCTION public.calculate_opening_cash_amount();
+
+DROP TRIGGER IF EXISTS trg_calculate_closing_cash_amount ON public.end_of_day_records;
+CREATE TRIGGER trg_calculate_closing_cash_amount
+  BEFORE INSERT OR UPDATE ON public.end_of_day_records
+  FOR EACH ROW
+  EXECUTE FUNCTION public.calculate_closing_cash_amount();
 
 -- ============================================================================
 -- INDEXES

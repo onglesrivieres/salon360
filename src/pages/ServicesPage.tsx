@@ -178,60 +178,40 @@ export function ServicesPage() {
     try {
       setSavingCategoryEdit(true);
 
-      const { error: updateError } = await supabase
-        .from('store_service_categories')
-        .update({
-          name: trimmedName,
-          color: editCategoryColor,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', categoryId);
-
-      if (updateError) throw updateError;
-
-      if (trimmedName !== originalName) {
-        const { error: updateServicesError } = await supabase
-          .from('store_services')
-          .update({ category: trimmedName })
-          .eq('store_id', selectedStoreId)
-          .eq('category', originalName);
-
-        if (updateServicesError) {
-          console.error('Error updating services for renamed category:', updateServicesError);
-          // Rollback: revert the category name back to originalName
-          const { error: rollbackError } = await supabase
-            .from('store_service_categories')
-            .update({
-              name: originalName,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', categoryId);
-          
-          if (rollbackError) {
-            console.error('Rollback failed for store_service_categories:', {
-              categoryId,
-              selectedStoreId,
-              originalName,
-              trimmedName,
-              rollbackError,
-            });
-            throw new Error(
-              `Failed to update services with new category name: ${updateServicesError.message}. ` +
-              `Rollback also failed: ${rollbackError.message}`
-            );
-          }
-          
-          throw new Error(`Failed to update services with new category name: ${updateServicesError.message}`);
+      // Use atomic RPC function to update category and services in a single transaction
+      const { data, error: rpcError } = await supabase.rpc(
+        'rename_service_category',
+        {
+          p_category_id: categoryId,
+          p_store_id: selectedStoreId,
+          p_original_name: originalName,
+          p_new_name: trimmedName,
+          p_color: editCategoryColor,
         }
+      );
+
+      if (rpcError) {
+        console.error('RPC error updating category:', rpcError);
+        throw new Error(rpcError.message || 'Failed to update category');
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to update category');
       }
 
       await fetchCategories();
       await fetchServices();
       setEditingCategoryId(null);
       showToast('Category updated successfully', 'success');
-    } catch (error: any) {
-      console.error('Error updating category:', error);
-      showToast(error.message || 'Failed to update category', 'error');
+    } catch (error: unknown) {
+      let errorMessage = 'Failed to update category';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error('Error updating category:', errorMessage);
+      } else {
+        console.error('Error updating category:', error);
+      }
+      showToast(errorMessage, 'error');
     } finally {
       setSavingCategoryEdit(false);
     }

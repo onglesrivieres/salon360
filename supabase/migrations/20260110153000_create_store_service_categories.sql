@@ -48,30 +48,60 @@ ALTER TABLE public.store_service_categories ENABLE ROW LEVEL SECURITY;
 
 -- Step 4: Create RLS policies
 
--- All users can view categories
+-- Authenticated users can view categories for their stores
 CREATE POLICY "Users can view service categories"
   ON public.store_service_categories FOR SELECT
-  TO anon, authenticated
-  USING (true);
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.store_staff
+      WHERE store_staff.store_id = store_service_categories.store_id
+      AND store_staff.employee_id = (auth.jwt() ->> 'user_id')::uuid
+    )
+  );
 
--- Staff can create categories
+-- Staff can create categories for their stores
 CREATE POLICY "Staff can create service categories"
   ON public.store_service_categories FOR INSERT
-  TO anon, authenticated
-  WITH CHECK (true);
+  TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.store_staff
+      WHERE store_staff.store_id = store_service_categories.store_id
+      AND store_staff.employee_id = (auth.jwt() ->> 'user_id')::uuid
+    )
+  );
 
--- Staff can update categories
+-- Staff can update categories for their stores
 CREATE POLICY "Staff can update service categories"
   ON public.store_service_categories FOR UPDATE
-  TO anon, authenticated
-  USING (true)
-  WITH CHECK (true);
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.store_staff
+      WHERE store_staff.store_id = store_service_categories.store_id
+      AND store_staff.employee_id = (auth.jwt() ->> 'user_id')::uuid
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.store_staff
+      WHERE store_staff.store_id = store_service_categories.store_id
+      AND store_staff.employee_id = (auth.jwt() ->> 'user_id')::uuid
+    )
+  );
 
--- Staff can delete categories
+-- Staff can delete categories for their stores
 CREATE POLICY "Staff can delete service categories"
   ON public.store_service_categories FOR DELETE
-  TO anon, authenticated
-  USING (true);
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.store_staff
+      WHERE store_staff.store_id = store_service_categories.store_id
+      AND store_staff.employee_id = (auth.jwt() ->> 'user_id')::uuid
+    )
+  );
 
 -- Step 5: Create updated_at trigger
 CREATE OR REPLACE FUNCTION public.update_store_service_categories_updated_at()

@@ -481,10 +481,15 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       await loadEODData();
 
       window.dispatchEvent(new CustomEvent('openingCashUpdated'));
-    } catch (error: any) {
-      const errorMessage = error?.message || error?.error_description || 'Unknown error';
-      showToast(`Failed to save opening cash: ${errorMessage}`, 'error');
-      console.error('Opening cash save error:', error);
+    } catch (error: unknown) {
+      let errorMessage = 'Unknown error';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null && 'error_description' in error) {
+        errorMessage = (error as { error_description?: string }).error_description || 'Unknown error';
+      }
+      showToast('Failed to save opening cash', 'error');
+      console.error('Opening cash save error:', errorMessage, error);
     } finally {
       setSaving(false);
     }

@@ -28,6 +28,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const LOCALE_KEY = 'salon365_locale';
 const VIEWING_AS_ROLE_KEY = 'salon365_viewing_as_role';
+const ALLOWED_ROLES: Role[] = ['Admin', 'Technician', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Spa Expert', 'Cashier'];
+
+function isValidRole(role: any): role is Role {
+  return typeof role === 'string' && ALLOWED_ROLES.includes(role as Role);
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
@@ -100,9 +105,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(LOCALE_KEY, deviceLocale);
     }
 
-    const savedViewingAsRole = sessionStorage.getItem(VIEWING_AS_ROLE_KEY) as Role | null;
-    if (savedViewingAsRole) {
+    const savedViewingAsRole = sessionStorage.getItem(VIEWING_AS_ROLE_KEY);
+    if (savedViewingAsRole && isValidRole(savedViewingAsRole)) {
       setViewingAsRole(savedViewingAsRole);
+    } else if (savedViewingAsRole) {
+      // Remove invalid stored role
+      sessionStorage.removeItem(VIEWING_AS_ROLE_KEY);
     }
 
     setIsLoading(false);

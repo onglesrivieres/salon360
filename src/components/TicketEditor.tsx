@@ -687,6 +687,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       if (discountPercentage > 0) {
         const subtotal = calculateSubtotal();
         discountAmount = (subtotal * discountPercentage) / 100;
+        // Persist computed value back to formData
+        formData.discount_amount = discountAmount.toString();
       }
     }
 
@@ -695,6 +697,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       if (discountPercentageCash > 0) {
         const subtotal = calculateSubtotal();
         discountAmountCash = (subtotal * discountPercentageCash) / 100;
+        // Persist computed value back to formData
+        formData.discount_amount_cash = discountAmountCash.toString();
       }
     }
 

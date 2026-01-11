@@ -80,10 +80,6 @@ grant references on table "public"."store_service_categories" to "authenticated"
 
 grant select on table "public"."store_service_categories" to "authenticated";
 
-grant trigger on table "public"."store_service_categories" to "authenticated";
-
-grant truncate on table "public"."store_service_categories" to "authenticated";
-
 grant update on table "public"."store_service_categories" to "authenticated";
 
 grant delete on table "public"."store_service_categories" to "service_role";
@@ -137,6 +133,7 @@ with check (true);
 using (true);
 
 
+DROP TRIGGER IF EXISTS trigger_store_service_categories_updated_at ON public.store_service_categories;
 CREATE TRIGGER trigger_store_service_categories_updated_at BEFORE UPDATE ON public.store_service_categories FOR EACH ROW EXECUTE FUNCTION public.update_store_service_categories_updated_at();
 
 
