@@ -283,6 +283,24 @@ export const Permissions = {
       return hasAnyRole(roles, ['Owner', 'Admin']);
     },
   },
+
+  clients: {
+    canView: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+    },
+    canCreate: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+    },
+    canEdit: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+    },
+    canDelete: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
+    canBlacklist: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+    },
+  },
 };
 
 export function getPermissionMessage(
@@ -293,7 +311,7 @@ export function getPermissionMessage(
 }
 
 export function canAccessPage(
-  page: 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'settings' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'configuration' | 'safebalance' | 'queue-removal-history',
+  page: 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'settings' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'configuration' | 'safebalance' | 'queue-removal-history' | 'clients',
   roles: Role[] | RolePermission,
   payType?: 'hourly' | 'daily' | 'commission'
 ): boolean {
@@ -326,6 +344,8 @@ export function canAccessPage(
       return Permissions.safeBalance.canView(roles);
     case 'queue-removal-history':
       return Permissions.queue.canViewRemovalHistory(roles);
+    case 'clients':
+      return Permissions.clients.canView(roles);
     default:
       return false;
   }
@@ -372,6 +392,10 @@ export function getAccessiblePages(roles: Role[] | RolePermission, payType?: 'ho
 
   if (Permissions.configuration.canView(roles)) {
     pages.push('configuration');
+  }
+
+  if (Permissions.clients.canView(roles)) {
+    pages.push('clients');
   }
 
   return pages;

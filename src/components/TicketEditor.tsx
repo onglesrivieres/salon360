@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Banknote, CreditCard, Clock, Award, Lock, CheckCircle, AlertCircle, Edit2, Gift } from 'lucide-react';
+import { X, Plus, Trash2, Banknote, CreditCard, Clock, Award, Lock, CheckCircle, AlertCircle, Edit2, Gift, UserPlus, User } from 'lucide-react';
 import {
   supabase,
   SaleTicket,
@@ -9,6 +9,7 @@ import {
   Technician,
   TicketActivityLog,
   TechnicianWithQueue,
+  Client,
 } from '../lib/supabase';
 import { getCategoryColorClasses } from '../lib/category-colors';
 import { Button } from './ui/Button';
@@ -23,6 +24,11 @@ import { Permissions } from '../lib/permissions';
 import { formatDateTimeEST, convertToESTDatetimeString, convertESTDatetimeStringToUTC } from '../lib/timezone';
 import { getDayOfWeek, getFullDayName } from '../lib/schedule-utils';
 import { TechnicianQueue } from './TechnicianQueue';
+import { useClientLookup, addColorToHistory } from '../hooks/useClientLookup';
+import { formatPhoneNumber, normalizePhoneNumber, hasEnoughDigitsForLookup } from '../lib/phoneUtils';
+import { BlacklistWarning } from './clients/BlacklistWarning';
+import { ColorDisplay } from './clients/ColorDisplay';
+import { QuickAddClientModal } from './clients/QuickAddClientModal';
 
 interface TicketEditorProps {
   ticketId: string | null;
@@ -119,6 +125,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+  // Client lookup state
+  const [showQuickAddClient, setShowQuickAddClient] = useState(false);
+  const [linkedClient, setLinkedClient] = useState<Client | null>(null);
+  const [blacklistedByName, setBlacklistedByName] = useState<string>('');
 
   const calculateTimeRemaining = (tech: TechnicianWithQueue): string => {
     if (!tech.ticket_start_time || !tech.estimated_duration_min) {
@@ -243,6 +254,51 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     discount_percentage_cash: '',
     discount_amount_cash: '',
   });
+
+  // Client lookup hook - only enabled when not editing an existing ticket with a client already linked
+  const clientLookup = useClientLookup(
+    formData.customer_phone,
+    selectedStoreId,
+    { enabled: showCustomerPhone && !linkedClient }
+  );
+
+  // Update linked client when lookup finds one
+  useEffect(() => {
+    if (clientLookup.client && !linkedClient) {
+      setLinkedClient(clientLookup.client);
+      // Auto-fill customer name if empty
+      if (!formData.customer_name && clientLookup.client.name) {
+        setFormData(prev => ({ ...prev, customer_name: clientLookup.client!.name }));
+      }
+      // Fetch blacklisted_by name if blacklisted
+      if (clientLookup.client.is_blacklisted && clientLookup.client.blacklisted_by) {
+        fetchBlacklistedByName(clientLookup.client.blacklisted_by);
+      }
+    }
+  }, [clientLookup.client]);
+
+  // Clear linked client when phone changes significantly
+  useEffect(() => {
+    if (linkedClient) {
+      const currentNormalized = normalizePhoneNumber(formData.customer_phone);
+      const linkedNormalized = linkedClient.phone_number;
+      if (currentNormalized !== linkedNormalized) {
+        setLinkedClient(null);
+        setBlacklistedByName('');
+      }
+    }
+  }, [formData.customer_phone, linkedClient]);
+
+  async function fetchBlacklistedByName(employeeId: string) {
+    const { data } = await supabase
+      .from('employees')
+      .select('display_name')
+      .eq('id', employeeId)
+      .maybeSingle();
+    if (data) {
+      setBlacklistedByName(data.display_name);
+    }
+  }
 
   useEffect(() => {
     loadData();
@@ -999,6 +1055,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_type: formData.customer_type || null,
           customer_name: formData.customer_name,
           customer_phone: formData.customer_phone,
+          client_id: linkedClient?.id || null,
           payment_method: formData.payment_method || null,
           total,
           notes: formData.notes,
@@ -1108,6 +1165,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           customer_type: formData.customer_type || null,
           customer_name: formData.customer_name,
           customer_phone: formData.customer_phone,
+          client_id: linkedClient?.id || null,
           payment_method: formData.payment_method || null,
           total,
           notes: formData.notes,
@@ -1267,6 +1325,20 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         .eq('id', ticketId);
 
       if (error) throw error;
+
+      // Save color to client history if we have a linked client and today's color
+      if (linkedClient && formData.todays_color && formData.todays_color.trim()) {
+        try {
+          await addColorToHistory({
+            client_id: linkedClient.id,
+            ticket_id: ticketId,
+            color: formData.todays_color.trim(),
+          });
+        } catch (colorError) {
+          console.error('Error saving color to history:', colorError);
+          // Don't fail the close operation for this
+        }
+      }
 
       await logActivity(ticketId, 'closed', `${session?.display_name} closed ticket`, {
         total: calculateTotal(),
@@ -1796,51 +1868,99 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
             {/* Customer Info Fields */}
             {(showCustomerName || showCustomerPhone || showTodaysColor) && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
-                {showCustomerName && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                      Customer Name {requireCustomerName && <span className="text-red-600">*</span>}
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.customer_name}
-                      onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                      disabled={isTicketClosed || isReadOnly}
-                      placeholder="Enter customer name"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    />
-                  </div>
+              <div className="space-y-2 mt-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {showCustomerPhone && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                        Customer Phone {requireCustomerPhone && <span className="text-red-600">*</span>}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="tel"
+                          value={formatPhoneNumber(formData.customer_phone)}
+                          onChange={(e) => {
+                            const digits = normalizePhoneNumber(e.target.value);
+                            setFormData({ ...formData, customer_phone: digits });
+                          }}
+                          disabled={isTicketClosed || isReadOnly}
+                          placeholder="(514) 123-4567"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        />
+                        {clientLookup.isLoading && (
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                      {/* Client status indicator */}
+                      {showCustomerPhone && hasEnoughDigitsForLookup(formData.customer_phone) && !clientLookup.isLoading && !isTicketClosed && (
+                        <div className="mt-1">
+                          {linkedClient ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
+                              <User className="w-3 h-3" />
+                              Existing Client
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setShowQuickAddClient(true)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded hover:bg-blue-200 transition-colors"
+                            >
+                              <UserPlus className="w-3 h-3" />
+                              + Add New Client
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {showCustomerName && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                        Customer Name {requireCustomerName && <span className="text-red-600">*</span>}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.customer_name}
+                        onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="Enter customer name"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                  )}
+                  {showTodaysColor && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                        Today's Color
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.todays_color}
+                        onChange={(e) => setFormData({ ...formData, todays_color: e.target.value })}
+                        disabled={isTicketClosed || isReadOnly}
+                        placeholder="Enter color"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Blacklist Warning */}
+                {linkedClient?.is_blacklisted && (
+                  <BlacklistWarning
+                    client={linkedClient}
+                    blacklistedByName={blacklistedByName}
+                  />
                 )}
-                {showCustomerPhone && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                      Customer Phone {requireCustomerPhone && <span className="text-red-600">*</span>}
-                    </label>
-                    <input
-                      type="tel"
-                      value={formData.customer_phone}
-                      onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
-                      disabled={isTicketClosed || isReadOnly}
-                      placeholder="Enter phone number"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    />
-                  </div>
-                )}
-                {showTodaysColor && (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                      Today's Color
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.todays_color}
-                      onChange={(e) => setFormData({ ...formData, todays_color: e.target.value })}
-                      disabled={isTicketClosed || isReadOnly}
-                      placeholder="Enter color"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    />
-                  </div>
+
+                {/* Last Color Used */}
+                {linkedClient && clientLookup.lastColor && !isTicketClosed && (
+                  <ColorDisplay
+                    colorHistory={clientLookup.lastColor}
+                    compact={true}
+                  />
                 )}
               </div>
             )}
@@ -2855,6 +2975,21 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           </div>
         </div>
       </Modal>
+
+      {/* Quick Add Client Modal */}
+      {selectedStoreId && (
+        <QuickAddClientModal
+          isOpen={showQuickAddClient}
+          onClose={() => setShowQuickAddClient(false)}
+          onSuccess={(client) => {
+            setLinkedClient(client);
+            setFormData(prev => ({ ...prev, customer_name: client.name }));
+            setShowQuickAddClient(false);
+          }}
+          phoneNumber={formData.customer_phone}
+          storeId={selectedStoreId}
+        />
+      )}
     </>
   );
 }

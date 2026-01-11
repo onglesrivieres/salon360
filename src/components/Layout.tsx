@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package, List, RefreshCw, Circle, TrendingUp, Vault, Flag } from 'lucide-react';
+import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package, List, RefreshCw, Circle, TrendingUp, Vault, Flag, UserCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
@@ -18,8 +18,8 @@ import { ViolationResponseRibbon } from './ViolationResponseRibbon';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentPage: 'home' | 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'configuration' | 'attendance' | 'approvals' | 'inventory' | 'insights';
-  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'configuration' | 'attendance' | 'approvals' | 'inventory' | 'insights') => void;
+  currentPage: 'home' | 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'configuration' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'clients';
+  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'configuration' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'clients') => void;
 }
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
@@ -667,6 +667,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     { id: 'safebalance' as const, label: 'Safe Balance', icon: Vault },
     { id: 'attendance' as const, label: 'Attendance', icon: Calendar },
     { id: 'technicians' as const, label: t('nav.employees'), icon: Users },
+    { id: 'clients' as const, label: 'Clients', icon: UserCircle },
     { id: 'inventory' as const, label: 'Inventory', icon: Package, hidden: !showInventory },
     { id: 'services' as const, label: t('nav.services'), icon: Briefcase },
     { id: 'insights' as const, label: 'Insights', icon: TrendingUp },
