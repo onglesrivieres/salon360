@@ -56,13 +56,18 @@ export function TechnicianQueue({
     return mins > 0 ? `~${hours}h ${mins}min` : `~${hours}h`;
   };
 
-  const readyTechnicians = sortedTechnicians.filter(t => t.queue_status === 'ready');
-  const smallServiceTechnicians = sortedTechnicians.filter(t => t.queue_status === 'small_service');
+  // Combine ready and small_service technicians, sorted by position to maintain queue order
+  const availableTechnicians = sortedTechnicians
+    .filter(t => t.queue_status === 'ready' || t.queue_status === 'small_service')
+    .sort((a, b) => (a.queue_position || 999) - (b.queue_position || 999));
+
+  const readyTechnicians = availableTechnicians.filter(t => t.queue_status === 'ready');
+  const smallServiceTechnicians = availableTechnicians.filter(t => t.queue_status === 'small_service');
   const neutralTechnicians = sortedTechnicians.filter(t => t.queue_status === 'neutral');
   const busyTechnicians = sortedTechnicians.filter(t => t.queue_status === 'busy');
 
   const currentEmployeeInQueue = allowLeaveQueue && currentEmployeeId
-    ? readyTechnicians.find(tech => tech.employee_id === currentEmployeeId)
+    ? availableTechnicians.find(tech => tech.employee_id === currentEmployeeId && tech.queue_status === 'ready')
     : null;
   const isLeaving = currentEmployeeInQueue && leavingQueueEmployeeId === currentEmployeeId;
 
@@ -103,31 +108,44 @@ export function TechnicianQueue({
       )}
 
       <div className="flex flex-wrap gap-2">
-        {readyTechnicians.map((tech) => {
+        {/* Render ready and small_service together, sorted by position */}
+        {availableTechnicians.map((tech) => {
           const isCurrentEmployee = currentEmployeeId === tech.employee_id;
-          const showRemoveButton = canRemoveTechnicians && !isCurrentEmployee && onRemoveTechnician;
+          const isSmallService = tech.queue_status === 'small_service';
+          const showRemoveButton = canRemoveTechnicians && !isCurrentEmployee && onRemoveTechnician && !isSmallService;
           const isBeingRemoved = removingTechnicianId === tech.employee_id;
+
+          // Color classes based on status
+          const colorClasses = isSmallService
+            ? selectedTechnicianId === tech.employee_id
+              ? 'bg-yellow-600 text-white ring-2 ring-yellow-400'
+              : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+            : selectedTechnicianId === tech.employee_id
+              ? 'bg-green-600 text-white ring-2 ring-green-400'
+              : 'bg-green-100 text-green-800 hover:bg-green-200';
+
+          const badgeColorClass = isSmallService ? 'text-yellow-600' : 'text-green-600';
+          const spinnerBorderColor = isSmallService ? 'border-yellow-600' : 'border-green-600';
+
           return (
             <div key={tech.employee_id} className="relative inline-block group">
               <button
                 type="button"
-                onClick={() => !isReadOnly && onTechnicianSelect?.(tech.employee_id)}
-                className={`py-2 px-3 text-sm rounded-lg font-medium transition-colors ${
-                  selectedTechnicianId === tech.employee_id
-                    ? 'bg-green-600 text-white ring-2 ring-green-400'
-                    : 'bg-green-100 text-green-800 hover:bg-green-200'
-                } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} ${isCurrentEmployee ? 'animate-pulse' : ''} ${isBeingRemoved ? 'opacity-50' : ''}`}
+                onClick={() => !isReadOnly && onTechnicianSelect?.(tech.employee_id, isSmallService ? tech.current_open_ticket_id : undefined)}
+                className={`py-2 px-3 text-sm rounded-lg font-medium transition-colors ${colorClasses} ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} ${isCurrentEmployee ? 'animate-pulse' : ''} ${isBeingRemoved ? 'opacity-50' : ''}`}
                 disabled={isReadOnly || isBeingRemoved}
+                title={isSmallService ? 'Working on small service - keeping queue position' : undefined}
               >
                 <div className="flex items-center gap-2">
                   {tech.queue_position > 0 && (
-                    <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-white text-green-600 rounded-full">
+                    <span className={`inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-white ${badgeColorClass} rounded-full`}>
                       {tech.queue_position}
                     </span>
                   )}
+                  {isSmallService && <Clock className="w-3 h-3" />}
                   <span>{tech.display_name}</span>
                   {isBeingRemoved && (
-                    <div className="w-3 h-3 border-2 border-green-600 border-t-transparent rounded-full animate-spin ml-1" />
+                    <div className={`w-3 h-3 border-2 ${spinnerBorderColor} border-t-transparent rounded-full animate-spin ml-1`} />
                   )}
                 </div>
               </button>
@@ -146,34 +164,6 @@ export function TechnicianQueue({
                 </button>
               )}
             </div>
-          );
-        })}
-
-        {smallServiceTechnicians.map((tech) => {
-          const isCurrentEmployee = currentEmployeeId === tech.employee_id;
-          return (
-            <button
-              key={tech.employee_id}
-              type="button"
-              onClick={() => !isReadOnly && onTechnicianSelect?.(tech.employee_id, tech.current_open_ticket_id)}
-              className={`py-2 px-3 text-sm rounded-lg font-medium transition-colors ${
-                selectedTechnicianId === tech.employee_id
-                  ? 'bg-yellow-600 text-white ring-2 ring-yellow-400'
-                  : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-              } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} ${isCurrentEmployee ? 'animate-pulse' : ''}`}
-              title="Working on small service - keeping queue position"
-              disabled={isReadOnly}
-            >
-              <div className="flex items-center gap-2">
-                {tech.queue_position > 0 && (
-                  <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-white text-yellow-600 rounded-full">
-                    {tech.queue_position}
-                  </span>
-                )}
-                <Clock className="w-3 h-3" />
-                <span>{tech.display_name}</span>
-              </div>
-            </button>
           );
         })}
 
