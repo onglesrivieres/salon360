@@ -223,21 +223,13 @@ export function EmployeesPage() {
     }
 
     try {
-      let rolePermission: 'Technician' | 'Receptionist' | 'Supervisor';
-
-      if (formData.role.includes('Supervisor')) {
-        rolePermission = 'Supervisor';
-      } else if (formData.role.includes('Receptionist') || formData.role.includes('Manager') || formData.role.includes('Owner')) {
-        rolePermission = 'Receptionist';
-      } else {
-        rolePermission = 'Technician';
-      }
+      // Note: role_permission is automatically computed by database trigger
+      // based on the role array (see migration 20260112151539)
 
       const employeeData = {
         display_name: formData.display_name,
         legal_name: formData.display_name,
         role: formData.role,
-        role_permission: rolePermission,
         status: formData.status,
         pay_type: formData.pay_type,
         notes: formData.notes,
