@@ -57,6 +57,7 @@ export function TechnicianQueue({
   };
 
   const readyTechnicians = sortedTechnicians.filter(t => t.queue_status === 'ready');
+  const smallServiceTechnicians = sortedTechnicians.filter(t => t.queue_status === 'small_service');
   const neutralTechnicians = sortedTechnicians.filter(t => t.queue_status === 'neutral');
   const busyTechnicians = sortedTechnicians.filter(t => t.queue_status === 'busy');
 
@@ -84,6 +85,12 @@ export function TechnicianQueue({
             <div className="flex items-center gap-2">
               <Lock className="w-4 h-4 text-red-600" />
               <span className="text-sm font-semibold text-red-700 uppercase">Busy</span>
+            </div>
+          )}
+          {smallServiceTechnicians.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-yellow-600" />
+              <span className="text-sm font-semibold text-yellow-700 uppercase">Small Service</span>
             </div>
           )}
         </div>
@@ -139,6 +146,34 @@ export function TechnicianQueue({
                 </button>
               )}
             </div>
+          );
+        })}
+
+        {smallServiceTechnicians.map((tech) => {
+          const isCurrentEmployee = currentEmployeeId === tech.employee_id;
+          return (
+            <button
+              key={tech.employee_id}
+              type="button"
+              onClick={() => !isReadOnly && onTechnicianSelect?.(tech.employee_id, tech.current_open_ticket_id)}
+              className={`py-2 px-3 text-sm rounded-lg font-medium transition-colors ${
+                selectedTechnicianId === tech.employee_id
+                  ? 'bg-yellow-600 text-white ring-2 ring-yellow-400'
+                  : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+              } ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} ${isCurrentEmployee ? 'animate-pulse' : ''}`}
+              title="Working on small service - keeping queue position"
+              disabled={isReadOnly}
+            >
+              <div className="flex items-center gap-2">
+                {tech.queue_position > 0 && (
+                  <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-white text-yellow-600 rounded-full">
+                    {tech.queue_position}
+                  </span>
+                )}
+                <Clock className="w-3 h-3" />
+                <span>{tech.display_name}</span>
+              </div>
+            </button>
           );
         })}
 

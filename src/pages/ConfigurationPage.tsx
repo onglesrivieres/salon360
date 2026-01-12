@@ -238,6 +238,14 @@ export function ConfigurationPage() {
       }
     }
 
+    // Validate range for small_service_threshold
+    if (setting.setting_key === 'small_service_threshold') {
+      if (newValue < 0 || newValue > 500) {
+        showToast('Value must be between $0 and $500', 'error');
+        return;
+      }
+    }
+
     if (setting.is_critical) {
       setPendingChange({ setting, newValue });
       setShowConfirmModal(true);
@@ -551,17 +559,20 @@ export function ConfigurationPage() {
                               }}
                               min={
                                 (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10 :
-                                setting.setting_key === 'violation_min_votes_required' ? 1 : undefined
+                                setting.setting_key === 'violation_min_votes_required' ? 1 :
+                                setting.setting_key === 'small_service_threshold' ? 0 : undefined
                               }
                               max={
                                 (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10080 :
-                                setting.setting_key === 'violation_min_votes_required' ? 10 : undefined
+                                setting.setting_key === 'violation_min_votes_required' ? 10 :
+                                setting.setting_key === 'small_service_threshold' ? 500 : undefined
                               }
                               step="1"
                               className="w-28 px-3 py-2"
                             />
                             <span className="text-sm text-gray-600">
-                              {setting.setting_key === 'violation_min_votes_required' ? 'votes' : 'minutes'}
+                              {setting.setting_key === 'violation_min_votes_required' ? 'votes' :
+                               setting.setting_key === 'small_service_threshold' ? 'dollars' : 'minutes'}
                             </span>
                           </div>
                           {(setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') && (
@@ -600,6 +611,29 @@ export function ConfigurationPage() {
                                 { label: '3', value: 3 },
                                 { label: '4', value: 4 },
                                 { label: '5', value: 5 },
+                              ].map((preset) => (
+                                <button
+                                  key={preset.value}
+                                  onClick={() => handleNumericChange(setting, preset.value)}
+                                  className={`text-xs px-2 py-1 rounded transition-colors ${
+                                    setting.setting_value === preset.value
+                                      ? 'bg-blue-100 text-blue-700 font-medium'
+                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                  }`}
+                                >
+                                  {preset.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {setting.setting_key === 'small_service_threshold' && (
+                            <div className="flex flex-wrap gap-1 justify-end">
+                              {[
+                                { label: '$20', value: 20 },
+                                { label: '$25', value: 25 },
+                                { label: '$30', value: 30 },
+                                { label: '$40', value: 40 },
+                                { label: '$50', value: 50 },
                               ].map((preset) => (
                                 <button
                                   key={preset.value}
