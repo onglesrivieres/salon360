@@ -188,10 +188,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
   async function fetchDailyTipData(dateToFetch: string): Promise<Map<string, TechnicianSummary>> {
     const canViewAll = session?.role_permission ? Permissions.tipReport.canViewAll(session.role_permission) : false;
-    const isRestrictedRole = !canViewAll && (
-      session?.role_permission === 'Technician' ||
-      (session?.role && Array.isArray(session.role) && session.role.includes('Spa Expert'))
-    );
+    const isRestrictedRole = !canViewAll && session?.role_permission === 'Technician';
     const isTechnician = isRestrictedRole;
 
     const { data: allEmployeeStores, error: allEmployeeStoresError } = await supabase
@@ -526,10 +523,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       setLoading(true);
 
       const canViewAll = session?.role_permission ? Permissions.tipReport.canViewAll(session.role_permission) : false;
-      const isRestrictedRole = !canViewAll && (
-        session?.role_permission === 'Technician' ||
-        (session?.role && Array.isArray(session.role) && session.role.includes('Spa Expert'))
-      );
+      const isRestrictedRole = !canViewAll && session?.role_permission === 'Technician';
       const isTechnician = isRestrictedRole;
 
       if (isTechnician && session?.employee_id) {

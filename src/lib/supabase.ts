@@ -40,7 +40,7 @@ export interface Technician {
   id: string;
   legal_name: string;
   display_name: string;
-  role: ('Technician' | 'Receptionist' | 'Manager' | 'Owner' | 'Spa Expert' | 'Supervisor' | 'Cashier')[];
+  role: ('Technician' | 'Receptionist' | 'Manager' | 'Owner' | 'Supervisor' | 'Cashier')[];
   role_permission?: 'Admin' | 'Receptionist' | 'Technician' | 'Supervisor' | 'Cashier';
   status: 'Active' | 'Inactive';
   store_id?: string;

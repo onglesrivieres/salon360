@@ -18,7 +18,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'View Tickets',
     description: 'Ability to view the tickets page and see ticket information',
     isCritical: false,
-    defaultRoles: ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner', 'Cashier']
+    defaultRoles: ['Admin', 'Receptionist', 'Technician', 'Supervisor', 'Manager', 'Owner', 'Cashier']
   },
   {
     key: 'tickets.canCreate',
@@ -27,7 +27,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'Create Tickets',
     description: 'Ability to create new service tickets',
     isCritical: false,
-    defaultRoles: ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner', 'Cashier']
+    defaultRoles: ['Admin', 'Receptionist', 'Technician', 'Supervisor', 'Manager', 'Owner', 'Cashier']
   },
   {
     key: 'tickets.isSelfServiceRole',
@@ -36,7 +36,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'Self-Service Tickets',
     description: 'Ability to create self-service tickets (technician creating their own)',
     isCritical: false,
-    defaultRoles: ['Technician', 'Spa Expert', 'Supervisor']
+    defaultRoles: ['Technician', 'Supervisor']
   },
   {
     key: 'tickets.canViewAllTechniciansInEditor',
@@ -126,7 +126,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'Approve Tickets',
     description: 'Ability to approve pending tickets',
     isCritical: false,
-    defaultRoles: ['Admin', 'Technician', 'Spa Expert', 'Supervisor', 'Owner']
+    defaultRoles: ['Admin', 'Technician', 'Supervisor', 'Owner']
   },
   {
     key: 'tickets.canViewPendingApprovals',
@@ -135,7 +135,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'View Pending Approvals',
     description: 'Ability to see tickets awaiting approval',
     isCritical: false,
-    defaultRoles: ['Admin', 'Technician', 'Spa Expert', 'Supervisor', 'Owner', 'Manager']
+    defaultRoles: ['Admin', 'Technician', 'Supervisor', 'Owner', 'Manager']
   },
   {
     key: 'tickets.canReviewRejected',
@@ -180,7 +180,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'View Tip Reports',
     description: 'Ability to view tip reports',
     isCritical: false,
-    defaultRoles: ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']
+    defaultRoles: ['Admin', 'Receptionist', 'Technician', 'Supervisor', 'Manager', 'Owner']
   },
   {
     key: 'tipReport.canViewAll',
@@ -315,7 +315,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'Change Own PIN',
     description: 'Ability to change your own PIN code',
     isCritical: false,
-    defaultRoles: ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Spa Expert', 'Cashier']
+    defaultRoles: ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Cashier']
   },
   {
     key: 'attendance.canView',
@@ -324,7 +324,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'View Attendance',
     description: 'Ability to view the attendance page and records',
     isCritical: false,
-    defaultRoles: ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']
+    defaultRoles: ['Admin', 'Receptionist', 'Technician', 'Supervisor', 'Manager', 'Owner']
   },
   {
     key: 'attendance.canComment',
@@ -333,7 +333,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'Comment on Attendance',
     description: 'Ability to add comments to attendance records',
     isCritical: false,
-    defaultRoles: ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']
+    defaultRoles: ['Admin', 'Receptionist', 'Technician', 'Supervisor', 'Manager', 'Owner']
   },
   {
     key: 'attendance.canExport',
@@ -432,7 +432,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'View Own Inventory',
     description: 'Ability to view your own inventory',
     isCritical: false,
-    defaultRoles: ['Admin', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']
+    defaultRoles: ['Admin', 'Technician', 'Supervisor', 'Manager', 'Owner']
   },
   {
     key: 'inventory.canCreateAudit',

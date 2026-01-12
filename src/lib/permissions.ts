@@ -1,5 +1,5 @@
 export type RolePermission = 'Admin' | 'Receptionist' | 'Technician' | 'Supervisor' | 'Cashier';
-export type Role = 'Admin' | 'Technician' | 'Receptionist' | 'Supervisor' | 'Manager' | 'Owner' | 'Spa Expert' | 'Cashier';
+export type Role = 'Admin' | 'Technician' | 'Receptionist' | 'Supervisor' | 'Manager' | 'Owner' | 'Cashier';
 
 export interface PermissionCheck {
   canView: boolean;
@@ -19,13 +19,13 @@ function hasAnyRole(roles: Role[] | RolePermission, allowedRoles: string[]): boo
 export const Permissions = {
   tickets: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
     },
     canCreate: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
     },
     isSelfServiceRole: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Technician', 'Spa Expert', 'Supervisor']);
+      return hasAnyRole(roles, ['Technician', 'Supervisor']);
     },
     canViewAllTechniciansInEditor: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
@@ -38,8 +38,8 @@ export const Permissions = {
       currentEmployeeId: string,
       ticketCreatedBy?: string
     ): boolean => {
-      // Technicians and Spa Experts cannot edit tickets at all, even their own
-      if (hasAnyRole(roles, ['Technician', 'Spa Expert'])) {
+      // Technicians cannot edit tickets at all, even their own
+      if (hasAnyRole(roles, ['Technician'])) {
         return false;
       }
       // Supervisors can edit their own self-service tickets
@@ -57,7 +57,7 @@ export const Permissions = {
     canEditNotes: (roles: Role[] | RolePermission, isClosed: boolean): boolean => {
       if (hasAnyRole(roles, ['Admin', 'Owner'])) return true;
       if (hasAnyRole(roles, ['Receptionist', 'Supervisor', 'Manager', 'Cashier'])) return !isClosed;
-      // Technicians and Spa Experts cannot edit notes
+      // Technicians cannot edit notes
       return false;
     },
     canDelete: (roles: Role[] | RolePermission): boolean => {
@@ -77,7 +77,7 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
     },
     canApprove: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Technician', 'Spa Expert', 'Supervisor', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Technician', 'Supervisor', 'Owner']);
     },
     canViewPendingApprovals: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Supervisor', 'Owner', 'Manager']);
@@ -91,8 +91,8 @@ export const Permissions = {
       isClosed: boolean,
       isApproved?: boolean
     ): boolean => {
-      // Technician and Spa Expert can edit until completed (and not closed)
-      if (hasAnyRole(roles, ['Technician', 'Spa Expert'])) {
+      // Technician can edit until completed (and not closed)
+      if (hasAnyRole(roles, ['Technician'])) {
         return !isCompleted && !isClosed;
       }
       // Other roles follow normal canEdit logic
@@ -104,8 +104,8 @@ export const Permissions = {
       isClosed: boolean,
       isApproved?: boolean
     ): boolean => {
-      // Technician and Spa Expert can edit until completed (and not closed)
-      if (hasAnyRole(roles, ['Technician', 'Spa Expert'])) {
+      // Technician can edit until completed (and not closed)
+      if (hasAnyRole(roles, ['Technician'])) {
         return !isCompleted && !isClosed;
       }
       // Other roles follow normal canEdit logic
@@ -127,7 +127,7 @@ export const Permissions = {
 
   tipReport: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Supervisor', 'Manager', 'Owner']);
     },
     canViewAll: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
@@ -195,10 +195,10 @@ export const Permissions = {
         return true;
       }
       // All pay types (hourly, daily, commission) can view attendance
-      return hasAnyRole(roles, ['Technician', 'Spa Expert']);
+      return hasAnyRole(roles, ['Technician']);
     },
     canComment: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Supervisor', 'Manager', 'Owner']);
     },
     canExport: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
@@ -234,7 +234,7 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
     },
     canViewOwnInventory: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Technician', 'Spa Expert', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Technician', 'Supervisor', 'Manager', 'Owner']);
     },
     canCreateAudit: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);

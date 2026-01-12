@@ -125,7 +125,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
   const canDelete = session && session.role_permission && Permissions.tickets.canDelete(session.role_permission);
 
-  // Permission checks for Today's Color and Services (Technician/Spa Expert can edit until completed)
+  // Permission checks for Today's Color and Services (Technician can edit until completed)
   const isTicketCompleted = !!ticket?.completed_at;
   const isTicketClosed = !!ticket?.closed_at;
 
@@ -145,9 +145,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       isApproved
     );
 
-  // Check if user is Spa Expert or Technician (restricted roles for customer info)
+  // Check if user is Technician (restricted roles for customer info)
   const isRestrictedCustomerInfoRole = session?.role &&
-    (session.role.includes('Spa Expert') || session.role.includes('Technician'));
+    session.role.includes('Technician');
 
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>('');
   const [showCustomService, setShowCustomService] = useState(false);
@@ -228,18 +228,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   };
 
   const canEmployeePerformService = (employeeId: string, serviceId: string): boolean => {
-    const employee = employees.find(e => e.id === employeeId);
-    const service = services.find(s => s.id === serviceId);
-
-    if (!employee || !service) return true;
-
-    const isSpaExpert = employee.role.includes('Spa Expert');
-    if (isSpaExpert) {
-      const allowedCategories = ['Soins de Pédicure', 'Soins de Manucure', 'Others'];
-      return allowedCategories.includes(service.category);
-    }
-
-    // Technicians and other roles can perform all services
+    // All service performers (Technician, Supervisor, Manager, Owner) can perform all services
     return true;
   };
 
@@ -487,7 +476,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       }
 
       const allEmployees = (employeesRes.data || []).filter(emp =>
-        (emp.role.includes('Technician') || emp.role.includes('Spa Expert')) && !emp.role.includes('Cashier')
+        emp.role.includes('Technician') && !emp.role.includes('Cashier')
       );
       const storeFilteredEmployees = selectedStoreId
         ? allEmployees.filter(emp => !emp.store_id || emp.store_id === selectedStoreId)
@@ -1180,7 +1169,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         if (!canEmployeePerformService(item.employee_id, item.service_id)) {
           const employee = employees.find(e => e.id === item.employee_id);
           const service = services.find(s => s.id === item.service_id);
-          showToast(`${employee?.display_name || 'This employee'} cannot perform ${service?.name || 'this service'}. Spa Experts cannot perform Extensions des Ongles services.`, 'error');
+          showToast(`${employee?.display_name || 'This employee'} cannot perform ${service?.name || 'this service'}.`, 'error');
           return;
         }
       }
@@ -1223,7 +1212,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
         if (
           ticket.opened_by_role &&
-          ['Technician', 'Spa Expert', 'Supervisor'].includes(ticket.opened_by_role) &&
+          ['Technician', 'Supervisor'].includes(ticket.opened_by_role) &&
           !ticket.reviewed_by_receptionist &&
           session?.role_permission &&
           Permissions.tickets.canReviewSelfServiceTicket(session.role_permission)
@@ -1850,7 +1839,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
           {isReadOnly &&
            ticket?.opened_by_role &&
-           ['Technician', 'Spa Expert'].includes(ticket.opened_by_role) &&
+           ticket.opened_by_role === 'Technician' &&
            session?.employee_id === ticket.created_by && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <div className="flex items-start gap-2">

@@ -4,7 +4,7 @@ import { RolePermission } from './permissions';
 export interface AuthSession {
   employee_id: string;
   display_name: string;
-  role: ('Admin' | 'Technician' | 'Receptionist' | 'Manager' | 'Owner' | 'Supervisor' | 'Spa Expert' | 'Cashier')[];
+  role: ('Admin' | 'Technician' | 'Receptionist' | 'Manager' | 'Owner' | 'Supervisor' | 'Cashier')[];
   role_permission: RolePermission;
   can_reset_pin: boolean;
   store_id?: string;

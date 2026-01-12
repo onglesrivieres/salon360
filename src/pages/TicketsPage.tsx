@@ -96,8 +96,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
         setLoading(true);
       }
 
-      const isRestrictedRole = session?.role_permission === 'Technician' ||
-        (session?.role && Array.isArray(session.role) && session.role.includes('Spa Expert'));
+      const isRestrictedRole = session?.role_permission === 'Technician';
       const isCashier = session?.role_permission === 'Cashier';
 
       // Check if user is a commission employee
@@ -297,7 +296,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
       filtered = filtered.filter(ticket => {
         if (approvalFilter === 'self_service_pending') {
           return ticket.opened_by_role &&
-            ['Technician', 'Spa Expert', 'Supervisor'].includes(ticket.opened_by_role) &&
+            ['Technician', 'Supervisor'].includes(ticket.opened_by_role) &&
             !ticket.reviewed_by_receptionist;
         }
         if (approvalFilter === 'open') return !ticket.closed_at;
@@ -480,7 +479,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     if (ticket.approval_status && ticket.approval_status !== '') return false;
 
     // Check if the current employee worked on this ticket
-    const isTechnician = session.role.some((role: string) => ['Technician', 'Spa Expert'].includes(role));
+    const isTechnician = session.role.some((role: string) => role === 'Technician');
     if (isTechnician && ticket.ticket_items) {
       return ticket.ticket_items.some((item: any) => item.employee_id === session.employee_id);
     }
@@ -891,7 +890,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
                 const isSelfServiceTicket =
                   ticket.opened_by_role &&
-                  ['Technician', 'Spa Expert', 'Supervisor'].includes(ticket.opened_by_role) &&
+                  ['Technician', 'Supervisor'].includes(ticket.opened_by_role) &&
                   !ticket.reviewed_by_receptionist &&
                   !ticket.closed_at;
 
@@ -1036,7 +1035,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
           const isSelfServiceTicket =
             ticket.opened_by_role &&
-            ['Technician', 'Spa Expert', 'Supervisor'].includes(ticket.opened_by_role) &&
+            ['Technician', 'Supervisor'].includes(ticket.opened_by_role) &&
             !ticket.reviewed_by_receptionist &&
             !ticket.closed_at;
 

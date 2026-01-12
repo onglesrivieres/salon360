@@ -20,7 +20,7 @@ interface PermissionState {
 
 type RolePermissions = Map<Role, Map<string, PermissionState>>;
 
-const ALL_ROLES: Role[] = ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Spa Expert', 'Cashier'];
+const ALL_ROLES: Role[] = ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Cashier'];
 const PERMISSIONS_PER_PAGE = 10;
 
 const ROLE_COLORS: Record<Role, string> = {
@@ -30,7 +30,6 @@ const ROLE_COLORS: Record<Role, string> = {
   'Supervisor': 'bg-green-100 text-green-800 border-green-200',
   'Receptionist': 'bg-yellow-100 text-yellow-800 border-yellow-200',
   'Technician': 'bg-cyan-100 text-cyan-800 border-cyan-200',
-  'Spa Expert': 'bg-pink-100 text-pink-800 border-pink-200',
   'Cashier': 'bg-orange-100 text-orange-800 border-orange-200'
 };
 

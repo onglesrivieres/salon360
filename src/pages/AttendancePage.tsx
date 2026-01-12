@@ -114,8 +114,7 @@ export function AttendancePage() {
 
       const isRestrictedRole = session?.role_permission === 'Technician' ||
         session?.role_permission === 'Receptionist' ||
-        session?.role_permission === 'Supervisor' ||
-        (session?.role && Array.isArray(session.role) && session.role.includes('Spa Expert'));
+        session?.role_permission === 'Supervisor';
 
       const { data, error } = await supabase.rpc('get_store_attendance', {
         p_store_id: selectedStoreId,
@@ -332,8 +331,7 @@ export function AttendancePage() {
 
   function handleShiftClick(record: AttendanceSession, employeeId: string, employeeName: string, workDate: string, payType: string) {
     const isRestrictedRole = session?.role_permission === 'Technician' ||
-      session?.role_permission === 'Receptionist' ||
-      (session?.role && Array.isArray(session.role) && session.role.includes('Spa Expert'));
+      session?.role_permission === 'Receptionist';
 
     if (isRestrictedRole && session?.employee_id !== employeeId) {
       return;
@@ -426,8 +424,7 @@ export function AttendancePage() {
 
   // Check if this is an individual employee view (not management)
   const isRestrictedRole = session?.role_permission === 'Technician' ||
-    session?.role_permission === 'Receptionist' ||
-    (session?.role && Array.isArray(session.role) && session.role.includes('Spa Expert'));
+    session?.role_permission === 'Receptionist';
   const isManagement = session?.role && Permissions.endOfDay.canView(session.role);
 
   if (session && session.role && !Permissions.attendance.canView(session.role, employeePayType || undefined)) {
