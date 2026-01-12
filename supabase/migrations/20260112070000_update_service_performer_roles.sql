@@ -12,6 +12,7 @@
   2. Remove Spa Expert from valid roles constraint
   3. Update queue function to include Manager/Owner, exclude Spa Expert
   4. Update service assignments (remove Receptionist, add Manager/Owner)
+  5. Clear weekly schedule for Admin employees (uncheck all days)
 */
 
 -- ============================================================================
@@ -212,6 +213,23 @@ WHERE (
 AND ss.archived = false
 AND e.status = 'active'
 ON CONFLICT (employee_id, service_id) DO NOTHING;
+
+-- ============================================================================
+-- STEP 5: CLEAR WEEKLY SCHEDULE FOR ADMIN EMPLOYEES
+-- ============================================================================
+
+-- Admin employees should not appear in the queue, so clear their weekly schedule
+UPDATE public.employees
+SET weekly_schedule = jsonb_build_object(
+  'monday', jsonb_build_object('is_working', false, 'start_time', '09:00', 'end_time', '18:00'),
+  'tuesday', jsonb_build_object('is_working', false, 'start_time', '09:00', 'end_time', '18:00'),
+  'wednesday', jsonb_build_object('is_working', false, 'start_time', '09:00', 'end_time', '18:00'),
+  'thursday', jsonb_build_object('is_working', false, 'start_time', '09:00', 'end_time', '18:00'),
+  'friday', jsonb_build_object('is_working', false, 'start_time', '09:00', 'end_time', '18:00'),
+  'saturday', jsonb_build_object('is_working', false, 'start_time', '09:00', 'end_time', '18:00'),
+  'sunday', jsonb_build_object('is_working', false, 'start_time', '09:00', 'end_time', '18:00')
+)
+WHERE role @> ARRAY['Admin']::text[];
 
 -- ============================================================================
 -- RELOAD SCHEMA
