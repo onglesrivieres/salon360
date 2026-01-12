@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { RolePermission } from './permissions';
+import { RolePermission, getRolePermission, Role } from './permissions';
 
 export interface AuthSession {
   employee_id: string;
@@ -126,12 +126,14 @@ export async function authenticateWithPIN(pin: string): Promise<AuthSession | nu
   }
 
   const employee = data[0];
+  const roles = employee.role as Role[];
 
   return {
     employee_id: employee.employee_id,
     display_name: employee.display_name,
-    role: employee.role,
-    role_permission: employee.role_permission || 'Technician',
+    role: roles,
+    // Compute role_permission from role array (database column has been removed)
+    role_permission: getRolePermission(roles),
     can_reset_pin: employee.can_reset_pin || false,
     store_id: employee.store_id,
   };

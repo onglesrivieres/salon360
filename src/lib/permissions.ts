@@ -1,6 +1,18 @@
 export type RolePermission = 'Admin' | 'Receptionist' | 'Technician' | 'Supervisor' | 'Cashier';
 export type Role = 'Admin' | 'Technician' | 'Receptionist' | 'Supervisor' | 'Manager' | 'Owner' | 'Cashier';
 
+/**
+ * Derives the permission level from a role array.
+ * Priority: Admin > Supervisor > Receptionist > Cashier > Technician
+ */
+export function getRolePermission(roles: Role[]): RolePermission {
+  if (roles.some(r => ['Admin', 'Manager', 'Owner'].includes(r))) return 'Admin';
+  if (roles.includes('Supervisor')) return 'Supervisor';
+  if (roles.includes('Receptionist')) return 'Receptionist';
+  if (roles.includes('Cashier')) return 'Cashier';
+  return 'Technician';
+}
+
 export interface PermissionCheck {
   canView: boolean;
   canCreate: boolean;
