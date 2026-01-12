@@ -27,7 +27,7 @@ interface PermissionsCacheContextType {
 const PermissionsCacheContext = createContext<PermissionsCacheContextType | undefined>(undefined);
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const ALL_ROLES: Role[] = ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Spa Expert', 'Cashier'];
+const ALL_ROLES: Role[] = ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Cashier'];
 
 export function PermissionsCacheProvider({ children }: { children: React.ReactNode }) {
   const [cache, setCache] = useState<Map<string, CacheEntry>>(new Map());

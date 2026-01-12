@@ -98,7 +98,6 @@ export const translations = {
       active: 'Active',
       inactive: 'Inactive',
       technician: 'Technician',
-      spaExpert: 'Spa Expert',
       receptionist: 'Receptionist',
       supervisor: 'Supervisor',
       manager: 'Manager',

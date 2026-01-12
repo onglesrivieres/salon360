@@ -127,7 +127,7 @@ export function EmployeesPage() {
       if (error) throw error;
 
       const allEmployees = (data || []).filter(emp =>
-        emp.role.includes('Technician') || emp.role.includes('Receptionist') || emp.role.includes('Supervisor') || emp.role.includes('Spa Expert') || emp.role.includes('Manager')
+        emp.role.includes('Technician') || emp.role.includes('Receptionist') || emp.role.includes('Supervisor') || emp.role.includes('Manager')
       );
 
       const { data: employeeStoresData } = await supabase
@@ -381,7 +381,6 @@ export function EmployeesPage() {
             options={[
               { value: 'all', label: 'All Roles' },
               { value: 'Technician', label: t('emp.technician') },
-              { value: 'Spa Expert', label: t('emp.spaExpert') },
               { value: 'Receptionist', label: t('emp.receptionist') },
               { value: 'Supervisor', label: t('emp.supervisor') },
               { value: 'Manager', label: t('emp.manager') },
@@ -513,7 +512,6 @@ export function EmployeesPage() {
             }
             options={[
               { value: 'Technician', label: t('emp.technician') },
-              { value: 'Spa Expert', label: t('emp.spaExpert') },
               { value: 'Receptionist', label: t('emp.receptionist') },
               { value: 'Supervisor', label: t('emp.supervisor') },
               { value: 'Manager', label: t('emp.manager') },
