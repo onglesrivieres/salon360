@@ -126,9 +126,23 @@ export function EmployeesPage() {
 
       if (error) throw error;
 
-      const allEmployees = (data || []).filter(emp =>
-        emp.role.includes('Technician') || emp.role.includes('Receptionist') || emp.role.includes('Supervisor') || emp.role.includes('Manager')
-      );
+      let allEmployees = data || [];
+
+      // Check logged-in user's role
+      const isOwnerOrAdmin = session?.role.includes('Owner') || session?.role.includes('Admin');
+      const isManager = session?.role.includes('Manager');
+
+      if (isOwnerOrAdmin) {
+        // Admin/Owner can see all employees
+        // No filtering needed
+      } else if (isManager) {
+        // Manager can only see employees with roles: Supervisor, Receptionist, Technician, Cashier
+        // Exclude employees who have Admin, Owner, or Manager roles
+        allEmployees = allEmployees.filter(emp => {
+          const hasRestrictedRole = emp.role.some((r: string) => ['Admin', 'Owner', 'Manager'].includes(r));
+          return !hasRestrictedRole;
+        });
+      }
 
       const { data: employeeStoresData } = await supabase
         .from('employee_stores')
@@ -199,6 +213,12 @@ export function EmployeesPage() {
 
     if (!formData.display_name) {
       showToast(t('forms.required'), 'error');
+      return;
+    }
+
+    // Owner cannot edit Admin employees
+    if (editingEmployee && !Permissions.employees.canEditEmployee(session?.role || [], editingEmployee.role)) {
+      showToast(t('messages.permissionDenied') || 'You do not have permission to edit this employee', 'error');
       return;
     }
 
@@ -308,6 +328,12 @@ export function EmployeesPage() {
       return;
     }
 
+    // Owner cannot delete Admin employees
+    if (!Permissions.employees.canDeleteEmployee(session.role, deletingEmployee.role)) {
+      showToast(t('messages.permissionDenied') || 'You do not have permission to delete this employee', 'error');
+      return;
+    }
+
     try {
       // First delete employee store assignments
       await supabase
@@ -378,13 +404,25 @@ export function EmployeesPage() {
           <Select
             value={filterRole}
             onChange={(e) => setFilterRole(e.target.value)}
-            options={[
-              { value: 'all', label: 'All Roles' },
-              { value: 'Technician', label: t('emp.technician') },
-              { value: 'Receptionist', label: t('emp.receptionist') },
-              { value: 'Supervisor', label: t('emp.supervisor') },
-              { value: 'Manager', label: t('emp.manager') },
-            ]}
+            options={(() => {
+              const isOwnerOrAdmin = session?.role.includes('Owner') || session?.role.includes('Admin');
+              const baseOptions = [
+                { value: 'all', label: 'All Roles' },
+                { value: 'Technician', label: t('emp.technician') },
+                { value: 'Receptionist', label: t('emp.receptionist') },
+                { value: 'Supervisor', label: t('emp.supervisor') },
+                { value: 'Cashier', label: t('emp.cashier') },
+              ];
+              if (isOwnerOrAdmin) {
+                return [
+                  ...baseOptions,
+                  { value: 'Manager', label: t('emp.manager') },
+                  { value: 'Owner', label: t('emp.owner') },
+                  { value: 'Admin', label: t('emp.admin') },
+                ];
+              }
+              return baseOptions;
+            })()}
           />
         </div>
 
@@ -473,7 +511,8 @@ export function EmployeesPage() {
         title={editingEmployee ? t('actions.edit') : t('actions.add')}
         headerActions={
           <div className="flex items-center gap-2">
-            {editingEmployee && session && Permissions.employees.canDelete(session.role) && (
+            {editingEmployee && session && Permissions.employees.canDelete(session.role) &&
+             Permissions.employees.canDeleteEmployee(session.role, editingEmployee.role) && (
               <Button
                 type="button"
                 variant="danger"
@@ -486,13 +525,26 @@ export function EmployeesPage() {
                 Delete
               </Button>
             )}
-            <Button type="submit" size="sm" form="employee-form">
-              {editingEmployee ? t('actions.save') : t('actions.add')}
-            </Button>
+            {(!editingEmployee || (session && Permissions.employees.canEditEmployee(session.role, editingEmployee.role))) && (
+              <Button type="submit" size="sm" form="employee-form">
+                {editingEmployee ? t('actions.save') : t('actions.add')}
+              </Button>
+            )}
           </div>
         }
       >
         <form id="employee-form" onSubmit={handleSubmit} className="space-y-4">
+          {editingEmployee && session && !Permissions.employees.canEditEmployee(session.role, editingEmployee.role) && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+              <div className="flex items-center gap-2 text-yellow-800">
+                <AlertCircle className="w-4 h-4" />
+                <span className="text-sm font-medium">View Only</span>
+              </div>
+              <p className="text-xs text-yellow-700 mt-1">
+                You do not have permission to edit this employee.
+              </p>
+            </div>
+          )}
           <Input
             label={`${t('emp.displayName')} *`}
             value={formData.display_name}

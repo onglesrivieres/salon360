@@ -216,7 +216,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'View Employees',
     description: 'Ability to view the employees page and employee list',
     isCritical: false,
-    defaultRoles: ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']
+    defaultRoles: ['Admin', 'Manager', 'Owner']
   },
   {
     key: 'employees.canCreate',
@@ -252,7 +252,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'Reset Employee PIN',
     description: 'Ability to reset employee PIN codes',
     isCritical: true,
-    defaultRoles: ['Admin', 'Supervisor', 'Manager', 'Owner']
+    defaultRoles: ['Admin', 'Owner']
   },
   {
     key: 'employees.canAssignRoles',
