@@ -419,7 +419,7 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
           {summaries.map((summary) => (
             <div
               key={summary.technician_id}
-              className="flex-shrink-0 w-[130px] md:w-[9.5%] md:min-w-[90px] border border-gray-200 rounded-md bg-white shadow-sm"
+              className="flex-shrink-0 w-[140px] md:w-[10%] md:min-w-[110px] border border-gray-200 rounded-md bg-white shadow-sm"
             >
               <div className="bg-gray-50 border-b border-gray-200 px-1.5 py-1 rounded-t-md">
                 <h4 className="text-[10px] font-semibold text-gray-900 leading-tight truncate">
