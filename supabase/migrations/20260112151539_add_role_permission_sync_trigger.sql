@@ -22,14 +22,14 @@
 
 -- Function to compute role_permission from role array
 CREATE OR REPLACE FUNCTION public.compute_role_permission(roles text[])
-RETURNS text AS $$
+RETURNS role_permission_type AS $$
 BEGIN
   RETURN CASE
-    WHEN 'Admin' = ANY(roles) OR 'Manager' = ANY(roles) OR 'Owner' = ANY(roles) THEN 'Admin'
-    WHEN 'Supervisor' = ANY(roles) THEN 'Supervisor'
-    WHEN 'Receptionist' = ANY(roles) THEN 'Receptionist'
-    WHEN 'Cashier' = ANY(roles) THEN 'Cashier'
-    ELSE 'Technician'
+    WHEN 'Admin' = ANY(roles) OR 'Manager' = ANY(roles) OR 'Owner' = ANY(roles) THEN 'Admin'::role_permission_type
+    WHEN 'Supervisor' = ANY(roles) THEN 'Supervisor'::role_permission_type
+    WHEN 'Receptionist' = ANY(roles) THEN 'Receptionist'::role_permission_type
+    WHEN 'Cashier' = ANY(roles) THEN 'Cashier'::role_permission_type
+    ELSE 'Technician'::role_permission_type
   END;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;

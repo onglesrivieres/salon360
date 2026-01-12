@@ -24,8 +24,27 @@ DROP FUNCTION IF EXISTS public.compute_role_permission(text[]);
 -- 3. Update RLS policies that depend on role_permission
 -- First drop the dependent policies, then recreate them using role array
 
+-- Drop stores policies
+DROP POLICY IF EXISTS "Admins can manage stores" ON public.stores;
+
 -- Drop store_services policies
 DROP POLICY IF EXISTS "Admin, Manager, Supervisor can manage store services" ON public.store_services;
+
+-- Recreate stores policy using role array
+CREATE POLICY "Admins can manage stores"
+  ON public.stores
+  FOR ALL
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.employees
+      WHERE employees.id = auth.uid()
+        AND (
+          'Admin' = ANY(employees.role) OR
+          'Owner' = ANY(employees.role)
+        )
+    )
+  );
 
 -- Recreate store_services policy using role array
 CREATE POLICY "Admin, Manager, Supervisor can manage store services"
