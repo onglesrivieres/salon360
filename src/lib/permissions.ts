@@ -145,7 +145,7 @@ export const Permissions = {
 
   employees: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
     },
     canCreate: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Owner']);
@@ -157,10 +157,23 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Owner']);
     },
     canResetPIN: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Owner']);
     },
     canAssignRoles: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Owner']);
+    },
+    // Target-role-aware permissions: Owner cannot manage Admin employees
+    canEditEmployee: (userRoles: Role[] | RolePermission, targetRoles: Role[]): boolean => {
+      if (!hasAnyRole(userRoles, ['Admin', 'Owner'])) return false;
+      // Owner cannot edit Admin employees (unless also Admin)
+      if (hasAnyRole(userRoles, ['Owner']) && !hasAnyRole(userRoles, ['Admin']) && targetRoles.includes('Admin')) return false;
+      return true;
+    },
+    canDeleteEmployee: (userRoles: Role[] | RolePermission, targetRoles: Role[]): boolean => {
+      if (!hasAnyRole(userRoles, ['Admin', 'Owner'])) return false;
+      // Owner cannot delete Admin employees (unless also Admin)
+      if (hasAnyRole(userRoles, ['Owner']) && !hasAnyRole(userRoles, ['Admin']) && targetRoles.includes('Admin')) return false;
+      return true;
     },
   },
 
