@@ -235,7 +235,7 @@ export interface TechnicianWithQueue {
   employee_id: string;
   legal_name: string;
   display_name: string;
-  queue_status: 'ready' | 'busy' | 'neutral';
+  queue_status: 'ready' | 'busy' | 'small_service' | 'neutral';
   queue_position: number;
   ready_at?: string;
   current_open_ticket_id?: string;
