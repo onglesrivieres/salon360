@@ -50,6 +50,10 @@ interface TicketItemForm {
   employee?: Technician;
   is_custom?: boolean;
   custom_service_name?: string;
+  // Timer fields
+  started_at?: string | null;
+  timer_stopped_at?: string | null;
+  completed_at?: string | null;
 }
 
 export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorProps) {
@@ -120,6 +124,26 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   const canReopen = session && session.role_permission && Permissions.tickets.canReopen(session.role_permission);
 
   const canDelete = session && session.role_permission && Permissions.tickets.canDelete(session.role_permission);
+
+  // Permission checks for Today's Color and Services (Technician/Spa Expert can edit until completed)
+  const isTicketCompleted = !!ticket?.completed_at;
+  const isTicketClosed = !!ticket?.closed_at;
+
+  const canEditTodaysColor = session?.role_permission &&
+    Permissions.tickets.canEditTodaysColor(
+      session.role_permission,
+      isTicketCompleted,
+      isTicketClosed,
+      isApproved
+    );
+
+  const canEditServices = session?.role_permission &&
+    Permissions.tickets.canEditServices(
+      session.role_permission,
+      isTicketCompleted,
+      isTicketClosed,
+      isApproved
+    );
 
   // Check if user is Spa Expert or Technician (restricted roles for customer info)
   const isRestrictedCustomerInfoRole = session?.role &&
@@ -385,15 +409,23 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     }
   }, [selectedStoreId, selectedDate]);
 
+  // Timer interval for real-time updates
+  // Use 1-second interval if there's an active service timer, otherwise 1-minute for general time display
   useEffect(() => {
+    const hasActiveTimer = ticketId && items.some(
+      (item: any) => item.started_at && !item.timer_stopped_at && !item.completed_at
+    );
+
+    const intervalMs = hasActiveTimer ? 1000 : 60000;
+
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 60000);
+    }, intervalMs);
 
     return () => {
       clearInterval(timer);
     };
-  }, []);
+  }, [ticketId, items.length, ticket?.completed_at]);
 
   async function fetchSortedTechnicians() {
     if (!selectedStoreId) return;
@@ -539,6 +571,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             employee: item.employee,
             is_custom: !item.store_service_id,
             custom_service_name: item.custom_service_name || '',
+            // Timer fields
+            started_at: item.started_at,
+            timer_stopped_at: item.timer_stopped_at,
+            completed_at: item.completed_at,
           }))
         );
 
@@ -655,8 +691,46 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     ]);
   }
 
-  function removeItem(index: number) {
-    setItems(items.filter((_, i) => i !== index));
+  async function removeItem(index: number) {
+    const itemToRemove = items[index];
+    const isActiveTimer = itemToRemove.started_at &&
+                         !(itemToRemove as any).timer_stopped_at &&
+                         !(itemToRemove as any).completed_at;
+
+    const newItems = items.filter((_, i) => i !== index);
+    setItems(newItems);
+
+    // If we removed the active timer and there are other services, reactivate previous timer
+    if (ticketId && isActiveTimer && newItems.length > 0) {
+      const stoppedItems = newItems
+        .filter((item: any) => item.timer_stopped_at)
+        .sort((a: any, b: any) =>
+          new Date(b.timer_stopped_at!).getTime() - new Date(a.timer_stopped_at!).getTime()
+        );
+
+      if (stoppedItems.length > 0 && (stoppedItems[0] as any).id) {
+        const { error } = await supabase
+          .from('ticket_items')
+          .update({ timer_stopped_at: null, updated_at: new Date().toISOString() })
+          .eq('id', (stoppedItems[0] as any).id);
+
+        if (error) {
+          console.error('Error reactivating timer:', error);
+        }
+      }
+    }
+
+    // Delete from database if exists
+    if ((itemToRemove as any).id) {
+      const { error } = await supabase
+        .from('ticket_items')
+        .delete()
+        .eq('id', (itemToRemove as any).id);
+
+      if (error) {
+        console.error('Error deleting item:', error);
+      }
+    }
   }
 
   function updateItem(index: number, field: keyof TicketItemForm, value: string) {
@@ -676,6 +750,67 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     }
 
     setItems(newItems);
+  }
+
+  // Timer calculation functions for service timers
+  function calculateServiceDuration(item: any, time: Date): number {
+    if (!item.started_at) return 0;
+
+    const startTime = new Date(item.started_at);
+    let endTime: Date;
+
+    // Priority: timer_stopped_at > completed_at > current time (active timer)
+    if (item.timer_stopped_at) {
+      endTime = new Date(item.timer_stopped_at);
+    } else if (item.completed_at) {
+      endTime = new Date(item.completed_at);
+    } else {
+      endTime = time; // Active timer uses current time
+    }
+
+    const durationMs = endTime.getTime() - startTime.getTime();
+    return Math.max(0, Math.floor(durationMs / (1000 * 60))); // Minutes, minimum 0
+  }
+
+  function calculateTotalTimerDuration(time: Date): number {
+    return items.reduce((sum, item) => sum + calculateServiceDuration(item, time), 0);
+  }
+
+  function formatTimerDisplay(minutes: number): string {
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  }
+
+  // Helper function to stop current active service timer
+  async function stopCurrentServiceTimer(ticketIdToStop: string) {
+    // Find active service (has started_at but no timer_stopped_at)
+    const { data: activeItems, error } = await supabase
+      .from('ticket_items')
+      .select('id, started_at, timer_stopped_at')
+      .eq('sale_ticket_id', ticketIdToStop)
+      .is('timer_stopped_at', null)
+      .not('started_at', 'is', null);
+
+    if (error) {
+      console.error('Error finding active timer:', error);
+      return;
+    }
+
+    if (activeItems && activeItems.length > 0) {
+      const { error: updateError } = await supabase
+        .from('ticket_items')
+        .update({
+          timer_stopped_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .in('id', activeItems.map(item => item.id));
+
+      if (updateError) {
+        console.error('Error stopping timer:', updateError);
+      }
+    }
   }
 
   function calculateSubtotal(): number {
@@ -1130,6 +1265,13 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         });
 
         const existingItemIds = items.filter((item) => item.id).map((item) => item.id);
+        const newItems = items.filter((item) => !item.id);
+
+        // If we're adding new services and there are existing services with timers, stop the current timer
+        if (newItems.length > 0 && existingItemIds.length > 0) {
+          await stopCurrentServiceTimer(ticketId);
+        }
+
         const { error: deleteError } = await supabase
           .from('ticket_items')
           .delete()
@@ -1143,7 +1285,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
           const discountPercentageCash = parseFloat(formData.discount_percentage_cash) || 0;
           const discountAmountCash = parseFloat(formData.discount_amount_cash) || 0;
 
-          const itemData = {
+          const itemData: any = {
             sale_ticket_id: ticketId,
             store_service_id: item.is_custom ? null : item.service_id,
             custom_service_name: item.is_custom ? item.custom_service_name : null,
@@ -1162,17 +1304,18 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             discount_amount: discountAmount,
             discount_percentage_cash: discountPercentageCash,
             discount_amount_cash: discountAmountCash,
-            started_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
 
           if (item.id) {
+            // Existing item - don't overwrite started_at or timer_stopped_at
             const { error } = await supabase
               .from('ticket_items')
               .update(itemData)
               .eq('id', item.id);
             if (error) throw error;
           } else {
+            // New item - started_at will be auto-set by DB trigger
             const { error } = await supabase.from('ticket_items').insert([itemData]);
             if (error) throw error;
           }
@@ -1453,6 +1596,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     try {
       setSaving(true);
 
+      // Stop all active service timers before marking ticket as completed
+      await stopCurrentServiceTimer(ticketId);
+
       const { error } = await supabase
         .from('sale_tickets')
         .update({
@@ -1467,7 +1613,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
         completed_at: new Date().toISOString(),
       });
 
-      showToast('Ticket marked as completed (timer stopped)', 'success');
+      showToast('Ticket marked as completed (all timers stopped)', 'success');
       onClose();
     } catch (error) {
       console.error('Error marking ticket as completed:', error);
@@ -1530,8 +1676,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
       </div>
     );
   }
-
-  const isTicketClosed = ticket?.closed_at !== null && ticket?.closed_at !== undefined;
 
   function getApprovalStatusBadge() {
     if (!ticket?.approval_status) return null;
@@ -1817,6 +1961,33 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 </div>
 
                 {/* Divider */}
+                {ticketId && items.length > 0 && (
+                  <div className="hidden sm:block w-px h-6 bg-gray-300" />
+                )}
+
+                {/* Total Time - sum of all service timers */}
+                {ticketId && items.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-1">
+                    <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                    <label className="text-xs font-medium text-gray-700 flex-shrink-0">
+                      Total Time
+                    </label>
+                    <p className={`text-sm font-medium truncate ${
+                      items.some((item: any) => item.started_at && !item.timer_stopped_at && !item.completed_at)
+                        ? 'text-blue-700'
+                        : 'text-gray-900'
+                    }`}>
+                      {formatTimerDisplay(calculateTotalTimerDuration(currentTime))}
+                    </p>
+                    {items.some((item: any) => item.started_at && !item.timer_stopped_at && !item.completed_at) && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 ml-auto">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Divider */}
                 {(ticket?.completed_at || ticket?.closed_at) && (
                   <div className="hidden sm:block w-px h-6 bg-gray-300" />
                 )}
@@ -1831,21 +2002,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     <p className="text-sm text-gray-900 font-medium truncate">
                       {ticket.completed_at ? formatDateTimeEST(ticket.completed_at) : 'Not completed'}
                     </p>
-                    {ticket.completed_at && (
-                      <span
-                        className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ml-auto ${
-                          getCompletionTimeStatus() === 'on_time'
-                            ? 'bg-green-100 text-green-800'
-                            : getCompletionTimeStatus() === 'moderate_deviation'
-                            ? 'bg-amber-100 text-amber-800'
-                            : getCompletionTimeStatus() === 'extreme_deviation'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {formatCompletionDuration(calculateCompletionDuration())}
-                      </span>
-                    )}
                   </div>
                 )}
               </div>
@@ -1982,7 +2138,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                         type="text"
                         value={formData.todays_color}
                         onChange={(e) => setFormData({ ...formData, todays_color: e.target.value })}
-                        disabled={isTicketClosed || isReadOnly}
+                        disabled={!canEditTodaysColor}
                         placeholder="Enter color"
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
@@ -2151,7 +2307,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       <span className="text-xs font-semibold text-gray-600">
                         Service {items.length > 1 ? `#${index + 1}` : ''}
                       </span>
-                      {!isTicketClosed && !isReadOnly && items.length > 1 && (
+                      {canEditServices && items.length > 1 && (
                         <button
                           onClick={() => removeItem(index)}
                           className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
@@ -2160,6 +2316,26 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                         </button>
                       )}
                     </div>
+
+                    {/* Service Timer Display */}
+                    {ticketId && (item as any).started_at ? (
+                      <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${
+                        (item as any).timer_stopped_at || (item as any).completed_at
+                          ? 'bg-gray-100 text-gray-600'
+                          : 'bg-blue-50 text-blue-700 font-medium'
+                      }`}>
+                        <Clock className="w-3 h-3" />
+                        <span>Timer: {formatTimerDisplay(calculateServiceDuration(item, currentTime))}</span>
+                        {!(item as any).timer_stopped_at && !(item as any).completed_at && (
+                          <span className="ml-auto text-[10px]">(Active)</span>
+                        )}
+                      </div>
+                    ) : !ticketId ? (
+                      <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-gray-50 text-gray-500">
+                        <Clock className="w-3 h-3" />
+                        <span>Timer starts on save</span>
+                      </div>
+                    ) : null}
 
                     <div className="flex items-start gap-2">
                       <div className="flex-1">
@@ -2178,7 +2354,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                               }}
                               className="w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
                               placeholder="Enter custom service name"
-                              disabled={isTicketClosed || isReadOnly}
+                              disabled={!canEditServices}
                             />
                           </div>
                         ) : (
@@ -2186,7 +2362,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                             label="Service"
                             value={item.service_id}
                             onChange={(e) => updateItem(index, 'service_id', e.target.value)}
-                            disabled={isTicketClosed || isReadOnly}
+                            disabled={!canEditServices}
                           >
                             <option value="">-- Select Service --</option>
                             {categoryOptions
@@ -2228,7 +2404,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                           />
                         </div>
                       </div>
-                      {!isTicketClosed && !isReadOnly && items.length === 1 && (
+                      {canEditServices && items.length === 1 && (
                         <div className="flex items-end">
                           <button
                             onClick={() => {
@@ -2279,7 +2455,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   </div>
                 ))}
 
-                {!isTicketClosed && !isReadOnly && (
+                {canEditServices && (
                   <button
                     type="button"
                     onClick={() => {

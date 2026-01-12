@@ -193,7 +193,9 @@ export interface TicketItem {
   discount_amount_cash?: number;
   notes: string;
   started_at?: string | null;
+  timer_stopped_at?: string | null;
   completed_at?: string | null;
+  completed_by?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -85,6 +85,32 @@ export const Permissions = {
     canReviewRejected: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Owner']);
     },
+    canEditTodaysColor: (
+      roles: Role[] | RolePermission,
+      isCompleted: boolean,
+      isClosed: boolean,
+      isApproved?: boolean
+    ): boolean => {
+      // Technician and Spa Expert can edit until completed (and not closed)
+      if (hasAnyRole(roles, ['Technician', 'Spa Expert'])) {
+        return !isCompleted && !isClosed;
+      }
+      // Other roles follow normal canEdit logic
+      return Permissions.tickets.canEdit(roles, isClosed, isApproved);
+    },
+    canEditServices: (
+      roles: Role[] | RolePermission,
+      isCompleted: boolean,
+      isClosed: boolean,
+      isApproved?: boolean
+    ): boolean => {
+      // Technician and Spa Expert can edit until completed (and not closed)
+      if (hasAnyRole(roles, ['Technician', 'Spa Expert'])) {
+        return !isCompleted && !isClosed;
+      }
+      // Other roles follow normal canEdit logic
+      return Permissions.tickets.canEdit(roles, isClosed, isApproved);
+    },
   },
 
   endOfDay: {
