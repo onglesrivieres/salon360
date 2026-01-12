@@ -7,7 +7,7 @@ import { Select } from '../components/ui/Select';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
-import { formatDateTimeEST } from '../lib/timezone';
+import { formatDateTimeEST, formatDateEST } from '../lib/timezone';
 
 export function EmployeeInventoryPage() {
   const [inventory, setInventory] = useState<EmployeeInventoryWithDetails[]>([]);
@@ -449,7 +449,7 @@ export function EmployeeInventoryPage() {
                                                 {lot.lot_number}
                                               </td>
                                               <td className="px-3 py-2 text-center text-xs text-gray-600">
-                                                {new Date(lot.distributed_date).toLocaleDateString()}
+                                                {formatDateEST(lot.distributed_date)}
                                               </td>
                                               <td className="px-3 py-2 text-right text-xs text-gray-900">
                                                 {lot.quantity.toFixed(2)}
@@ -461,7 +461,7 @@ export function EmployeeInventoryPage() {
                                                 ${(lot.quantity * lot.unit_cost).toFixed(2)}
                                               </td>
                                               <td className="px-3 py-2 text-center text-xs text-gray-600">
-                                                {new Date(lot.purchase_date).toLocaleDateString()}
+                                                {formatDateEST(lot.purchase_date)}
                                               </td>
                                               <td className="px-3 py-2 text-left text-xs text-gray-600">
                                                 {lot.invoice_reference || '-'}

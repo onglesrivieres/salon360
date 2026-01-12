@@ -3,6 +3,7 @@ import { Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
 import { TimeFilterType, timeFilterOptions, getFilterLabel, DateRange } from '../../lib/timeFilters';
 import { Calendar } from '../ui/Calendar';
 import { Button } from '../ui/Button';
+import { getCurrentDateEST } from '../../lib/timezone';
 
 interface TimeFilterDropdownProps {
   selectedFilter: TimeFilterType;
@@ -47,7 +48,7 @@ export function TimeFilterDropdown({
       setTempStartDate(customDateRange.startDate);
       setTempEndDate(customDateRange.endDate);
     } else if (showCalendar) {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentDateEST();
       setTempStartDate(today);
       setTempEndDate(today);
     }
@@ -127,7 +128,7 @@ export function TimeFilterDropdown({
                 </div>
                 {tempStartDate && tempEndDate && (
                   <div className="text-xs text-gray-600">
-                    {new Date(tempStartDate).toLocaleDateString()} - {new Date(tempEndDate).toLocaleDateString()}
+                    {new Date(tempStartDate).toLocaleDateString('en-US', { timeZone: 'America/New_York' })} - {new Date(tempEndDate).toLocaleDateString('en-US', { timeZone: 'America/New_York' })}
                   </div>
                 )}
               </div>

@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { WeeklyCalendarView } from '../components/WeeklyCalendarView';
 import { TicketEditor } from '../components/TicketEditor';
-import { formatTimeEST, getCurrentDateEST } from '../lib/timezone';
+import { formatTimeEST, getCurrentDateEST, formatDateISOEST } from '../lib/timezone';
 import {
   calculateServiceDuration,
   formatTimerDisplay,
@@ -165,14 +165,14 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     const day = d.getDay();
     const diff = day === 0 ? -6 : 1 - day;
     d.setDate(d.getDate() + diff);
-    return d.toISOString().split('T')[0];
+    return formatDateISOEST(d);
   }
 
   function getWeekDates(startDate: string): string[] {
     const dates: string[] = [];
     const d = new Date(startDate + 'T00:00:00');
     for (let i = 0; i < 7; i++) {
-      dates.push(d.toISOString().split('T')[0]);
+      dates.push(formatDateISOEST(d));
       d.setDate(d.getDate() + 1);
     }
     return dates;
@@ -671,13 +671,13 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   function navigateWeek(direction: 'prev' | 'next') {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + (direction === 'prev' ? -7 : 7));
-    onDateChange(d.toISOString().split('T')[0]);
+    onDateChange(formatDateISOEST(d));
   }
 
   function navigateDay(direction: 'prev' | 'next') {
     const d = new Date(selectedDate + 'T00:00:00');
     d.setDate(d.getDate() + (direction === 'prev' ? -1 : 1));
-    onDateChange(d.toISOString().split('T')[0]);
+    onDateChange(formatDateISOEST(d));
   }
 
   function canNavigatePrev(): boolean {

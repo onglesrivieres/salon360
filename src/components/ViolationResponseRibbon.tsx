@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PendingViolationResponse } from '../lib/supabase';
-import { formatDateOnly } from '../lib/timezone';
+import { formatDateOnly, formatDateTimeEST } from '../lib/timezone';
 
 interface ViolationResponseRibbonProps {
   pendingResponses: PendingViolationResponse[];
@@ -48,12 +48,13 @@ export function ViolationResponseRibbon({
     if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
     if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
 
-    return reportTime.toLocaleString();
+    return formatDateTimeEST(reportTime);
   };
 
   const formatTime = (timestamp: string) => {
     const reportTime = new Date(timestamp);
     return reportTime.toLocaleTimeString('en-US', {
+      timeZone: 'America/New_York',
       hour: 'numeric',
       minute: '2-digit',
       hour12: true

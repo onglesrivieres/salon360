@@ -34,12 +34,14 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
     };
 
     if (range.startDate === range.endDate) {
-      const dateStr = start.toLocaleDateString('en-US', options);
+      const optionsWithTz: Intl.DateTimeFormatOptions = { ...options, timeZone: 'America/New_York' };
+      const dateStr = start.toLocaleDateString('en-US', optionsWithTz);
       return `${dateStr.replace(',', ', ')} - 11:59 p.m.`;
     }
 
-    const startStr = start.toLocaleDateString('en-US', options);
-    const endStr = end.toLocaleDateString('en-US', options);
+    const optionsWithTz: Intl.DateTimeFormatOptions = { ...options, timeZone: 'America/New_York' };
+    const startStr = start.toLocaleDateString('en-US', optionsWithTz);
+    const endStr = end.toLocaleDateString('en-US', optionsWithTz);
     return `${startStr} - ${endStr}`;
   };
 

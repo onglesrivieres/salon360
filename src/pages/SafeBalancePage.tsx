@@ -3,7 +3,7 @@ import { DollarSign, TrendingUp, Vault, ChevronLeft, ChevronRight, TrendingDown,
 import { supabase, SafeBalanceSummary, CashTransactionWithDetails } from '../lib/supabase';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
-import { getCurrentDateEST } from '../lib/timezone';
+import { getCurrentDateEST, formatTimeEST } from '../lib/timezone';
 import { SafeWithdrawalModal, WithdrawalData } from '../components/SafeWithdrawalModal';
 import { CashTransactionChangeRequestModal, ChangeRequestData } from '../components/CashTransactionChangeRequestModal';
 import { Button } from '../components/ui/Button';
@@ -461,7 +461,7 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
                       <p className="text-sm text-gray-900 font-medium">{deposit.description}</p>
                       <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
                         <span>By: {deposit.created_by_name}</span>
-                        <span>{new Date(deposit.created_at).toLocaleTimeString()}</span>
+                        <span>{new Date(deposit.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}</span>
                       </div>
                       {/* Request Change button - only for Managers, approved transactions, and no pending proposal */}
                       {canCreateChangeProposal && deposit.status === 'approved' && (
@@ -553,7 +553,7 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
                       <p className="text-sm text-gray-900 font-medium">{withdrawal.description}</p>
                       <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
                         <span>By: {withdrawal.created_by_name}</span>
-                        <span>{new Date(withdrawal.created_at).toLocaleTimeString()}</span>
+                        <span>{new Date(withdrawal.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}</span>
                       </div>
                       {/* Request Change button - only for Managers, approved transactions, and no pending proposal */}
                       {canCreateChangeProposal && withdrawal.status === 'approved' && (
