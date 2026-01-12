@@ -34,12 +34,14 @@ export function PaymentTypes({ dateRange }: PaymentTypesProps) {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
+        timeZone: 'America/New_York',
       });
       return `${startStr} 12:00 AM - ${startStr} 11:59 PM`;
     }
 
-    const startStr = start.toLocaleDateString('en-US', options);
-    const endStr = end.toLocaleDateString('en-US', options);
+    const optionsWithTz: Intl.DateTimeFormatOptions = { ...options, timeZone: 'America/New_York' };
+    const startStr = start.toLocaleDateString('en-US', optionsWithTz);
+    const endStr = end.toLocaleDateString('en-US', optionsWithTz);
     return `${startStr} - ${endStr}`;
   };
 

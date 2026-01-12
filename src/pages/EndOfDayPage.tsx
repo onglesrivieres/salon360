@@ -9,7 +9,7 @@ import { CashTransactionModal, TransactionData } from '../components/CashTransac
 import { TransactionListModal } from '../components/TransactionListModal';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
-import { getCurrentDateEST } from '../lib/timezone';
+import { getCurrentDateEST, formatDateTimeEST } from '../lib/timezone';
 
 interface EndOfDayPageProps {
   selectedDate: string;
@@ -1204,7 +1204,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
               {eodRecord && (
                 <div className="mt-3 text-xs text-gray-500">
-                  Last updated: {new Date(eodRecord.updated_at).toLocaleString()}
+                  Last updated: {formatDateTimeEST(eodRecord.updated_at)}
                 </div>
               )}
             </div>
@@ -1254,7 +1254,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                               <p className="text-xs text-gray-500 mt-1">Category: {transaction.category}</p>
                             )}
                             <p className="text-xs text-gray-400 mt-1">
-                              {new Date(transaction.created_at).toLocaleString()}
+                              {formatDateTimeEST(transaction.created_at)}
                             </p>
                           </div>
                           <Edit className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />

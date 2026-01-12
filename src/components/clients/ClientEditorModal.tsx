@@ -263,7 +263,7 @@ export function ClientEditorModal({
                       <p className="mt-1 text-xs text-red-600">
                         Blacklisted by {client.blacklisted_by_name} on{' '}
                         {client.blacklist_date
-                          ? new Date(client.blacklist_date).toLocaleDateString()
+                          ? new Date(client.blacklist_date).toLocaleDateString('en-US', { timeZone: 'America/New_York' })
                           : 'Unknown date'}
                       </p>
                     )}

@@ -1,4 +1,5 @@
 import { formatCurrency } from '../../lib/formatters';
+import { getCurrentTimezone } from '../../lib/timezone';
 
 interface SalesReportChartProps {
   hourlyData: number[];
@@ -38,7 +39,8 @@ export function SalesReportChart({ hourlyData, showNowIndicator = false }: Sales
 
   const areaPath = `${pathData} L ${plotWidth} ${plotHeight} L 0 ${plotHeight} Z`;
 
-  const currentHour = new Date().getHours();
+  const estNow = new Date(new Date().toLocaleString('en-US', { timeZone: getCurrentTimezone() }));
+  const currentHour = estNow.getHours();
   const showNow = currentHour >= 9 && currentHour <= 21;
   const nowX = showNow ? ((currentHour - 9) / 12) * plotWidth : 0;
 

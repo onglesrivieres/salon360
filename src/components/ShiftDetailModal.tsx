@@ -6,7 +6,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { useToast } from './ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
-import { formatTimeEST, formatDateEST, convertESTDatetimeStringToUTC } from '../lib/timezone';
+import { formatTimeEST, formatDateEST, convertESTDatetimeStringToUTC, getCurrentTimezone } from '../lib/timezone';
 
 interface ShiftDetailModalProps {
   isOpen: boolean;
@@ -16,8 +16,8 @@ interface ShiftDetailModalProps {
 }
 
 function convertUTCToESTDate(utcDate: Date): Date {
-  const EST_TIMEZONE = 'America/New_York';
-  const estDateString = utcDate.toLocaleString('en-US', { timeZone: EST_TIMEZONE });
+  const timezone = getCurrentTimezone();
+  const estDateString = utcDate.toLocaleString('en-US', { timeZone: timezone });
   return new Date(estDateString);
 }
 

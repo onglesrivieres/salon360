@@ -6,7 +6,7 @@ import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Modal } from '../components/ui/Modal';
-import { getCurrentDateEST, formatDateOnly, formatDateTimeEST, formatTimeEST, formatDateEST } from '../lib/timezone';
+import { getCurrentDateEST, formatDateOnly, formatDateTimeEST, formatTimeEST, formatDateEST, formatDateISOEST } from '../lib/timezone';
 import { Permissions } from '../lib/permissions';
 
 interface ViolationHistoryReport {
@@ -531,6 +531,7 @@ export function PendingApprovalsPage() {
   function formatQueueRemovalDateTime(dateString: string) {
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
+      timeZone: 'America/New_York',
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -555,7 +556,7 @@ export function PendingApprovalsPage() {
     ];
 
     const rows = queueRemovalRecords.map(record => [
-      new Date(record.removed_at).toLocaleString(),
+      formatDateTimeEST(record.removed_at),
       record.employee_name,
       record.employee_code,
       record.removed_by_name,
@@ -967,7 +968,7 @@ export function PendingApprovalsPage() {
   function navigateDay(direction: 'prev' | 'next') {
     const d = new Date(selectedDate + 'T00:00:00');
     d.setDate(d.getDate() + (direction === 'prev' ? -1 : 1));
-    setSelectedDate(d.toISOString().split('T')[0]);
+    setSelectedDate(formatDateISOEST(d));
   }
 
   function canNavigatePrev(): boolean {
@@ -1204,7 +1205,7 @@ export function PendingApprovalsPage() {
               {approvalStats && approvalStats.total_closed > 0 && (
                 <div className="bg-gray-50 rounded-lg p-4 mb-6">
                   <h3 className="text-base font-semibold text-gray-900 mb-3">
-                    {selectedDate === getCurrentDateEST() ? "Today's" : new Date(selectedDate + 'T00:00:00').toLocaleDateString()} Approval Status
+                    {selectedDate === getCurrentDateEST() ? "Today's" : formatDateEST(selectedDate)} Approval Status
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                     <div className="bg-white rounded-lg p-3 border border-gray-200">
@@ -1418,9 +1419,7 @@ export function PendingApprovalsPage() {
                                   Services: {ticket.service_names}
                                 </p>
                                 <p className="text-xs text-gray-500 mt-1">
-                                  Approved by: {ticket.approved_by_name} on{' '}
-                                  {new Date(ticket.approved_at).toLocaleDateString()} at{' '}
-                                  {new Date(ticket.approved_at).toLocaleTimeString()}
+                                  Approved by: {ticket.approved_by_name} on {formatDateTimeEST(ticket.approved_at)}
                                 </p>
                               </div>
                             </div>
@@ -1466,9 +1465,7 @@ export function PendingApprovalsPage() {
                                   Services: {ticket.service_names}
                                 </p>
                                 <p className="text-xs text-gray-500 mt-1">
-                                  Approved by: {ticket.approved_by_name} on{' '}
-                                  {new Date(ticket.approved_at).toLocaleDateString()} at{' '}
-                                  {new Date(ticket.approved_at).toLocaleTimeString()}
+                                  Approved by: {ticket.approved_by_name} on {formatDateTimeEST(ticket.approved_at)}
                                 </p>
                               </div>
                             </div>
@@ -1601,7 +1598,7 @@ export function PendingApprovalsPage() {
                             </p>
                           )}
                           <p className="text-xs text-gray-500 mt-2">
-                            Date: {new Date(approval.date).toLocaleDateString()}
+                            Date: {formatDateEST(approval.date)}
                           </p>
                         </div>
                         <div className="flex gap-2">
@@ -1667,6 +1664,7 @@ export function PendingApprovalsPage() {
                         </div>
                         <div className="text-xs text-gray-500">
                           {new Date(proposal.created_at).toLocaleDateString('en-US', {
+                            timeZone: 'America/New_York',
                             month: 'short',
                             day: 'numeric',
                             hour: 'numeric',
@@ -1884,6 +1882,7 @@ export function PendingApprovalsPage() {
                               </div>
                               <div className="text-xs text-gray-500">
                                 {new Date(proposal.created_at).toLocaleDateString('en-US', {
+                                  timeZone: 'America/New_York',
                                   month: 'short',
                                   day: 'numeric',
                                   hour: 'numeric',
@@ -2065,6 +2064,7 @@ export function PendingApprovalsPage() {
                               <span className="text-xs text-gray-500">
                                 {proposal.reviewed_at
                                   ? new Date(proposal.reviewed_at).toLocaleDateString('en-US', {
+                                      timeZone: 'America/New_York',
                                       month: 'short',
                                       day: 'numeric',
                                     })
@@ -2350,7 +2350,7 @@ export function PendingApprovalsPage() {
                                 <p className="text-sm font-medium text-gray-900 mb-1">Management Decision</p>
                                 <p className="text-xs text-gray-600 mb-1">
                                   Reviewed by: <span className="font-medium">{report.reviewed_by_name}</span>
-                                  {report.reviewed_at && ` on ${new Date(report.reviewed_at).toLocaleDateString()}`}
+                                  {report.reviewed_at && ` on ${formatDateEST(report.reviewed_at)}`}
                                 </p>
                                 {report.action_type && report.action_type !== 'none' && (
                                   <p className="text-xs text-gray-700 mb-1">

@@ -1867,8 +1867,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                   {ticket?.approved_at && (
                     <p className="text-xs text-green-700 mt-1">
                       {ticket.approved_by && (ticket as any).approver?.display_name
-                        ? `Approved by ${(ticket as any).approver.display_name} on ${new Date(ticket.approved_at).toLocaleString()}`
-                        : `Auto-approved on ${new Date(ticket.approved_at).toLocaleString()}`}
+                        ? `Approved by ${(ticket as any).approver.display_name} on ${formatDateTimeEST(ticket.approved_at)}`
+                        : `Auto-approved on ${formatDateTimeEST(ticket.approved_at)}`}
                     </p>
                   )}
                 </div>

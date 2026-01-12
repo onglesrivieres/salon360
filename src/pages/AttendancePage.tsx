@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
-import { formatTimeEST, formatDateEST } from '../lib/timezone';
+import { formatTimeEST, formatDateEST, formatDateISOEST } from '../lib/timezone';
 import { ShiftDetailModal } from '../components/ShiftDetailModal';
 
 const OT_THRESHOLD_HOURS = 8;
@@ -182,16 +182,8 @@ export function AttendancePage() {
     const periodEnd = new Date(periodStart);
     periodEnd.setDate(periodEnd.getDate() + 13); // 14 days total (0-13)
 
-    // Use local date formatting to avoid timezone conversion
-    const formatLocalDate = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    const startDate = formatLocalDate(periodStart);
-    const endDate = formatLocalDate(periodEnd);
+    const startDate = formatDateISOEST(periodStart);
+    const endDate = formatDateISOEST(periodEnd);
     return { startDate, endDate };
   }
 
@@ -487,7 +479,7 @@ export function AttendancePage() {
                     Employee
                   </th>
                   {calendarDays.map((day, index) => {
-                    const isToday = day.toDateString() === new Date().toDateString();
+                    const isToday = formatDateISOEST(day) === formatDateISOEST(new Date());
                     return (
                       <th
                         key={index}
@@ -497,7 +489,7 @@ export function AttendancePage() {
                             : 'text-gray-900'
                         }`}
                       >
-                        <div className="text-[10px]">{day.toLocaleDateString('en-US', { weekday: 'narrow' })}</div>
+                        <div className="text-[10px]">{day.toLocaleDateString('en-US', { weekday: 'narrow', timeZone: 'America/New_York' })}</div>
                         <div className="text-xs font-bold">{day.getDate()}</div>
                       </th>
                     );
@@ -519,10 +511,10 @@ export function AttendancePage() {
                         </div>
                       </td>
                       {calendarDays.map((day, index) => {
-                        const dateStr = day.toISOString().split('T')[0];
+                        const dateStr = formatDateISOEST(day);
                         const sessions = employee.dates[dateStr];
                         const dailyHoursSummary = employee.dailyHours[dateStr];
-                        const isToday = day.toDateString() === new Date().toDateString();
+                        const isToday = formatDateISOEST(day) === formatDateISOEST(new Date());
 
                         return (
                           <td

@@ -11,7 +11,7 @@ export interface WorkingHoursResult {
 export async function checkStoreWorkingHours(storeId: string): Promise<WorkingHoursResult> {
   const { data: store, error } = await supabase
     .from('stores')
-    .select('opening_hours, closing_hours, timezone')
+    .select('opening_hours, closing_hours')
     .eq('id', storeId)
     .maybeSingle();
 

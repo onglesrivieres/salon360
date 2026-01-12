@@ -72,6 +72,16 @@ export function getCurrentDateEST(timezone?: string): string {
   return `${year}-${month}-${day}`;
 }
 
+export function formatDateISOEST(date: Date | string, timezone?: string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const tz = timezone || currentTimezone;
+  const tzDate = new Date(dateObj.toLocaleString('en-US', { timeZone: tz }));
+  const year = tzDate.getFullYear();
+  const month = String(tzDate.getMonth() + 1).padStart(2, '0');
+  const day = String(tzDate.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function getESTTimezone(): string {
   return currentTimezone;
 }
