@@ -5,6 +5,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { TicketEditor } from '../components/TicketEditor';
 import { formatTimeEST } from '../lib/timezone';
+import {
+  calculateServiceDuration,
+  formatTimerDisplay,
+  hasActiveTimer,
+  getTimerStatus,
+  TimerServiceItem
+} from '../lib/timerUtils';
 
 interface TechnicianSummary {
   technician_id: string;
@@ -30,9 +37,20 @@ interface ServiceItemDetail {
   ticket_completed_at: string | null;
   duration_min: number;
   started_at: string | null;
+  timer_stopped_at: string | null;
   completed_at: string | null;
   store_code: string;
   store_name: string;
+}
+
+interface TicketGroup {
+  ticket_id: string;
+  opened_at: string;
+  store_code: string;
+  totalDuration: number;
+  totalRevenue: number;
+  services: ServiceItemDetail[];
+  hasActiveTimer: boolean;
 }
 
 interface TicketsDetailViewProps {
@@ -46,12 +64,54 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
   useEffect(() => {
     fetchTipData();
   }, [selectedDate, selectedStoreId]);
+
+  // Timer refresh effect - update every 30 seconds if there are active timers
+  useEffect(() => {
+    const hasAnyActiveTimer = summaries.some(s =>
+      s.items.some(item => item.started_at && !item.timer_stopped_at && !item.completed_at)
+    );
+    if (!hasAnyActiveTimer) return;
+    const interval = setInterval(() => setCurrentTime(new Date()), 30000);
+    return () => clearInterval(interval);
+  }, [summaries]);
+
+  // Group items by ticket for multi-service display
+  function groupItemsByTicket(items: ServiceItemDetail[]): TicketGroup[] {
+    const ticketMap = new Map<string, TicketGroup>();
+    for (const item of items) {
+      if (!ticketMap.has(item.ticket_id)) {
+        ticketMap.set(item.ticket_id, {
+          ticket_id: item.ticket_id,
+          opened_at: item.opened_at,
+          store_code: item.store_code,
+          totalDuration: 0,
+          totalRevenue: 0,
+          services: [],
+          hasActiveTimer: false,
+        });
+      }
+      const group = ticketMap.get(item.ticket_id)!;
+      group.services.push(item);
+      group.totalRevenue += item.service_revenue + item.addon_revenue;
+      const timerItem: TimerServiceItem = {
+        started_at: item.started_at,
+        timer_stopped_at: item.timer_stopped_at,
+        completed_at: item.completed_at,
+      };
+      group.totalDuration += calculateServiceDuration(timerItem, currentTime);
+      if (hasActiveTimer(timerItem)) group.hasActiveTimer = true;
+    }
+    return Array.from(ticketMap.values()).sort((a, b) =>
+      new Date(a.opened_at).getTime() - new Date(b.opened_at).getTime()
+    );
+  }
 
   function abbreviateStoreName(storeCode: string): string {
     const codeMap: Record<string, string> = {
@@ -132,6 +192,7 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
           tip_customer_card,
           tip_receptionist,
           started_at,
+          timer_stopped_at,
           completed_at,
           service:store_services!ticket_items_store_service_id_fkey(code, name, duration_min),
           employee:employees!ticket_items_employee_id_fkey(
@@ -220,6 +281,7 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
           ticket_completed_at: (ticket as any).completed_at || null,
           duration_min: item.service?.duration_min || 0,
           started_at: item.started_at || null,
+          timer_stopped_at: item.timer_stopped_at || null,
           completed_at: item.completed_at || null,
           store_code: (ticket as any).store?.code || '',
           store_name: (ticket as any).store?.name || '',
@@ -405,15 +467,93 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
                     Sale Tickets
                   </p>
                   <div className="space-y-1 max-h-[1500px] overflow-y-auto">
-                    {summary.items.map((item, index) => {
-                      const openTime = formatTimeEST(item.opened_at);
+                    {groupItemsByTicket(summary.items).map((group) => {
+                      const openTime = formatTimeEST(group.opened_at);
+                      const isMultiService = group.services.length > 1;
+
+                      if (isMultiService) {
+                        // Multi-service ticket - grouped box with blue border
+                        return (
+                          <div
+                            key={group.ticket_id}
+                            onClick={() => openTicketEditor(group.ticket_id)}
+                            className="border-2 border-blue-300 bg-blue-50/30 rounded p-1 cursor-pointer hover:bg-blue-100/50 hover:border-blue-400 transition-colors"
+                          >
+                            {/* Header with opening time and total duration */}
+                            <div className="flex justify-between items-center text-[8px] text-gray-500 mb-1 pb-0.5 border-b border-blue-200">
+                              <div className="flex items-center gap-0.5 truncate">
+                                <span className="truncate">
+                                  {openTime.replace(/\s/g, '')}
+                                </span>
+                                {group.store_code && (
+                                  <span className="text-[7px] text-gray-400">
+                                    [{abbreviateStoreName(group.store_code)}]
+                                  </span>
+                                )}
+                              </div>
+                              <span className={`ml-1 flex-shrink-0 font-semibold ${group.hasActiveTimer ? 'text-blue-700' : 'text-gray-600'}`}>
+                                {formatTimerDisplay(group.totalDuration)}
+                                {group.hasActiveTimer && '*'}
+                              </span>
+                            </div>
+                            {/* Service list with individual timers */}
+                            <div className="border-l-2 border-blue-400 pl-1 space-y-0.5">
+                              {group.services.map((item, svcIndex) => {
+                                const timerItem: TimerServiceItem = {
+                                  started_at: item.started_at,
+                                  timer_stopped_at: item.timer_stopped_at,
+                                  completed_at: item.completed_at,
+                                };
+                                const svcDuration = calculateServiceDuration(timerItem, currentTime);
+                                const timerStatus = getTimerStatus(timerItem);
+                                return (
+                                  <div key={svcIndex} className="flex justify-between items-center">
+                                    <span className="text-[9px] font-semibold text-gray-900">
+                                      {item.service_code}
+                                    </span>
+                                    <span className={`text-[8px] font-medium ${
+                                      timerStatus === 'active' ? 'text-blue-700' : 'text-gray-500'
+                                    }`}>
+                                      ({formatTimerDisplay(svcDuration)}{timerStatus === 'active' && '*'})
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {/* Revenue */}
+                            {showDetails ? (
+                              <div className="flex justify-between items-center mt-1 pt-0.5 border-t border-blue-200">
+                                <span className="text-[8px] text-gray-600">Sub-total</span>
+                                <span className="text-[8px] font-semibold text-gray-900">
+                                  ${group.totalRevenue.toFixed(0)}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex justify-between items-center mt-1 pt-0.5 border-t border-blue-200">
+                                <span className="text-[8px] text-gray-600">Total</span>
+                                <span className="text-[8px] font-semibold text-gray-900">
+                                  ${group.totalRevenue.toFixed(0)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      // Single-service ticket - similar to original but with timer
+                      const item = group.services[0];
+                      const timerItem: TimerServiceItem = {
+                        started_at: item.started_at,
+                        timer_stopped_at: item.timer_stopped_at,
+                        completed_at: item.completed_at,
+                      };
+                      const svcDuration = calculateServiceDuration(timerItem, currentTime);
+                      const timerStatus = getTimerStatus(timerItem);
                       const totalRevenue = item.service_revenue + item.addon_revenue;
-                      const completionDuration = calculateItemCompletionDuration(item);
-                      const completionStatus = getItemCompletionStatus(item);
 
                       return (
                         <div
-                          key={index}
+                          key={group.ticket_id}
                           onClick={() => openTicketEditor(item.ticket_id)}
                           className="border border-gray-200 bg-gray-50 rounded p-1 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
                         >
@@ -429,18 +569,10 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
                                   </span>
                                 )}
                               </div>
-                              <span
-                                className={`ml-1 flex-shrink-0 font-semibold ${
-                                  completionStatus === 'on_time'
-                                    ? 'text-green-800'
-                                    : completionStatus === 'moderate_deviation'
-                                    ? 'text-amber-800'
-                                    : completionStatus === 'extreme_deviation'
-                                    ? 'text-red-800'
-                                    : 'text-gray-500'
-                                }`}
-                              >
-                                {completionDuration > 0 ? `${completionDuration}min` : `${item.duration_min}min`}
+                              <span className={`ml-1 flex-shrink-0 font-semibold ${
+                                timerStatus === 'active' ? 'text-blue-700' : 'text-gray-600'
+                              }`}>
+                                {formatTimerDisplay(svcDuration)}{timerStatus === 'active' && '*'}
                               </span>
                             </div>
                             <div className="text-[9px] font-semibold text-gray-900">
