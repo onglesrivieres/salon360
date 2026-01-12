@@ -121,6 +121,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
 
   const canMarkCompleted = session && session.role_permission && Permissions.tickets.canMarkCompleted(session.role_permission);
 
+  const canSelectPaymentMethod = session && session.role_permission && Permissions.tickets.canSelectPaymentMethod(session.role_permission);
+
   const canReopen = session && session.role_permission && Permissions.tickets.canReopen(session.role_permission);
 
   const canDelete = session && session.role_permission && Permissions.tickets.canDelete(session.role_permission);
@@ -2340,7 +2342,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                               }}
                               className="w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
                               placeholder="Enter custom service name"
-                              disabled={!canEditServices}
+                              disabled={!canEditServices || isTicketClosed}
                             />
                           </div>
                         ) : (
@@ -2475,7 +2477,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             )}
           </div>
 
-          {ticketId && !isRestrictedCustomerInfoRole && (
+          {ticketId && !isRestrictedCustomerInfoRole && canSelectPaymentMethod && (
             <div className="border border-gray-200 rounded-lg p-2 bg-green-50">
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 Payment Method <span className="text-red-600">*</span>
@@ -2893,6 +2895,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     }
                     className="pl-8 pr-3"
                     placeholder="0.00"
+                    disabled={isTicketClosed || isReadOnly}
                   />
                 </div>
                 {formData.payment_method === 'Cash' && tempPaymentData.payment_cash && (
@@ -2918,6 +2921,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     }
                     className="pl-8 pr-3"
                     placeholder="0.00"
+                    disabled={isTicketClosed || isReadOnly}
                   />
                 </div>
                 {formData.payment_method === 'Card' && tempPaymentData.payment_card && (
@@ -2943,6 +2947,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                     }
                     className="pl-8 pr-3"
                     placeholder="0.00"
+                    disabled={isTicketClosed || isReadOnly}
                   />
                 </div>
               </div>
@@ -2972,6 +2977,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                         }
                         className="pl-8 pr-3"
                         placeholder="0.00"
+                        disabled={isTicketClosed || isReadOnly}
                       />
                     </div>
                   </div>
@@ -2998,6 +3004,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                         }}
                         className="pl-3 pr-8"
                         placeholder="0"
+                        disabled={isTicketClosed || isReadOnly}
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">%</span>
                     </div>
@@ -3021,6 +3028,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       }
                       className="pl-8 pr-3"
                       placeholder="0.00"
+                      disabled={isTicketClosed || isReadOnly}
                     />
                   </div>
                 </div>
@@ -3047,6 +3055,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       }}
                       className="pl-3 pr-8"
                       placeholder="0"
+                      disabled={isTicketClosed || isReadOnly}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">%</span>
                   </div>

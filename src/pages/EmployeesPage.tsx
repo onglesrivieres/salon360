@@ -307,6 +307,12 @@ export function EmployeesPage() {
       return;
     }
 
+    // Check target-aware permission
+    if (!Permissions.employees.canResetEmployeePIN(session.role, employee.role)) {
+      showToast(t('messages.permissionDenied') || 'You do not have permission to reset this employee\'s PIN', 'error');
+      return;
+    }
+
     try {
       const result = await resetPIN(employee.id);
       if (result.success) {
@@ -562,13 +568,46 @@ export function EmployeesPage() {
                 role: values as Employee['role'],
               })
             }
-            options={[
-              { value: 'Technician', label: t('emp.technician') },
-              { value: 'Receptionist', label: t('emp.receptionist') },
-              { value: 'Supervisor', label: t('emp.supervisor') },
-              { value: 'Manager', label: t('emp.manager') },
-              { value: 'Owner', label: t('emp.owner') },
-            ]}
+            options={(() => {
+              const isAdmin = session?.role.includes('Admin');
+              const isOwner = session?.role.includes('Owner') && !isAdmin;
+              const isManager = session?.role.includes('Manager') && !isOwner && !isAdmin;
+
+              // Manager can only assign lower-level roles
+              if (isManager) {
+                return [
+                  { value: 'Technician', label: t('emp.technician') },
+                  { value: 'Receptionist', label: t('emp.receptionist') },
+                  { value: 'Cashier', label: t('emp.cashier') },
+                  { value: 'Supervisor', label: t('emp.supervisor') },
+                ];
+              }
+
+              // Base roles for Owner (includes Manager)
+              const baseRoles = [
+                { value: 'Technician', label: t('emp.technician') },
+                { value: 'Receptionist', label: t('emp.receptionist') },
+                { value: 'Cashier', label: t('emp.cashier') },
+                { value: 'Supervisor', label: t('emp.supervisor') },
+                { value: 'Manager', label: t('emp.manager') },
+              ];
+
+              if (isAdmin) {
+                // Admin can assign ALL roles including Admin and Owner
+                return [
+                  ...baseRoles,
+                  { value: 'Owner', label: t('emp.owner') },
+                  { value: 'Admin', label: t('emp.admin') },
+                ];
+              } else if (isOwner) {
+                // Owner can assign all roles EXCEPT Admin
+                return [
+                  ...baseRoles,
+                  { value: 'Owner', label: t('emp.owner') },
+                ];
+              }
+              return baseRoles;
+            })()}
             placeholder="Select roles"
           />
           <Select
@@ -720,7 +759,8 @@ export function EmployeesPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          {editingEmployee && session && Permissions.employees.canResetPIN(session.role) && (
+          {editingEmployee && session && Permissions.employees.canResetPIN(session.role) &&
+           Permissions.employees.canResetEmployeePIN(session.role, editingEmployee.role) && (
             <div>
               <button
                 type="button"

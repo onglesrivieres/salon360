@@ -73,6 +73,9 @@ export const Permissions = {
       // Only roles that can close tickets can also mark them as completed
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
     },
+    canSelectPaymentMethod: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+    },
     canReopen: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
     },
@@ -148,32 +151,62 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
     },
     canCreate: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
     },
     canEdit: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
     },
     canDelete: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
     },
     canResetPIN: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
     },
     canAssignRoles: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
     },
-    // Target-role-aware permissions: Owner cannot manage Admin employees
+    // Target-role-aware permissions
     canEditEmployee: (userRoles: Role[] | RolePermission, targetRoles: Role[]): boolean => {
-      if (!hasAnyRole(userRoles, ['Admin', 'Owner'])) return false;
-      // Owner cannot edit Admin employees (unless also Admin)
-      if (hasAnyRole(userRoles, ['Owner']) && !hasAnyRole(userRoles, ['Admin']) && targetRoles.includes('Admin')) return false;
-      return true;
+      // Admin can edit anyone
+      if (hasAnyRole(userRoles, ['Admin'])) return true;
+      // Owner can edit anyone EXCEPT Admin
+      if (hasAnyRole(userRoles, ['Owner'])) {
+        return !targetRoles.includes('Admin');
+      }
+      // Manager can edit Supervisor, Receptionist, Cashier, Technician only
+      if (hasAnyRole(userRoles, ['Manager'])) {
+        const hasRestrictedRole = targetRoles.some(r => ['Admin', 'Owner', 'Manager'].includes(r));
+        return !hasRestrictedRole;
+      }
+      return false;
     },
     canDeleteEmployee: (userRoles: Role[] | RolePermission, targetRoles: Role[]): boolean => {
-      if (!hasAnyRole(userRoles, ['Admin', 'Owner'])) return false;
-      // Owner cannot delete Admin employees (unless also Admin)
-      if (hasAnyRole(userRoles, ['Owner']) && !hasAnyRole(userRoles, ['Admin']) && targetRoles.includes('Admin')) return false;
-      return true;
+      // Admin can delete anyone
+      if (hasAnyRole(userRoles, ['Admin'])) return true;
+      // Owner can delete anyone EXCEPT Admin
+      if (hasAnyRole(userRoles, ['Owner'])) {
+        return !targetRoles.includes('Admin');
+      }
+      // Manager can delete Supervisor, Receptionist, Cashier, Technician only
+      if (hasAnyRole(userRoles, ['Manager'])) {
+        const hasRestrictedRole = targetRoles.some(r => ['Admin', 'Owner', 'Manager'].includes(r));
+        return !hasRestrictedRole;
+      }
+      return false;
+    },
+    canResetEmployeePIN: (userRoles: Role[] | RolePermission, targetRoles: Role[]): boolean => {
+      // Admin can reset anyone's PIN
+      if (hasAnyRole(userRoles, ['Admin'])) return true;
+      // Owner can reset anyone's PIN EXCEPT Admin
+      if (hasAnyRole(userRoles, ['Owner'])) {
+        return !targetRoles.includes('Admin');
+      }
+      // Manager can reset PIN for Supervisor, Receptionist, Cashier, Technician only
+      if (hasAnyRole(userRoles, ['Manager'])) {
+        const hasRestrictedRole = targetRoles.some(r => ['Admin', 'Owner', 'Manager'].includes(r));
+        return !hasRestrictedRole;
+      }
+      return false;
     },
   },
 

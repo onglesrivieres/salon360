@@ -111,6 +111,15 @@ export const permissionMetadata: PermissionMetadata[] = [
     defaultRoles: ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']
   },
   {
+    key: 'tickets.canSelectPaymentMethod',
+    module: 'tickets',
+    action: 'select_payment_method',
+    displayName: 'Select Payment Method',
+    description: 'Ability to select payment methods (Cash, Card, Mixed) on tickets',
+    isCritical: false,
+    defaultRoles: ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']
+  },
+  {
     key: 'tickets.canReopen',
     module: 'tickets',
     action: 'reopen',
