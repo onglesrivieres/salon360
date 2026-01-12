@@ -65,6 +65,7 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [multiStoreEmployeeIds, setMultiStoreEmployeeIds] = useState<Set<string>>(new Set());
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
@@ -122,7 +123,17 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
     return codeMap[storeCode.toUpperCase()] || storeCode;
   }
 
-  async function fetchDailyTipData(dateToFetch: string): Promise<Map<string, TechnicianSummary>> {
+  function getStoreColor(storeCode: string): string {
+    const abbrev = abbreviateStoreName(storeCode);
+    switch (abbrev) {
+      case 'M': return 'text-pink-600';
+      case 'C': return 'text-green-600';
+      case 'R': return 'text-blue-600';
+      default: return 'text-gray-600';
+    }
+  }
+
+  async function fetchDailyTipData(dateToFetch: string): Promise<{ technicianMap: Map<string, TechnicianSummary>; multiStoreEmployees: Set<string> }> {
     const canViewAll = session?.role ? Permissions.tipReport.canViewAll(session.role) : false;
     const isTechnician = !canViewAll;
 
@@ -289,7 +300,7 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
       }
     }
 
-    return technicianMap;
+    return { technicianMap, multiStoreEmployees };
   }
 
   async function fetchTipData() {
@@ -315,7 +326,8 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
         setShowDetails(true);
       }
 
-      const technicianMap = await fetchDailyTipData(selectedDate);
+      const { technicianMap, multiStoreEmployees } = await fetchDailyTipData(selectedDate);
+      setMultiStoreEmployeeIds(multiStoreEmployees);
 
       let filteredSummaries = Array.from(technicianMap.values());
 
@@ -485,8 +497,8 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
                                 <span className="truncate">
                                   {openTime.replace(/\s/g, '')}
                                 </span>
-                                {group.store_code && (
-                                  <span className="text-[7px] text-gray-400">
+                                {multiStoreEmployeeIds.has(summary.technician_id) && group.store_code && (
+                                  <span className={`text-[7px] font-medium ${getStoreColor(group.store_code)}`}>
                                     [{abbreviateStoreName(group.store_code)}]
                                   </span>
                                 )}
@@ -563,8 +575,8 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
                                 <span className="truncate">
                                   {openTime.replace(/\s/g, '')}
                                 </span>
-                                {item.store_code && (
-                                  <span className="text-[7px] text-gray-400">
+                                {multiStoreEmployeeIds.has(summary.technician_id) && item.store_code && (
+                                  <span className={`text-[7px] font-medium ${getStoreColor(item.store_code)}`}>
                                     [{abbreviateStoreName(item.store_code)}]
                                   </span>
                                 )}
