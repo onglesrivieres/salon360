@@ -47,7 +47,15 @@ export function getSession(): AuthSession | null {
   }
 
   try {
-    return JSON.parse(sessionData);
+    const session = JSON.parse(sessionData) as AuthSession;
+
+    // Always recompute role_permission from role array
+    // This ensures consistency after the role_permission column was removed from DB
+    if (session.role && Array.isArray(session.role)) {
+      session.role_permission = getRolePermission(session.role);
+    }
+
+    return session;
   } catch {
     return null;
   }
