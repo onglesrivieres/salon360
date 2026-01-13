@@ -1465,6 +1465,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     try {
       await handleSave();
 
+      // Stop all active service timers before closing the ticket
+      await stopCurrentServiceTimer(ticketId);
+
       const closerRoles = session?.role || [];
       const now = new Date().toISOString();
 
