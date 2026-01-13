@@ -62,13 +62,15 @@ export const Permissions = {
       return currentEmployeeId === ticketCreatedBy;
     },
     canEdit: (roles: Role[] | RolePermission, isClosed: boolean, isApproved?: boolean): boolean => {
+      if (isClosed) return false;
       if (hasAnyRole(roles, ['Admin', 'Owner'])) return true;
-      if (hasAnyRole(roles, ['Receptionist', 'Supervisor', 'Manager', 'Cashier'])) return !isClosed && !isApproved;
+      if (hasAnyRole(roles, ['Receptionist', 'Supervisor', 'Manager', 'Cashier'])) return !isApproved;
       return false;
     },
     canEditNotes: (roles: Role[] | RolePermission, isClosed: boolean): boolean => {
+      if (isClosed) return false;
       if (hasAnyRole(roles, ['Admin', 'Owner'])) return true;
-      if (hasAnyRole(roles, ['Receptionist', 'Supervisor', 'Manager', 'Cashier'])) return !isClosed;
+      if (hasAnyRole(roles, ['Receptionist', 'Supervisor', 'Manager', 'Cashier'])) return true;
       // Technicians cannot edit notes
       return false;
     },
