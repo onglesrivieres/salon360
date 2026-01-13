@@ -41,7 +41,6 @@ export interface Technician {
   legal_name: string;
   display_name: string;
   role: ('Technician' | 'Receptionist' | 'Manager' | 'Owner' | 'Supervisor' | 'Cashier')[];
-  role_permission?: 'Admin' | 'Receptionist' | 'Technician' | 'Supervisor' | 'Cashier';
   status: 'Active' | 'Inactive';
   store_id?: string;
   pay_type?: 'hourly' | 'daily' | 'commission';
