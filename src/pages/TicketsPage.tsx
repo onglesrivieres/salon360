@@ -153,12 +153,33 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
       const { data, error } = await query;
 
+      // DEBUG: Log query results to diagnose empty tickets issue
+      console.log('fetchTickets DEBUG:', {
+        selectedStoreId,
+        selectedDate,
+        role_permission: session?.role_permission,
+        role: session?.role,
+        employee_id: session?.employee_id,
+        error,
+        dataCount: data?.length,
+        firstTicket: data?.[0]
+      });
+
       if (error) throw error;
 
       let filteredData = data || [];
 
       // Check if user has permission to view all tickets
       const canViewAllTickets = session?.role_permission && Permissions.tickets.canViewAll(session.role_permission);
+
+      // DEBUG: Log filter conditions
+      console.log('fetchTickets FILTER DEBUG:', {
+        canViewAllTickets,
+        isRestrictedRole,
+        isCommissionEmployee,
+        willFilter: !canViewAllTickets && (isRestrictedRole || isCommissionEmployee) && session?.employee_id,
+        beforeFilterCount: filteredData.length
+      });
 
       // Filter tickets for technicians, spa experts, and commission employees to show only their work
       // But allow roles with canViewAll permission (Receptionist, Admin, etc.) to see everything
@@ -167,6 +188,8 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
           ticket.ticket_items && ticket.ticket_items.some((item: any) => item.employee_id === session.employee_id)
         );
       }
+
+      console.log('fetchTickets FINAL:', { afterFilterCount: filteredData.length });
 
       setTickets(filteredData);
     } catch (error) {
