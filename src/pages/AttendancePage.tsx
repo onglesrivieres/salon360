@@ -619,9 +619,6 @@ export function AttendancePage() {
                             ) : (
                               <div>{employee.totalHours.toFixed(2)}</div>
                             )}
-                            {!isRestrictedRole && (
-                              <div className="text-gray-600">{employee.daysPresent}d</div>
-                            )}
                           </div>
                         ) : (
                           // Fallback for other types
