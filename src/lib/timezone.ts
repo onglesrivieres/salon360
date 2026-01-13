@@ -48,18 +48,23 @@ export function formatDateTimeEST(date: Date | string, options?: Intl.DateTimeFo
   const dateObj = typeof date === 'string' ? new Date(date) : date;
   const tz = timezone || currentTimezone;
 
-  const defaultOptions: Intl.DateTimeFormatOptions = {
+  // Get date parts in the target timezone
+  const tzDate = new Date(dateObj.toLocaleString('en-US', { timeZone: tz }));
+  const year = tzDate.getFullYear();
+  const month = String(tzDate.getMonth() + 1).padStart(2, '0');
+  const day = String(tzDate.getDate()).padStart(2, '0');
+
+  // Get time in 12-hour format
+  const timeOptions: Intl.DateTimeFormatOptions = {
     timeZone: tz,
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
     ...options
   };
+  const time = dateObj.toLocaleString('en-US', timeOptions);
 
-  return dateObj.toLocaleString('en-US', defaultOptions);
+  return `${year}-${month}-${day} ${time}`;
 }
 
 export function getCurrentDateEST(timezone?: string): string {

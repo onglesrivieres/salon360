@@ -403,9 +403,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   // Timer interval for real-time updates
   // Use 1-second interval if there's an active service timer, otherwise 1-minute for general time display
   useEffect(() => {
-    const hasActiveTimer = ticketId && items.some(
-      (item: any) => item.started_at && !item.timer_stopped_at && !item.completed_at
-    );
+    const hasActiveTimer = ticketId &&
+      !ticket?.completed_at &&
+      !ticket?.closed_at &&
+      items.some((item: any) => item.started_at && !item.timer_stopped_at && !item.completed_at);
 
     const intervalMs = hasActiveTimer ? 1000 : 60000;
 
@@ -416,7 +417,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     return () => {
       clearInterval(timer);
     };
-  }, [ticketId, items.length, ticket?.completed_at]);
+  }, [ticketId, items.length, ticket?.completed_at, ticket?.closed_at]);
 
   async function fetchSortedTechnicians() {
     if (!selectedStoreId) return;
@@ -750,11 +751,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     const startTime = new Date(item.started_at);
     let endTime: Date;
 
-    // Priority: timer_stopped_at > completed_at > current time (active timer)
+    // Priority: timer_stopped_at > item.completed_at > ticket.completed_at > ticket.closed_at > current time
     if (item.timer_stopped_at) {
       endTime = new Date(item.timer_stopped_at);
     } else if (item.completed_at) {
       endTime = new Date(item.completed_at);
+    } else if (ticket?.completed_at) {
+      endTime = new Date(ticket.completed_at);
+    } else if (ticket?.closed_at) {
+      endTime = new Date(ticket.closed_at);
     } else {
       endTime = time; // Active timer uses current time
     }
@@ -1468,6 +1473,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     try {
       await handleSave();
 
+      // Stop all active service timers before closing the ticket
+      await stopCurrentServiceTimer(ticketId);
+
       const closerRoles = session?.role || [];
       const now = new Date().toISOString();
 
@@ -1927,43 +1935,59 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                 />
               </div>
             ) : (
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                {/* Start at */}
-                <div className="flex items-center gap-1.5 flex-1">
-                  <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
-                  <label className="text-xs font-medium text-gray-700 flex-shrink-0">
-                    Start at
-                  </label>
-                  <p className="text-sm text-gray-900 font-medium truncate">
-                    {formData.opening_time ? formatDateTimeEST(formData.opening_time) : 'Not set'}
-                  </p>
-                  {!isReadOnly && session && session.role_permission && (
-                    Permissions.tickets.canEdit(session.role_permission, false, false) && !isEditingOpeningTime && (
-                      <button
-                        type="button"
-                        onClick={handleEditOpeningTime}
-                        className="text-blue-600 hover:text-blue-700 p-1 rounded transition-colors ml-auto"
-                        title="Edit opening time"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                    )
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                {/* Left side: Start at and End at */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  {/* Start at */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                    <label className="text-xs font-medium text-gray-700 flex-shrink-0">
+                      Start at
+                    </label>
+                    <p className="text-sm text-gray-900 font-medium flex-shrink-0">
+                      {formData.opening_time ? formatDateTimeEST(formData.opening_time) : 'Not set'}
+                    </p>
+                    {!isReadOnly && session && session.role_permission && (
+                      Permissions.tickets.canEdit(session.role_permission, false, false) && !isEditingOpeningTime && (
+                        <button
+                          type="button"
+                          onClick={handleEditOpeningTime}
+                          className="text-blue-600 hover:text-blue-700 p-1 rounded transition-colors"
+                          title="Edit opening time"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  {/* Divider between Start and End */}
+                  {(ticket?.completed_at || ticket?.closed_at) && (
+                    <div className="hidden sm:block w-px h-6 bg-gray-300" />
+                  )}
+
+                  {/* End at */}
+                  {(ticket?.completed_at || ticket?.closed_at) && (
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                      <label className="text-xs font-medium text-gray-700 flex-shrink-0">
+                        End at
+                      </label>
+                      <p className="text-sm text-gray-900 font-medium flex-shrink-0">
+                        {ticket.completed_at ? formatDateTimeEST(ticket.completed_at) : 'Not completed'}
+                      </p>
+                    </div>
                   )}
                 </div>
 
-                {/* Divider */}
+                {/* Right side: Total Time */}
                 {ticketId && items.length > 0 && (
-                  <div className="hidden sm:block w-px h-6 bg-gray-300" />
-                )}
-
-                {/* Total Time - sum of all service timers */}
-                {ticketId && items.length > 0 && (
-                  <div className="flex items-center gap-1.5 flex-1">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
                     <label className="text-xs font-medium text-gray-700 flex-shrink-0">
                       Total Time
                     </label>
-                    <p className={`text-sm font-medium truncate ${
+                    <p className={`text-sm font-medium flex-shrink-0 ${
                       items.some((item: any) => item.started_at && !item.timer_stopped_at && !item.completed_at)
                         ? 'text-blue-700'
                         : 'text-gray-900'
@@ -1971,28 +1995,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       {formatTimerDisplay(calculateTotalTimerDuration(currentTime))}
                     </p>
                     {items.some((item: any) => item.started_at && !item.timer_stopped_at && !item.completed_at) && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 ml-auto">
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
                         Active
                       </span>
                     )}
-                  </div>
-                )}
-
-                {/* Divider */}
-                {(ticket?.completed_at || ticket?.closed_at) && (
-                  <div className="hidden sm:block w-px h-6 bg-gray-300" />
-                )}
-
-                {/* End at */}
-                {(ticket?.completed_at || ticket?.closed_at) && (
-                  <div className="flex items-center gap-1.5 flex-1">
-                    <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
-                    <label className="text-xs font-medium text-gray-700 flex-shrink-0">
-                      End at
-                    </label>
-                    <p className="text-sm text-gray-900 font-medium truncate">
-                      {ticket.completed_at ? formatDateTimeEST(ticket.completed_at) : 'Not completed'}
-                    </p>
                   </div>
                 )}
               </div>
