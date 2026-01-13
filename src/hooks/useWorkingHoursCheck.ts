@@ -23,7 +23,8 @@ export function useWorkingHoursCheck(
 
   useEffect(() => {
     async function checkHours() {
-      if (rolePermission !== 'Receptionist' || !storeId) {
+      const restrictedRoles = ['Receptionist', 'Supervisor'];
+      if (!restrictedRoles.includes(rolePermission ?? '') || !storeId) {
         setState(prev => ({ ...prev, isLoading: false, isWithinWorkingHours: true }));
         return;
       }
