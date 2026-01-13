@@ -53,8 +53,12 @@ export async function checkStoreWorkingHours(storeId: string): Promise<WorkingHo
   const [closeHour, closeMin] = closingTime.split(':').map(Number);
   const closingTimeMinutes = closeHour * 60 + closeMin;
 
-  const isWithinWorkingHours = currentTimeMinutes >= openingTimeMinutes &&
-                               currentTimeMinutes <= closingTimeMinutes;
+  // Allow access 1.5 hours before opening and 1 hour after closing
+  const EARLY_ACCESS_MINUTES = 90;  // 1.5 hours before opening
+  const LATE_ACCESS_MINUTES = 60;   // 1 hour after closing
+
+  const isWithinWorkingHours = currentTimeMinutes >= (openingTimeMinutes - EARLY_ACCESS_MINUTES) &&
+                               currentTimeMinutes <= (closingTimeMinutes + LATE_ACCESS_MINUTES);
 
   return {
     isWithinWorkingHours,
