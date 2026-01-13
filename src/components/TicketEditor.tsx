@@ -403,9 +403,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
   // Timer interval for real-time updates
   // Use 1-second interval if there's an active service timer, otherwise 1-minute for general time display
   useEffect(() => {
-    const hasActiveTimer = ticketId && items.some(
-      (item: any) => item.started_at && !item.timer_stopped_at && !item.completed_at
-    );
+    const hasActiveTimer = ticketId &&
+      !ticket?.completed_at &&
+      !ticket?.closed_at &&
+      items.some((item: any) => item.started_at && !item.timer_stopped_at && !item.completed_at);
 
     const intervalMs = hasActiveTimer ? 1000 : 60000;
 
@@ -416,7 +417,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     return () => {
       clearInterval(timer);
     };
-  }, [ticketId, items.length, ticket?.completed_at]);
+  }, [ticketId, items.length, ticket?.completed_at, ticket?.closed_at]);
 
   async function fetchSortedTechnicians() {
     if (!selectedStoreId) return;
@@ -750,11 +751,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
     const startTime = new Date(item.started_at);
     let endTime: Date;
 
-    // Priority: timer_stopped_at > completed_at > current time (active timer)
+    // Priority: timer_stopped_at > item.completed_at > ticket.completed_at > ticket.closed_at > current time
     if (item.timer_stopped_at) {
       endTime = new Date(item.timer_stopped_at);
     } else if (item.completed_at) {
       endTime = new Date(item.completed_at);
+    } else if (ticket?.completed_at) {
+      endTime = new Date(ticket.completed_at);
+    } else if (ticket?.closed_at) {
+      endTime = new Date(ticket.closed_at);
     } else {
       endTime = time; // Active timer uses current time
     }
