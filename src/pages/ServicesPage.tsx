@@ -335,6 +335,7 @@ export function ServicesPage() {
     try {
       const { data, error } = await supabase.rpc('get_services_by_popularity', {
         p_store_id: selectedStoreId,
+        p_include_all: true,
       });
 
       if (error) throw error;
