@@ -62,14 +62,14 @@ export function CashTransactionEditHistoryModal({
       if (employeeIds.length > 0) {
         const { data: employeeData, error: employeeError } = await supabase
           .from('employees')
-          .select('id, name')
+          .select('id, display_name')
           .in('id', employeeIds);
 
         if (employeeError) throw employeeError;
 
         const nameMap: Record<string, string> = {};
         (employeeData || []).forEach(emp => {
-          nameMap[emp.id] = emp.name;
+          nameMap[emp.id] = emp.display_name;
         });
         setEmployeeNames(nameMap);
       }

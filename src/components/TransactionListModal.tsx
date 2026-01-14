@@ -51,15 +51,14 @@ export function TransactionListModal({
     try {
       const { data, error } = await supabase
         .from('employees')
-        .select('id, name')
-        .in('id', employeeIds)
-        .eq('store_id', selectedStoreId);
+        .select('id, display_name')
+        .in('id', employeeIds);
 
       if (error) throw error;
 
       const nameMap: Record<string, string> = {};
       data?.forEach(emp => {
-        nameMap[emp.id] = emp.name;
+        nameMap[emp.id] = emp.display_name;
       });
       setEmployeeNames(nameMap);
     } catch (error) {
