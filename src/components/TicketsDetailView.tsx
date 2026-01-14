@@ -522,14 +522,22 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
                                 };
                                 const svcDuration = calculateServiceDuration(timerItem, currentTime);
                                 const timerStatus = getTimerStatus(timerItem);
+                                const completionStatus = getItemCompletionStatus(item);
+                                const timerColor = timerStatus === 'active'
+                                  ? 'text-blue-700'
+                                  : completionStatus === 'on_time'
+                                    ? 'text-green-700'
+                                    : completionStatus === 'moderate_deviation'
+                                      ? 'text-amber-700'
+                                      : completionStatus === 'extreme_deviation'
+                                        ? 'text-red-700'
+                                        : 'text-gray-500';
                                 return (
                                   <div key={svcIndex} className="flex justify-between items-center">
                                     <span className="text-[9px] font-semibold text-gray-900">
                                       {item.service_code}
                                     </span>
-                                    <span className={`text-[8px] font-medium ${
-                                      timerStatus === 'active' ? 'text-blue-700' : 'text-gray-500'
-                                    }`}>
+                                    <span className={`text-[8px] font-medium ${timerColor}`}>
                                       ({formatTimerDisplay(svcDuration)}{timerStatus === 'active' && '*'})
                                     </span>
                                   </div>
@@ -567,6 +575,16 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
                       };
                       const svcDuration = calculateServiceDuration(timerItem, currentTime);
                       const timerStatus = getTimerStatus(timerItem);
+                      const completionStatus = getItemCompletionStatus(item);
+                      const timerColor = timerStatus === 'active'
+                        ? 'text-blue-700'
+                        : completionStatus === 'on_time'
+                          ? 'text-green-700'
+                          : completionStatus === 'moderate_deviation'
+                            ? 'text-amber-700'
+                            : completionStatus === 'extreme_deviation'
+                              ? 'text-red-700'
+                              : 'text-gray-600';
                       const totalRevenue = item.service_revenue + item.addon_revenue;
 
                       return (
@@ -587,9 +605,7 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
                                   </span>
                                 )}
                               </div>
-                              <span className={`ml-1 flex-shrink-0 font-semibold ${
-                                timerStatus === 'active' ? 'text-blue-700' : 'text-gray-600'
-                              }`}>
+                              <span className={`ml-1 flex-shrink-0 font-semibold ${timerColor}`}>
                                 {formatTimerDisplay(svcDuration)}{timerStatus === 'active' && '*'}
                               </span>
                             </div>

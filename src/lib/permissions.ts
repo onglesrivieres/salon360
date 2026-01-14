@@ -390,6 +390,30 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
     },
   },
+
+  tips: {
+    /**
+     * Determines if the user can see tip information.
+     * Commission employees cannot see tips UNLESS they have a management role.
+     * Management roles: Admin, Manager, Owner, Supervisor
+     */
+    canViewTips: (
+      roles: Role[] | RolePermission,
+      payType?: 'hourly' | 'daily' | 'commission'
+    ): boolean => {
+      // Management roles can ALWAYS see tips regardless of pay_type
+      const MANAGEMENT_ROLES = ['Admin', 'Manager', 'Owner', 'Supervisor'];
+      if (hasAnyRole(roles, MANAGEMENT_ROLES)) {
+        return true;
+      }
+      // Commission employees cannot see tips
+      if (payType === 'commission') {
+        return false;
+      }
+      // All other pay types (hourly, daily, undefined) can see tips
+      return true;
+    },
+  },
 };
 
 export function getPermissionMessage(
@@ -410,6 +434,13 @@ export function canAccessPage(
     case 'eod':
       return Permissions.endOfDay.canView(roles);
     case 'tipreport':
+      // Commission employees (without management roles) cannot access tip report
+      if (payType === 'commission') {
+        const MANAGEMENT_ROLES = ['Admin', 'Manager', 'Owner', 'Supervisor'];
+        if (!hasAnyRole(roles, MANAGEMENT_ROLES)) {
+          return false;
+        }
+      }
       return Permissions.tipReport.canView(roles);
     case 'technicians':
       return Permissions.employees.canView(roles);
@@ -447,7 +478,7 @@ export function getAccessiblePages(roles: Role[] | RolePermission, payType?: 'ho
     pages.push('approvals');
   }
 
-  if (Permissions.tipReport.canView(roles)) {
+  if (Permissions.tipReport.canView(roles) && Permissions.tips.canViewTips(roles, payType)) {
     pages.push('tipreport');
   }
 
