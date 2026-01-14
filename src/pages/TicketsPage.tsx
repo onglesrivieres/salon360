@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit2, CheckCircle, Clock, AlertCircle, Filter, X, XCircle, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit2, Check, CheckCircle, Clock, AlertCircle, Filter, X, XCircle, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase, SaleTicket } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -52,6 +52,14 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     }
     checkPayType();
   }, [session?.employee_id]);
+
+  // Management roles can always see tips regardless of pay type
+  const MANAGEMENT_ROLES = ['Admin', 'Manager', 'Owner', 'Supervisor'] as const;
+  const isManagement = session?.role ?
+    MANAGEMENT_ROLES.some(r => session.role?.includes(r)) : false;
+
+  // Determine if tips should be hidden (commission employees without management role)
+  const shouldHideTips = isCommissionEmployee && !isManagement;
 
   // Management can view all reports, commission employees can view their own Daily/Weekly reports
   // Manager and Supervisor roles are excluded from Daily/Period tabs on Tickets page (but can still access Tip Report page)
@@ -493,6 +501,46 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     }, 0);
   }
 
+  // Check if the same person opened, performed, and closed the ticket
+  function isSamePersonOpenedPerformedClosed(ticket: SaleTicket): boolean {
+    // Check if closed
+    if (!ticket.closed_at || !ticket.created_by || !ticket.closed_by) return false;
+
+    // Check if same person opened and closed
+    if (ticket.created_by !== ticket.closed_by) return false;
+
+    // Check if same person performed (single performer, same as closer)
+    if (!ticket.ticket_items || ticket.ticket_items.length === 0) return false;
+
+    const performerIds = new Set(ticket.ticket_items.map((item: any) => item.employee_id));
+
+    // Single performer and same as closer
+    return performerIds.size === 1 && performerIds.has(ticket.closed_by);
+  }
+
+  // Check if the current user can approve based on role hierarchy for self-service tickets
+  function canApproveBasedOnRole(ticket: SaleTicket): boolean {
+    if (!session?.role_permission) return false;
+
+    // Only applies to self-service tickets (same person opened, performed, closed)
+    if (!isSamePersonOpenedPerformedClosed(ticket)) return false;
+
+    const openerRole = ticket.opened_by_role;
+    const currentUserRole = session.role_permission;
+
+    // Supervisor tickets require Manager, Owner, or Admin approval
+    if (openerRole === 'Supervisor') {
+      return ['Manager', 'Owner', 'Admin'].includes(currentUserRole);
+    }
+
+    // Manager tickets require Owner or Admin approval
+    if (openerRole === 'Manager') {
+      return ['Owner', 'Admin'].includes(currentUserRole);
+    }
+
+    return false;
+  }
+
   function canApproveTicket(ticket: SaleTicket): boolean {
     if (!session?.employee_id || !session?.role) return false;
     if (!Permissions.tickets.canApprove(session.role)) return false;
@@ -500,6 +548,11 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     // Show approval buttons for all closed tickets without an approval status
     if (!ticket.closed_at) return false;
     if (ticket.approval_status && ticket.approval_status !== '') return false;
+
+    // Check if this is a self-service ticket requiring role-based approval
+    if (isSamePersonOpenedPerformedClosed(ticket) && ['Supervisor', 'Manager'].includes(ticket.opened_by_role || '')) {
+      return canApproveBasedOnRole(ticket);
+    }
 
     // Check if the current employee worked on this ticket
     const isTechnician = session.role.some((role: string) => role === 'Technician');
@@ -989,28 +1042,32 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
                       <div className="flex items-center gap-2">
+                        {isSamePersonOpenedPerformedClosed(ticket) &&
+                         ['Supervisor', 'Manager'].includes(ticket.opened_by_role || '') &&
+                         !ticket.approval_status && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Required
+                          </span>
+                        )}
                         {getApprovalStatusBadge(ticket)}
                         {canApproveTicket(ticket) && (
                           <div className="flex gap-1">
-                            <Button
-                              size="sm"
+                            <button
                               onClick={(e) => handleApproveTicket(ticket, e)}
                               disabled={processing}
-                              className="text-xs py-1 px-2"
+                              className="w-7 h-7 flex items-center justify-center rounded bg-green-500 hover:bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Approve"
                             >
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
                               onClick={(e) => handleRejectTicketClick(ticket, e)}
                               disabled={processing}
-                              className="text-xs py-1 px-2 text-red-600 hover:bg-red-50"
+                              className="w-7 h-7 flex items-center justify-center rounded bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Reject"
                             >
-                              <XCircle className="w-3 h-3 mr-1" />
-                              Reject
-                            </Button>
+                              <X className="w-4 h-4" />
+                            </button>
                           </div>
                         )}
                       </div>
@@ -1132,6 +1189,13 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                       {formatDuration(ticket.opened_at)}
                     </div>
                   )}
+                  {isSamePersonOpenedPerformedClosed(ticket) &&
+                   ['Supervisor', 'Manager'].includes(ticket.opened_by_role || '') &&
+                   !ticket.approval_status && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      Required
+                    </span>
+                  )}
                   {getApprovalStatusBadge(ticket)}
                 </div>
               </div>
@@ -1141,7 +1205,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                     <div className="text-xs text-gray-500">Sub-total</div>
                     <div className="text-sm font-semibold text-gray-900">${getSubtotal(ticket).toFixed(2)}</div>
                   </div>
-                  {isClosedTicket && (
+                  {isClosedTicket && !shouldHideTips && (
                     <div className={isHighTip ? 'bg-orange-50 rounded px-2 -mx-2' : ''}>
                       <div className={`text-xs font-medium ${isHighTip ? 'text-orange-700' : 'text-gray-500'}`}>
                         Total Tips
@@ -1154,25 +1218,20 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                 </div>
                 {showApprovalButtons && (
                   <div className="flex gap-2 mt-2">
-                    <Button
-                      size="sm"
+                    <button
                       onClick={(e) => handleApproveTicket(ticket, e)}
                       disabled={processing}
-                      className="flex-1 min-h-[44px]"
+                      className="flex-1 min-h-[44px] flex items-center justify-center rounded bg-green-500 hover:bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <CheckCircle className="w-4 h-4 mr-1" />
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
+                      <Check className="w-5 h-5" />
+                    </button>
+                    <button
                       onClick={(e) => handleRejectTicketClick(ticket, e)}
                       disabled={processing}
-                      className="flex-1 min-h-[44px] text-red-600 hover:bg-red-50"
+                      className="flex-1 min-h-[44px] flex items-center justify-center rounded bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <XCircle className="w-4 h-4 mr-1" />
-                      Reject
-                    </Button>
+                      <X className="w-5 h-5" />
+                    </button>
                   </div>
                 )}
               </div>
@@ -1237,6 +1296,7 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
           ticketId={editingTicketId}
           onClose={closeEditor}
           selectedDate={selectedDate}
+          hideTips={shouldHideTips}
         />
       )}
     </div>

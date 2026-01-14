@@ -34,6 +34,7 @@ interface TicketEditorProps {
   ticketId: string | null;
   onClose: () => void;
   selectedDate: string;
+  hideTips?: boolean;
 }
 
 interface TicketItemForm {
@@ -56,7 +57,7 @@ interface TicketItemForm {
   completed_at?: string | null;
 }
 
-export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorProps) {
+export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false }: TicketEditorProps) {
   const [ticket, setTicket] = useState<SaleTicket | null>(null);
   const [items, setItems] = useState<TicketItemForm[]>([]);
   const [services, setServices] = useState<StoreServiceWithDetails[]>([]);
@@ -2580,18 +2581,22 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
                       <span>Total Discounts:</span>
                       <span className="font-semibold">-${calculateTotalDiscount().toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Total Tips Given by Clients:</span>
-                      <span className="font-semibold text-gray-900">${calculateTipsExcludingReceptionist().toFixed(2)}</span>
-                    </div>
+                    {!hideTips && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total Tips Given by Clients:</span>
+                        <span className="font-semibold text-gray-900">${calculateTipsExcludingReceptionist().toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between items-center text-base font-bold text-blue-700 pt-2 border-t border-gray-300 mt-2">
                       <span>Grand Total Collected:</span>
                       <span>${calculateTotalCollected().toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-600 text-sm">
-                      <span>Total Tips Paired by Receptionist:</span>
-                      <span className="font-semibold">${(parseFloat(formData.tip_receptionist) || 0).toFixed(2)}</span>
-                    </div>
+                    {!hideTips && (
+                      <div className="flex justify-between text-gray-600 text-sm">
+                        <span>Total Tips Paired by Receptionist:</span>
+                        <span className="font-semibold">${(parseFloat(formData.tip_receptionist) || 0).toFixed(2)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -3070,86 +3075,88 @@ export function TicketEditor({ ticketId, onClose, selectedDate }: TicketEditorPr
             )}
           </div>
 
-          <div className="border-t border-gray-200 pt-4">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Tips</h4>
+          {!hideTips && (
+            <div className="border-t border-gray-200 pt-4">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">Tips</h4>
 
-            <div className={formData.payment_method === 'Mixed' ? 'grid grid-cols-1 md:grid-cols-3 gap-3' : 'grid grid-cols-1 md:grid-cols-2 gap-3'}>
-              {(formData.payment_method === 'Cash' || formData.payment_method === 'Mixed') && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tip (Cash) by Customer
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">$</span>
-                    <NumericInput
-                      step="0.01"
-                      min="0"
-                      value={tempPaymentData.tip_customer_cash}
-                      onChange={(e) =>
-                        setTempPaymentData({ ...tempPaymentData, tip_customer_cash: e.target.value })
-                      }
-                      className="pl-8 pr-3"
-                      placeholder="All tips must be distributed to technicians"
-                      disabled={true}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {(formData.payment_method === 'Card' || formData.payment_method === 'Mixed') && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tip (Card) by Customer
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">$</span>
-                    <NumericInput
-                      step="0.01"
-                      min="0"
-                      value={tempPaymentData.tip_customer_card}
-                      onChange={(e) =>
-                        setTempPaymentData({ ...tempPaymentData, tip_customer_card: e.target.value })
-                      }
-                      className="pl-8 pr-3"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {(() => {
-                const isTipPairedEnabled = items.some(item => {
-                  const employee = employees.find(emp => emp.id === item.employee_id);
-                  return employee?.tip_paired_enabled !== false;
-                });
-
-                return (
+              <div className={formData.payment_method === 'Mixed' ? 'grid grid-cols-1 md:grid-cols-3 gap-3' : 'grid grid-cols-1 md:grid-cols-2 gap-3'}>
+                {(formData.payment_method === 'Cash' || formData.payment_method === 'Mixed') && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tip Paired by Receptionist
+                      Tip (Cash) by Customer
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">$</span>
                       <NumericInput
                         step="0.01"
                         min="0"
-                        value={tempPaymentData.tip_receptionist}
+                        value={tempPaymentData.tip_customer_cash}
                         onChange={(e) =>
-                          setTempPaymentData({ ...tempPaymentData, tip_receptionist: e.target.value })
+                          setTempPaymentData({ ...tempPaymentData, tip_customer_cash: e.target.value })
                         }
-                        disabled={!isTipPairedEnabled}
+                        className="pl-8 pr-3"
+                        placeholder="All tips must be distributed to technicians"
+                        disabled={true}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {(formData.payment_method === 'Card' || formData.payment_method === 'Mixed') && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tip (Card) by Customer
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">$</span>
+                      <NumericInput
+                        step="0.01"
+                        min="0"
+                        value={tempPaymentData.tip_customer_card}
+                        onChange={(e) =>
+                          setTempPaymentData({ ...tempPaymentData, tip_customer_card: e.target.value })
+                        }
                         className="pl-8 pr-3"
                         placeholder="0.00"
                       />
                     </div>
-                    {!isTipPairedEnabled && (
-                      <p className="text-xs text-gray-500 mt-1">Tip pairing is disabled for all employees on this ticket</p>
-                    )}
                   </div>
-                );
-              })()}
+                )}
+
+                {(() => {
+                  const isTipPairedEnabled = items.some(item => {
+                    const employee = employees.find(emp => emp.id === item.employee_id);
+                    return employee?.tip_paired_enabled !== false;
+                  });
+
+                  return (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tip Paired by Receptionist
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">$</span>
+                        <NumericInput
+                          step="0.01"
+                          min="0"
+                          value={tempPaymentData.tip_receptionist}
+                          onChange={(e) =>
+                            setTempPaymentData({ ...tempPaymentData, tip_receptionist: e.target.value })
+                          }
+                          disabled={!isTipPairedEnabled}
+                          className="pl-8 pr-3"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      {!isTipPairedEnabled && (
+                        <p className="text-xs text-gray-500 mt-1">Tip pairing is disabled for all employees on this ticket</p>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="border-t border-gray-200 pt-4">
             <h4 className="text-sm font-semibold text-gray-900 mb-3">Collection Summary</h4>
