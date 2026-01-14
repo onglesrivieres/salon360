@@ -124,6 +124,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         started_at: item.started_at,
         timer_stopped_at: item.timer_stopped_at,
         completed_at: item.completed_at,
+        ticket_completed_at: item.ticket_completed_at,
+        ticket_closed_at: item.closed_at,
       };
       group.totalDuration += calculateServiceDuration(timerItem, currentTime);
       if (hasActiveTimer(timerItem)) group.hasActiveTimer = true;
@@ -1031,6 +1033,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                       started_at: item.started_at,
                                       timer_stopped_at: item.timer_stopped_at,
                                       completed_at: item.completed_at,
+                                      ticket_completed_at: item.ticket_completed_at,
+                                      ticket_closed_at: item.closed_at,
                                     };
                                     const svcDuration = calculateServiceDuration(timerItem, currentTime);
                                     const timerStatus = getTimerStatus(timerItem);
@@ -1082,6 +1086,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                             started_at: item.started_at,
                             timer_stopped_at: item.timer_stopped_at,
                             completed_at: item.completed_at,
+                            ticket_completed_at: item.ticket_completed_at,
+                            ticket_closed_at: item.closed_at,
                           };
                           const svcDuration = calculateServiceDuration(timerItem, currentTime);
                           const timerStatus = getTimerStatus(timerItem);
