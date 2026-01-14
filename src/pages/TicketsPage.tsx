@@ -545,24 +545,17 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     if (!session?.employee_id || !session?.role) return false;
     if (!Permissions.tickets.canApprove(session.role)) return false;
 
-    // Show approval buttons for all closed tickets without an approval status
+    // Must be closed and not in a final approval status
     if (!ticket.closed_at) return false;
-    // Hide buttons only for final approval statuses (not pending_approval)
     const finalStatuses = ['approved', 'auto_approved', 'rejected'];
     if (ticket.approval_status && finalStatuses.includes(ticket.approval_status)) return false;
 
-    // Check if this is a self-service ticket requiring role-based approval
-    if (isSamePersonOpenedPerformedClosed(ticket) && ['Supervisor', 'Manager'].includes(ticket.opened_by_role || '')) {
-      return canApproveBasedOnRole(ticket);
-    }
-
-    // Check if the current employee worked on this ticket
-    const isTechnician = session.role.some((role: string) => role === 'Technician');
-    if (isTechnician && ticket.ticket_items) {
+    // ALL users can only approve tickets where they personally performed the service
+    if (ticket.ticket_items) {
       return ticket.ticket_items.some((item: any) => item.employee_id === session.employee_id);
     }
 
-    return true;
+    return false;
   }
 
   async function handleApproveTicket(ticket: SaleTicket, event: React.MouseEvent) {
