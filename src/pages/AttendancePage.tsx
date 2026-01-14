@@ -621,8 +621,8 @@ export function AttendancePage() {
                             )}
                           </div>
                         ) : (
-                          // Fallback for other types
-                          <div>{employee.totalHours.toFixed(2)}</div>
+                          // Commission employees - show days only
+                          <div>{employee.daysPresent}d</div>
                         )}
                       </td>
                     </tr>
