@@ -94,6 +94,7 @@ export function PendingApprovalsPage() {
   const [transactionChangeProposals, setTransactionChangeProposals] = useState<PendingCashTransactionChangeProposal[]>([]);
   const [selectedTransactionChangeProposal, setSelectedTransactionChangeProposal] = useState<PendingCashTransactionChangeProposal | null>(null);
   const [transactionChangeReviewComment, setTransactionChangeReviewComment] = useState('');
+  const [rejectedTickets, setRejectedTickets] = useState<any[]>([]);
   const [tabCounts, setTabCounts] = useState<{
     tickets: number;
     inventory: number;
@@ -166,6 +167,7 @@ export function PendingApprovalsPage() {
         fetchPendingApprovals();
         fetchApprovalStats();
         fetchHistoricalApprovals();
+        fetchRejectedTickets();
       } else if (activeTab === 'inventory') {
         fetchInventoryApprovals();
       } else if (activeTab === 'cash') {
@@ -194,6 +196,7 @@ export function PendingApprovalsPage() {
         if (activeTab === 'tickets') {
           fetchPendingApprovals();
           fetchApprovalStats();
+          fetchRejectedTickets();
         } else if (activeTab === 'inventory') {
           fetchInventoryApprovals();
         } else if (activeTab === 'cash') {
@@ -289,6 +292,38 @@ export function PendingApprovalsPage() {
       showToast('Failed to load pending approvals', 'error');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchRejectedTickets() {
+    if (!selectedStoreId) return;
+    try {
+      const { data, error } = await supabase.rpc('get_rejected_tickets_for_admin', {
+        p_store_id: selectedStoreId,
+      });
+      if (error) throw error;
+      setRejectedTickets(data || []);
+    } catch (error) {
+      console.error('Error fetching rejected tickets:', error);
+    }
+  }
+
+  async function handleClearAdminReview(ticketId: string) {
+    try {
+      setProcessing(true);
+      const { error } = await supabase
+        .from('sale_tickets')
+        .update({ requires_admin_review: false })
+        .eq('id', ticketId);
+      if (error) throw error;
+      showToast('Ticket marked as reviewed', 'success');
+      fetchRejectedTickets();
+      fetchApprovalStats();
+    } catch (error) {
+      console.error('Error clearing admin review:', error);
+      showToast('Failed to update ticket', 'error');
+    } finally {
+      setProcessing(false);
     }
   }
 
@@ -1479,6 +1514,62 @@ export function PendingApprovalsPage() {
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {rejectedTickets.length > 0 && (
+                <div className="mt-8 pt-8 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-600" />
+                    Rejected Tickets Requiring Admin Review ({rejectedTickets.length})
+                  </h3>
+                  <div className="space-y-3">
+                    {rejectedTickets.map((ticket) => (
+                      <div
+                        key={ticket.ticket_id}
+                        className="bg-red-50 rounded-lg border-2 border-red-300 p-4"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-semibold text-gray-900">
+                                #{ticket.ticket_no}
+                              </span>
+                              <Badge variant="error">REJECTED</Badge>
+                              <span className="text-sm text-gray-600">
+                                {ticket.customer_type}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700">
+                              {ticket.service_name} {ticket.technician_name && `• ${ticket.technician_name}`}
+                            </p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">
+                              Total: ${Number(ticket.total).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="bg-red-100 rounded-lg p-3 mb-3">
+                          <p className="text-xs font-semibold text-red-800 mb-1">REJECTION REASON:</p>
+                          <p className="text-sm text-red-900">"{ticket.rejection_reason || 'No reason provided'}"</p>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-gray-600">
+                            {ticket.rejected_by_name && `Rejected by: ${ticket.rejected_by_name}`}
+                            {ticket.rejected_at && ` • ${formatDateTimeEST(ticket.rejected_at)}`}
+                          </p>
+                          <button
+                            onClick={() => handleClearAdminReview(ticket.ticket_id)}
+                            disabled={processing}
+                            className="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-600 hover:bg-gray-700 text-white disabled:opacity-50"
+                          >
+                            Mark as Reviewed
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

@@ -547,7 +547,9 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
 
     // Show approval buttons for all closed tickets without an approval status
     if (!ticket.closed_at) return false;
-    if (ticket.approval_status && ticket.approval_status !== '') return false;
+    // Hide buttons only for final approval statuses (not pending_approval)
+    const finalStatuses = ['approved', 'auto_approved', 'rejected'];
+    if (ticket.approval_status && finalStatuses.includes(ticket.approval_status)) return false;
 
     // Check if this is a self-service ticket requiring role-based approval
     if (isSamePersonOpenedPerformedClosed(ticket) && ['Supervisor', 'Manager'].includes(ticket.opened_by_role || '')) {
