@@ -843,10 +843,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   }
 
   function calculateTipsExcludingReceptionist(): number {
-    return (
-      (parseFloat(formData.tip_customer_cash) || 0) +
-      (parseFloat(formData.tip_customer_card) || 0)
-    );
+    return parseFloat(formData.tip_customer_card) || 0;
   }
 
   function calculateCashTips(): number {
@@ -884,7 +881,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     } else if (formData.payment_method === 'Card') {
       return cardDiscountAmount;
     } else if (formData.payment_method === 'Mixed') {
-      return cashDiscountAmount + cardDiscountAmount;
+      return cardDiscountAmount; // Mixed uses only card discount
     }
 
     return 0;
@@ -897,23 +894,27 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   }
 
   function calculateTotalCollected(): number {
-    const servicePrice = calculateTotal();
-    const tipsExcludingReceptionist = calculateTipsExcludingReceptionist();
-    return servicePrice + tipsExcludingReceptionist;
+    const totalPayments = calculateTotalPayments();
+    const totalDiscount = calculateTotalDiscount();
+    const tips = calculateTipsExcludingReceptionist();
+    return totalPayments - totalDiscount + tips;
   }
 
   function calculateTempCashCollected(): number {
-    return (
-      (parseFloat(tempPaymentData.payment_cash) || 0) -
-      (parseFloat(tempPaymentData.discount_amount_cash) || 0)
-    );
+    const cash = parseFloat(tempPaymentData.payment_cash) || 0;
+    if (formData.payment_method === 'Cash') {
+      const discount = parseFloat(tempPaymentData.discount_amount_cash) || 0;
+      return cash - discount;
+    }
+    // For Mixed: no discount on cash portion
+    return cash;
   }
 
   function calculateTempCardCollected(): number {
-    return (
-      (parseFloat(tempPaymentData.payment_card) || 0) -
-      (parseFloat(tempPaymentData.discount_amount) || 0)
-    );
+    const card = parseFloat(tempPaymentData.payment_card) || 0;
+    const discount = parseFloat(tempPaymentData.discount_amount) || 0;
+    const tipCard = parseFloat(tempPaymentData.tip_customer_card) || 0;
+    return card - discount + tipCard;
   }
 
   function calculateTempGiftCardCollected(): number {
@@ -1210,6 +1211,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           customer_phone: formData.customer_phone,
           client_id: linkedClient?.id || null,
           payment_method: formData.payment_method || null,
+          subtotal: calculateSubtotal(),
           total,
           notes: formData.notes,
           saved_by: session?.employee_id,
@@ -1328,6 +1330,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           customer_phone: formData.customer_phone,
           client_id: linkedClient?.id || null,
           payment_method: formData.payment_method || null,
+          subtotal: calculateSubtotal(),
           total,
           notes: formData.notes,
           store_id: selectedStoreId || null,

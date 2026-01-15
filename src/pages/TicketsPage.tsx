@@ -254,7 +254,24 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   }
 
   function getSubtotal(ticket: SaleTicket): number {
-    return ticket.total + ticket.discount;
+    return ticket.subtotal || ticket.total;
+  }
+
+  function canViewTotalColumn(): boolean {
+    if (!session?.role) return false;
+    return session.role.includes('Receptionist') ||
+           session.role.includes('Admin') ||
+           session.role.includes('Manager') ||
+           session.role.includes('Owner');
+  }
+
+  function getGrandTotalCollected(ticket: any): number {
+    const total = ticket.total || 0;
+    const tipCustomerCard = ticket.ticket_items?.reduce(
+      (sum: number, item: any) => sum + (item.tip_customer_card || 0),
+      0
+    ) || 0;
+    return total + tipCustomerCard;
   }
 
   function getApprovalStatusBadge(ticket: SaleTicket) {
@@ -934,6 +951,11 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Sub-total
                 </th>
+                {canViewTotalColumn() && (
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Total
+                  </th>
+                )}
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
@@ -1003,6 +1025,11 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                     <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
                       ${getSubtotal(ticket).toFixed(2)}
                     </td>
+                    {canViewTotalColumn() && (
+                      <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
+                        ${getGrandTotalCollected(ticket).toFixed(2)}
+                      </td>
+                    )}
                     <td className="px-3 py-2 whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         {ticket.closed_at ? (
@@ -1200,6 +1227,12 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                     <div className="text-xs text-gray-500">Sub-total</div>
                     <div className="text-sm font-semibold text-gray-900">${getSubtotal(ticket).toFixed(2)}</div>
                   </div>
+                  {canViewTotalColumn() && (
+                    <div>
+                      <div className="text-xs text-gray-500">Total</div>
+                      <div className="text-sm font-semibold text-gray-900">${getGrandTotalCollected(ticket).toFixed(2)}</div>
+                    </div>
+                  )}
                   {isClosedTicket && !shouldHideTips && (
                     <div className={isHighTip ? 'bg-orange-50 rounded px-2 -mx-2' : ''}>
                       <div className={`text-xs font-medium ${isHighTip ? 'text-orange-700' : 'text-gray-500'}`}>
