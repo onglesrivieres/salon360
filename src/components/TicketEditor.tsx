@@ -1197,12 +1197,25 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
       }
 
       const total = calculateTotal();
-      const paymentCash = parseFloat(formData.payment_cash) || 0;
-      const paymentCard = parseFloat(formData.payment_card) || 0;
-      const paymentGiftCard = parseFloat(formData.payment_gift_card) || 0;
-      const tipCustomerCash = parseFloat(formData.tip_customer_cash) || 0;
-      const tipCustomerCard = parseFloat(formData.tip_customer_card) || 0;
+      let paymentCash = parseFloat(formData.payment_cash) || 0;
+      let paymentCard = parseFloat(formData.payment_card) || 0;
+      let paymentGiftCard = parseFloat(formData.payment_gift_card) || 0;
+      let tipCustomerCash = parseFloat(formData.tip_customer_cash) || 0;
+      let tipCustomerCard = parseFloat(formData.tip_customer_card) || 0;
       const tipReceptionist = parseFloat(formData.tip_receptionist) || 0;
+
+      // Clear payment and tip fields based on payment method
+      if (formData.payment_method === 'Cash') {
+        paymentCard = 0;
+        paymentGiftCard = 0;
+        tipCustomerCard = 0;
+      }
+      if (formData.payment_method === 'Card') {
+        paymentCash = 0;
+        paymentGiftCard = 0;
+        tipCustomerCash = 0;
+      }
+      // Mixed keeps all payment types and tips
 
       if (ticketId && ticket) {
         const updateData: any = {
@@ -1277,10 +1290,20 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
         for (const item of items) {
           const addonPrice = parseFloat(item.addon_price) || 0;
-          const discountPercentage = parseFloat(formData.discount_percentage) || 0;
-          const discountAmount = parseFloat(formData.discount_amount) || 0;
-          const discountPercentageCash = parseFloat(formData.discount_percentage_cash) || 0;
-          const discountAmountCash = parseFloat(formData.discount_amount_cash) || 0;
+          // Clear discount fields based on payment method
+          let discountPercentage = parseFloat(formData.discount_percentage) || 0;
+          let discountAmount = parseFloat(formData.discount_amount) || 0;
+          let discountPercentageCash = parseFloat(formData.discount_percentage_cash) || 0;
+          let discountAmountCash = parseFloat(formData.discount_amount_cash) || 0;
+
+          if (formData.payment_method === 'Card' || formData.payment_method === 'Mixed') {
+            discountPercentageCash = 0;
+            discountAmountCash = 0;
+          }
+          if (formData.payment_method === 'Cash') {
+            discountPercentage = 0;
+            discountAmount = 0;
+          }
 
           const itemData: any = {
             sale_ticket_id: ticketId,
@@ -1352,10 +1375,21 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
         if (ticketError) throw ticketError;
 
-        const discountPercentage = parseFloat(formData.discount_percentage) || 0;
-        const discountAmount = parseFloat(formData.discount_amount) || 0;
-        const discountPercentageCash = parseFloat(formData.discount_percentage_cash) || 0;
-        const discountAmountCash = parseFloat(formData.discount_amount_cash) || 0;
+        // Clear discount fields based on payment method
+        let discountPercentage = parseFloat(formData.discount_percentage) || 0;
+        let discountAmount = parseFloat(formData.discount_amount) || 0;
+        let discountPercentageCash = parseFloat(formData.discount_percentage_cash) || 0;
+        let discountAmountCash = parseFloat(formData.discount_amount_cash) || 0;
+
+        if (formData.payment_method === 'Card' || formData.payment_method === 'Mixed') {
+          discountPercentageCash = 0;
+          discountAmountCash = 0;
+        }
+        if (formData.payment_method === 'Cash') {
+          discountPercentage = 0;
+          discountAmount = 0;
+        }
+
         const itemsData = items.map((item) => {
           const addonPrice = parseFloat(item.addon_price) || 0;
           return {
