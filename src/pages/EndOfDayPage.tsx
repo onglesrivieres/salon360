@@ -207,7 +207,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           id,
           ticket_items (
             payment_cash,
-            tip_customer_cash,
             discount_amount_cash
           )
         `
@@ -232,13 +231,11 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
         for (const item of ticketItems) {
           const paymentCash = parseFloat(item.payment_cash) || 0;
-          const tipCash = parseFloat(item.tip_customer_cash) || 0;
           const discountCash = parseFloat(item.discount_amount_cash) || 0;
-          const itemTotal = paymentCash + tipCash - discountCash;
+          const itemTotal = paymentCash - discountCash;
 
           console.log('Item cash calculation:', {
             payment_cash: paymentCash,
-            tip_customer_cash: tipCash,
             discount_amount_cash: discountCash,
             itemTotal
           });
