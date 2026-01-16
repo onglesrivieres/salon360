@@ -136,7 +136,6 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
           ticket_items (
             id,
             employee_id,
-            qty,
             price_each,
             addon_price,
             payment_cash,
@@ -262,14 +261,12 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   }
 
   function getSubtotal(ticket: any): number {
-    // Calculate from ticket_items: (qty * price_each) + addon_price for all items
-    // This matches TicketEditor's calculateSubtotal() formula
+    // Calculate from ticket_items: price_each + addon_price for all items
     return ticket.ticket_items?.reduce(
       (sum: number, item: any) => {
-        const qty = parseFloat(item.qty) || 0;
         const price = parseFloat(item.price_each) || 0;
         const addonPrice = parseFloat(item.addon_price) || 0;
-        return sum + (qty * price) + addonPrice;
+        return sum + price + addonPrice;
       },
       0
     ) || 0;

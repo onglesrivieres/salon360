@@ -814,10 +814,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
   function calculateSubtotal(): number {
     const itemsTotal = items.reduce((sum, item) => {
-      const qty = parseFloat(item.qty) || 0;
       const price = parseFloat(item.price_each) || 0;
       const addonPrice = parseFloat(item.addon_price) || 0;
-      return sum + (qty * price) + addonPrice;
+      return sum + price + addonPrice;
     }, 0);
     return itemsTotal;
   }
