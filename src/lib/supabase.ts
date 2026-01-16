@@ -210,7 +210,7 @@ export interface TicketActivityLog {
   id: string;
   ticket_id: string;
   employee_id?: string;
-  action: 'created' | 'updated' | 'closed' | 'reopened' | 'approved' | 'rejected';
+  action: 'created' | 'updated' | 'closed' | 'reopened' | 'approved' | 'status_corrected' | 'deleted';
   description: string;
   changes?: Record<string, any>;
   created_at: string;
