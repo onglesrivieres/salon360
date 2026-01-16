@@ -34,6 +34,8 @@ export interface Store {
   active: boolean;
   created_at: string;
   updated_at: string;
+  opening_hours?: Record<string, string>;
+  closing_hours?: Record<string, string>;
 }
 
 export interface Technician {
