@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Banknote, CreditCard, Clock, Award, Lock, CheckCircle, AlertCircle, Edit2, Gift, UserPlus, User } from 'lucide-react';
+import { X, Plus, Trash2, Banknote, CreditCard, Clock, Award, Lock, CheckCircle, AlertCircle, Edit2, Gift, UserPlus, User, Eye } from 'lucide-react';
 import {
   supabase,
   SaleTicket,
@@ -123,6 +123,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   const canMarkCompleted = session && session.role_permission && Permissions.tickets.canMarkCompleted(session.role_permission);
 
   const canSelectPaymentMethod = session && session.role_permission && Permissions.tickets.canSelectPaymentMethod(session.role_permission);
+
+  const canViewPaymentDetailsWhenClosed = session && session.role_permission && Permissions.tickets.canViewPaymentDetailsWhenClosed(session.role_permission);
 
   const canReopen = session && session.role_permission && Permissions.tickets.canReopen(session.role_permission);
 
@@ -1019,6 +1021,22 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
   function handlePaymentModalCancel() {
     setShowPaymentModal(false);
+  }
+
+  function handleViewPaymentDetails() {
+    setTempPaymentData({
+      payment_cash: formData.payment_cash || '0',
+      payment_card: formData.payment_card || '0',
+      payment_gift_card: formData.payment_gift_card || '0',
+      tip_customer_cash: formData.tip_customer_cash || '0',
+      tip_customer_card: formData.tip_customer_card || '0',
+      tip_receptionist: formData.tip_receptionist || '0',
+      discount_amount: formData.discount_amount || '0',
+      discount_percentage: formData.discount_percentage || '0',
+      discount_percentage_cash: formData.discount_percentage_cash || '0',
+      discount_amount_cash: formData.discount_amount_cash || '0',
+    });
+    setShowPaymentModal(true);
   }
 
   async function checkOpeningCashRecorded(storeId: string, ticketDate: string): Promise<boolean> {
@@ -2604,6 +2622,17 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                 )}
               </div>
 
+              {isTicketClosed && formData.payment_method && canViewPaymentDetailsWhenClosed && (
+                <button
+                  type="button"
+                  onClick={handleViewPaymentDetails}
+                  className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  <Eye className="w-4 h-4" />
+                  View Payment Details
+                </button>
+              )}
+
               {formData.payment_method && (
                 <div className="border border-gray-200 rounded-lg p-2.5 bg-gray-50 mb-2.5">
                   <h4 className="text-xs font-semibold text-gray-700 mb-1.5">Payment Summary</h4>
@@ -3225,15 +3254,17 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
               variant="outline"
               className="flex-1"
             >
-              Cancel
+              {isTicketClosed ? 'Close' : 'Cancel'}
             </Button>
-            <Button
-              onClick={handlePaymentModalSave}
-              variant="primary"
-              className="flex-1"
-            >
-              Save Payment Details
-            </Button>
+            {!isTicketClosed && (
+              <Button
+                onClick={handlePaymentModalSave}
+                variant="primary"
+                className="flex-1"
+              >
+                Save Payment Details
+              </Button>
+            )}
           </div>
         </div>
       </Modal>
