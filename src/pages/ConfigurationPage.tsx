@@ -9,6 +9,7 @@ import { CriticalSettingConfirmationModal } from '../components/CriticalSettingC
 import { SettingsDependencyIndicator } from '../components/SettingsDependencyIndicator';
 import { ConfigurationWizard } from '../components/ConfigurationWizard';
 import { RolePermissionMatrix } from '../components/RolePermissionMatrix';
+import { StoreHoursEditor } from '../components/StoreHoursEditor';
 
 interface AppSetting {
   id: string;
@@ -486,6 +487,7 @@ export function ConfigurationPage() {
         </div>
       ) : activeTab === 'settings' ? (
         <div className="space-y-6">
+          <StoreHoursEditor storeId={selectedStoreId} />
           {Object.entries(settingsByCategory).map(([category, categorySettings]) => (
             <div key={category} className="bg-white rounded-lg shadow">
               <div className="px-6 py-4 border-b border-gray-200">
