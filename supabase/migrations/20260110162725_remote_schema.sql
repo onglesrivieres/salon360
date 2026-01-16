@@ -4,29 +4,24 @@ ALTER TABLE "public"."store_service_categories" ADD COLUMN IF NOT EXISTS "color"
 
 alter table "public"."store_service_categories" enable row level security;
 
-DO $$ BEGIN
-  CREATE INDEX idx_store_service_categories_store_active ON public.store_service_categories USING btree (store_id, is_active) WHERE (is_active = true);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+-- Create indexes with IF NOT EXISTS for idempotency
+CREATE INDEX IF NOT EXISTS idx_store_service_categories_store_active ON public.store_service_categories USING btree (store_id, is_active) WHERE (is_active = true);
+CREATE INDEX IF NOT EXISTS idx_store_service_categories_store_id ON public.store_service_categories USING btree (store_id);
+CREATE UNIQUE INDEX IF NOT EXISTS store_service_categories_pkey ON public.store_service_categories USING btree (id);
+CREATE UNIQUE INDEX IF NOT EXISTS store_service_categories_unique_name ON public.store_service_categories USING btree (store_id, name);
 
+-- Add primary key constraint if it doesn't already exist
 DO $$ BEGIN
-  CREATE INDEX idx_store_service_categories_store_id ON public.store_service_categories USING btree (store_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-  CREATE UNIQUE INDEX store_service_categories_pkey ON public.store_service_categories USING btree (id);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-  CREATE UNIQUE INDEX store_service_categories_unique_name ON public.store_service_categories USING btree (store_id, name);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-DO $$ BEGIN
-  ALTER TABLE "public"."store_service_categories" ADD CONSTRAINT "store_service_categories_pkey" PRIMARY KEY USING INDEX "store_service_categories_pkey";
-EXCEPTION WHEN duplicate_object THEN NULL;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_schema = 'public'
+    AND table_name = 'store_service_categories'
+    AND constraint_name = 'store_service_categories_pkey'
+    AND constraint_type = 'PRIMARY KEY'
+  ) THEN
+    ALTER TABLE "public"."store_service_categories" ADD CONSTRAINT "store_service_categories_pkey" PRIMARY KEY USING INDEX "store_service_categories_pkey";
+  END IF;
+EXCEPTION WHEN others THEN NULL;
 END $$;
 
 DO $$ BEGIN
@@ -49,9 +44,18 @@ DO $$ BEGIN
 EXCEPTION WHEN others THEN NULL;
 END $$;
 
+-- Add unique constraint if it doesn't already exist
 DO $$ BEGIN
-  ALTER TABLE "public"."store_service_categories" ADD CONSTRAINT "store_service_categories_unique_name" UNIQUE USING INDEX "store_service_categories_unique_name";
-EXCEPTION WHEN duplicate_object THEN NULL;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_schema = 'public'
+    AND table_name = 'store_service_categories'
+    AND constraint_name = 'store_service_categories_unique_name'
+    AND constraint_type = 'UNIQUE'
+  ) THEN
+    ALTER TABLE "public"."store_service_categories" ADD CONSTRAINT "store_service_categories_unique_name" UNIQUE USING INDEX "store_service_categories_unique_name";
+  END IF;
+EXCEPTION WHEN others THEN NULL;
 END $$;
 
 set check_function_bodies = off;
@@ -97,40 +101,39 @@ grant truncate on table "public"."store_service_categories" to "service_role";
 grant update on table "public"."store_service_categories" to "service_role";
 
 
-  create policy "Staff can create service categories"
-  on "public"."store_service_categories"
-  as permissive
-  for insert
-  to anon, authenticated
-with check (true);
+-- Drop and recreate policies to ensure they match desired configuration
+DROP POLICY IF EXISTS "Staff can create service categories" ON "public"."store_service_categories";
+CREATE POLICY "Staff can create service categories"
+  ON "public"."store_service_categories"
+  AS PERMISSIVE
+  FOR INSERT
+  TO anon, authenticated
+  WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Staff can delete service categories" ON "public"."store_service_categories";
+CREATE POLICY "Staff can delete service categories"
+  ON "public"."store_service_categories"
+  AS PERMISSIVE
+  FOR DELETE
+  TO anon, authenticated
+  USING (true);
 
+DROP POLICY IF EXISTS "Staff can update service categories" ON "public"."store_service_categories";
+CREATE POLICY "Staff can update service categories"
+  ON "public"."store_service_categories"
+  AS PERMISSIVE
+  FOR UPDATE
+  TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
 
-  create policy "Staff can delete service categories"
-  on "public"."store_service_categories"
-  as permissive
-  for delete
-  to anon, authenticated
-using (true);
-
-
-
-  create policy "Staff can update service categories"
-  on "public"."store_service_categories"
-  as permissive
-  for update
-  to anon, authenticated
-using (true)
-with check (true);
-
-
-
-  create policy "Users can view service categories"
-  on "public"."store_service_categories"
-  as permissive
-  for select
-  to anon, authenticated
-using (true);
+DROP POLICY IF EXISTS "Users can view service categories" ON "public"."store_service_categories";
+CREATE POLICY "Users can view service categories"
+  ON "public"."store_service_categories"
+  AS PERMISSIVE
+  FOR SELECT
+  TO anon, authenticated
+  USING (true);
 
 
 DROP TRIGGER IF EXISTS trigger_store_service_categories_updated_at ON public.store_service_categories;

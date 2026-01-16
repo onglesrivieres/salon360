@@ -2,10 +2,10 @@
 INSERT INTO public.app_settings
   (store_id, setting_key, setting_value, category, display_name, description,
    default_value, is_critical, requires_restart, help_text, display_order)
-SELECT id, 'require_todays_color_on_tickets', false, 'Tickets',
+SELECT id, 'require_todays_color_on_tickets', to_jsonb(false), 'Tickets',
   'Require Today''s Color',
   'Require today''s color before saving/closing tickets',
-  false, false, false,
+  to_jsonb(false), false, false,
   'When enabled, the Today''s Color field must be filled before a ticket can be saved or closed.',
   76
 FROM stores
