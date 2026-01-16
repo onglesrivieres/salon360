@@ -1218,7 +1218,8 @@ export function useEmployeeSalesData(dateRange: DateRange, storeId: string | nul
             ticket_items (
               id,
               employee_id,
-              line_subtotal,
+              qty,
+              price_each,
               tip_customer,
               tip_receptionist,
               employees (
@@ -1269,7 +1270,7 @@ export function useEmployeeSalesData(dateRange: DateRange, storeId: string | nul
             }
 
             const empData = employeeMap.get(employeeId)!;
-            const lineSubtotal = item.line_subtotal || 0;
+            const lineSubtotal = (item.qty || 1) * (item.price_each || 0);
 
             if (lineSubtotal >= 0) {
               empData.grossSales += lineSubtotal;

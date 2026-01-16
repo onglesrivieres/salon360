@@ -149,7 +149,6 @@ export interface SaleTicket {
   customer_phone: string;
   customer_type?: string;
   payment_method: 'Cash' | 'Card' | 'Mixed' | 'Other';
-  subtotal: number;
   total: number;
   location: string;
   notes: string;
