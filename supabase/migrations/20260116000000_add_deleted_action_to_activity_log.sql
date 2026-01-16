@@ -5,3 +5,12 @@ ALTER TABLE ticket_activity_log
 ALTER TABLE ticket_activity_log
   ADD CONSTRAINT ticket_activity_log_action_check
   CHECK (action IN ('created', 'updated', 'closed', 'reopened', 'approved', 'status_corrected', 'deleted'));
+
+-- Fix: Add ON DELETE CASCADE to approval_status_correction_audit foreign key
+-- This allows tickets to be deleted even if they have audit records
+ALTER TABLE approval_status_correction_audit
+  DROP CONSTRAINT IF EXISTS approval_status_correction_audit_ticket_id_fkey;
+
+ALTER TABLE approval_status_correction_audit
+  ADD CONSTRAINT approval_status_correction_audit_ticket_id_fkey
+  FOREIGN KEY (ticket_id) REFERENCES sale_tickets(id) ON DELETE CASCADE;
