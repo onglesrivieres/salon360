@@ -281,34 +281,25 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   }
 
   function getGrandTotalCollected(ticket: any): number {
-    // Sum all payments from ticket items
-    const totalPayments = ticket.ticket_items?.reduce(
-      (sum: number, item: any) => sum +
-        (item.payment_cash || 0) +
-        (item.payment_card || 0) +
-        (item.payment_gift_card || 0),
-      0
-    ) || 0;
+    const firstItem = ticket.ticket_items?.[0];
+    if (!firstItem) return 0;
 
-    // Calculate discount based on payment method
+    // Payment values are the same on all items, so take from first item
+    const totalPayments =
+      (firstItem.payment_cash || 0) +
+      (firstItem.payment_card || 0) +
+      (firstItem.payment_gift_card || 0);
+
+    // Discount based on payment method (from first item)
     let totalDiscount = 0;
     if (ticket.payment_method === 'Cash') {
-      totalDiscount = ticket.ticket_items?.reduce(
-        (sum: number, item: any) => sum + (item.discount_amount_cash || 0),
-        0
-      ) || 0;
+      totalDiscount = firstItem.discount_amount_cash || 0;
     } else if (ticket.payment_method === 'Card' || ticket.payment_method === 'Mixed') {
-      totalDiscount = ticket.ticket_items?.reduce(
-        (sum: number, item: any) => sum + (item.discount_amount || 0),
-        0
-      ) || 0;
+      totalDiscount = firstItem.discount_amount || 0;
     }
 
-    // Sum card tips only (matching TicketEditor's calculateTipsExcludingReceptionist)
-    const tipCustomerCard = ticket.ticket_items?.reduce(
-      (sum: number, item: any) => sum + (item.tip_customer_card || 0),
-      0
-    ) || 0;
+    // Card tips from first item
+    const tipCustomerCard = firstItem.tip_customer_card || 0;
 
     return totalPayments - totalDiscount + tipCustomerCard;
   }
