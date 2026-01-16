@@ -253,8 +253,18 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
     return ticket.customer_type || '-';
   }
 
-  function getSubtotal(ticket: SaleTicket): number {
-    return ticket.subtotal || ticket.total;
+  function getSubtotal(ticket: any): number {
+    // Calculate from ticket_items: (qty * price_each) + addon_price for all items
+    // This matches TicketEditor's calculateSubtotal() formula
+    return ticket.ticket_items?.reduce(
+      (sum: number, item: any) => {
+        const qty = parseFloat(item.qty) || 0;
+        const price = parseFloat(item.price_each) || 0;
+        const addonPrice = parseFloat(item.addon_price) || 0;
+        return sum + (qty * price) + addonPrice;
+      },
+      0
+    ) || 0;
   }
 
   function canViewTotalColumn(): boolean {
@@ -266,12 +276,36 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   }
 
   function getGrandTotalCollected(ticket: any): number {
-    const total = ticket.total || 0;
+    // Sum all payments from ticket items
+    const totalPayments = ticket.ticket_items?.reduce(
+      (sum: number, item: any) => sum +
+        (item.payment_cash || 0) +
+        (item.payment_card || 0) +
+        (item.payment_gift_card || 0),
+      0
+    ) || 0;
+
+    // Calculate discount based on payment method
+    let totalDiscount = 0;
+    if (ticket.payment_method === 'Cash') {
+      totalDiscount = ticket.ticket_items?.reduce(
+        (sum: number, item: any) => sum + (item.discount_amount_cash || 0),
+        0
+      ) || 0;
+    } else if (ticket.payment_method === 'Card' || ticket.payment_method === 'Mixed') {
+      totalDiscount = ticket.ticket_items?.reduce(
+        (sum: number, item: any) => sum + (item.discount_amount || 0),
+        0
+      ) || 0;
+    }
+
+    // Sum card tips only (matching TicketEditor's calculateTipsExcludingReceptionist)
     const tipCustomerCard = ticket.ticket_items?.reduce(
       (sum: number, item: any) => sum + (item.tip_customer_card || 0),
       0
     ) || 0;
-    return total + tipCustomerCard;
+
+    return totalPayments - totalDiscount + tipCustomerCard;
   }
 
   function getApprovalStatusBadge(ticket: SaleTicket) {
