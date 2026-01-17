@@ -21,7 +21,7 @@ export interface ChangeRequestData {
   reason_comment: string;
 }
 
-const WITHDRAWAL_CATEGORIES = ['Payroll', 'Tip Payout', 'Headquarter Deposit'];
+const WITHDRAWAL_CATEGORIES = ['Payroll', 'Tip Payout', 'Headquarter Deposit', 'Other'];
 const DEPOSIT_CATEGORIES = ['Safe Deposit'];
 
 export function CashTransactionChangeRequestModal({
