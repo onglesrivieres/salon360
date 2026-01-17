@@ -21,6 +21,7 @@ const WITHDRAWAL_CATEGORIES = [
   'Payroll',
   'Tip Payout',
   'Headquarter Deposit',
+  'Other',
 ];
 
 export function SafeWithdrawalModal({
