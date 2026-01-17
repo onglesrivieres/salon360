@@ -106,16 +106,22 @@ export function StoreHoursEditor({ storeId }: StoreHoursEditorProps) {
         dbClosing[key] = closingHours[key] + ':00';
       });
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('stores')
         .update({
           opening_hours: dbOpening,
           closing_hours: dbClosing,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', storeId);
+        .eq('id', storeId)
+        .select();
 
       if (error) throw error;
+
+      // Check for silent RLS failure (update returns 0 rows affected)
+      if (!data || data.length === 0) {
+        throw new Error('Update failed - you may not have permission to modify store settings');
+      }
 
       setOriginalOpening({ ...openingHours });
       setOriginalClosing({ ...closingHours });
