@@ -74,7 +74,7 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
         `)
         .eq('store_id', selectedStoreId)
         .eq('date', selectedDate)
-        .eq('transaction_type', 'cash_out')
+        .in('transaction_type', ['cash_out', 'hq_deposit'])
         .eq('category', 'Safe Deposit')
         .order('created_at', { ascending: false });
 
