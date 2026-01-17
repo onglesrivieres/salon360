@@ -13,6 +13,23 @@
 */
 
 -- ============================================
+-- Step 0: Add 'hq_deposit' to allowed transaction types
+-- MUST be done BEFORE using the new type
+-- ============================================
+
+ALTER TABLE public.cash_transactions
+DROP CONSTRAINT IF EXISTS cash_transactions_transaction_type_check;
+
+ALTER TABLE public.cash_transactions
+ADD CONSTRAINT cash_transactions_transaction_type_check
+CHECK (transaction_type IN ('cash_in', 'cash_out', 'cash_payout', 'hq_deposit'));
+
+-- Update column comment to document all transaction types
+COMMENT ON COLUMN public.cash_transactions.transaction_type IS
+'Transaction type: cash_in (money entering drawer), cash_out (money leaving drawer to safe/expenses), cash_payout (money leaving safe for payroll/tips), hq_deposit (HQ deposits from branches - skips EOD)';
+
+
+-- ============================================
 -- Step 1: Update the trigger function
 -- Change transaction_type from 'cash_out' to 'hq_deposit'
 -- ============================================
