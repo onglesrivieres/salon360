@@ -3181,6 +3181,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                         }
                         className="pl-8 pr-3"
                         placeholder="0.00"
+                        disabled={isTicketClosed || isReadOnly}
                       />
                     </div>
                   </div>
@@ -3206,7 +3207,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                           onChange={(e) =>
                             setTempPaymentData({ ...tempPaymentData, tip_receptionist: e.target.value })
                           }
-                          disabled={!isTipPairedEnabled}
+                          disabled={isTicketClosed || isReadOnly || !isTipPairedEnabled}
                           className="pl-8 pr-3"
                           placeholder="0.00"
                         />
