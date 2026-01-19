@@ -94,7 +94,7 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Owner', 'Manager', 'Supervisor']);
     },
     canReopen: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
     },
     canApprove: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Technician', 'Supervisor', 'Owner']);

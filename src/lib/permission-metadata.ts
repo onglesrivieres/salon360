@@ -126,7 +126,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'Reopen Tickets',
     description: 'Ability to reopen closed tickets',
     isCritical: true,
-    defaultRoles: ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']
+    defaultRoles: ['Admin', 'Manager', 'Owner']
   },
   {
     key: 'tickets.canApprove',
