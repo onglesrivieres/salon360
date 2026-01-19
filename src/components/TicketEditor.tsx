@@ -1001,6 +1001,17 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   }
 
   function handlePaymentModalSave() {
+    // Warn if cash discount is entered - prevents accidental phantom discounts
+    const cashDiscountAmount = parseFloat(tempPaymentData.discount_amount_cash) || 0;
+    if (cashDiscountAmount > 0) {
+      const confirmed = window.confirm(
+        `A cash discount of $${cashDiscountAmount.toFixed(2)} will be applied. This will reduce the Expected Cash Collected in End of Day reports.\n\nAre you sure you want to apply this discount?`
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setFormData({
       ...formData,
       payment_cash: tempPaymentData.payment_cash,
