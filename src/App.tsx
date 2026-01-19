@@ -14,7 +14,10 @@ import { supabase } from './lib/supabase';
 import { getCurrentDateEST } from './lib/timezone';
 import { StoreSelectionModal } from './components/StoreSelectionModal';
 import { OutsideWorkingHoursPage } from './components/OutsideWorkingHoursPage';
+import { NotCheckedInPage } from './components/NotCheckedInPage';
+import { CheckInOutModal } from './components/CheckInOutModal';
 import { useWorkingHoursCheck } from './hooks/useWorkingHoursCheck';
+import { useCheckInStatusCheck } from './hooks/useCheckInStatusCheck';
 
 const EndOfDayPage = lazy(() => import('./pages/EndOfDayPage').then(m => ({ default: m.EndOfDayPage })));
 const SafeBalancePage = lazy(() => import('./pages/SafeBalancePage').then(m => ({ default: m.SafeBalancePage })));
@@ -74,6 +77,14 @@ function AppContent() {
 
   // Check working hours for Receptionist
   const workingHoursCheck = useWorkingHoursCheck(selectedStoreId, session?.role_permission);
+
+  // Check if Receptionist/Supervisor is checked in
+  const checkInStatus = useCheckInStatusCheck(
+    session?.employee_id,
+    selectedStoreId,
+    session?.role_permission
+  );
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && !selectedStoreId && session?.employee_id && !showWelcome) {
@@ -182,6 +193,35 @@ function AppContent() {
         closingTime={workingHoursCheck.closingTime || ''}
         currentDay={workingHoursCheck.currentDay}
       />
+    );
+  }
+
+  // Block Receptionist and Supervisor access if not checked in
+  if (
+    (session?.role_permission === 'Receptionist' || session?.role_permission === 'Supervisor') &&
+    !checkInStatus.isLoading &&
+    !checkInStatus.isCheckedIn
+  ) {
+    return (
+      <>
+        <NotCheckedInPage
+          employeeName={session?.display_name}
+          onCheckIn={() => setShowCheckInModal(true)}
+        />
+        {showCheckInModal && selectedStoreId && (
+          <CheckInOutModal
+            storeId={selectedStoreId}
+            onClose={() => setShowCheckInModal(false)}
+            onCheckInComplete={() => {
+              setShowCheckInModal(false);
+              checkInStatus.refetch();
+            }}
+            onCheckOutComplete={() => {
+              setShowCheckInModal(false);
+            }}
+          />
+        )}
+      </>
     );
   }
 
