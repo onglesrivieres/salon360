@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Printer, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, Printer, ChevronLeft, ChevronRight, Check, X, Circle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -52,6 +52,7 @@ interface ServiceItemDetail {
   completed_at: string | null;
   store_code: string;
   store_name: string;
+  approval_status: string | null;
 }
 
 interface TicketGroup {
@@ -63,6 +64,7 @@ interface TicketGroup {
   totalTipPaired: number;
   services: ServiceItemDetail[];
   hasActiveTimer: boolean;
+  approval_status: string | null;
 }
 
 interface TipReportPageProps {
@@ -114,6 +116,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           totalTipPaired: 0,
           services: [],
           hasActiveTimer: false,
+          approval_status: item.approval_status,
         });
       }
       const group = ticketMap.get(item.ticket_id)!;
@@ -151,6 +154,20 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       case 'C': return 'text-green-600';
       case 'R': return 'text-blue-600';
       default: return 'text-gray-600';
+    }
+  }
+
+  function getApprovalIcon(status: string | null) {
+    switch (status) {
+      case 'approved':
+      case 'auto_approved':
+        return <Check className="w-3 h-3 text-green-600" />;
+      case 'rejected':
+        return <X className="w-3 h-3 text-red-600" />;
+      case 'pending_approval':
+        return <Circle className="w-3 h-3 text-yellow-500 fill-yellow-500" />;
+      default:
+        return null;
     }
   }
 
@@ -247,6 +264,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         closed_at,
         completed_at,
         store_id,
+        approval_status,
         store:stores!sale_tickets_store_id_fkey(id, name, code),
         ticket_items${isTechnician ? '!inner' : ''} (
           id,
@@ -340,8 +358,17 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         summary.service_revenue += serviceRevenue;
         summary.addon_revenue += addonRevenue;
         summary.total_revenue += itemRevenue;
-        summary.tips_customer = (summary.tips_customer || 0) + tipCustomerCash + tipCustomerCard;
-        summary.tips_receptionist = (summary.tips_receptionist || 0) + tipReceptionist;
+
+        // Only count tips for approved tickets (or legacy tickets with no approval status)
+        const approvalStatus = (ticket as any).approval_status;
+        const isApprovedTicket = approvalStatus === 'approved' ||
+                                 approvalStatus === 'auto_approved' ||
+                                 !approvalStatus; // null = legacy tickets (count them)
+
+        if (isApprovedTicket) {
+          summary.tips_customer = (summary.tips_customer || 0) + tipCustomerCash + tipCustomerCard;
+          summary.tips_receptionist = (summary.tips_receptionist || 0) + tipReceptionist;
+        }
 
         summary.items.push({
           ticket_id: ticket.id,
@@ -363,6 +390,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           completed_at: item.completed_at || null,
           store_code: (ticket as any).store?.code || '',
           store_name: (ticket as any).store?.name || '',
+          approval_status: (ticket as any).approval_status || null,
         });
       }
     }
@@ -1015,6 +1043,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                     <span className="truncate">
                                       {openTime.replace(/\s/g, '')}
                                     </span>
+                                    {getApprovalIcon(group.approval_status)}
                                     {multiStoreEmployeeIds.has(summary.technician_id) && group.store_code && (
                                       <span className={`text-[7px] font-medium ${getStoreColor(group.store_code)}`}>
                                         [{abbreviateStoreName(group.store_code)}]
@@ -1125,6 +1154,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                     <span className="truncate">
                                       {openTime.replace(/\s/g, '')}
                                     </span>
+                                    {getApprovalIcon(group.approval_status)}
                                     {multiStoreEmployeeIds.has(summary.technician_id) && item.store_code && (
                                       <span className={`text-[7px] font-medium ${getStoreColor(item.store_code)}`}>
                                         [{abbreviateStoreName(item.store_code)}]
