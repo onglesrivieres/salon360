@@ -1069,21 +1069,21 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                     const timerStatus = getTimerStatus(timerItem);
                                     const completionStatus = getItemCompletionStatus(item);
                                     const timerColor = timerStatus === 'active'
-                                      ? 'text-blue-700'
+                                      ? 'bg-blue-100 text-blue-800'
                                       : completionStatus === 'on_time'
-                                        ? 'text-green-700'
+                                        ? 'bg-green-100 text-green-800'
                                         : completionStatus === 'moderate_deviation'
-                                          ? 'text-amber-700'
+                                          ? 'bg-amber-100 text-amber-800'
                                           : completionStatus === 'extreme_deviation'
-                                            ? 'text-red-700'
-                                            : 'text-gray-500';
+                                            ? 'bg-red-100 text-red-800'
+                                            : 'bg-gray-100 text-gray-700';
                                     return (
                                       <div key={svcIndex} className="flex justify-between items-center">
                                         <span className="text-[9px] font-semibold text-gray-900">
                                           {item.service_code}
                                         </span>
-                                        <span className={`text-[8px] font-medium ${timerColor}`}>
-                                          ({formatTimerDisplay(svcDuration)}{timerStatus === 'active' && '*'})
+                                        <span className={`text-[8px] font-semibold px-1 py-0.5 rounded ${timerColor}`}>
+                                          {formatTimerDisplay(svcDuration)}{timerStatus === 'active' && '*'}
                                         </span>
                                       </div>
                                     );
@@ -1130,14 +1130,14 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                           const timerStatus = getTimerStatus(timerItem);
                           const completionStatus = getItemCompletionStatus(item);
                           const timerColor = timerStatus === 'active'
-                            ? 'text-blue-700'
+                            ? 'bg-blue-100 text-blue-800'
                             : completionStatus === 'on_time'
-                              ? 'text-green-700'
+                              ? 'bg-green-100 text-green-800'
                               : completionStatus === 'moderate_deviation'
-                                ? 'text-amber-700'
+                                ? 'bg-amber-100 text-amber-800'
                                 : completionStatus === 'extreme_deviation'
-                                  ? 'text-red-700'
-                                  : 'text-gray-600';
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-gray-100 text-gray-700';
                           const tipGiven = item.tip_customer_cash + item.tip_customer_card;
                           const tipPaired = item.tip_receptionist;
                           const totalTips = tipGiven + tipPaired;
@@ -1161,7 +1161,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                       </span>
                                     )}
                                   </div>
-                                  <span className={`ml-1 flex-shrink-0 font-semibold ${timerColor}`}>
+                                  <span className={`ml-1 flex-shrink-0 text-[8px] font-semibold px-1 py-0.5 rounded ${timerColor}`}>
                                     {formatTimerDisplay(svcDuration)}{timerStatus === 'active' && '*'}
                                   </span>
                                 </div>
