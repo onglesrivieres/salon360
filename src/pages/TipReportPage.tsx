@@ -1076,7 +1076,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                           ? 'bg-amber-100 text-amber-800'
                                           : completionStatus === 'extreme_deviation'
                                             ? 'bg-red-100 text-red-800'
-                                            : 'bg-gray-100 text-gray-700';
+                                            : 'bg-gray-100 text-gray-800';
                                     return (
                                       <div key={svcIndex} className="flex justify-between items-center">
                                         <span className="text-[9px] font-semibold text-gray-900">
@@ -1137,7 +1137,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                 ? 'bg-amber-100 text-amber-800'
                                 : completionStatus === 'extreme_deviation'
                                   ? 'bg-red-100 text-red-800'
-                                  : 'bg-gray-100 text-gray-700';
+                                  : 'bg-gray-100 text-gray-800';
                           const tipGiven = item.tip_customer_cash + item.tip_customer_card;
                           const tipPaired = item.tip_receptionist;
                           const totalTips = tipGiven + tipPaired;
