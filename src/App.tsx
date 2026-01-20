@@ -75,7 +75,7 @@ function AppContent() {
     setSelectedDate(newDate);
   };
 
-  // Check working hours for Receptionist
+  // Check working hours for time-restricted roles (Technician, Cashier, Receptionist, Supervisor)
   const workingHoursCheck = useWorkingHoursCheck(selectedStoreId, session?.role_permission);
 
   // Check if Receptionist/Supervisor is checked in
@@ -191,16 +191,17 @@ function AppContent() {
     />;
   }
 
-  // Block Receptionist access outside working hours
+  // Block time-restricted roles outside access hours (8:45 AM to 30 min after closing)
+  const TIME_RESTRICTED_ROLES = ['Technician', 'Cashier', 'Receptionist', 'Supervisor'];
   if (
-    session?.role_permission === 'Receptionist' &&
+    TIME_RESTRICTED_ROLES.includes(session?.role_permission ?? '') &&
     !workingHoursCheck.isLoading &&
     !workingHoursCheck.isWithinWorkingHours
   ) {
     return (
       <OutsideWorkingHoursPage
-        openingTime={workingHoursCheck.openingTime || ''}
-        closingTime={workingHoursCheck.closingTime || ''}
+        accessStartTime={workingHoursCheck.accessStartTime || '08:45'}
+        accessEndTime={workingHoursCheck.accessEndTime || ''}
         currentDay={workingHoursCheck.currentDay}
       />
     );
