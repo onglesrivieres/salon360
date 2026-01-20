@@ -91,7 +91,7 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
     },
     canViewPaymentDetailsWhenClosed: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager', 'Supervisor']);
+      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist']);
     },
     canReopen: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);

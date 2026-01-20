@@ -1317,7 +1317,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           .eq('sale_ticket_id', ticketId)
           .not('id', 'in', `(${existingItemIds.join(',')})`);
 
-        for (const item of items) {
+        for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+          const item = items[itemIndex];
           const addonPrice = parseFloat(item.addon_price) || 0;
           // Clear discount fields based on payment method
           let discountPercentage = parseFloat(formData.discount_percentage) || 0;
@@ -1334,6 +1335,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
             discountAmount = 0;
           }
 
+          // Only store payment/tip values on the first item to avoid double-counting in EOD
+          const isFirstItem = itemIndex === 0;
           const itemData: any = {
             sale_ticket_id: ticketId,
             store_service_id: item.is_custom ? null : item.service_id,
@@ -1341,18 +1344,18 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
             employee_id: item.employee_id,
             qty: parseFloat(item.qty),
             price_each: parseFloat(item.price_each),
-            payment_cash: paymentCash,
-            payment_card: paymentCard,
-            payment_gift_card: paymentGiftCard,
-            tip_customer_cash: tipCustomerCash,
-            tip_customer_card: tipCustomerCard,
-            tip_receptionist: tipReceptionist,
+            payment_cash: isFirstItem ? paymentCash : 0,
+            payment_card: isFirstItem ? paymentCard : 0,
+            payment_gift_card: isFirstItem ? paymentGiftCard : 0,
+            tip_customer_cash: isFirstItem ? tipCustomerCash : 0,
+            tip_customer_card: isFirstItem ? tipCustomerCard : 0,
+            tip_receptionist: isFirstItem ? tipReceptionist : 0,
             addon_details: item.addon_details || '',
             addon_price: addonPrice,
-            discount_percentage: discountPercentage,
-            discount_amount: discountAmount,
-            discount_percentage_cash: discountPercentageCash,
-            discount_amount_cash: discountAmountCash,
+            discount_percentage: isFirstItem ? discountPercentage : 0,
+            discount_amount: isFirstItem ? discountAmount : 0,
+            discount_percentage_cash: isFirstItem ? discountPercentageCash : 0,
+            discount_amount_cash: isFirstItem ? discountAmountCash : 0,
             updated_at: new Date().toISOString(),
           };
 
@@ -1419,8 +1422,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           discountAmount = 0;
         }
 
-        const itemsData = items.map((item) => {
+        // Only store payment/tip values on the first item to avoid double-counting in EOD
+        const itemsData = items.map((item, index) => {
           const addonPrice = parseFloat(item.addon_price) || 0;
+          const isFirstItem = index === 0;
           return {
             sale_ticket_id: newTicket.id,
             store_service_id: item.is_custom ? null : item.service_id,
@@ -1428,18 +1433,18 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
             employee_id: item.employee_id,
             qty: parseFloat(item.qty),
             price_each: parseFloat(item.price_each),
-            payment_cash: paymentCash,
-            payment_card: paymentCard,
-            payment_gift_card: paymentGiftCard,
-            tip_customer_cash: tipCustomerCash,
-            tip_customer_card: tipCustomerCard,
-            tip_receptionist: tipReceptionist,
+            payment_cash: isFirstItem ? paymentCash : 0,
+            payment_card: isFirstItem ? paymentCard : 0,
+            payment_gift_card: isFirstItem ? paymentGiftCard : 0,
+            tip_customer_cash: isFirstItem ? tipCustomerCash : 0,
+            tip_customer_card: isFirstItem ? tipCustomerCard : 0,
+            tip_receptionist: isFirstItem ? tipReceptionist : 0,
             addon_details: item.addon_details || '',
             addon_price: addonPrice,
-            discount_percentage: discountPercentage,
-            discount_amount: discountAmount,
-            discount_percentage_cash: discountPercentageCash,
-            discount_amount_cash: discountAmountCash,
+            discount_percentage: isFirstItem ? discountPercentage : 0,
+            discount_amount: isFirstItem ? discountAmount : 0,
+            discount_percentage_cash: isFirstItem ? discountPercentageCash : 0,
+            discount_amount_cash: isFirstItem ? discountAmountCash : 0,
             started_at: new Date().toISOString(),
           };
         });
