@@ -15,6 +15,7 @@ import { ViewAsBanner } from './ViewAsBanner';
 import { RemoveTechnicianModal } from './RemoveTechnicianModal';
 import { ViolationReportModal } from './ViolationReportModal';
 import { ViolationResponseRibbon } from './ViolationResponseRibbon';
+import { useCheckInStatusCheck } from '../hooks/useCheckInStatusCheck';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -55,6 +56,17 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const canViewAllQueueStatuses = effectiveRole && Permissions.queue.canViewAllQueueStatuses(effectiveRole);
   const canRemoveTechnicians = effectiveRole && Permissions.queue.canRemoveTechnicians(effectiveRole);
   const canReportViolations = session?.employee_id && selectedStoreId;
+
+  // Check if Receptionist/Supervisor is checked in (to block store switching)
+  const checkInStatus = useCheckInStatusCheck(
+    session?.employee_id,
+    selectedStoreId,
+    session?.role_permission
+  );
+  const isCheckedInEmployee =
+    ['Receptionist', 'Supervisor'].includes(session?.role_permission ?? '') &&
+    checkInStatus.isCheckedIn;
+  const canSwitchStores = !isCheckedInEmployee;
 
   useEffect(() => {
     if (selectedStoreId) {
@@ -707,7 +719,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               >
                 {isMobileMenuOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
               </button>
-              {currentStore && allStores.length > 0 ? (
+              {currentStore && allStores.length > 1 && canSwitchStores ? (
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setIsStoreDropdownOpen(!isStoreDropdownOpen)}
