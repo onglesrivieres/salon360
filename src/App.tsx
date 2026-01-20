@@ -14,8 +14,8 @@ import { supabase } from './lib/supabase';
 import { getCurrentDateEST } from './lib/timezone';
 import { StoreSelectionModal } from './components/StoreSelectionModal';
 import { OutsideWorkingHoursPage } from './components/OutsideWorkingHoursPage';
-import { NotCheckedInPage } from './components/NotCheckedInPage';
 import { CheckInOutModal } from './components/CheckInOutModal';
+import { CheckInRequiredModal } from './components/CheckInRequiredModal';
 import { useWorkingHoursCheck } from './hooks/useWorkingHoursCheck';
 import { useCheckInStatusCheck } from './hooks/useCheckInStatusCheck';
 
@@ -84,7 +84,17 @@ function AppContent() {
     selectedStoreId,
     session?.role_permission
   );
-  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [showCheckInOutModal, setShowCheckInOutModal] = useState(false);
+  const [checkInModalDismissed, setCheckInModalDismissed] = useState(() => {
+    return sessionStorage.getItem('checkin_modal_dismissed') === 'true';
+  });
+
+  // Determine if check-in required modal should be shown
+  const shouldShowCheckInRequiredModal =
+    (session?.role_permission === 'Receptionist' || session?.role_permission === 'Supervisor') &&
+    !checkInStatus.isLoading &&
+    !checkInStatus.isCheckedIn &&
+    !checkInModalDismissed;
 
   useEffect(() => {
     if (isAuthenticated && !selectedStoreId && session?.employee_id && !showWelcome) {
@@ -196,35 +206,6 @@ function AppContent() {
     );
   }
 
-  // Block Receptionist and Supervisor access if not checked in
-  if (
-    (session?.role_permission === 'Receptionist' || session?.role_permission === 'Supervisor') &&
-    !checkInStatus.isLoading &&
-    !checkInStatus.isCheckedIn
-  ) {
-    return (
-      <>
-        <NotCheckedInPage
-          employeeName={session?.display_name}
-          onCheckIn={() => setShowCheckInModal(true)}
-        />
-        {showCheckInModal && selectedStoreId && (
-          <CheckInOutModal
-            storeId={selectedStoreId}
-            onClose={() => setShowCheckInModal(false)}
-            onCheckInComplete={() => {
-              setShowCheckInModal(false);
-              checkInStatus.refetch();
-            }}
-            onCheckOutComplete={() => {
-              setShowCheckInModal(false);
-            }}
-          />
-        )}
-      </>
-    );
-  }
-
   return (
     <>
       <Layout
@@ -260,6 +241,37 @@ function AppContent() {
           setShowStoreModal(false);
         }}
       />
+
+      {/* Check-in required modal for Receptionist/Supervisor */}
+      <CheckInRequiredModal
+        isOpen={shouldShowCheckInRequiredModal && !showCheckInOutModal}
+        onClose={() => {
+          setCheckInModalDismissed(true);
+          sessionStorage.setItem('checkin_modal_dismissed', 'true');
+        }}
+        onCheckIn={() => {
+          setShowCheckInOutModal(true);
+        }}
+        employeeName={session?.display_name}
+      />
+
+      {/* Check-in/out modal for actual check-in process */}
+      {showCheckInOutModal && selectedStoreId && (
+        <CheckInOutModal
+          storeId={selectedStoreId}
+          onClose={() => setShowCheckInOutModal(false)}
+          onCheckInComplete={() => {
+            setShowCheckInOutModal(false);
+            checkInStatus.refetch();
+            // Clear dismissal flag since user is now checked in
+            sessionStorage.removeItem('checkin_modal_dismissed');
+            setCheckInModalDismissed(false);
+          }}
+          onCheckOutComplete={() => {
+            setShowCheckInOutModal(false);
+          }}
+        />
+      )}
     </>
   );
 }

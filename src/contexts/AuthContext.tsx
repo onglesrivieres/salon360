@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearSession();
     sessionStorage.removeItem('selected_store_id');
     sessionStorage.removeItem('welcome_shown');
+    sessionStorage.removeItem('checkin_modal_dismissed');
     sessionStorage.removeItem(VIEWING_AS_ROLE_KEY);
     localStorage.removeItem(LOCALE_KEY);
     const deviceLocale = getDeviceLocale();
