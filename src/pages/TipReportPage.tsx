@@ -1056,15 +1056,21 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                           const isMultiService = group.services.length > 1;
 
                           if (isMultiService) {
-                            // Multi-service ticket - grouped box with blue border
+                            // Multi-service ticket - grouped box with blue border (or purple for last ticket)
+                            const isLast = isLastTicket(group.opened_at);
+                            const cardClasses = isLast
+                              ? "border-2 border-purple-300 bg-purple-50/30 rounded p-1 cursor-pointer hover:bg-purple-100/50 hover:border-purple-400 transition-colors"
+                              : "border-2 border-blue-300 bg-blue-50/30 rounded p-1 cursor-pointer hover:bg-blue-100/50 hover:border-blue-400 transition-colors";
+                            const borderColor = isLast ? "border-purple-200" : "border-blue-200";
+                            const leftBorderColor = isLast ? "border-purple-400" : "border-blue-400";
                             return (
                               <div
                                 key={group.ticket_id}
                                 onClick={() => openTicketEditor(group.ticket_id)}
-                                className="border-2 border-blue-300 bg-blue-50/30 rounded p-1 cursor-pointer hover:bg-blue-100/50 hover:border-blue-400 transition-colors"
+                                className={cardClasses}
                               >
                                 {/* Header with opening time and total duration */}
-                                <div className="flex justify-between items-center text-[8px] text-gray-500 mb-1 pb-0.5 border-b border-blue-200">
+                                <div className={`flex justify-between items-center text-[8px] text-gray-500 mb-1 pb-0.5 border-b ${borderColor}`}>
                                   <div className="flex items-center gap-0.5 truncate">
                                     <span className="truncate">
                                       {openTime.replace(/\s/g, '')}
@@ -1082,7 +1088,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                   </span>
                                 </div>
                                 {/* Service list with individual timers */}
-                                <div className="border-l-2 border-blue-400 pl-1 space-y-0.5">
+                                <div className={`border-l-2 ${leftBorderColor} pl-1 space-y-0.5`}>
                                   {group.services.map((item, svcIndex) => {
                                     const timerItem: TimerServiceItem = {
                                       started_at: item.started_at,
@@ -1094,18 +1100,15 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                     const svcDuration = calculateServiceDuration(timerItem, currentTime);
                                     const timerStatus = getTimerStatus(timerItem);
                                     const completionStatus = getItemCompletionStatus(item);
-                                    const isLast = isLastTicket(item.opened_at);
                                     const timerColor = timerStatus === 'active'
                                       ? 'bg-blue-100 text-blue-800'
-                                      : isLast
-                                        ? 'bg-purple-100 text-purple-800'
-                                        : completionStatus === 'on_time'
-                                          ? 'bg-green-100 text-green-800'
-                                          : completionStatus === 'moderate_deviation'
-                                            ? 'bg-amber-100 text-amber-800'
-                                            : completionStatus === 'extreme_deviation'
-                                              ? 'bg-red-100 text-red-800'
-                                              : 'bg-gray-100 text-gray-800';
+                                      : completionStatus === 'on_time'
+                                        ? 'bg-green-100 text-green-800'
+                                        : completionStatus === 'moderate_deviation'
+                                          ? 'bg-amber-100 text-amber-800'
+                                          : completionStatus === 'extreme_deviation'
+                                            ? 'bg-red-100 text-red-800'
+                                            : 'bg-gray-100 text-gray-800';
                                     return (
                                       <div key={svcIndex} className="flex justify-between items-center">
                                         <span className="text-[9px] font-semibold text-gray-900">
@@ -1120,7 +1123,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                 </div>
                                 {/* Tips */}
                                 {showDetails ? (
-                                  <div className="space-y-0.5 mt-1 pt-0.5 border-t border-blue-200">
+                                  <div className={`space-y-0.5 mt-1 pt-0.5 border-t ${borderColor}`}>
                                     <div className="flex justify-between items-center">
                                       <span className="text-[8px] text-gray-600">T. (given)</span>
                                       <span className="text-[8px] font-semibold text-green-700">
@@ -1135,7 +1138,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="flex justify-between items-center mt-1 pt-0.5 border-t border-blue-200">
+                                  <div className={`flex justify-between items-center mt-1 pt-0.5 border-t ${borderColor}`}>
                                     <span className="text-[8px] text-gray-600">Total</span>
                                     <span className="text-[8px] font-semibold text-gray-900">
                                       {(group.totalTipGiven + group.totalTipPaired).toFixed(0)}
@@ -1146,7 +1149,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                             );
                           }
 
-                          // Single-service ticket - similar to original but with timer
+                          // Single-service ticket (or purple for last ticket)
                           const item = group.services[0];
                           const timerItem: TimerServiceItem = {
                             started_at: item.started_at,
@@ -1158,18 +1161,19 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                           const svcDuration = calculateServiceDuration(timerItem, currentTime);
                           const timerStatus = getTimerStatus(timerItem);
                           const completionStatus = getItemCompletionStatus(item);
-                          const isLast = isLastTicket(item.opened_at);
+                          const isLast = isLastTicket(group.opened_at);
                           const timerColor = timerStatus === 'active'
                             ? 'bg-blue-100 text-blue-800'
-                            : isLast
-                              ? 'bg-purple-100 text-purple-800'
-                              : completionStatus === 'on_time'
-                                ? 'bg-green-100 text-green-800'
-                                : completionStatus === 'moderate_deviation'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : completionStatus === 'extreme_deviation'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-gray-100 text-gray-800';
+                            : completionStatus === 'on_time'
+                              ? 'bg-green-100 text-green-800'
+                              : completionStatus === 'moderate_deviation'
+                                ? 'bg-amber-100 text-amber-800'
+                                : completionStatus === 'extreme_deviation'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-gray-100 text-gray-800';
+                          const cardClasses = isLast
+                            ? "border border-purple-300 bg-purple-50 rounded p-1 cursor-pointer hover:bg-purple-100 hover:border-purple-400 transition-colors"
+                            : "border border-gray-200 bg-gray-50 rounded p-1 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors";
                           const tipGiven = item.tip_customer_cash + item.tip_customer_card;
                           const tipPaired = item.tip_receptionist;
                           const totalTips = tipGiven + tipPaired;
@@ -1178,7 +1182,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                             <div
                               key={group.ticket_id}
                               onClick={() => openTicketEditor(item.ticket_id)}
-                              className="border border-gray-200 bg-gray-50 rounded p-1 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                              className={cardClasses}
                             >
                               <div className="mb-0.5">
                                 <div className="flex justify-between items-center text-[8px] text-gray-500 mb-0.5">
