@@ -1350,10 +1350,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
             tip_receptionist: isFirstItem ? tipReceptionist : 0,
             addon_details: item.addon_details || '',
             addon_price: addonPrice,
-            discount_percentage: discountPercentage,
-            discount_amount: discountAmount,
-            discount_percentage_cash: discountPercentageCash,
-            discount_amount_cash: discountAmountCash,
+            discount_percentage: isFirstItem ? discountPercentage : 0,
+            discount_amount: isFirstItem ? discountAmount : 0,
+            discount_percentage_cash: isFirstItem ? discountPercentageCash : 0,
+            discount_amount_cash: isFirstItem ? discountAmountCash : 0,
             updated_at: new Date().toISOString(),
           };
 
@@ -1438,10 +1438,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
             tip_receptionist: isFirstItem ? tipReceptionist : 0,
             addon_details: item.addon_details || '',
             addon_price: addonPrice,
-            discount_percentage: discountPercentage,
-            discount_amount: discountAmount,
-            discount_percentage_cash: discountPercentageCash,
-            discount_amount_cash: discountAmountCash,
+            discount_percentage: isFirstItem ? discountPercentage : 0,
+            discount_amount: isFirstItem ? discountAmount : 0,
+            discount_percentage_cash: isFirstItem ? discountPercentageCash : 0,
+            discount_amount_cash: isFirstItem ? discountAmountCash : 0,
             started_at: new Date().toISOString(),
           };
         });
