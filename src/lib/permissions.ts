@@ -96,6 +96,14 @@ export const Permissions = {
     canReopen: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
     },
+    canRequestChanges: (roles: Role[] | RolePermission): boolean => {
+      // Only roles who CANNOT reopen can request changes
+      return hasAnyRole(roles, ['Receptionist', 'Supervisor']);
+    },
+    canReviewReopenRequests: (roles: Role[] | RolePermission): boolean => {
+      // Same roles that can reopen tickets
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
     canApprove: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Technician', 'Supervisor', 'Owner']);
     },

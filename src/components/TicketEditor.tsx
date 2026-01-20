@@ -29,6 +29,7 @@ import { formatPhoneNumber, normalizePhoneNumber, hasEnoughDigitsForLookup } fro
 import { BlacklistWarning } from './clients/BlacklistWarning';
 import { ColorDisplay } from './clients/ColorDisplay';
 import { QuickAddClientModal } from './clients/QuickAddClientModal';
+import { TicketReopenRequestModal } from './TicketReopenRequestModal';
 
 interface TicketEditorProps {
   ticketId: string | null;
@@ -127,6 +128,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   const canViewPaymentDetailsWhenClosed = session && session.role_permission && Permissions.tickets.canViewPaymentDetailsWhenClosed(session.role_permission);
 
   const canReopen = session && session.role_permission && Permissions.tickets.canReopen(session.role_permission);
+
+  const canRequestChanges = session && session.role_permission && Permissions.tickets.canRequestChanges(session.role_permission);
 
   const canDelete = session && session.role_permission && Permissions.tickets.canDelete(session.role_permission);
 
@@ -265,6 +268,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   const [isEditingOpeningTime, setIsEditingOpeningTime] = useState(false);
   const [tempOpeningTime, setTempOpeningTime] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showRequestChangesModal, setShowRequestChangesModal] = useState(false);
+  const [hasPendingReopenRequest, setHasPendingReopenRequest] = useState(false);
   const [tempPaymentData, setTempPaymentData] = useState({
     payment_cash: '',
     payment_card: '',
@@ -421,6 +426,29 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
       clearInterval(timer);
     };
   }, [ticketId, items.length, ticket?.completed_at, ticket?.closed_at]);
+
+  // Check for pending reopen request when viewing a closed ticket
+  useEffect(() => {
+    async function checkPendingReopenRequest() {
+      if (!ticketId || !isTicketClosed || !canRequestChanges) {
+        setHasPendingReopenRequest(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.rpc('has_pending_ticket_reopen_request', {
+          p_ticket_id: ticketId
+        });
+
+        if (error) throw error;
+        setHasPendingReopenRequest(data === true);
+      } catch (error) {
+        console.error('Error checking pending reopen request:', error);
+      }
+    }
+
+    checkPendingReopenRequest();
+  }, [ticketId, isTicketClosed, canRequestChanges]);
 
   async function fetchSortedTechnicians() {
     if (!selectedStoreId) return;
@@ -1640,6 +1668,48 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     }
   }
 
+  async function handleSubmitReopenRequest(data: { reason_comment: string; requested_changes_description: string }) {
+    if (!canRequestChanges) {
+      showToast('You do not have permission to request ticket changes', 'error');
+      throw new Error('Permission denied');
+    }
+
+    if (!ticketId || !ticket || !session?.employee_id) {
+      showToast('Invalid ticket or session', 'error');
+      throw new Error('Invalid state');
+    }
+
+    try {
+      const { data: result, error } = await supabase.rpc('create_ticket_reopen_request', {
+        p_ticket_id: ticketId,
+        p_reason_comment: data.reason_comment,
+        p_requested_changes_description: data.requested_changes_description,
+        p_created_by_employee_id: session.employee_id,
+      });
+
+      if (error) throw error;
+
+      const response = result as { success: boolean; error?: string; request_id?: string };
+      if (!response.success) {
+        showToast(response.error || 'Failed to submit request', 'error');
+        throw new Error(response.error);
+      }
+
+      // Log the activity
+      await logActivity(ticketId, 'updated', `${session?.display_name} requested changes to closed ticket`, {
+        request_type: 'reopen_request',
+        reason: data.reason_comment,
+        changes_requested: data.requested_changes_description,
+      });
+
+      setHasPendingReopenRequest(true);
+      showToast('Change request submitted successfully', 'success');
+    } catch (error: any) {
+      console.error('Error submitting reopen request:', error);
+      throw error;
+    }
+  }
+
   async function handleMarkCompleted() {
     if (!canMarkCompleted) {
       showToast('You do not have permission to mark tickets as completed', 'error');
@@ -2755,6 +2825,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                   {saving ? 'Reopening...' : 'Reopen Ticket'}
                 </button>
               )}
+              {isTicketClosed && !canReopen && canRequestChanges && ticketId && (
+                <button
+                  onClick={() => setShowRequestChangesModal(true)}
+                  disabled={saving || hasPendingReopenRequest}
+                  className="px-2 py-1 text-xs bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[36px] md:min-h-0"
+                >
+                  {hasPendingReopenRequest ? 'Request Pending' : 'Request Changes'}
+                </button>
+              )}
               {isReadOnly && canEditNotes && ticketId && !canReopen && (
                 <button
                   onClick={handleSaveComment}
@@ -3284,6 +3363,20 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           </div>
         </div>
       </Modal>
+
+      {/* Ticket Reopen Request Modal */}
+      <TicketReopenRequestModal
+        isOpen={showRequestChangesModal}
+        onClose={() => setShowRequestChangesModal(false)}
+        onSubmit={handleSubmitReopenRequest}
+        ticket={ticket ? {
+          id: ticket.id,
+          ticket_no: ticket.ticket_no,
+          customer_name: ticket.customer_name || '',
+          total: ticket.total || 0,
+          ticket_date: ticket.ticket_date,
+        } : null}
+      />
 
       {/* Quick Add Client Modal */}
       {selectedStoreId && (

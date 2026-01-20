@@ -864,6 +864,38 @@ export interface PendingCashTransactionChangeProposal {
   created_at: string;
 }
 
+export type TicketReopenRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface TicketReopenRequest {
+  id: string;
+  ticket_id: string;
+  store_id: string;
+  reason_comment: string;
+  requested_changes_description: string;
+  status: TicketReopenRequestStatus;
+  created_by_employee_id: string;
+  reviewed_by_employee_id: string | null;
+  reviewed_at: string | null;
+  review_comment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PendingTicketReopenRequest {
+  request_id: string;
+  ticket_id: string;
+  ticket_no: string;
+  ticket_date: string;
+  customer_name: string;
+  total: number;
+  closed_at: string;
+  reason_comment: string;
+  requested_changes_description: string;
+  created_by_name: string;
+  created_by_id: string;
+  created_at: string;
+}
+
 export type ViolationReportStatus = 'collecting_responses' | 'pending_approval' | 'approved' | 'rejected' | 'expired';
 export type ViolationDecision = 'violation_confirmed' | 'no_violation';
 export type ViolationActionType = 'none' | 'warning' | 'written_warning' | 'queue_removal' | 'suspension';

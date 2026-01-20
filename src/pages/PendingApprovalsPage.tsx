@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight, Bell, User, Calendar, History, Download } from 'lucide-react';
-import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, PendingCashTransactionChangeProposal, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket, AttendanceChangeProposalWithDetails } from '../lib/supabase';
+import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, PendingCashTransactionChangeProposal, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket, AttendanceChangeProposalWithDetails, PendingTicketReopenRequest } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
@@ -39,7 +39,7 @@ interface ProposalWithAttendance extends AttendanceChangeProposalWithDetails {
   work_date?: string;
 }
 
-type TabType = 'tickets' | 'inventory' | 'cash' | 'transaction-changes' | 'attendance' | 'violations' | 'queue-history';
+type TabType = 'tickets' | 'inventory' | 'cash' | 'transaction-changes' | 'attendance' | 'violations' | 'queue-history' | 'ticket-changes';
 
 interface QueueRemovalRecord {
   id: string;
@@ -94,6 +94,9 @@ export function PendingApprovalsPage() {
   const [transactionChangeProposals, setTransactionChangeProposals] = useState<PendingCashTransactionChangeProposal[]>([]);
   const [selectedTransactionChangeProposal, setSelectedTransactionChangeProposal] = useState<PendingCashTransactionChangeProposal | null>(null);
   const [transactionChangeReviewComment, setTransactionChangeReviewComment] = useState('');
+  const [ticketReopenRequests, setTicketReopenRequests] = useState<PendingTicketReopenRequest[]>([]);
+  const [selectedTicketReopenRequest, setSelectedTicketReopenRequest] = useState<PendingTicketReopenRequest | null>(null);
+  const [ticketReopenReviewComment, setTicketReopenReviewComment] = useState('');
   const [rejectedTickets, setRejectedTickets] = useState<any[]>([]);
   const [tabCounts, setTabCounts] = useState<{
     tickets: number;
@@ -102,7 +105,8 @@ export function PendingApprovalsPage() {
     transactionChanges: number;
     attendance: number;
     violations: number;
-  }>({ tickets: 0, inventory: 0, cash: 0, transactionChanges: 0, attendance: 0, violations: 0 });
+    ticketChanges: number;
+  }>({ tickets: 0, inventory: 0, cash: 0, transactionChanges: 0, attendance: 0, violations: 0, ticketChanges: 0 });
   const [initialTabSet, setInitialTabSet] = useState(false);
   const { showToast } = useToast();
   const { session, selectedStoreId, effectiveRole } = useAuth();
@@ -112,11 +116,12 @@ export function PendingApprovalsPage() {
   const isSupervisor = session?.role_permission === 'Supervisor';
   const canViewQueueHistory = effectiveRole && Permissions.queue.canViewRemovalHistory(effectiveRole);
   const canReviewTransactionChanges = effectiveRole && Permissions.cashTransactions.canReviewChangeProposal(effectiveRole);
+  const canReviewReopenRequests = effectiveRole && Permissions.tickets.canReviewReopenRequests(effectiveRole);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
-    if (tab && ['tickets', 'inventory', 'cash', 'transaction-changes', 'attendance', 'violations', 'queue-history'].includes(tab)) {
+    if (tab && ['tickets', 'inventory', 'cash', 'transaction-changes', 'attendance', 'violations', 'queue-history', 'ticket-changes'].includes(tab)) {
       setActiveTab(tab as TabType);
       setInitialTabSet(true);
     }
@@ -179,11 +184,13 @@ export function PendingApprovalsPage() {
         fetchViolationHistory();
       } else if (activeTab === 'transaction-changes' && canReviewTransactionChanges) {
         fetchTransactionChangeProposals();
+      } else if (activeTab === 'ticket-changes' && canReviewReopenRequests) {
+        fetchTicketReopenRequests();
       } else if (activeTab === 'queue-history' && canViewQueueHistory) {
         fetchQueueRemovalHistory();
       }
     }
-  }, [session?.employee_id, selectedStoreId, selectedDate, activeTab, isManagement, canViewQueueHistory, canReviewTransactionChanges]);
+  }, [session?.employee_id, selectedStoreId, selectedDate, activeTab, isManagement, canViewQueueHistory, canReviewTransactionChanges, canReviewReopenRequests]);
 
   useEffect(() => {
     if (!isManagement) return;
@@ -208,6 +215,8 @@ export function PendingApprovalsPage() {
           fetchViolationHistory();
         } else if (activeTab === 'transaction-changes' && canReviewTransactionChanges) {
           fetchTransactionChangeProposals();
+        } else if (activeTab === 'ticket-changes' && canReviewReopenRequests) {
+          fetchTicketReopenRequests();
         } else if (activeTab === 'queue-history' && canViewQueueHistory) {
           fetchQueueRemovalHistory();
         }
@@ -215,7 +224,7 @@ export function PendingApprovalsPage() {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [session?.employee_id, selectedStoreId, activeTab, isManagement, canViewQueueHistory, canReviewTransactionChanges]);
+  }, [session?.employee_id, selectedStoreId, activeTab, isManagement, canViewQueueHistory, canReviewTransactionChanges, canReviewReopenRequests]);
 
   function handleTabChange(tab: TabType) {
     setActiveTab(tab);
@@ -247,13 +256,14 @@ export function PendingApprovalsPage() {
     if (!selectedStoreId || !session?.employee_id) return;
 
     try {
-      const [ticketsRes, inventoryRes, cashRes, transactionChangesRes, attendanceRes, violationsRes] = await Promise.all([
+      const [ticketsRes, inventoryRes, cashRes, transactionChangesRes, attendanceRes, violationsRes, ticketChangesRes] = await Promise.all([
         supabase.rpc('get_pending_approvals_for_management', { p_store_id: selectedStoreId }),
         supabase.rpc('get_pending_inventory_approvals', { p_employee_id: session.employee_id, p_store_id: selectedStoreId }),
         supabase.rpc('get_pending_cash_transaction_approvals', { p_store_id: selectedStoreId }),
         canReviewTransactionChanges ? supabase.rpc('get_pending_cash_transaction_change_proposals', { p_store_id: selectedStoreId }) : Promise.resolve({ data: [] }),
         supabase.from('attendance_change_proposals').select('id').eq('store_id', selectedStoreId).eq('status', 'pending'),
         supabase.rpc('get_violation_reports_for_approval', { p_store_id: selectedStoreId }),
+        canReviewReopenRequests ? supabase.rpc('get_pending_ticket_reopen_requests', { p_store_id: selectedStoreId }) : Promise.resolve({ data: [] }),
       ]);
 
       const counts = {
@@ -263,6 +273,7 @@ export function PendingApprovalsPage() {
         transactionChanges: transactionChangesRes.data?.length || 0,
         attendance: attendanceRes.data?.length || 0,
         violations: violationsRes.data?.length || 0,
+        ticketChanges: ticketChangesRes.data?.length || 0,
       };
 
       setTabCounts(counts);
@@ -493,6 +504,94 @@ export function PendingApprovalsPage() {
       console.error('Error fetching transaction change proposals:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchTicketReopenRequests() {
+    if (!selectedStoreId) return;
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.rpc('get_pending_ticket_reopen_requests', {
+        p_store_id: selectedStoreId,
+      });
+
+      if (error) throw error;
+      setTicketReopenRequests(data || []);
+    } catch (error) {
+      console.error('Error fetching ticket reopen requests:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleApproveTicketReopenRequest(request: PendingTicketReopenRequest) {
+    if (!session?.employee_id) return;
+
+    try {
+      setProcessing(true);
+      const { data, error } = await supabase.rpc('approve_ticket_reopen_request', {
+        p_request_id: request.request_id,
+        p_reviewer_employee_id: session.employee_id,
+        p_review_comment: null,
+      });
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; error?: string; message?: string; ticket_id?: string };
+      if (!result.success) {
+        showToast(result.error || 'Failed to approve request', 'error');
+        return;
+      }
+
+      showToast(result.message || 'Request approved', 'success');
+      fetchTicketReopenRequests();
+
+      // Navigate to the ticket so reviewer can reopen it
+      if (result.ticket_id) {
+        window.location.href = `/tickets?open=${result.ticket_id}`;
+      }
+    } catch (error: any) {
+      console.error('Error approving ticket reopen request:', error);
+      showToast(error.message || 'Failed to approve request', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function handleRejectTicketReopenRequest() {
+    if (!selectedTicketReopenRequest || !session?.employee_id) return;
+
+    if (!ticketReopenReviewComment.trim()) {
+      showToast('Please provide a rejection reason', 'error');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      const { data, error } = await supabase.rpc('reject_ticket_reopen_request', {
+        p_request_id: selectedTicketReopenRequest.request_id,
+        p_reviewer_employee_id: session.employee_id,
+        p_review_comment: ticketReopenReviewComment.trim(),
+      });
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; error?: string; message?: string };
+      if (!result.success) {
+        showToast(result.error || 'Failed to reject request', 'error');
+        return;
+      }
+
+      showToast(result.message || 'Request rejected', 'success');
+      setSelectedTicketReopenRequest(null);
+      setTicketReopenReviewComment('');
+      fetchTicketReopenRequests();
+    } catch (error: any) {
+      console.error('Error rejecting ticket reopen request:', error);
+      showToast(error.message || 'Failed to reject request', 'error');
+    } finally {
+      setProcessing(false);
     }
   }
 
@@ -1209,6 +1308,24 @@ export function PendingApprovalsPage() {
                 {(activeTab === 'violations' ? violationReports.length : tabCounts.violations) > 0 && (
                   <Badge variant="error" className="ml-1">
                     {activeTab === 'violations' ? violationReports.length : tabCounts.violations}
+                  </Badge>
+                )}
+              </button>
+            )}
+            {canReviewReopenRequests && !isSupervisor && (
+              <button
+                onClick={() => handleTabChange('ticket-changes')}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                  activeTab === 'ticket-changes'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                Ticket Changes
+                {(activeTab === 'ticket-changes' ? ticketReopenRequests.length : tabCounts.ticketChanges) > 0 && (
+                  <Badge variant="warning" className="ml-1">
+                    {activeTab === 'ticket-changes' ? ticketReopenRequests.length : tabCounts.ticketChanges}
                   </Badge>
                 )}
               </button>
@@ -2466,6 +2583,75 @@ export function PendingApprovalsPage() {
             </div>
           )}
 
+          {activeTab === 'ticket-changes' && canReviewReopenRequests && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Pending Ticket Change Requests</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Review requests from Receptionists and Supervisors to reopen closed tickets for changes.
+              </p>
+              {ticketReopenRequests.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>No pending ticket change requests</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {ticketReopenRequests.map((request) => (
+                    <div key={request.request_id} className="border border-gray-200 rounded-lg p-4 bg-white">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <span className="font-semibold text-gray-900">#{request.ticket_no}</span>
+                          <span className="text-gray-500 ml-2">{request.customer_name || 'Walk-in'}</span>
+                          <span className="text-gray-500 ml-2">${request.total.toFixed(2)}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs text-gray-500">{formatDateTimeEST(request.created_at)}</span>
+                          <Badge variant="warning" className="ml-2">Pending</Badge>
+                        </div>
+                      </div>
+
+                      <div className="bg-amber-50 border border-amber-200 rounded p-3 mb-3">
+                        <p className="text-sm font-medium text-amber-800 mb-1">Requested Changes:</p>
+                        <p className="text-sm text-amber-700">{request.requested_changes_description}</p>
+                        <p className="text-sm font-medium text-amber-800 mt-2 mb-1">Reason:</p>
+                        <p className="text-sm text-amber-700">{request.reason_comment}</p>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs text-gray-500">
+                          Requested by: <span className="font-medium">{request.created_by_name}</span>
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => handleApproveTicketReopenRequest(request)}
+                            disabled={processing}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Approve & View Ticket
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              setSelectedTicketReopenRequest(request);
+                              setTicketReopenReviewComment('');
+                            }}
+                            disabled={processing}
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'queue-history' && canViewQueueHistory && (
             <div>
               <div className="mb-6">
@@ -2821,6 +3007,67 @@ export function PendingApprovalsPage() {
                 placeholder="Explain your decision and reasoning..."
                 disabled={processing}
               />
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Ticket Reopen Request Rejection Modal */}
+      <Modal
+        isOpen={!!selectedTicketReopenRequest}
+        onClose={() => {
+          setSelectedTicketReopenRequest(null);
+          setTicketReopenReviewComment('');
+        }}
+        title="Reject Ticket Change Request"
+      >
+        {selectedTicketReopenRequest && (
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="text-sm text-gray-600">
+                You are about to reject the change request for ticket{' '}
+                <span className="font-semibold">#{selectedTicketReopenRequest.ticket_no}</span>.
+              </p>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-amber-800 mb-1">Requested Changes:</p>
+              <p className="text-sm text-amber-700">{selectedTicketReopenRequest.requested_changes_description}</p>
+              <p className="text-sm font-medium text-amber-800 mt-2 mb-1">Reason Given:</p>
+              <p className="text-sm text-amber-700">{selectedTicketReopenRequest.reason_comment}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Rejection Reason <span className="text-red-600">*</span>
+              </label>
+              <textarea
+                value={ticketReopenReviewComment}
+                onChange={(e) => setTicketReopenReviewComment(e.target.value)}
+                placeholder="Explain why this request is being rejected..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={3}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setSelectedTicketReopenRequest(null);
+                  setTicketReopenReviewComment('');
+                }}
+                disabled={processing}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleRejectTicketReopenRequest}
+                disabled={processing || !ticketReopenReviewComment.trim()}
+              >
+                {processing ? 'Rejecting...' : 'Reject Request'}
+              </Button>
             </div>
           </div>
         )}
