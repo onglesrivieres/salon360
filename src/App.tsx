@@ -35,7 +35,7 @@ const ClientsPage = lazy(() => import('./pages/ClientsPage').then(m => ({ defaul
 type Page = 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'configuration' | 'approvals' | 'inventory' | 'insights' | 'clients';
 
 function AppContent() {
-  const { isAuthenticated, selectedStoreId, selectStore, session, login } = useAuth();
+  const { isAuthenticated, selectedStoreId, selectStore, session, login, logout } = useAuth();
   const [showWelcome, setShowWelcome] = useState(() => {
     return sessionStorage.getItem('welcome_shown') !== 'true';
   });
@@ -85,16 +85,12 @@ function AppContent() {
     session?.role_permission
   );
   const [showCheckInOutModal, setShowCheckInOutModal] = useState(false);
-  const [checkInModalDismissed, setCheckInModalDismissed] = useState(() => {
-    return sessionStorage.getItem('checkin_modal_dismissed') === 'true';
-  });
 
   // Determine if check-in required modal should be shown
   const shouldShowCheckInRequiredModal =
     (session?.role_permission === 'Receptionist' || session?.role_permission === 'Supervisor') &&
     !checkInStatus.isLoading &&
     !checkInStatus.isCheckedIn &&
-    !checkInModalDismissed &&
     !showStoreModal; // Don't show while store selection is open
 
   useEffect(() => {
@@ -246,9 +242,8 @@ function AppContent() {
       {/* Check-in required modal for Receptionist/Supervisor */}
       <CheckInRequiredModal
         isOpen={shouldShowCheckInRequiredModal && !showCheckInOutModal}
-        onClose={() => {
-          setCheckInModalDismissed(true);
-          sessionStorage.setItem('checkin_modal_dismissed', 'true');
+        onExit={() => {
+          logout();
         }}
         onCheckIn={() => {
           setShowCheckInOutModal(true);
@@ -264,9 +259,6 @@ function AppContent() {
           onCheckInComplete={() => {
             setShowCheckInOutModal(false);
             checkInStatus.refetch();
-            // Clear dismissal flag since user is now checked in
-            sessionStorage.removeItem('checkin_modal_dismissed');
-            setCheckInModalDismissed(false);
           }}
           onCheckOutComplete={() => {
             setShowCheckInOutModal(false);
