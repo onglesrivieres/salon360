@@ -12,7 +12,7 @@ import { initializeVersionCheck, startVersionCheck } from '../lib/version';
 import { getCurrentDateEST } from '../lib/timezone';
 
 interface HomePageProps {
-  onActionSelected: (action: 'checkin' | 'checkout' | 'ready' | 'report', session?: any, storeId?: string, hasMultipleStores?: boolean, availableStoreIds?: string[]) => void;
+  onActionSelected: (action: 'checkin' | 'checkout' | 'ready' | 'report', session?: any, storeId?: string, hasMultipleStores?: boolean, availableStoreIds?: string[], checkedInStoreId?: string) => void;
 }
 
 export function HomePage({ onActionSelected }: HomePageProps) {
@@ -179,8 +179,20 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         // Use the store where they're checked in
         await handleReady(session.employee_id, activeCheckIn.store_id);
       } else if (selectedAction === 'report') {
+        // Check if already checked in at a store today
+        const today = getCurrentDateEST();
+        const { data: checkedInRecord } = await supabase
+          .from('attendance_records')
+          .select('store_id')
+          .eq('employee_id', session.employee_id)
+          .eq('work_date', today)
+          .eq('status', 'checked_in')
+          .is('check_out_time', null)
+          .maybeSingle();
+
         const storeIds = employeeStores.map(s => s.id || s.store_id);
-        onActionSelected('report', session, storeId, hasMultipleStores, storeIds);
+        const checkedInStoreId = checkedInRecord?.store_id;
+        onActionSelected('report', session, storeId, hasMultipleStores, storeIds, checkedInStoreId);
       }
     } catch (error: any) {
       console.error('Authentication failed:', error);

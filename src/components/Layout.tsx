@@ -332,6 +332,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       let ticketCount = 0;
       let inventoryCount = 0;
       let cashTransactionCount = 0;
+      let ticketReopenCount = 0;
 
       const { data, error } = await supabase.rpc('get_pending_approvals_for_management', {
         p_store_id: selectedStoreId,
@@ -357,7 +358,15 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         cashTransactionCount = cashData?.length || 0;
       }
 
-      const totalCount = ticketCount + inventoryCount + cashTransactionCount;
+      const { data: ticketReopenData, error: ticketReopenError } = await supabase.rpc('get_pending_ticket_reopen_requests_count', {
+        p_store_id: selectedStoreId,
+      });
+
+      if (!ticketReopenError) {
+        ticketReopenCount = ticketReopenData || 0;
+      }
+
+      const totalCount = ticketCount + inventoryCount + cashTransactionCount + ticketReopenCount;
       setPendingApprovalsCount(totalCount);
     } catch (error) {
       console.error('Error fetching pending approvals count:', error);

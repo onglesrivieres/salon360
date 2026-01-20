@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { checkStoreWorkingHours } from '../lib/workingHours';
+import { checkTimeBasedAccess } from '../lib/workingHours';
 
 interface WorkingHoursState {
   isLoading: boolean;
   isWithinWorkingHours: boolean;
-  openingTime: string | null;
+  accessStartTime: string | null;
+  accessEndTime: string | null;
   closingTime: string | null;
   currentDay: string;
 }
@@ -16,24 +17,27 @@ export function useWorkingHoursCheck(
   const [state, setState] = useState<WorkingHoursState>({
     isLoading: true,
     isWithinWorkingHours: true,
-    openingTime: null,
+    accessStartTime: null,
+    accessEndTime: null,
     closingTime: null,
     currentDay: '',
   });
 
   useEffect(() => {
     async function checkHours() {
-      const restrictedRoles = ['Receptionist', 'Supervisor'];
+      // Roles with time-based access restrictions (8:45 AM to 30 min after closing)
+      const restrictedRoles = ['Technician', 'Cashier', 'Receptionist', 'Supervisor'];
       if (!restrictedRoles.includes(rolePermission ?? '') || !storeId) {
         setState(prev => ({ ...prev, isLoading: false, isWithinWorkingHours: true }));
         return;
       }
 
-      const result = await checkStoreWorkingHours(storeId);
+      const result = await checkTimeBasedAccess(storeId);
       setState({
         isLoading: false,
-        isWithinWorkingHours: result.isWithinWorkingHours,
-        openingTime: result.openingTime,
+        isWithinWorkingHours: result.isWithinAccessHours,
+        accessStartTime: result.accessStartTime,
+        accessEndTime: result.accessEndTime,
         closingTime: result.closingTime,
         currentDay: result.currentDay,
       });

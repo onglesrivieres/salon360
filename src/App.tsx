@@ -14,8 +14,8 @@ import { supabase } from './lib/supabase';
 import { getCurrentDateEST } from './lib/timezone';
 import { StoreSelectionModal } from './components/StoreSelectionModal';
 import { OutsideWorkingHoursPage } from './components/OutsideWorkingHoursPage';
-import { NotCheckedInPage } from './components/NotCheckedInPage';
 import { CheckInOutModal } from './components/CheckInOutModal';
+import { CheckInRequiredModal } from './components/CheckInRequiredModal';
 import { useWorkingHoursCheck } from './hooks/useWorkingHoursCheck';
 import { useCheckInStatusCheck } from './hooks/useCheckInStatusCheck';
 
@@ -35,7 +35,7 @@ const ClientsPage = lazy(() => import('./pages/ClientsPage').then(m => ({ defaul
 type Page = 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'configuration' | 'approvals' | 'inventory' | 'insights' | 'clients';
 
 function AppContent() {
-  const { isAuthenticated, selectedStoreId, selectStore, session, login } = useAuth();
+  const { isAuthenticated, selectedStoreId, selectStore, session, login, logout } = useAuth();
   const [showWelcome, setShowWelcome] = useState(() => {
     return sessionStorage.getItem('welcome_shown') !== 'true';
   });
@@ -75,7 +75,7 @@ function AppContent() {
     setSelectedDate(newDate);
   };
 
-  // Check working hours for Receptionist
+  // Check working hours for time-restricted roles (Technician, Cashier, Receptionist, Supervisor)
   const workingHoursCheck = useWorkingHoursCheck(selectedStoreId, session?.role_permission);
 
   // Check if Receptionist/Supervisor is checked in
@@ -84,7 +84,14 @@ function AppContent() {
     selectedStoreId,
     session?.role_permission
   );
-  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [showCheckInOutModal, setShowCheckInOutModal] = useState(false);
+
+  // Determine if check-in required modal should be shown
+  const shouldShowCheckInRequiredModal =
+    (session?.role_permission === 'Receptionist' || session?.role_permission === 'Supervisor') &&
+    !checkInStatus.isLoading &&
+    !checkInStatus.isCheckedIn &&
+    !showStoreModal; // Don't show while store selection is open
 
   useEffect(() => {
     if (isAuthenticated && !selectedStoreId && session?.employee_id && !showWelcome) {
@@ -140,7 +147,7 @@ function AppContent() {
 
 
   if (showWelcome) {
-    return <HomePage onActionSelected={(action, session, storeId, hasMultipleStores, availableStoreIds) => {
+    return <HomePage onActionSelected={(action, session, storeId, hasMultipleStores, availableStoreIds, checkedInStoreId) => {
       // Check-in and Ready actions are handled entirely within HomePage
       if (action === 'checkin' || action === 'ready') {
         return;
@@ -153,8 +160,11 @@ function AppContent() {
         setSelectedAction(action);
         setShowWelcome(false);
 
-        // If user has multiple stores, show selection modal
-        if (hasMultipleStores && availableStoreIds && availableStoreIds.length > 1) {
+        // If already checked in at a store, auto-select it (skip modal)
+        if (checkedInStoreId && availableStoreIds?.includes(checkedInStoreId)) {
+          selectStore(checkedInStoreId);
+        } else if (hasMultipleStores && availableStoreIds && availableStoreIds.length > 1) {
+          // Not checked in - show store selection modal
           setAvailableStoreIds(availableStoreIds);
           setShowStoreModal(true);
         } else {
@@ -181,47 +191,19 @@ function AppContent() {
     />;
   }
 
-  // Block Receptionist access outside working hours
+  // Block time-restricted roles outside access hours (8:45 AM to 30 min after closing)
+  const TIME_RESTRICTED_ROLES = ['Technician', 'Cashier', 'Receptionist', 'Supervisor'];
   if (
-    session?.role_permission === 'Receptionist' &&
+    TIME_RESTRICTED_ROLES.includes(session?.role_permission ?? '') &&
     !workingHoursCheck.isLoading &&
     !workingHoursCheck.isWithinWorkingHours
   ) {
     return (
       <OutsideWorkingHoursPage
-        openingTime={workingHoursCheck.openingTime || ''}
-        closingTime={workingHoursCheck.closingTime || ''}
+        accessStartTime={workingHoursCheck.accessStartTime || '08:45'}
+        accessEndTime={workingHoursCheck.accessEndTime || ''}
         currentDay={workingHoursCheck.currentDay}
       />
-    );
-  }
-
-  // Block Receptionist and Supervisor access if not checked in
-  if (
-    (session?.role_permission === 'Receptionist' || session?.role_permission === 'Supervisor') &&
-    !checkInStatus.isLoading &&
-    !checkInStatus.isCheckedIn
-  ) {
-    return (
-      <>
-        <NotCheckedInPage
-          employeeName={session?.display_name}
-          onCheckIn={() => setShowCheckInModal(true)}
-        />
-        {showCheckInModal && selectedStoreId && (
-          <CheckInOutModal
-            storeId={selectedStoreId}
-            onClose={() => setShowCheckInModal(false)}
-            onCheckInComplete={() => {
-              setShowCheckInModal(false);
-              checkInStatus.refetch();
-            }}
-            onCheckOutComplete={() => {
-              setShowCheckInModal(false);
-            }}
-          />
-        )}
-      </>
     );
   }
 
@@ -260,6 +242,33 @@ function AppContent() {
           setShowStoreModal(false);
         }}
       />
+
+      {/* Check-in required modal for Receptionist/Supervisor */}
+      <CheckInRequiredModal
+        isOpen={shouldShowCheckInRequiredModal && !showCheckInOutModal}
+        onExit={() => {
+          logout();
+        }}
+        onCheckIn={() => {
+          setShowCheckInOutModal(true);
+        }}
+        employeeName={session?.display_name}
+      />
+
+      {/* Check-in/out modal for actual check-in process */}
+      {showCheckInOutModal && selectedStoreId && (
+        <CheckInOutModal
+          storeId={selectedStoreId}
+          onClose={() => setShowCheckInOutModal(false)}
+          onCheckInComplete={() => {
+            setShowCheckInOutModal(false);
+            checkInStatus.refetch();
+          }}
+          onCheckOutComplete={() => {
+            setShowCheckInOutModal(false);
+          }}
+        />
+      )}
     </>
   );
 }
