@@ -94,7 +94,8 @@ function AppContent() {
     (session?.role_permission === 'Receptionist' || session?.role_permission === 'Supervisor') &&
     !checkInStatus.isLoading &&
     !checkInStatus.isCheckedIn &&
-    !checkInModalDismissed;
+    !checkInModalDismissed &&
+    !showStoreModal; // Don't show while store selection is open
 
   useEffect(() => {
     if (isAuthenticated && !selectedStoreId && session?.employee_id && !showWelcome) {
