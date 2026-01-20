@@ -13,7 +13,7 @@ import {
   getTimerStatus,
   TimerServiceItem
 } from '../lib/timerUtils';
-import { checkStoreWorkingHours } from '../lib/workingHours';
+import { getStoreClosingTimeForDate } from '../lib/workingHours';
 
 interface TechnicianSummary {
   technician_id: string;
@@ -88,22 +88,24 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
     return () => clearInterval(interval);
   }, [summaries]);
 
-  // Fetch store closing time for "Last Ticket" detection
+  // Fetch store closing time for "Last Ticket" detection (based on selectedDate)
   useEffect(() => {
     async function fetchClosingTime() {
-      if (!selectedStoreId) return;
-      const result = await checkStoreWorkingHours(selectedStoreId);
-      setStoreClosingTime(result.closingTime);
+      if (!selectedStoreId || !selectedDate) return;
+      const closingTime = await getStoreClosingTimeForDate(selectedStoreId, selectedDate);
+      setStoreClosingTime(closingTime);
     }
     fetchClosingTime();
-  }, [selectedStoreId]);
+  }, [selectedStoreId, selectedDate]);
 
   // Check if a ticket was opened within 45 minutes before store closing time
   function isLastTicket(openedAt: string): boolean {
     if (!storeClosingTime) return false;
+    // Convert to EST timezone to match store hours
     const openedDate = new Date(openedAt);
-    const openedHour = openedDate.getHours();
-    const openedMin = openedDate.getMinutes();
+    const estTime = new Date(openedDate.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const openedHour = estTime.getHours();
+    const openedMin = estTime.getMinutes();
     const openedMinutes = openedHour * 60 + openedMin;
     const [closeHour, closeMin] = storeClosingTime.split(':').map(Number);
     const closingMinutes = closeHour * 60 + closeMin;

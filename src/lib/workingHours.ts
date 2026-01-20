@@ -1,6 +1,25 @@
 import { supabase } from './supabase';
 import { getCurrentTimezone } from './timezone';
 
+// Get store closing time for a specific date (used for "Last Ticket" detection)
+export async function getStoreClosingTimeForDate(storeId: string, date: string): Promise<string | null> {
+  const { data: store, error } = await supabase
+    .from('stores')
+    .select('closing_hours')
+    .eq('id', storeId)
+    .maybeSingle();
+
+  if (error || !store || !store.closing_hours) return null;
+
+  // Get day of week from the selected date
+  const dateObj = new Date(date + 'T12:00:00'); // noon to avoid timezone issues
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const dayOfWeek = days[dateObj.getDay()];
+
+  const closingTime = store.closing_hours[dayOfWeek];
+  return closingTime ? closingTime.substring(0, 5) : null;
+}
+
 export interface WorkingHoursResult {
   isWithinWorkingHours: boolean;
   openingTime: string | null;
