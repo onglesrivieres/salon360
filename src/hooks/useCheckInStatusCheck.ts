@@ -18,8 +18,8 @@ export function useCheckInStatusCheck(
   });
 
   const checkStatus = useCallback(async () => {
-    // Only restrict Receptionist and Supervisor roles
-    const restrictedRoles = ['Receptionist', 'Supervisor'];
+    // Only restrict Receptionist, Supervisor, and Technician roles
+    const restrictedRoles = ['Receptionist', 'Supervisor', 'Technician'];
     if (!restrictedRoles.includes(rolePermission ?? '') || !employeeId || !storeId) {
       setState({ isLoading: false, isCheckedIn: true });
       return;

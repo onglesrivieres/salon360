@@ -57,14 +57,14 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const canRemoveTechnicians = effectiveRole && Permissions.queue.canRemoveTechnicians(effectiveRole);
   const canReportViolations = session?.employee_id && selectedStoreId;
 
-  // Check if Receptionist/Supervisor is checked in (to block store switching)
+  // Check if Receptionist/Supervisor/Technician is checked in (to block store switching)
   const checkInStatus = useCheckInStatusCheck(
     session?.employee_id,
     selectedStoreId,
     session?.role_permission
   );
   const isCheckedInEmployee =
-    ['Receptionist', 'Supervisor'].includes(session?.role_permission ?? '') &&
+    ['Receptionist', 'Supervisor', 'Technician'].includes(session?.role_permission ?? '') &&
     checkInStatus.isCheckedIn;
   const canSwitchStores = !isCheckedInEmployee;
 
