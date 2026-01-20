@@ -1,3 +1,4 @@
+import { toZonedTime } from 'date-fns-tz';
 import { supabase } from './supabase';
 import { getCurrentTimezone } from './timezone';
 
@@ -43,9 +44,10 @@ export async function checkStoreWorkingHours(storeId: string): Promise<WorkingHo
     };
   }
 
-  const timezone = store.timezone || getCurrentTimezone();
+  // Use toZonedTime for reliable timezone conversion (fixes day-of-week miscalculation bug)
+  const timezone = getCurrentTimezone();
   const now = new Date();
-  const tzNow = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+  const tzNow = toZonedTime(now, timezone);
 
   const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const currentDay = days[tzNow.getDay()];
@@ -78,6 +80,18 @@ export async function checkStoreWorkingHours(storeId: string): Promise<WorkingHo
 
   const isWithinWorkingHours = currentTimeMinutes >= (openingTimeMinutes - EARLY_ACCESS_MINUTES) &&
                                currentTimeMinutes <= (closingTimeMinutes + LATE_ACCESS_MINUTES);
+
+  // Debug logging for working hours check
+  console.log('[WorkingHours]', {
+    storeId,
+    timezone,
+    currentDay,
+    currentTime: `${currentHour}:${String(currentMinute).padStart(2, '0')}`,
+    openingTime: openingTime.substring(0, 5),
+    closingTime: closingTime.substring(0, 5),
+    earlyAccessFrom: `${Math.floor((openingTimeMinutes - EARLY_ACCESS_MINUTES) / 60)}:${String((openingTimeMinutes - EARLY_ACCESS_MINUTES) % 60).padStart(2, '0')}`,
+    isWithinWorkingHours,
+  });
 
   return {
     isWithinWorkingHours,
