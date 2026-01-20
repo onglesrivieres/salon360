@@ -147,7 +147,7 @@ function AppContent() {
 
 
   if (showWelcome) {
-    return <HomePage onActionSelected={(action, session, storeId, hasMultipleStores, availableStoreIds) => {
+    return <HomePage onActionSelected={(action, session, storeId, hasMultipleStores, availableStoreIds, checkedInStoreId) => {
       // Check-in and Ready actions are handled entirely within HomePage
       if (action === 'checkin' || action === 'ready') {
         return;
@@ -160,8 +160,11 @@ function AppContent() {
         setSelectedAction(action);
         setShowWelcome(false);
 
-        // If user has multiple stores, show selection modal
-        if (hasMultipleStores && availableStoreIds && availableStoreIds.length > 1) {
+        // If already checked in at a store, auto-select it (skip modal)
+        if (checkedInStoreId && availableStoreIds?.includes(checkedInStoreId)) {
+          selectStore(checkedInStoreId);
+        } else if (hasMultipleStores && availableStoreIds && availableStoreIds.length > 1) {
+          // Not checked in - show store selection modal
           setAvailableStoreIds(availableStoreIds);
           setShowStoreModal(true);
         } else {
