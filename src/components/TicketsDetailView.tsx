@@ -13,6 +13,7 @@ import {
   getTimerStatus,
   TimerServiceItem
 } from '../lib/timerUtils';
+import { checkStoreWorkingHours } from '../lib/workingHours';
 
 interface TechnicianSummary {
   technician_id: string;
@@ -69,6 +70,7 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
   const [showDetails, setShowDetails] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [multiStoreEmployeeIds, setMultiStoreEmployeeIds] = useState<Set<string>>(new Set());
+  const [storeClosingTime, setStoreClosingTime] = useState<string | null>(null);
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
 
@@ -85,6 +87,30 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
     const interval = setInterval(() => setCurrentTime(new Date()), 30000);
     return () => clearInterval(interval);
   }, [summaries]);
+
+  // Fetch store closing time for "Last Ticket" detection
+  useEffect(() => {
+    async function fetchClosingTime() {
+      if (!selectedStoreId) return;
+      const result = await checkStoreWorkingHours(selectedStoreId);
+      setStoreClosingTime(result.closingTime);
+    }
+    fetchClosingTime();
+  }, [selectedStoreId]);
+
+  // Check if a ticket was opened within 45 minutes before store closing time
+  function isLastTicket(openedAt: string): boolean {
+    if (!storeClosingTime) return false;
+    const openedDate = new Date(openedAt);
+    const openedHour = openedDate.getHours();
+    const openedMin = openedDate.getMinutes();
+    const openedMinutes = openedHour * 60 + openedMin;
+    const [closeHour, closeMin] = storeClosingTime.split(':').map(Number);
+    const closingMinutes = closeHour * 60 + closeMin;
+    const LAST_TICKET_THRESHOLD = 45;
+    const thresholdMinutes = closingMinutes - LAST_TICKET_THRESHOLD;
+    return openedMinutes >= thresholdMinutes && openedMinutes < closingMinutes;
+  }
 
   // Group items by ticket for multi-service display
   function groupItemsByTicket(items: ServiceItemDetail[]): TicketGroup[] {
@@ -544,15 +570,18 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
                                 const svcDuration = calculateServiceDuration(timerItem, currentTime);
                                 const timerStatus = getTimerStatus(timerItem);
                                 const completionStatus = getItemCompletionStatus(item);
+                                const isLast = isLastTicket(item.opened_at);
                                 const timerColor = timerStatus === 'active'
                                   ? 'bg-blue-100 text-blue-800'
-                                  : completionStatus === 'on_time'
-                                    ? 'bg-green-100 text-green-800'
-                                    : completionStatus === 'moderate_deviation'
-                                      ? 'bg-amber-100 text-amber-800'
-                                      : completionStatus === 'extreme_deviation'
-                                        ? 'bg-red-100 text-red-800'
-                                        : 'bg-gray-100 text-gray-800';
+                                  : isLast
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : completionStatus === 'on_time'
+                                      ? 'bg-green-100 text-green-800'
+                                      : completionStatus === 'moderate_deviation'
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : completionStatus === 'extreme_deviation'
+                                          ? 'bg-red-100 text-red-800'
+                                          : 'bg-gray-100 text-gray-800';
                                 return (
                                   <div key={svcIndex} className="flex justify-between items-center">
                                     <span className="text-[9px] font-semibold text-gray-900">
@@ -597,15 +626,18 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
                       const svcDuration = calculateServiceDuration(timerItem, currentTime);
                       const timerStatus = getTimerStatus(timerItem);
                       const completionStatus = getItemCompletionStatus(item);
+                      const isLast = isLastTicket(item.opened_at);
                       const timerColor = timerStatus === 'active'
                         ? 'bg-blue-100 text-blue-800'
-                        : completionStatus === 'on_time'
-                          ? 'bg-green-100 text-green-800'
-                          : completionStatus === 'moderate_deviation'
-                            ? 'bg-amber-100 text-amber-800'
-                            : completionStatus === 'extreme_deviation'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-800';
+                        : isLast
+                          ? 'bg-purple-100 text-purple-800'
+                          : completionStatus === 'on_time'
+                            ? 'bg-green-100 text-green-800'
+                            : completionStatus === 'moderate_deviation'
+                              ? 'bg-amber-100 text-amber-800'
+                              : completionStatus === 'extreme_deviation'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100 text-gray-800';
                       const totalRevenue = item.service_revenue + item.addon_revenue;
 
                       return (
