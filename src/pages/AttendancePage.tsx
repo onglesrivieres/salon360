@@ -404,6 +404,9 @@ export function AttendancePage() {
 
   const calendarDays = getCalendarDays();
   const summary = processAttendanceData();
+  const hasOvertimeEmployees = Object.values(summary).some(
+    employee => employee.payType === 'hourly' && employee.countOt
+  );
   const { startDate, endDate } = getDateRange();
 
   // Parse dates properly to avoid timezone issues
@@ -693,13 +696,15 @@ export function AttendancePage() {
             </div>
             <span className="text-[10px] text-gray-600">Auto check-out time</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-14 h-8 bg-gray-100 rounded flex flex-col items-center justify-center border border-gray-300">
-              <span className="text-[7px] font-semibold">8.00</span>
-              <span className="text-[7px] font-semibold text-orange-600">+1.50 OT</span>
+          {hasOvertimeEmployees && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-14 h-8 bg-gray-100 rounded flex flex-col items-center justify-center border border-gray-300">
+                <span className="text-[7px] font-semibold">8.00</span>
+                <span className="text-[7px] font-semibold text-orange-600">+1.50 OT</span>
+              </div>
+              <span className="text-[10px] text-gray-600">Overtime (hourly employees)</span>
             </div>
-            <span className="text-[10px] text-gray-600">Overtime (hourly employees)</span>
-          </div>
+          )}
         </div>
       </div>
 
