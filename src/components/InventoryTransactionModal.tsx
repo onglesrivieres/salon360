@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { X, Plus, Trash2, Check } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { NumericInput } from './ui/NumericInput';
+import { SearchableSelect, SearchableSelectOption } from './ui/SearchableSelect';
 import { useToast } from './ui/Toast';
 import { supabase, InventoryItem, Technician, PurchaseUnit, Supplier } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -82,6 +83,17 @@ export function InventoryTransactionModal({
   const [purchaseUnits, setPurchaseUnits] = useState<Record<string, PurchaseUnit[]>>({});
   const [pendingPurchaseUnits, setPendingPurchaseUnits] = useState<PendingPurchaseUnit[]>([]);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
+
+  // Create a map of master items for grouping sub-items
+  const masterItemsMap = useMemo(() => {
+    const map = new Map<string, InventoryItem>();
+    inventoryItems.forEach(item => {
+      if (item.is_master_item) {
+        map.set(item.id, item);
+      }
+    });
+    return map;
+  }, [inventoryItems]);
 
   useEffect(() => {
     if (isOpen && selectedStoreId) {
@@ -1034,25 +1046,22 @@ export function InventoryTransactionModal({
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Item {index === 0 && <span className="text-red-500">*</span>}
                       </label>
-                      <Select
+                      <SearchableSelect
                         value={item.item_id}
-                        onChange={(e) => handleItemDropdownChange(index, e.target.value)}
+                        onChange={(value) => handleItemDropdownChange(index, value)}
+                        placeholder="Search items..."
                         required={index === 0}
                         className="text-sm"
-                      >
-                        <option value="">Select Item</option>
-                        <option value="__add_new__" className="text-blue-600 font-medium">
-                          + Add New Item
-                        </option>
-                        {filteredInventoryItems.length > 0 && (
-                          <option disabled>──────────</option>
-                        )}
-                        {filteredInventoryItems.map((invItem) => (
-                          <option key={invItem.id} value={invItem.id}>
-                            {invItem.name}{invItem.brand ? ` - ${invItem.brand}` : ''}
-                          </option>
-                        ))}
-                      </Select>
+                        allowAddNew={true}
+                        onAddNew={() => setShowAddItemModal(true)}
+                        addNewLabel="+ Add New Item"
+                        options={filteredInventoryItems.map((invItem): SearchableSelectOption => ({
+                          value: invItem.id,
+                          label: invItem.name,
+                          description: invItem.brand || undefined,
+                          groupLabel: invItem.parent_id ? masterItemsMap.get(invItem.parent_id)?.name : undefined,
+                        }))}
+                      />
                       {item.item_id && transactionType === 'out' && (
                         <p className="text-xs text-gray-500 mt-1">
                           Available: {getAvailableStock(item.item_id)}

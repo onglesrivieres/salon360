@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { X, PackagePlus, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { PackagePlus, AlertCircle } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { NumericInput } from './ui/NumericInput';
 import { Select } from './ui/Select';
+import { SearchableSelect, SearchableSelectOption } from './ui/SearchableSelect';
 import { useToast } from './ui/Toast';
 import { supabase, InventoryItem, Technician } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -170,6 +171,29 @@ export function EmployeeDistributionModal({
 
   const selectedItem = inventoryItems.find((i) => i.id === itemId);
 
+  // Create a map of master items for grouping sub-items
+  const masterItemsMap = useMemo(() => {
+    const map = new Map<string, InventoryItem>();
+    inventoryItems.forEach(item => {
+      if (item.is_master_item) {
+        map.set(item.id, item);
+      }
+    });
+    return map;
+  }, [inventoryItems]);
+
+  // Filter and transform items for searchable select
+  const itemOptions: SearchableSelectOption[] = useMemo(() => {
+    return inventoryItems
+      .filter(item => !item.is_master_item)
+      .map(item => ({
+        value: item.id,
+        label: item.name,
+        description: item.brand ? `${item.brand} (${item.quantity_on_hand} ${item.unit})` : `(${item.quantity_on_hand} ${item.unit})`,
+        groupLabel: item.parent_id ? masterItemsMap.get(item.parent_id)?.name : undefined,
+      }));
+  }, [inventoryItems, masterItemsMap]);
+
   return (
     <Modal
       isOpen={isOpen}
@@ -192,20 +216,13 @@ export function EmployeeDistributionModal({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Inventory Item <span className="text-red-500">*</span>
           </label>
-          <Select
+          <SearchableSelect
             value={itemId}
-            onChange={(e) => setItemId(e.target.value)}
+            onChange={setItemId}
+            placeholder="Search items..."
             required
-          >
-            <option value="">Select Item</option>
-            {inventoryItems
-              .filter(item => !item.is_master_item)  // Exclude master items
-              .map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name} (Available: {item.quantity_on_hand} {item.unit})
-              </option>
-            ))}
-          </Select>
+            options={itemOptions}
+          />
           {selectedItem && (
             <p className="text-xs text-gray-500 mt-1">
               Category: {selectedItem.category} | Available: {availableQuantity} {selectedItem.unit}
