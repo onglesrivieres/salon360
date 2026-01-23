@@ -198,7 +198,9 @@ export function EmployeeDistributionModal({
             required
           >
             <option value="">Select Item</option>
-            {inventoryItems.map((item) => (
+            {inventoryItems
+              .filter(item => !item.is_master_item)  // Exclude master items
+              .map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name} (Available: {item.quantity_on_hand} {item.unit})
               </option>

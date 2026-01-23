@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Package,
   Plus,
@@ -15,13 +15,15 @@ import {
   Table2,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
   Filter,
   X,
   Building2,
   Power,
   PowerOff,
+  Eye,
 } from 'lucide-react';
-import { supabase, InventoryItem, InventoryTransactionWithDetails, Supplier } from '../lib/supabase';
+import { supabase, InventoryItem, InventoryItemWithHierarchy, InventoryTransactionWithDetails, Supplier } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
@@ -64,6 +66,9 @@ export function InventoryPage() {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+  const [expandedMasterItems, setExpandedMasterItems] = useState<Set<string>>(new Set());
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+  const [purchaseUnits, setPurchaseUnits] = useState<Record<string, { unit_name: string; multiplier: number }>>({});
   const { showToast } = useToast();
   const { selectedStoreId, session } = useAuth();
 
@@ -91,22 +96,52 @@ export function InventoryPage() {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('inventory_items')
-        .select('*')
-        .eq('store_id', selectedStoreId)
-        .eq('is_active', true)
-        .order('created_at');
 
-      if (error) throw error;
+      // Fetch items and default purchase units in parallel
+      const [itemsResult, purchaseUnitsResult] = await Promise.all([
+        supabase
+          .from('inventory_items')
+          .select('*')
+          .eq('store_id', selectedStoreId)
+          .eq('is_active', true)
+          .order('created_at'),
+        supabase
+          .from('store_product_purchase_units')
+          .select('item_id, unit_name, multiplier')
+          .eq('store_id', selectedStoreId)
+          .eq('is_default', true)
+      ]);
 
-      setItems(data || []);
+      if (itemsResult.error) throw itemsResult.error;
+
+      // Build purchase units lookup
+      const unitsLookup: Record<string, { unit_name: string; multiplier: number }> = {};
+      if (purchaseUnitsResult.data) {
+        for (const unit of purchaseUnitsResult.data) {
+          unitsLookup[unit.item_id] = { unit_name: unit.unit_name, multiplier: unit.multiplier };
+        }
+      }
+      setPurchaseUnits(unitsLookup);
+
+      setItems(itemsResult.data || []);
     } catch (error) {
       console.error('Error fetching items:', error);
       showToast('Failed to load inventory items', 'error');
     } finally {
       setLoading(false);
     }
+  }
+
+  function toggleMasterItem(masterId: string) {
+    setExpandedMasterItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(masterId)) {
+        newSet.delete(masterId);
+      } else {
+        newSet.add(masterId);
+      }
+      return newSet;
+    });
   }
 
   async function fetchTransactions() {
@@ -245,7 +280,28 @@ export function InventoryPage() {
     setStatusFilter('');
   }
 
-  const filteredItems = items.filter((item) => {
+  // Organize items into hierarchy
+  const masterItems = items.filter(item => item.is_master_item);
+  const subItems = items.filter(item => item.parent_id);
+  const standaloneItems = items.filter(item => !item.is_master_item && !item.parent_id);
+
+  // Build hierarchical items with sub-items attached
+  const hierarchicalItems: InventoryItemWithHierarchy[] = masterItems.map(master => {
+    const children = subItems.filter(sub => sub.parent_id === master.id);
+    const totalQty = children.reduce((sum, sub) => sum + sub.quantity_on_hand, 0);
+    const hasLowStock = children.some(sub => sub.quantity_on_hand <= sub.reorder_level);
+    return {
+      ...master,
+      sub_items: children,
+      total_sub_item_quantity: totalQty,
+      has_low_stock_sub_items: hasLowStock,
+    };
+  });
+
+  // Combine master items with standalone items for display
+  const displayItems: InventoryItemWithHierarchy[] = [...hierarchicalItems, ...standaloneItems];
+
+  const filteredItems = displayItems.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.supplier && item.supplier.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -253,7 +309,14 @@ export function InventoryPage() {
     const matchesCategory = !categoryFilter || item.category === categoryFilter;
     const matchesSupplier = !supplierFilter || item.supplier === supplierFilter;
     const matchesBrand = !brandFilter || item.brand === brandFilter;
-    return matchesSearch && matchesCategory && matchesSupplier && matchesBrand;
+
+    // Low stock filter - for master items, check if any sub-item is low
+    const isLowStock = item.is_master_item
+      ? item.has_low_stock_sub_items
+      : item.quantity_on_hand <= item.reorder_level;
+    const matchesLowStock = !showLowStockOnly || isLowStock;
+
+    return matchesSearch && matchesCategory && matchesSupplier && matchesBrand && matchesLowStock;
   });
 
   const sortedItems = sortColumn ? [...filteredItems].sort((a, b) => {
@@ -289,7 +352,8 @@ export function InventoryPage() {
   const categories = Array.from(new Set(items.map((item) => item.category))).sort();
   const supplierNames = Array.from(new Set(items.map((item) => item.supplier).filter(Boolean))).sort();
   const brands = Array.from(new Set(items.map((item) => item.brand).filter(Boolean))).sort();
-  const lowStockItems = items.filter((item) => item.quantity_on_hand <= item.reorder_level);
+  // Low stock items - exclude master items (they don't have direct inventory)
+  const lowStockItems = items.filter((item) => !item.is_master_item && item.quantity_on_hand <= item.reorder_level);
 
   if (!selectedStoreId) {
     return (
@@ -311,8 +375,19 @@ export function InventoryPage() {
       </div>
 
       {lowStockItems.length > 0 && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-3">
+          <button
+            onClick={() => setShowLowStockOnly(!showLowStockOnly)}
+            className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
+              showLowStockOnly
+                ? 'bg-amber-600 text-white'
+                : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+            }`}
+          >
+            <Eye className="w-4 h-4" />
+            {showLowStockOnly ? 'Show All' : 'View'}
+          </button>
+          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
           <div>
             <p className="font-medium text-amber-900">Low Stock Alert</p>
             <p className="text-sm text-amber-700">
@@ -693,10 +768,15 @@ export function InventoryPage() {
                       onClick={() => handleSort('quantity_on_hand')}
                     >
                       <div className="flex items-center justify-end gap-1">
-                        Qty On Hand
+                        Qty (Store)
                         {sortColumn === 'quantity_on_hand' && (
                           sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
                         )}
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <div className="flex items-center justify-end gap-1">
+                        Qty (Lot)
                       </div>
                     </th>
                     <th
@@ -739,52 +819,141 @@ export function InventoryPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {sortedItems.map((item) => {
-                    const isLowStock = item.quantity_on_hand <= item.reorder_level;
-                    const totalValue = item.quantity_on_hand * item.unit_cost;
+                    const hierarchyItem = item as InventoryItemWithHierarchy;
+                    const isMasterItem = item.is_master_item;
+                    const isExpanded = expandedMasterItems.has(item.id);
+                    const isLowStock = isMasterItem
+                      ? hierarchyItem.has_low_stock_sub_items
+                      : item.quantity_on_hand <= item.reorder_level;
+
+                    // For master items, use aggregated values
+                    const displayQty = isMasterItem
+                      ? hierarchyItem.total_sub_item_quantity || 0
+                      : item.quantity_on_hand;
+                    const totalValue = displayQty * item.unit_cost;
+
+                    // Calculate lot quantity using default purchase unit
+                    const defaultUnit = purchaseUnits[item.id];
+                    const lotQty = defaultUnit
+                      ? (displayQty / defaultUnit.multiplier).toFixed(1)
+                      : null;
 
                     return (
-                      <tr
-                        key={item.id}
-                        className={`hover:bg-gray-50 ${isLowStock ? 'bg-amber-50' : ''}`}
-                      >
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                          {item.name}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-center">
-                          <Badge variant="default">{item.category}</Badge>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {item.supplier}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {item.brand || '-'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" title={item.description}>
-                          {item.description || '-'}
-                        </td>
-                        <td className={`px-4 py-3 text-sm text-right font-semibold ${isLowStock ? 'text-amber-600' : 'text-gray-900'}`}>
-                          {item.quantity_on_hand} {item.unit}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-900">
-                          {item.reorder_level} {item.unit}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right text-gray-900">
-                          ${item.unit_cost.toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
-                          ${totalValue.toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-center">
-                          {canEditItems && (
-                            <button
-                              onClick={() => handleEditItem(item)}
-                              className="text-blue-600 hover:text-blue-800"
+                      <React.Fragment key={item.id}>
+                        <tr
+                          className={`hover:bg-gray-50 ${isLowStock ? 'bg-amber-50' : ''} ${isMasterItem ? 'cursor-pointer' : ''}`}
+                          onClick={() => isMasterItem && toggleMasterItem(item.id)}
+                        >
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                            <div className="flex items-center gap-2">
+                              {isMasterItem && (
+                                <span className="text-gray-400">
+                                  {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                </span>
+                              )}
+                              <span className={isMasterItem ? 'font-semibold' : ''}>
+                                {item.name}
+                              </span>
+                              {isMasterItem && hierarchyItem.sub_items && (
+                                <Badge variant="default" className="text-xs">
+                                  {hierarchyItem.sub_items.length} variants
+                                </Badge>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-center">
+                            <Badge variant="default">{item.category}</Badge>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {isMasterItem ? '-' : item.supplier}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {isMasterItem ? '-' : (item.brand || '-')}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" title={item.description}>
+                            {item.description || '-'}
+                          </td>
+                          <td className={`px-4 py-3 text-sm text-right font-semibold ${isLowStock ? 'text-amber-600' : 'text-gray-900'}`}>
+                            {displayQty} {item.unit}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right text-gray-600">
+                            {lotQty ? `${lotQty} ${defaultUnit?.unit_name || ''}` : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right text-gray-900">
+                            {isMasterItem ? '-' : item.reorder_level + ' ' + item.unit}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right text-gray-900">
+                            ${item.unit_cost.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
+                            ${totalValue.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-center">
+                            {canEditItems && !isMasterItem && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleEditItem(item); }}
+                                className="text-blue-600 hover:text-blue-800"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                        {/* Sub-items for expanded master items */}
+                        {isMasterItem && isExpanded && hierarchyItem.sub_items?.map((subItem) => {
+                          const subIsLowStock = subItem.quantity_on_hand <= subItem.reorder_level;
+                          const subTotalValue = subItem.quantity_on_hand * subItem.unit_cost;
+                          const subDefaultUnit = purchaseUnits[subItem.id];
+                          const subLotQty = subDefaultUnit
+                            ? (subItem.quantity_on_hand / subDefaultUnit.multiplier).toFixed(1)
+                            : null;
+
+                          return (
+                            <tr
+                              key={subItem.id}
+                              className={`bg-gray-50/50 hover:bg-gray-100 ${subIsLowStock ? 'bg-amber-50/50' : ''}`}
                             >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
+                              <td className="px-4 py-2 text-sm text-gray-700 pl-10">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+                                  {subItem.color_code && <span className="font-medium">{subItem.color_code}</span>}
+                                  {subItem.size && <span className="text-gray-500">({subItem.size})</span>}
+                                  {!subItem.color_code && !subItem.size && <span>{subItem.name}</span>}
+                                </div>
+                              </td>
+                              <td className="px-4 py-2 text-sm text-center text-gray-500">-</td>
+                              <td className="px-4 py-2 text-sm text-gray-600">{subItem.supplier}</td>
+                              <td className="px-4 py-2 text-sm text-gray-600">{subItem.brand || '-'}</td>
+                              <td className="px-4 py-2 text-sm text-gray-500 max-w-xs truncate">{subItem.description || '-'}</td>
+                              <td className={`px-4 py-2 text-sm text-right font-medium ${subIsLowStock ? 'text-amber-600' : 'text-gray-700'}`}>
+                                {subItem.quantity_on_hand} {subItem.unit}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-right text-gray-500">
+                                {subLotQty ? `${subLotQty} ${subDefaultUnit?.unit_name || ''}` : '-'}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-right text-gray-600">
+                                {subItem.reorder_level} {subItem.unit}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-right text-gray-600">
+                                ${subItem.unit_cost.toFixed(2)}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-right font-medium text-gray-700">
+                                ${subTotalValue.toFixed(2)}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-center">
+                                {canEditItems && (
+                                  <button
+                                    onClick={() => handleEditItem(subItem)}
+                                    className="text-blue-600 hover:text-blue-800"
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>

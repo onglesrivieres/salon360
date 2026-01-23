@@ -10,6 +10,7 @@ import { supabase, InventoryItem, Technician, PurchaseUnit, Supplier } from '../
 import { useAuth } from '../contexts/AuthContext';
 import { InventoryItemModal } from './InventoryItemModal';
 import { UNITS } from '../lib/inventory-constants';
+import { Permissions } from '../lib/permissions';
 
 interface InventoryTransactionModalProps {
   isOpen: boolean;
@@ -561,6 +562,9 @@ export function InventoryTransactionModal({
       }
     }
 
+    // Admin can self-approve - skip manager approval requirement
+    const canSelfApprove = session.role && Permissions.inventory.canSelfApprove(session.role);
+
     const { data: transactionResult, error: transactionError } = await supabase.rpc(
       'create_inventory_transaction_atomic',
       {
@@ -571,7 +575,7 @@ export function InventoryTransactionModal({
         p_supplier_id: transactionType === 'in' && supplierId ? supplierId : null,
         p_invoice_reference: transactionType === 'in' && invoiceReference ? invoiceReference.trim() : null,
         p_notes: notes.trim(),
-        p_requires_manager_approval: true,
+        p_requires_manager_approval: !canSelfApprove,  // Admin doesn't require approval
         p_requires_recipient_approval: transactionType === 'out',
       }
     );
@@ -1009,11 +1013,16 @@ export function InventoryTransactionModal({
               const selectedPurchaseUnit = itemPurchaseUnits.find(u => u.id === item.purchase_unit_id);
 
               const selectedSupplier = suppliers.find(s => s.id === supplierId);
-              const filteredInventoryItems = transactionType === 'in' && selectedSupplier
-                ? inventoryItems.filter(invItem =>
-                    invItem.supplier?.toLowerCase() === selectedSupplier.name.toLowerCase()
-                  )
-                : inventoryItems;
+              // Filter out master items (they can't have transactions) and optionally filter by supplier
+              const filteredInventoryItems = inventoryItems.filter(invItem => {
+                // Exclude master items - only sub-items and standalone items can have transactions
+                if (invItem.is_master_item) return false;
+                // For 'in' transactions with selected supplier, filter by supplier
+                if (transactionType === 'in' && selectedSupplier) {
+                  return invItem.supplier?.toLowerCase() === selectedSupplier.name.toLowerCase();
+                }
+                return true;
+              });
 
               return (
                 <div
