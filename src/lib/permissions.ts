@@ -105,7 +105,7 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
     },
     canApprove: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Technician', 'Supervisor', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Technician', 'Supervisor', 'Owner', 'Manager']);
     },
     canViewPendingApprovals: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Supervisor', 'Owner', 'Manager']);
