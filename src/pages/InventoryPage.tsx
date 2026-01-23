@@ -22,8 +22,9 @@ import {
   Power,
   PowerOff,
   Eye,
+  Calendar,
 } from 'lucide-react';
-import { supabase, InventoryItem, InventoryItemWithHierarchy, InventoryTransactionWithDetails, Supplier } from '../lib/supabase';
+import { supabase, InventoryItem, InventoryItemWithHierarchy, InventoryTransactionWithDetails, Supplier, InventoryPurchaseLotWithDetails } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
@@ -35,12 +36,14 @@ import { InventoryTransactionModal } from '../components/InventoryTransactionMod
 import { EmployeeDistributionModal } from '../components/EmployeeDistributionModal';
 import { SupplierModal } from '../components/SupplierModal';
 import { TransactionDetailModal } from '../components/TransactionDetailModal';
-import { formatDateTimeEST } from '../lib/timezone';
+import { formatDateTimeEST, formatDateEST } from '../lib/timezone';
 
 type Tab = 'items' | 'transactions' | 'lots' | 'distributions' | 'suppliers';
 type ViewMode = 'grid' | 'table';
 type SortColumn = 'supplier' | 'brand' | 'name' | 'category' | 'quantity_on_hand' | 'reorder_level' | 'unit_cost' | 'total_value';
 type SortDirection = 'asc' | 'desc';
+type LotSortColumn = 'lot_number' | 'item_name' | 'quantity_remaining' | 'unit_cost' | 'purchase_date' | 'status';
+type LotStatus = 'active' | 'depleted' | 'expired' | 'archived';
 
 export function InventoryPage() {
   const [activeTab, setActiveTab] = useState<Tab>('items');
@@ -69,6 +72,21 @@ export function InventoryPage() {
   const [expandedMasterItems, setExpandedMasterItems] = useState<Set<string>>(new Set());
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [purchaseUnits, setPurchaseUnits] = useState<Record<string, { unit_name: string; multiplier: number }>>({});
+
+  // Lots tab state
+  const [lots, setLots] = useState<InventoryPurchaseLotWithDetails[]>([]);
+  const [lotsLoading, setLotsLoading] = useState(false);
+  const [lotSearchQuery, setLotSearchQuery] = useState('');
+  const [lotItemFilter, setLotItemFilter] = useState('');
+  const [lotSupplierFilter, setLotSupplierFilter] = useState('');
+  const [lotStatusFilter, setLotStatusFilter] = useState<LotStatus | ''>('');
+  const [lotDateRangeStart, setLotDateRangeStart] = useState('');
+  const [lotDateRangeEnd, setLotDateRangeEnd] = useState('');
+  const [lotSortColumn, setLotSortColumn] = useState<LotSortColumn | null>('purchase_date');
+  const [lotSortDirection, setLotSortDirection] = useState<SortDirection>('desc');
+  const [expandedLotIds, setExpandedLotIds] = useState<Set<string>>(new Set());
+  const [isLotFilterPanelOpen, setIsLotFilterPanelOpen] = useState(false);
+
   const { showToast } = useToast();
   const { selectedStoreId, session } = useAuth();
 
@@ -87,6 +105,13 @@ export function InventoryPage() {
       fetchSuppliers();
     }
   }, [selectedStoreId]);
+
+  // Fetch lots when tab changes to 'lots' (lazy loading)
+  useEffect(() => {
+    if (activeTab === 'lots' && selectedStoreId && canDistribute && lots.length === 0) {
+      fetchLots();
+    }
+  }, [activeTab, selectedStoreId, canDistribute]);
 
   async function fetchItems() {
     if (!selectedStoreId) {
@@ -190,6 +215,54 @@ export function InventoryPage() {
     } catch (error) {
       console.error('Error fetching suppliers:', error);
       showToast('Failed to load suppliers', 'error');
+    }
+  }
+
+  async function fetchLots() {
+    if (!selectedStoreId) return;
+
+    try {
+      setLotsLoading(true);
+
+      const { data, error } = await supabase
+        .from('inventory_purchase_lots')
+        .select(`
+          *,
+          inventory_items!item_id (
+            id,
+            name,
+            category,
+            unit,
+            brand
+          ),
+          suppliers (
+            id,
+            name
+          ),
+          created_by:employees!created_by_id (
+            display_name
+          )
+        `)
+        .eq('store_id', selectedStoreId)
+        .order('purchase_date', { ascending: false });
+
+      if (error) throw error;
+
+      // Map to InventoryPurchaseLotWithDetails
+      const lotsWithDetails: InventoryPurchaseLotWithDetails[] = (data || []).map((lot: any) => ({
+        ...lot,
+        item_name: lot.inventory_items?.name || 'Unknown Item',
+        item: lot.inventory_items,
+        supplier_name: lot.suppliers?.name || null,
+        created_by_name: lot.created_by?.display_name || null,
+      }));
+
+      setLots(lotsWithDetails);
+    } catch (error) {
+      console.error('Error fetching lots:', error);
+      showToast('Failed to load purchase lots', 'error');
+    } finally {
+      setLotsLoading(false);
     }
   }
 
@@ -348,6 +421,149 @@ export function InventoryPage() {
     if (!statusFilter) return true;
     return t.status === statusFilter;
   });
+
+  // Lots filtering
+  const filteredLots = lots.filter((lot) => {
+    // Search filter - lot number or item name
+    const matchesSearch = !lotSearchQuery ||
+      lot.lot_number.toLowerCase().includes(lotSearchQuery.toLowerCase()) ||
+      lot.item_name?.toLowerCase().includes(lotSearchQuery.toLowerCase());
+
+    // Item filter
+    const matchesItem = !lotItemFilter || lot.item_id === lotItemFilter;
+
+    // Supplier filter
+    const matchesSupplier = !lotSupplierFilter || lot.supplier_id === lotSupplierFilter;
+
+    // Status filter
+    const matchesStatus = !lotStatusFilter || lot.status === lotStatusFilter;
+
+    // Date range filter
+    let matchesDateRange = true;
+    if (lotDateRangeStart && lot.purchase_date) {
+      matchesDateRange = new Date(lot.purchase_date) >= new Date(lotDateRangeStart);
+    }
+    if (lotDateRangeEnd && lot.purchase_date && matchesDateRange) {
+      matchesDateRange = new Date(lot.purchase_date) <= new Date(lotDateRangeEnd + 'T23:59:59');
+    }
+
+    return matchesSearch && matchesItem && matchesSupplier && matchesStatus && matchesDateRange;
+  });
+
+  // Lots sorting
+  const sortedLots = lotSortColumn ? [...filteredLots].sort((a, b) => {
+    let aVal: any;
+    let bVal: any;
+
+    switch (lotSortColumn) {
+      case 'lot_number':
+        aVal = a.lot_number;
+        bVal = b.lot_number;
+        break;
+      case 'item_name':
+        aVal = a.item_name || '';
+        bVal = b.item_name || '';
+        break;
+      case 'quantity_remaining':
+        aVal = a.quantity_remaining;
+        bVal = b.quantity_remaining;
+        break;
+      case 'unit_cost':
+        aVal = a.unit_cost;
+        bVal = b.unit_cost;
+        break;
+      case 'purchase_date':
+        aVal = new Date(a.purchase_date).getTime();
+        bVal = new Date(b.purchase_date).getTime();
+        break;
+      case 'status':
+        aVal = a.status;
+        bVal = b.status;
+        break;
+      default:
+        aVal = a.purchase_date;
+        bVal = b.purchase_date;
+    }
+
+    if (aVal == null) return 1;
+    if (bVal == null) return -1;
+
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+
+    if (aVal < bVal) return lotSortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return lotSortDirection === 'asc' ? 1 : -1;
+    return 0;
+  }) : filteredLots;
+
+  // Calculate lot statistics
+  const lotStats = {
+    totalActiveLots: lots.filter(l => l.status === 'active').length,
+    totalValue: lots
+      .filter(l => l.status === 'active')
+      .reduce((sum, lot) => sum + (lot.quantity_remaining * lot.unit_cost), 0),
+    expiringLots: lots.filter(l => {
+      if (!l.expiration_date || l.status !== 'active') return false;
+      const daysUntilExpiry = Math.ceil(
+        (new Date(l.expiration_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      );
+      return daysUntilExpiry > 0 && daysUntilExpiry <= 30;
+    }).length,
+    lowQuantityLots: lots.filter(l =>
+      l.status === 'active' && l.quantity_remaining <= l.quantity_received * 0.1
+    ).length,
+  };
+
+  // Get unique items and suppliers from lots for filter dropdowns
+  const lotItemOptions = Array.from(
+    new Map(lots.map(l => [l.item_id, { id: l.item_id, name: l.item_name }])).values()
+  ).filter(item => item.name).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  const lotSupplierOptions = Array.from(
+    new Map(
+      lots.filter(l => l.supplier_id && l.supplier_name)
+        .map(l => [l.supplier_id, { id: l.supplier_id!, name: l.supplier_name! }])
+    ).values()
+  ).sort((a, b) => a.name.localeCompare(b.name));
+
+  // Lot helper functions
+  function handleLotSort(column: LotSortColumn) {
+    if (lotSortColumn === column) {
+      setLotSortDirection(lotSortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setLotSortColumn(column);
+      setLotSortDirection('asc');
+    }
+  }
+
+  function toggleLotExpand(lotId: string) {
+    const newExpanded = new Set(expandedLotIds);
+    if (newExpanded.has(lotId)) {
+      newExpanded.delete(lotId);
+    } else {
+      newExpanded.add(lotId);
+    }
+    setExpandedLotIds(newExpanded);
+  }
+
+  function getLotActiveFilterCount(): number {
+    let count = 0;
+    if (lotItemFilter) count++;
+    if (lotSupplierFilter) count++;
+    if (lotStatusFilter) count++;
+    if (lotDateRangeStart || lotDateRangeEnd) count++;
+    return count;
+  }
+
+  function clearLotFilters() {
+    setLotItemFilter('');
+    setLotSupplierFilter('');
+    setLotStatusFilter('');
+    setLotDateRangeStart('');
+    setLotDateRangeEnd('');
+  }
 
   const categories = Array.from(new Set(items.map((item) => item.category))).sort();
   const supplierNames = Array.from(new Set(items.map((item) => item.supplier).filter(Boolean))).sort();
@@ -1142,15 +1358,406 @@ export function InventoryPage() {
       )}
 
       {activeTab === 'lots' && (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-          <PackagePlus className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Purchase Lots</h3>
-          <p className="text-gray-500 mb-4">
-            View all purchase lots with FIFO cost tracking
-          </p>
-          <p className="text-sm text-gray-400">
-            Full lot tracking interface coming soon
-          </p>
+        <div>
+          {/* Summary Stats Cards */}
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center gap-2 text-gray-600 mb-1">
+                <PackagePlus className="w-4 h-4" />
+                <span className="text-sm">Active Lots</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{lotStats.totalActiveLots}</p>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center gap-2 text-gray-600 mb-1">
+                <Package className="w-4 h-4" />
+                <span className="text-sm">Total Value</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">${lotStats.totalValue.toFixed(2)}</p>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center gap-2 text-gray-600 mb-1">
+                <Calendar className="w-4 h-4" />
+                <span className="text-sm">Expiring Soon</span>
+              </div>
+              <p className={`text-2xl font-bold ${lotStats.expiringLots > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
+                {lotStats.expiringLots}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center gap-2 text-gray-600 mb-1">
+                <AlertTriangle className="w-4 h-4" />
+                <span className="text-sm">Low Quantity</span>
+              </div>
+              <p className={`text-2xl font-bold ${lotStats.lowQuantityLots > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
+                {lotStats.lowQuantityLots}
+              </p>
+            </div>
+          </div>
+
+          {/* Filters Row */}
+          <div className="mb-4 flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input
+                value={lotSearchQuery}
+                onChange={(e) => setLotSearchQuery(e.target.value)}
+                placeholder="Search by lot number or item name..."
+                className="pl-10"
+              />
+            </div>
+
+            <div className="relative">
+              <button
+                onClick={() => setIsLotFilterPanelOpen(!isLotFilterPanelOpen)}
+                className={`px-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 ${
+                  getLotActiveFilterCount() > 0
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Filter className="w-4 h-4" />
+                <span>Filters</span>
+                {getLotActiveFilterCount() > 0 && (
+                  <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full">
+                    {getLotActiveFilterCount()}
+                  </span>
+                )}
+              </button>
+
+              {isLotFilterPanelOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsLotFilterPanelOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
+                        <button
+                          onClick={() => setIsLotFilterPanelOpen(false)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Item</label>
+                        <select
+                          value={lotItemFilter}
+                          onChange={(e) => setLotItemFilter(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">All Items</option>
+                          {lotItemOptions.map((item) => (
+                            <option key={item.id} value={item.id}>{item.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Supplier</label>
+                        <select
+                          value={lotSupplierFilter}
+                          onChange={(e) => setLotSupplierFilter(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">All Suppliers</option>
+                          {lotSupplierOptions.map((supplier) => (
+                            <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                        <select
+                          value={lotStatusFilter}
+                          onChange={(e) => setLotStatusFilter(e.target.value as LotStatus | '')}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">All Status</option>
+                          <option value="active">Active</option>
+                          <option value="depleted">Depleted</option>
+                          <option value="expired">Expired</option>
+                          <option value="archived">Archived</option>
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">From Date</label>
+                          <input
+                            type="date"
+                            value={lotDateRangeStart}
+                            onChange={(e) => setLotDateRangeStart(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">To Date</label>
+                          <input
+                            type="date"
+                            value={lotDateRangeEnd}
+                            onChange={(e) => setLotDateRangeEnd(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+
+                      {getLotActiveFilterCount() > 0 && (
+                        <button
+                          onClick={clearLotFilters}
+                          className="w-full px-3 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        >
+                          Clear All Filters
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <Button
+              variant="secondary"
+              onClick={() => fetchLots()}
+              className="whitespace-nowrap"
+            >
+              Refresh
+            </Button>
+          </div>
+
+          {/* Lots Table */}
+          {lotsLoading ? (
+            <div className="text-center py-12 text-gray-500">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <p className="mt-2">Loading purchase lots...</p>
+            </div>
+          ) : sortedLots.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 bg-white rounded-lg border border-gray-200">
+              <PackagePlus className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p>
+                {lotSearchQuery || getLotActiveFilterCount() > 0
+                  ? 'No lots match your filters'
+                  : 'No purchase lots yet'}
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-12">
+                      {/* Expand column */}
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleLotSort('lot_number')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Lot Number
+                        {lotSortColumn === 'lot_number' && (
+                          lotSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleLotSort('item_name')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Item
+                        {lotSortColumn === 'item_name' && (
+                          lotSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleLotSort('quantity_remaining')}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        Qty Remaining
+                        {lotSortColumn === 'quantity_remaining' && (
+                          lotSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Qty Received
+                    </th>
+                    <th
+                      className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleLotSort('unit_cost')}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        Unit Cost
+                        {lotSortColumn === 'unit_cost' && (
+                          lotSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Lot Value
+                    </th>
+                    <th
+                      className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleLotSort('purchase_date')}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        Purchase Date
+                        {lotSortColumn === 'purchase_date' && (
+                          lotSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleLotSort('status')}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        Status
+                        {lotSortColumn === 'status' && (
+                          lotSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {sortedLots.map((lot) => {
+                    const isExpanded = expandedLotIds.has(lot.id);
+                    const lotValue = lot.quantity_remaining * lot.unit_cost;
+                    const isLowQuantity = lot.quantity_remaining <= lot.quantity_received * 0.1 && lot.status === 'active';
+
+                    // Calculate days until expiration
+                    let daysUntilExpiry: number | null = null;
+                    let isExpiringSoon = false;
+                    if (lot.expiration_date && lot.status === 'active') {
+                      daysUntilExpiry = Math.ceil(
+                        (new Date(lot.expiration_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                      );
+                      isExpiringSoon = daysUntilExpiry > 0 && daysUntilExpiry <= 30;
+                    }
+
+                    return (
+                      <React.Fragment key={lot.id}>
+                        <tr
+                          className={`hover:bg-gray-50 cursor-pointer transition-colors ${isExpanded ? 'bg-blue-50' : ''} ${isLowQuantity ? 'bg-amber-50' : ''}`}
+                          onClick={() => toggleLotExpand(lot.id)}
+                        >
+                          <td className="px-2 py-3 text-center">
+                            <ChevronRight
+                              className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-90 text-blue-600' : ''}`}
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-sm font-mono text-gray-900">
+                            {lot.lot_number}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{lot.item_name}</p>
+                              {lot.item?.brand && (
+                                <p className="text-xs text-gray-500">{lot.item.brand}</p>
+                              )}
+                            </div>
+                          </td>
+                          <td className={`px-4 py-3 text-sm text-right font-semibold ${isLowQuantity ? 'text-amber-600' : 'text-gray-900'}`}>
+                            {lot.quantity_remaining} {lot.item?.unit || ''}
+                            {isLowQuantity && (
+                              <AlertTriangle className="w-3 h-3 inline ml-1 text-amber-500" />
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right text-gray-600">
+                            {lot.quantity_received} {lot.item?.unit || ''}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right text-gray-900">
+                            ${lot.unit_cost.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
+                            ${lotValue.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-center text-gray-600">
+                            {formatDateEST(lot.purchase_date)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <Badge
+                              variant={
+                                lot.status === 'active' ? 'success' :
+                                lot.status === 'depleted' ? 'default' :
+                                lot.status === 'expired' ? 'danger' :
+                                'warning'
+                              }
+                            >
+                              {lot.status}
+                            </Badge>
+                            {isExpiringSoon && (
+                              <div className="mt-1">
+                                <Badge variant="warning">
+                                  Expires in {daysUntilExpiry}d
+                                </Badge>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+
+                        {/* Expanded row with lot details */}
+                        {isExpanded && (
+                          <tr className="bg-gray-50">
+                            <td colSpan={9} className="px-0 py-0">
+                              <div className="border-t border-gray-200 overflow-hidden">
+                                <div className="px-6 py-4">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Lot Details</h4>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                    <div>
+                                      <p className="text-gray-500">Batch Number</p>
+                                      <p className="font-medium text-gray-900">{lot.batch_number || '-'}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-500">Invoice Reference</p>
+                                      <p className="font-medium text-gray-900">{lot.invoice_reference || '-'}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-500">Supplier</p>
+                                      <p className="font-medium text-gray-900">{lot.supplier_name || '-'}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-500">Expiration Date</p>
+                                      <p className={`font-medium ${isExpiringSoon ? 'text-amber-600' : 'text-gray-900'}`}>
+                                        {lot.expiration_date ? formatDateEST(lot.expiration_date) : '-'}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-500">Created By</p>
+                                      <p className="font-medium text-gray-900">{lot.created_by_name || '-'}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-500">Created At</p>
+                                      <p className="font-medium text-gray-900">{formatDateTimeEST(lot.created_at)}</p>
+                                    </div>
+                                    <div className="col-span-2">
+                                      <p className="text-gray-500">Notes</p>
+                                      <p className="font-medium text-gray-900">{lot.notes || '-'}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
