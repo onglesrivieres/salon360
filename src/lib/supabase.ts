@@ -1014,3 +1014,22 @@ export interface ClientLookupResult {
   totalVisits: number;
   lastVisit: string | null;
 }
+
+// Ticket Photos
+export interface TicketPhoto {
+  id: string;
+  store_id: string;
+  ticket_id: string;
+  storage_path: string;
+  filename: string;
+  file_size: number;
+  mime_type: 'image/jpeg' | 'image/png' | 'image/webp';
+  display_order: number;
+  uploaded_by: string;
+  caption: string;
+  created_at: string;
+}
+
+export interface TicketPhotoWithUrl extends TicketPhoto {
+  url: string;
+}

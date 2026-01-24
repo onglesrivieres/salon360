@@ -30,6 +30,7 @@ import { BlacklistWarning } from './clients/BlacklistWarning';
 import { ColorDisplay } from './clients/ColorDisplay';
 import { QuickAddClientModal } from './clients/QuickAddClientModal';
 import { TicketReopenRequestModal } from './TicketReopenRequestModal';
+import { TicketPhotosSection } from './tickets/TicketPhotosSection';
 
 interface TicketEditorProps {
   ticketId: string | null;
@@ -2767,6 +2768,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
               placeholder={canEditNotes ? "Add notes or comments..." : ""}
             />
           </div>
+
+          {/* Photos Section */}
+          {ticketId && selectedStoreId && (
+            <TicketPhotosSection
+              storeId={selectedStoreId}
+              ticketId={ticketId}
+              readOnly={isReadOnly}
+            />
+          )}
 
           <div className="flex justify-between items-center gap-1.5 pt-2 fixed md:static bottom-0 left-0 right-0 bg-white p-2 md:p-0 shadow-lg md:shadow-none z-10">
             <div className="flex gap-1.5">

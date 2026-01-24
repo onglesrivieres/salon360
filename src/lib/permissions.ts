@@ -428,6 +428,17 @@ export const Permissions = {
       return true;
     },
   },
+
+  photos: {
+    canUploadTicketPhotos: (roles: Role[] | RolePermission): boolean => {
+      // All roles that can create/edit tickets, except Cashier
+      return hasAnyRole(roles, ['Admin', 'Technician', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+    },
+    canDeleteTicketPhotos: (roles: Role[] | RolePermission): boolean => {
+      // Supervisor and above can delete photos
+      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+    },
+  },
 };
 
 export function getPermissionMessage(
