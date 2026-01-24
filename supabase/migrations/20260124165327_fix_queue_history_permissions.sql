@@ -50,6 +50,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+#variable_conflict use_column
 DECLARE
   v_caller_id uuid;
   v_caller_role text[];
