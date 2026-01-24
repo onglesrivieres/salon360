@@ -76,7 +76,8 @@ export function CheckInOutModal({ onClose, storeId, onCheckInComplete, onCheckOu
       const checkInTime = formatTimeEST(new Date());
 
       // Only join queue if not skipping (hourly technician with skip_queue_on_checkin enabled)
-      const shouldSkipQueue = employee?.role?.includes('Technician') &&
+      const roleArray = Array.isArray(employee?.role) ? employee.role : [];
+      const shouldSkipQueue = roleArray.includes('Technician') &&
                               payType === 'hourly' &&
                               employee?.skip_queue_on_checkin === true;
 

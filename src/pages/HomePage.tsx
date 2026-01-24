@@ -245,7 +245,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     try {
       const { data: employee } = await supabase
         .from('employees')
-        .select('attendance_display, role, skip_queue_on_checkin')
+        .select('attendance_display, role, skip_queue_on_checkin, pay_type')
         .eq('id', employeeId)
         .maybeSingle();
 
@@ -297,8 +297,10 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         if (checkInError) throw checkInError;
 
         // Only join queue if not skipping (hourly technician with skip_queue_on_checkin enabled)
-        const shouldSkipQueue = employee?.role?.includes('Technician') &&
-                                payType === 'hourly' &&
+        const roleArray = Array.isArray(employee?.role) ? employee.role : [];
+        const employeePayType = employee?.pay_type || payType;
+        const shouldSkipQueue = roleArray.includes('Technician') &&
+                                employeePayType === 'hourly' &&
                                 employee?.skip_queue_on_checkin === true;
 
         if (!shouldSkipQueue) {
@@ -313,7 +315,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         }
 
         const storeMessage = storeName ? ` at ${storeName}` : '';
-        setSuccessMessage(`${t('home.welcome')} ${displayName}! ${t('home.checkedIn')}${storeMessage}`);
+        const checkedInMessage = shouldSkipQueue ? t('home.checkedInOnly') : t('home.checkedIn');
+        setSuccessMessage(`${t('home.welcome')} ${displayName}! ${checkedInMessage}${storeMessage}`);
         setShowSuccessModal(true);
       } else if (action === 'checkout') {
         // For check-out: find any active check-in regardless of date
