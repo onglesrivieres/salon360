@@ -55,6 +55,7 @@ function AppContent() {
   const [selectedDate, setSelectedDate] = useState(
     getCurrentDateEST()
   );
+  const [highlightedTicketId, setHighlightedTicketId] = useState<string | null>(null);
 
   // Lock Cashiers and Receptionists to today's date only
   useEffect(() => {
@@ -74,6 +75,56 @@ function AppContent() {
     }
     setSelectedDate(newDate);
   };
+
+  // Listen for ticket navigation events from PendingApprovalsPage
+  useEffect(() => {
+    interface TicketNavigationState {
+      ticketId: string;
+      ticketDate: string;
+      timestamp: number;
+    }
+
+    function handleTicketNavigation(event: Event) {
+      const customEvent = event as CustomEvent<TicketNavigationState>;
+      const navState = customEvent.detail;
+
+      // Validate state is fresh (within 5 seconds)
+      if (Date.now() - navState.timestamp > 5000) return;
+
+      // Check if user has date restrictions
+      const isDateRestricted = session?.role_permission === 'Cashier' ||
+                               session?.role_permission === 'Receptionist';
+
+      // Set the date (if allowed)
+      if (!isDateRestricted) {
+        setSelectedDate(navState.ticketDate);
+      }
+
+      setHighlightedTicketId(navState.ticketId);
+      setCurrentPage('tickets');
+      sessionStorage.removeItem('ticket_navigation_state');
+    }
+
+    window.addEventListener('navigateToTicket', handleTicketNavigation);
+
+    // Check sessionStorage on mount for page refresh scenarios
+    const storedState = sessionStorage.getItem('ticket_navigation_state');
+    if (storedState) {
+      try {
+        const navState = JSON.parse(storedState) as TicketNavigationState;
+        if (Date.now() - navState.timestamp < 30000) {
+          handleTicketNavigation(new CustomEvent('navigateToTicket', { detail: navState }));
+        }
+      } catch (e) {
+        // Invalid state, ignore
+      }
+      sessionStorage.removeItem('ticket_navigation_state');
+    }
+
+    return () => {
+      window.removeEventListener('navigateToTicket', handleTicketNavigation);
+    };
+  }, [session?.role_permission]);
 
   // Check working hours for time-restricted roles (Technician, Cashier, Receptionist, Supervisor)
   const workingHoursCheck = useWorkingHoursCheck(selectedStoreId, session?.role_permission);
@@ -218,7 +269,14 @@ function AppContent() {
             <div className="text-gray-500">Loading...</div>
           </div>
         }>
-          {currentPage === 'tickets' && <TicketsPage selectedDate={selectedDate} onDateChange={handleDateChange} />}
+          {currentPage === 'tickets' && (
+            <TicketsPage
+              selectedDate={selectedDate}
+              onDateChange={handleDateChange}
+              highlightedTicketId={highlightedTicketId}
+              onHighlightComplete={() => setHighlightedTicketId(null)}
+            />
+          )}
           {currentPage === 'approvals' && <PendingApprovalsPage />}
           {currentPage === 'tipreport' && <TipReportPage selectedDate={selectedDate} onDateChange={handleDateChange} />}
           {currentPage === 'eod' && <EndOfDayPage selectedDate={selectedDate} onDateChange={handleDateChange} />}

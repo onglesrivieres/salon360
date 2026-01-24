@@ -145,4 +145,19 @@
   .animate-slideDown {
     animation: slide-down 0.4s ease-out;
   }
+
+  @keyframes highlight-pulse {
+    0%, 100% {
+      background-color: rgb(254 249 195); /* yellow-100 */
+      box-shadow: 0 0 0 4px rgb(250 204 21); /* yellow-400 */
+    }
+    50% {
+      background-color: rgb(253 224 71); /* yellow-300 */
+      box-shadow: 0 0 0 8px rgb(250 204 21); /* yellow-400 */
+    }
+  }
+
+  .animate-highlight-pulse {
+    animation: highlight-pulse 1s ease-in-out 5;
+  }
 }
