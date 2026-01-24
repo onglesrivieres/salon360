@@ -311,7 +311,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           service:store_services!ticket_items_store_service_id_fkey(code, name, duration_min),
           employee:employees!ticket_items_employee_id_fkey(
             id,
-            display_name
+            display_name,
+            pay_type
           )
         )
       `
@@ -343,6 +344,11 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         const technician = item.employee;
 
         if (!technician) continue;
+
+        // Skip commission employees - only show hourly and daily
+        if (technician.pay_type === 'commission') {
+          continue;
+        }
 
         if (isTechnician && session?.employee_id && techId !== session.employee_id) {
           continue;
