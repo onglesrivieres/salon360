@@ -80,10 +80,10 @@ BEGIN
   SELECT
     qrl.id,
     qrl.employee_id,
-    e.name as employee_name,
+    e.display_name as employee_name,
     e.employee_code,
     qrl.removed_by_employee_id,
-    remover.name as removed_by_name,
+    remover.display_name as removed_by_name,
     qrl.reason,
     qrl.notes,
     qrl.removed_at,
