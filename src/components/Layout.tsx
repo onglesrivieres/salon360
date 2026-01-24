@@ -476,7 +476,13 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       await fetchTechnicianQueue();
       setShowRemovalModal(false);
       setTechnicianToRemove(null);
-      alert(`${technicianToRemove.name} has been removed from the queue for 30 minutes.`);
+
+      // Dynamic message based on whether cooldown was applied
+      if (data?.has_cooldown === false) {
+        alert(`${technicianToRemove.name} has been removed from the queue.`);
+      } else {
+        alert(`${technicianToRemove.name} has been removed from the queue for 30 minutes.`);
+      }
     } catch (error: any) {
       console.error('Error removing technician:', error);
       alert(error.message || 'Failed to remove technician. Please try again.');

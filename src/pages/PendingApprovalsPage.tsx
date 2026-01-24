@@ -54,6 +54,7 @@ interface QueueRemovalRecord {
   cooldown_expires_at: string;
   is_active: boolean;
   minutes_remaining: number | null;
+  has_cooldown: boolean;
 }
 
 export function PendingApprovalsPage() {
@@ -470,11 +471,12 @@ export function PendingApprovalsPage() {
   }
 
   async function fetchQueueRemovalHistory() {
-    if (!selectedStoreId) return;
+    if (!selectedStoreId || !session?.employee_id) return;
 
     setQueueHistoryLoading(true);
     try {
       const { data, error: fetchError } = await supabase.rpc('get_queue_removal_history', {
+        p_employee_id: session.employee_id,
         p_store_id: selectedStoreId,
         p_start_date: queueHistoryStartDate || null,
         p_end_date: queueHistoryEndDate || null
@@ -716,6 +718,7 @@ export function PendingApprovalsPage() {
       'Removed By',
       'Reason',
       'Notes',
+      'Has Cooldown',
       'Cooldown Status',
       'Minutes Remaining'
     ];
@@ -727,8 +730,9 @@ export function PendingApprovalsPage() {
       record.removed_by_name,
       record.reason,
       record.notes || '',
-      record.is_active ? 'Active' : 'Expired',
-      record.minutes_remaining?.toString() || 'N/A'
+      record.has_cooldown ? 'Yes' : 'No',
+      record.has_cooldown ? (record.is_active ? 'Active' : 'Expired') : 'N/A',
+      record.has_cooldown ? (record.minutes_remaining?.toString() || 'N/A') : 'N/A'
     ]);
 
     const csvContent = [
@@ -2804,7 +2808,11 @@ export function PendingApprovalsPage() {
                               </div>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                record.reason === 'Queue adjustment'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
                                 {record.reason}
                               </span>
                             </td>
@@ -2814,7 +2822,11 @@ export function PendingApprovalsPage() {
                               )}
                             </td>
                             <td className="px-4 py-3 text-sm">
-                              {record.is_active ? (
+                              {!record.has_cooldown ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  No Cooldown
+                                </span>
+                              ) : record.is_active ? (
                                 <div>
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                     Active

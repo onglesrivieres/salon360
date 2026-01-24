@@ -13,11 +13,12 @@ interface RemoveTechnicianModalProps {
 }
 
 const REMOVAL_REASONS = [
-  'Rule violation',
-  'Left work area without permission',
-  'Not following queue policy',
-  'Attendance policy violation',
-  'Other'
+  { value: 'Rule violation', label: 'Rule violation', hasCooldown: true },
+  { value: 'Left work area without permission', label: 'Left work area without permission', hasCooldown: true },
+  { value: 'Not following queue policy', label: 'Not following queue policy', hasCooldown: true },
+  { value: 'Attendance policy violation', label: 'Attendance policy violation', hasCooldown: true },
+  { value: 'Other', label: 'Other', hasCooldown: true },
+  { value: 'Queue adjustment', label: 'Queue adjustment (no penalty)', hasCooldown: false },
 ];
 
 export function RemoveTechnicianModal({
@@ -64,8 +65,8 @@ export function RemoveTechnicianModal({
           >
             <option value="">Select a reason...</option>
             {REMOVAL_REASONS.map((r) => (
-              <option key={r} value={r}>
-                {r}
+              <option key={r.value} value={r.value}>
+                {r.label}
               </option>
             ))}
           </Select>
@@ -85,11 +86,38 @@ export function RemoveTechnicianModal({
           />
         </div>
 
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-sm text-red-800 font-medium">
-            Technician will be blocked from rejoining the queue for 30 minutes.
-          </p>
-        </div>
+        {(() => {
+          const selectedReason = REMOVAL_REASONS.find(r => r.value === reason);
+          const hasCooldown = selectedReason?.hasCooldown ?? true;
+
+          if (!reason) {
+            return (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <p className="text-sm text-gray-600">
+                  Select a reason to continue.
+                </p>
+              </div>
+            );
+          }
+
+          if (hasCooldown) {
+            return (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800 font-medium">
+                  Technician will be blocked from rejoining the queue for 30 minutes.
+                </p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800 font-medium">
+                Technician can rejoin the queue immediately.
+              </p>
+            </div>
+          );
+        })()}
 
         <div className="flex gap-3 pt-4">
           <Button
