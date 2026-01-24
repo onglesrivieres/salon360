@@ -92,7 +92,7 @@ export function LoginPage({ selectedAction, onCheckOutComplete, onBack }: LoginP
     try {
       const { data: employee, error: empError } = await supabase
         .from('employees')
-        .select('pay_type, display_name, attendance_display')
+        .select('pay_type, display_name, attendance_display, role, skip_queue_on_checkin')
         .eq('id', session.employee_id)
         .maybeSingle();
 
@@ -135,16 +135,25 @@ export function LoginPage({ selectedAction, onCheckOutComplete, onBack }: LoginP
 
         if (checkInError) throw checkInError;
 
-        const { data: queueResult, error: queueError } = await supabase.rpc('join_ready_queue_with_checkin', {
-          p_employee_id: session.employee_id,
-          p_store_id: storeId
-        });
+        // Only join queue if not skipping (hourly technician with skip_queue_on_checkin enabled)
+        const shouldSkipQueue = employee?.role?.includes('Technician') &&
+                                payType === 'hourly' &&
+                                employee?.skip_queue_on_checkin === true;
 
-        if (queueError || !queueResult?.success) {
-          console.error('Failed to join queue:', queueError || queueResult?.message);
-          showToast(`Welcome ${displayName}! You're checked in. Note: Could not join ready queue automatically.`, 'success');
+        if (shouldSkipQueue) {
+          showToast(`Welcome ${displayName}! You're checked in.`, 'success');
         } else {
-          showToast(`Welcome ${displayName}! You're checked in and in the ready queue.`, 'success');
+          const { data: queueResult, error: queueError } = await supabase.rpc('join_ready_queue_with_checkin', {
+            p_employee_id: session.employee_id,
+            p_store_id: storeId
+          });
+
+          if (queueError || !queueResult?.success) {
+            console.error('Failed to join queue:', queueError || queueResult?.message);
+            showToast(`Welcome ${displayName}! You're checked in. Note: Could not join ready queue automatically.`, 'success');
+          } else {
+            showToast(`Welcome ${displayName}! You're checked in and in the ready queue.`, 'success');
+          }
         }
         login(session);
       } else {
