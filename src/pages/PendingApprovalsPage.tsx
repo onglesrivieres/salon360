@@ -45,7 +45,6 @@ interface QueueRemovalRecord {
   id: string;
   employee_id: string;
   employee_name: string;
-  employee_code: string;
   removed_by_employee_id: string;
   removed_by_name: string;
   reason: string;
@@ -714,7 +713,6 @@ export function PendingApprovalsPage() {
     const headers = [
       'Date/Time',
       'Technician',
-      'Employee Code',
       'Removed By',
       'Reason',
       'Notes',
@@ -726,7 +724,6 @@ export function PendingApprovalsPage() {
     const rows = queueRemovalRecords.map(record => [
       formatDateTimeEST(record.removed_at),
       record.employee_name,
-      record.employee_code,
       record.removed_by_name,
       record.reason,
       record.notes || '',
@@ -2796,10 +2793,7 @@ export function PendingApprovalsPage() {
                               </div>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900">
-                              <div>
-                                <div className="font-medium">{record.employee_name}</div>
-                                <div className="text-xs text-gray-500">{record.employee_code}</div>
-                              </div>
+                              <div className="font-medium">{record.employee_name}</div>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900">
                               <div className="flex items-center gap-2">
