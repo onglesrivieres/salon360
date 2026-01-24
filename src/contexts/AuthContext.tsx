@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { AuthSession, getSession, saveSession, clearSession, updateLastActivity } from '../lib/auth';
 import { Locale, getDeviceLocale, translations } from '../lib/i18n';
 import { Role } from '../lib/permissions';
+import { clearPendingApprovalsRedirectCheck } from '../hooks/usePendingApprovalsRedirect';
 
 type TranslationKey = keyof typeof translations.en;
 type NestedTranslation = typeof translations.en[TranslationKey];
@@ -47,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem('welcome_shown');
     sessionStorage.removeItem(VIEWING_AS_ROLE_KEY);
     localStorage.removeItem(LOCALE_KEY);
+    clearPendingApprovalsRedirectCheck();
     const deviceLocale = getDeviceLocale();
     setLocaleState(deviceLocale);
     setSession(null);
@@ -168,6 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const selectStore = (storeId: string) => {
     sessionStorage.setItem('selected_store_id', storeId);
+    clearPendingApprovalsRedirectCheck(); // Re-check pending approvals for new store
     setSelectedStoreId(storeId);
   };
 

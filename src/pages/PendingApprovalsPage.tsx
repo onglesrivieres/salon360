@@ -179,6 +179,23 @@ export function PendingApprovalsPage() {
     return canSeeAsManagement && !isReportedEmployee;
   }
 
+  // Determine if individual vote details (who voted Yes/No) should be visible
+  function canSeeVoteDetails(): boolean {
+    return userRoles.some(role => ['Owner', 'Admin', 'Manager'].includes(role));
+  }
+
+  // Get the current user's vote on a violation report
+  function getUserVoteOnReport(report: ViolationHistoryReport): boolean | null {
+    if (!session?.employee_id || !report.responses) return null;
+
+    const userVote = report.responses?.find(
+      (v: any) => v.responder_employee_id === session.employee_id
+    );
+
+    if (!userVote) return null;
+    return userVote.vote === 'violation'; // true = yes, false = no
+  }
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
@@ -513,12 +530,42 @@ export function PendingApprovalsPage() {
 
       if (error) throw error;
 
-      // Filter for Technician: only show their own violation history
       let filteredData = data || [];
+
+      // Filter for Technician: only show their own violation history (where they are reported)
       if (canViewOwnRecordsOnly && session?.employee_id) {
         filteredData = filteredData.filter((report: { reported_employee_id?: string }) =>
           report.reported_employee_id === session.employee_id
         );
+      }
+
+      // Vote-based filtering for non-management users
+      // If user voted "No" on a report, hide it from their view
+      if (!isManagement && session?.employee_id) {
+        filteredData = filteredData.filter((report: ViolationHistoryReport) => {
+          // Always show if user is the reported employee
+          if (report.reported_employee_id === session.employee_id) return true;
+
+          // Always show if user is the reporter
+          if (report.reporter_employee_id === session.employee_id) return true;
+
+          // If user voted, filter based on their vote
+          if (report.responses) {
+            const userVote = report.responses.find(
+              (v: any) => v.responder_employee_id === session.employee_id
+            );
+            if (userVote) {
+              // Show only if user voted "Yes" (violation)
+              return userVote.vote === 'violation';
+            }
+          }
+
+          // If user hasn't voted yet (collecting responses), show it
+          if (report.status === 'collecting_responses') return true;
+
+          // Otherwise hide
+          return false;
+        });
       }
 
       setViolationHistory(filteredData);
@@ -2721,6 +2768,26 @@ export function PendingApprovalsPage() {
                                     </div>
                                   )}
                                 </div>
+                                {/* Vote Details - Only visible to Management */}
+                                {canSeeVoteDetails() && report.response_details && report.response_details.length > 0 && (
+                                  <div className="mt-3 pt-3 border-t border-gray-200">
+                                    <p className="text-xs font-medium text-gray-700 mb-2">Vote Details</p>
+                                    <div className="space-y-1 text-xs">
+                                      <div>
+                                        <span className="font-medium text-green-700">Yes:</span>
+                                        <span className="text-gray-700 ml-1">
+                                          {report.response_details.filter(v => v.response).map(v => v.employee_name).join(', ') || 'None'}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="font-medium text-red-700">No:</span>
+                                        <span className="text-gray-700 ml-1">
+                                          {report.response_details.filter(v => !v.response).map(v => v.employee_name).join(', ') || 'None'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <div className="flex gap-2">
@@ -2971,6 +3038,26 @@ export function PendingApprovalsPage() {
                                     </span>
                                   </div>
                                 </div>
+                                {/* Vote Details - Only visible to Management */}
+                                {canSeeVoteDetails() && report.responses && report.responses.length > 0 && (
+                                  <div className="mt-2 pt-2 border-t border-gray-100">
+                                    <p className="text-xs font-medium text-gray-700 mb-1">Vote Details</p>
+                                    <div className="space-y-1 text-xs">
+                                      <div>
+                                        <span className="font-medium text-green-700">Yes:</span>
+                                        <span className="text-gray-700 ml-1">
+                                          {report.responses.filter((v: any) => v.vote === 'violation').map((v: any) => v.responder_employee_name).join(', ') || 'None'}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="font-medium text-red-700">No:</span>
+                                        <span className="text-gray-700 ml-1">
+                                          {report.responses.filter((v: any) => v.vote === 'no_violation').map((v: any) => v.responder_employee_name).join(', ') || 'None'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )}
 
@@ -3399,6 +3486,26 @@ export function PendingApprovalsPage() {
               <p className="text-sm text-blue-800">
                 {selectedViolationReport.votes_against_violation} voted that no violation occurred
               </p>
+              {/* Vote Details - Only visible to Management (which they are if viewing this modal) */}
+              {canSeeVoteDetails() && selectedViolationReport.response_details && selectedViolationReport.response_details.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-blue-200">
+                  <p className="text-xs font-medium text-blue-900 mb-1">Vote Details</p>
+                  <div className="space-y-1 text-xs">
+                    <div>
+                      <span className="font-medium text-green-700">Yes:</span>
+                      <span className="text-blue-800 ml-1">
+                        {selectedViolationReport.response_details.filter(v => v.response).map(v => v.employee_name).join(', ') || 'None'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-red-700">No:</span>
+                      <span className="text-blue-800 ml-1">
+                        {selectedViolationReport.response_details.filter(v => !v.response).map(v => v.employee_name).join(', ') || 'None'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>

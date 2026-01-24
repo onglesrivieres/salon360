@@ -18,6 +18,7 @@ import { CheckInOutModal } from './components/CheckInOutModal';
 import { CheckInRequiredModal } from './components/CheckInRequiredModal';
 import { useWorkingHoursCheck } from './hooks/useWorkingHoursCheck';
 import { useCheckInStatusCheck } from './hooks/useCheckInStatusCheck';
+import { usePendingApprovalsRedirect } from './hooks/usePendingApprovalsRedirect';
 
 const EndOfDayPage = lazy(() => import('./pages/EndOfDayPage').then(m => ({ default: m.EndOfDayPage })));
 const SafeBalancePage = lazy(() => import('./pages/SafeBalancePage').then(m => ({ default: m.SafeBalancePage })));
@@ -143,6 +144,35 @@ function AppContent() {
     !checkInStatus.isLoading &&
     !checkInStatus.isCheckedIn &&
     !showStoreModal; // Don't show while store selection is open
+
+  // Check for pending approvals redirect
+  const isReadyForRedirectCheck =
+    isAuthenticated &&
+    !!selectedStoreId &&
+    !showWelcome &&
+    !showStoreModal &&
+    !shouldShowCheckInRequiredModal &&
+    !workingHoursCheck.isLoading &&
+    workingHoursCheck.isWithinWorkingHours;
+
+  const pendingApprovalsRedirect = usePendingApprovalsRedirect(
+    session?.employee_id,
+    selectedStoreId,
+    session?.role,
+    session?.role_permission,
+    isReadyForRedirectCheck
+  );
+
+  // Auto-redirect to approvals page if there are pending items
+  useEffect(() => {
+    if (
+      pendingApprovalsRedirect.hasChecked &&
+      pendingApprovalsRedirect.shouldRedirect &&
+      currentPage !== 'approvals'
+    ) {
+      setCurrentPage('approvals');
+    }
+  }, [pendingApprovalsRedirect.hasChecked, pendingApprovalsRedirect.shouldRedirect, currentPage]);
 
   useEffect(() => {
     if (isAuthenticated && !selectedStoreId && session?.employee_id && !showWelcome) {
