@@ -57,7 +57,7 @@ BEGIN
   FROM public.sale_tickets st
   LEFT JOIN public.employees completed_emp ON completed_emp.id = st.completed_by
   LEFT JOIN public.employees approved_emp ON approved_emp.id = st.approved_by
-  LEFT JOIN public.ticket_items sti ON sti.ticket_id = st.id
+  LEFT JOIN public.ticket_items sti ON sti.sale_ticket_id = st.id
   LEFT JOIN public.store_services ss ON ss.id = sti.store_service_id
   WHERE
     st.store_id = p_store_id
@@ -130,7 +130,7 @@ BEGIN
   FROM public.sale_tickets st
   LEFT JOIN public.employees completed_emp ON completed_emp.id = st.completed_by
   LEFT JOIN public.employees approved_emp ON approved_emp.id = st.approved_by
-  LEFT JOIN public.ticket_items sti ON sti.ticket_id = st.id
+  LEFT JOIN public.ticket_items sti ON sti.sale_ticket_id = st.id
   LEFT JOIN public.store_services ss ON ss.id = sti.store_service_id
   WHERE
     st.store_id = p_store_id
