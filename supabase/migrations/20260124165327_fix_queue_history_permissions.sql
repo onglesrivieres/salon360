@@ -68,8 +68,8 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM public.employee_stores
-    WHERE employee_id = v_caller_id
-      AND store_id = p_store_id
+    WHERE employee_stores.employee_id = v_caller_id
+      AND employee_stores.store_id = p_store_id
   ) THEN
     RAISE EXCEPTION 'You do not have access to this store';
   END IF;
