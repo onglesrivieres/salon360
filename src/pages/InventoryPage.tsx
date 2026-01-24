@@ -24,7 +24,7 @@ import {
   Eye,
   Calendar,
 } from 'lucide-react';
-import { supabase, InventoryItem, InventoryItemWithHierarchy, InventoryTransactionWithDetails, Supplier, InventoryPurchaseLotWithDetails } from '../lib/supabase';
+import { supabase, InventoryItem, InventoryItemWithHierarchy, InventoryTransactionWithDetails, Supplier, InventoryPurchaseLotWithDetails, InventoryDistributionWithDetails } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
@@ -44,6 +44,8 @@ type SortColumn = 'supplier' | 'brand' | 'name' | 'category' | 'quantity_on_hand
 type SortDirection = 'asc' | 'desc';
 type LotSortColumn = 'lot_number' | 'item_name' | 'quantity_remaining' | 'unit_cost' | 'purchase_date' | 'status';
 type LotStatus = 'active' | 'depleted' | 'expired' | 'archived';
+type DistributionSortColumn = 'distribution_number' | 'distribution_date' | 'item_name' | 'to_employee_name' | 'quantity' | 'status';
+type DistributionStatus = 'pending' | 'acknowledged' | 'in_use' | 'returned' | 'consumed' | 'cancelled';
 
 export function InventoryPage() {
   const [activeTab, setActiveTab] = useState<Tab>('items');
@@ -87,6 +89,20 @@ export function InventoryPage() {
   const [expandedLotIds, setExpandedLotIds] = useState<Set<string>>(new Set());
   const [isLotFilterPanelOpen, setIsLotFilterPanelOpen] = useState(false);
 
+  // Distributions tab state
+  const [distributions, setDistributions] = useState<InventoryDistributionWithDetails[]>([]);
+  const [distributionsLoading, setDistributionsLoading] = useState(false);
+  const [distributionSearchQuery, setDistributionSearchQuery] = useState('');
+  const [distributionEmployeeFilter, setDistributionEmployeeFilter] = useState('');
+  const [distributionItemFilter, setDistributionItemFilter] = useState('');
+  const [distributionStatusFilter, setDistributionStatusFilter] = useState<DistributionStatus | ''>('');
+  const [distributionDateRangeStart, setDistributionDateRangeStart] = useState('');
+  const [distributionDateRangeEnd, setDistributionDateRangeEnd] = useState('');
+  const [distributionSortColumn, setDistributionSortColumn] = useState<DistributionSortColumn | null>('distribution_date');
+  const [distributionSortDirection, setDistributionSortDirection] = useState<SortDirection>('desc');
+  const [expandedDistributionIds, setExpandedDistributionIds] = useState<Set<string>>(new Set());
+  const [isDistributionFilterPanelOpen, setIsDistributionFilterPanelOpen] = useState(false);
+
   const { showToast } = useToast();
   const { selectedStoreId, session } = useAuth();
 
@@ -110,6 +126,13 @@ export function InventoryPage() {
   useEffect(() => {
     if (activeTab === 'lots' && selectedStoreId && canDistribute && lots.length === 0) {
       fetchLots();
+    }
+  }, [activeTab, selectedStoreId, canDistribute]);
+
+  // Fetch distributions when tab changes to 'distributions' (lazy loading)
+  useEffect(() => {
+    if (activeTab === 'distributions' && selectedStoreId && canDistribute && distributions.length === 0) {
+      fetchDistributions();
     }
   }, [activeTab, selectedStoreId, canDistribute]);
 
@@ -263,6 +286,60 @@ export function InventoryPage() {
       showToast('Failed to load purchase lots', 'error');
     } finally {
       setLotsLoading(false);
+    }
+  }
+
+  async function fetchDistributions() {
+    if (!selectedStoreId) return;
+
+    try {
+      setDistributionsLoading(true);
+
+      const { data, error } = await supabase
+        .from('inventory_distributions')
+        .select(`
+          *,
+          inventory_items!item_id (
+            id,
+            name,
+            category,
+            unit,
+            brand
+          ),
+          inventory_purchase_lots!lot_id (
+            lot_number
+          ),
+          to_employee:employees!to_employee_id (
+            display_name
+          ),
+          from_employee:employees!from_employee_id (
+            display_name
+          ),
+          distributed_by:employees!distributed_by_id (
+            display_name
+          )
+        `)
+        .eq('store_id', selectedStoreId)
+        .order('distribution_date', { ascending: false });
+
+      if (error) throw error;
+
+      // Map to InventoryDistributionWithDetails
+      const distributionsWithDetails: InventoryDistributionWithDetails[] = (data || []).map((dist: any) => ({
+        ...dist,
+        item_name: dist.inventory_items?.name || 'Unknown Item',
+        lot_number: dist.inventory_purchase_lots?.lot_number || null,
+        to_employee_name: dist.to_employee?.display_name || 'Unknown',
+        from_employee_name: dist.from_employee?.display_name || null,
+        distributed_by_name: dist.distributed_by?.display_name || null,
+      }));
+
+      setDistributions(distributionsWithDetails);
+    } catch (error) {
+      console.error('Error fetching distributions:', error);
+      showToast('Failed to load distributions', 'error');
+    } finally {
+      setDistributionsLoading(false);
     }
   }
 
@@ -563,6 +640,157 @@ export function InventoryPage() {
     setLotStatusFilter('');
     setLotDateRangeStart('');
     setLotDateRangeEnd('');
+  }
+
+  // Distributions filtering
+  const filteredDistributions = distributions.filter((dist) => {
+    // Search filter - distribution number or employee name
+    const matchesSearch = !distributionSearchQuery ||
+      dist.distribution_number.toLowerCase().includes(distributionSearchQuery.toLowerCase()) ||
+      dist.to_employee_name?.toLowerCase().includes(distributionSearchQuery.toLowerCase()) ||
+      dist.from_employee_name?.toLowerCase().includes(distributionSearchQuery.toLowerCase());
+
+    // Employee filter (to_employee)
+    const matchesEmployee = !distributionEmployeeFilter || dist.to_employee_id === distributionEmployeeFilter;
+
+    // Item filter
+    const matchesItem = !distributionItemFilter || dist.item_id === distributionItemFilter;
+
+    // Status filter
+    const matchesStatus = !distributionStatusFilter || dist.status === distributionStatusFilter;
+
+    // Date range filter
+    let matchesDateRange = true;
+    if (distributionDateRangeStart && dist.distribution_date) {
+      matchesDateRange = new Date(dist.distribution_date) >= new Date(distributionDateRangeStart);
+    }
+    if (distributionDateRangeEnd && dist.distribution_date && matchesDateRange) {
+      matchesDateRange = new Date(dist.distribution_date) <= new Date(distributionDateRangeEnd + 'T23:59:59');
+    }
+
+    return matchesSearch && matchesEmployee && matchesItem && matchesStatus && matchesDateRange;
+  });
+
+  // Distributions sorting
+  const sortedDistributions = distributionSortColumn ? [...filteredDistributions].sort((a, b) => {
+    let aVal: any;
+    let bVal: any;
+
+    switch (distributionSortColumn) {
+      case 'distribution_number':
+        aVal = a.distribution_number;
+        bVal = b.distribution_number;
+        break;
+      case 'distribution_date':
+        aVal = new Date(a.distribution_date).getTime();
+        bVal = new Date(b.distribution_date).getTime();
+        break;
+      case 'item_name':
+        aVal = a.item_name || '';
+        bVal = b.item_name || '';
+        break;
+      case 'to_employee_name':
+        aVal = a.to_employee_name || '';
+        bVal = b.to_employee_name || '';
+        break;
+      case 'quantity':
+        aVal = a.quantity;
+        bVal = b.quantity;
+        break;
+      case 'status':
+        aVal = a.status;
+        bVal = b.status;
+        break;
+      default:
+        aVal = a.distribution_date;
+        bVal = b.distribution_date;
+    }
+
+    if (aVal == null) return 1;
+    if (bVal == null) return -1;
+
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+
+    if (aVal < bVal) return distributionSortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return distributionSortDirection === 'asc' ? 1 : -1;
+    return 0;
+  }) : filteredDistributions;
+
+  // Calculate distribution statistics
+  const distributionStats = {
+    totalDistributions: distributions.length,
+    pendingAcknowledgment: distributions.filter(d => d.status === 'pending').length,
+    currentlyInUse: distributions.filter(d => d.status === 'in_use').length,
+    returnedThisMonth: distributions.filter(d => {
+      if (d.status !== 'returned' || !d.actual_return_date) return false;
+      const returnDate = new Date(d.actual_return_date);
+      const now = new Date();
+      return returnDate.getMonth() === now.getMonth() &&
+             returnDate.getFullYear() === now.getFullYear();
+    }).length,
+  };
+
+  // Get unique employees and items from distributions for filter dropdowns
+  const distributionEmployeeOptions = Array.from(
+    new Map(
+      distributions.map(d => [d.to_employee_id, { id: d.to_employee_id, name: d.to_employee_name }])
+    ).values()
+  ).filter(emp => emp.name).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  const distributionItemOptions = Array.from(
+    new Map(distributions.map(d => [d.item_id, { id: d.item_id, name: d.item_name }])).values()
+  ).filter(item => item.name).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  // Distribution helper functions
+  function handleDistributionSort(column: DistributionSortColumn) {
+    if (distributionSortColumn === column) {
+      setDistributionSortDirection(distributionSortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setDistributionSortColumn(column);
+      setDistributionSortDirection('asc');
+    }
+  }
+
+  function toggleDistributionExpand(distributionId: string) {
+    const newExpanded = new Set(expandedDistributionIds);
+    if (newExpanded.has(distributionId)) {
+      newExpanded.delete(distributionId);
+    } else {
+      newExpanded.add(distributionId);
+    }
+    setExpandedDistributionIds(newExpanded);
+  }
+
+  function getDistributionActiveFilterCount(): number {
+    let count = 0;
+    if (distributionEmployeeFilter) count++;
+    if (distributionItemFilter) count++;
+    if (distributionStatusFilter) count++;
+    if (distributionDateRangeStart || distributionDateRangeEnd) count++;
+    return count;
+  }
+
+  function clearDistributionFilters() {
+    setDistributionEmployeeFilter('');
+    setDistributionItemFilter('');
+    setDistributionStatusFilter('');
+    setDistributionDateRangeStart('');
+    setDistributionDateRangeEnd('');
+  }
+
+  function getDistributionStatusBadgeVariant(status: DistributionStatus): 'warning' | 'info' | 'success' | 'default' | 'danger' {
+    switch (status) {
+      case 'pending': return 'warning';
+      case 'acknowledged': return 'info';
+      case 'in_use': return 'success';
+      case 'returned': return 'default';
+      case 'consumed': return 'info';
+      case 'cancelled': return 'danger';
+      default: return 'default';
+    }
   }
 
   const categories = Array.from(new Set(items.map((item) => item.category))).sort();
@@ -1762,15 +1990,384 @@ export function InventoryPage() {
       )}
 
       {activeTab === 'distributions' && (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-          <PackageMinus className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Employee Distributions</h3>
-          <p className="text-gray-500 mb-4">
-            View distribution history and chain of custody
-          </p>
-          <p className="text-sm text-gray-400">
-            Full distribution tracking interface coming soon
-          </p>
+        <div>
+          {/* Summary Stats Cards */}
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center gap-2 text-gray-600 mb-1">
+                <PackageMinus className="w-4 h-4" />
+                <span className="text-sm">Total Distributions</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{distributionStats.totalDistributions}</p>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center gap-2 text-gray-600 mb-1">
+                <Clock className="w-4 h-4" />
+                <span className="text-sm">Pending Acknowledgment</span>
+              </div>
+              <p className={`text-2xl font-bold ${distributionStats.pendingAcknowledgment > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
+                {distributionStats.pendingAcknowledgment}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center gap-2 text-gray-600 mb-1">
+                <CheckCircle className="w-4 h-4" />
+                <span className="text-sm">Currently In Use</span>
+              </div>
+              <p className="text-2xl font-bold text-green-600">{distributionStats.currentlyInUse}</p>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center gap-2 text-gray-600 mb-1">
+                <Package className="w-4 h-4" />
+                <span className="text-sm">Returned This Month</span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{distributionStats.returnedThisMonth}</p>
+            </div>
+          </div>
+
+          {/* Filters Row */}
+          <div className="mb-4 flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input
+                value={distributionSearchQuery}
+                onChange={(e) => setDistributionSearchQuery(e.target.value)}
+                placeholder="Search by distribution number or employee name..."
+                className="pl-10"
+              />
+            </div>
+
+            <div className="relative">
+              <button
+                onClick={() => setIsDistributionFilterPanelOpen(!isDistributionFilterPanelOpen)}
+                className={`px-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 ${
+                  getDistributionActiveFilterCount() > 0
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Filter className="w-4 h-4" />
+                <span>Filters</span>
+                {getDistributionActiveFilterCount() > 0 && (
+                  <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full">
+                    {getDistributionActiveFilterCount()}
+                  </span>
+                )}
+              </button>
+
+              {isDistributionFilterPanelOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsDistributionFilterPanelOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
+                        <button
+                          onClick={() => setIsDistributionFilterPanelOpen(false)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Employee (To)</label>
+                        <select
+                          value={distributionEmployeeFilter}
+                          onChange={(e) => setDistributionEmployeeFilter(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">All Employees</option>
+                          {distributionEmployeeOptions.map((emp) => (
+                            <option key={emp.id} value={emp.id}>{emp.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Item</label>
+                        <select
+                          value={distributionItemFilter}
+                          onChange={(e) => setDistributionItemFilter(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">All Items</option>
+                          {distributionItemOptions.map((item) => (
+                            <option key={item.id} value={item.id}>{item.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                        <select
+                          value={distributionStatusFilter}
+                          onChange={(e) => setDistributionStatusFilter(e.target.value as DistributionStatus | '')}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">All Status</option>
+                          <option value="pending">Pending</option>
+                          <option value="acknowledged">Acknowledged</option>
+                          <option value="in_use">In Use</option>
+                          <option value="returned">Returned</option>
+                          <option value="consumed">Consumed</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">From Date</label>
+                          <input
+                            type="date"
+                            value={distributionDateRangeStart}
+                            onChange={(e) => setDistributionDateRangeStart(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">To Date</label>
+                          <input
+                            type="date"
+                            value={distributionDateRangeEnd}
+                            onChange={(e) => setDistributionDateRangeEnd(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+
+                      {getDistributionActiveFilterCount() > 0 && (
+                        <button
+                          onClick={clearDistributionFilters}
+                          className="w-full px-3 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        >
+                          Clear All Filters
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <Button
+              variant="secondary"
+              onClick={() => fetchDistributions()}
+              className="whitespace-nowrap"
+            >
+              Refresh
+            </Button>
+          </div>
+
+          {/* Distributions Table */}
+          {distributionsLoading ? (
+            <div className="text-center py-12 text-gray-500">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <p className="mt-2">Loading distributions...</p>
+            </div>
+          ) : sortedDistributions.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 bg-white rounded-lg border border-gray-200">
+              <PackageMinus className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p>
+                {distributionSearchQuery || getDistributionActiveFilterCount() > 0
+                  ? 'No distributions match your filters'
+                  : 'No distributions yet'}
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-2 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-12">
+                      {/* Expand column */}
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleDistributionSort('distribution_number')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Distribution #
+                        {distributionSortColumn === 'distribution_number' && (
+                          distributionSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleDistributionSort('distribution_date')}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        Date
+                        {distributionSortColumn === 'distribution_date' && (
+                          distributionSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleDistributionSort('item_name')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Item
+                        {distributionSortColumn === 'item_name' && (
+                          distributionSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Lot #
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      From
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleDistributionSort('to_employee_name')}
+                    >
+                      <div className="flex items-center gap-1">
+                        To
+                        {distributionSortColumn === 'to_employee_name' && (
+                          distributionSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleDistributionSort('quantity')}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        Qty
+                        {distributionSortColumn === 'quantity' && (
+                          distributionSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleDistributionSort('status')}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        Status
+                        {distributionSortColumn === 'status' && (
+                          distributionSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {sortedDistributions.map((dist) => {
+                    const isExpanded = expandedDistributionIds.has(dist.id);
+                    const totalValue = dist.quantity * dist.unit_cost;
+
+                    return (
+                      <React.Fragment key={dist.id}>
+                        <tr
+                          className={`hover:bg-gray-50 cursor-pointer transition-colors ${isExpanded ? 'bg-blue-50' : ''}`}
+                          onClick={() => toggleDistributionExpand(dist.id)}
+                        >
+                          <td className="px-2 py-3 text-center">
+                            <ChevronRight
+                              className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-90 text-blue-600' : ''}`}
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-sm font-mono text-gray-900">
+                            {dist.distribution_number}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-center text-gray-600">
+                            {formatDateEST(dist.distribution_date)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-sm font-medium text-gray-900">{dist.item_name}</p>
+                          </td>
+                          <td className="px-4 py-3 text-sm font-mono text-gray-600">
+                            {dist.lot_number || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {dist.from_type === 'store' ? (
+                              <span className="flex items-center gap-1">
+                                <Building2 className="w-3 h-3" />
+                                Store
+                              </span>
+                            ) : (
+                              dist.from_employee_name || '-'
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                            {dist.to_employee_name}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
+                            {dist.quantity}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <Badge variant={getDistributionStatusBadgeVariant(dist.status as DistributionStatus)}>
+                              {dist.status.replace('_', ' ')}
+                            </Badge>
+                          </td>
+                        </tr>
+
+                        {/* Expanded row with distribution details */}
+                        {isExpanded && (
+                          <tr className="bg-gray-50">
+                            <td colSpan={9} className="px-0 py-0">
+                              <div className="border-t border-gray-200 overflow-hidden">
+                                <div className="px-6 py-4">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Distribution Details</h4>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                    <div>
+                                      <p className="text-gray-500">Unit Cost</p>
+                                      <p className="font-medium text-gray-900">${dist.unit_cost.toFixed(2)}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-500">Total Value</p>
+                                      <p className="font-medium text-gray-900">${totalValue.toFixed(2)}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-500">Expected Return</p>
+                                      <p className="font-medium text-gray-900">
+                                        {dist.expected_return_date ? formatDateEST(dist.expected_return_date) : '-'}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-500">Actual Return</p>
+                                      <p className="font-medium text-gray-900">
+                                        {dist.actual_return_date ? formatDateEST(dist.actual_return_date) : '-'}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-500">Distributed By</p>
+                                      <p className="font-medium text-gray-900">{dist.distributed_by_name || '-'}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-500">Acknowledged At</p>
+                                      <p className="font-medium text-gray-900">
+                                        {dist.acknowledged_at ? formatDateTimeEST(dist.acknowledged_at) : '-'}
+                                      </p>
+                                    </div>
+                                    <div className="col-span-2">
+                                      <p className="text-gray-500">Condition Notes</p>
+                                      <p className="font-medium text-gray-900">{dist.condition_notes || '-'}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -1931,6 +2528,9 @@ export function InventoryPage() {
         onSuccess={() => {
           fetchItems();
           fetchTransactions();
+          if (activeTab === 'distributions') {
+            fetchDistributions();
+          }
         }}
       />
 
