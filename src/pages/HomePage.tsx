@@ -303,14 +303,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
                                 employeePayType === 'hourly' &&
                                 employee?.skip_queue_on_checkin === true;
 
-        console.log('DEBUG shouldSkipQueue check:', {
-          roleArray,
-          roleIncludesTechnician: roleArray.includes('Technician'),
-          employeePayType,
-          skipQueueValue: employee?.skip_queue_on_checkin,
-          shouldSkipQueue
-        });
-
         if (!shouldSkipQueue) {
           const { data: queueResult, error: queueError } = await supabase.rpc('join_ready_queue_with_checkin', {
             p_employee_id: employeeId,
@@ -323,7 +315,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         }
 
         const storeMessage = storeName ? ` at ${storeName}` : '';
-        setSuccessMessage(`${t('home.welcome')} ${displayName}! ${t('home.checkedIn')}${storeMessage}`);
+        const checkedInMessage = shouldSkipQueue ? t('home.checkedInOnly') : t('home.checkedIn');
+        setSuccessMessage(`${t('home.welcome')} ${displayName}! ${checkedInMessage}${storeMessage}`);
         setShowSuccessModal(true);
       } else if (action === 'checkout') {
         // For check-out: find any active check-in regardless of date

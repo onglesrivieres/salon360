@@ -141,14 +141,6 @@ export function LoginPage({ selectedAction, onCheckOutComplete, onBack }: LoginP
                                 payType === 'hourly' &&
                                 employee?.skip_queue_on_checkin === true;
 
-        console.log('DEBUG shouldSkipQueue check (LoginPage):', {
-          roleArray,
-          roleIncludesTechnician: roleArray.includes('Technician'),
-          payType,
-          skipQueueValue: employee?.skip_queue_on_checkin,
-          shouldSkipQueue
-        });
-
         if (shouldSkipQueue) {
           showToast(`Welcome ${displayName}! You're checked in.`, 'success');
         } else {

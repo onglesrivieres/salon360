@@ -81,14 +81,6 @@ export function CheckInOutModal({ onClose, storeId, onCheckInComplete, onCheckOu
                               payType === 'hourly' &&
                               employee?.skip_queue_on_checkin === true;
 
-      console.log('DEBUG shouldSkipQueue check (CheckInOutModal):', {
-        roleArray,
-        roleIncludesTechnician: roleArray.includes('Technician'),
-        payType,
-        skipQueueValue: employee?.skip_queue_on_checkin,
-        shouldSkipQueue
-      });
-
       if (shouldSkipQueue) {
         showToast(`Welcome to work, ${displayName}! Checked in at ${checkInTime}.`, 'success');
       } else {
