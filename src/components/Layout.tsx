@@ -461,6 +461,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
     try {
       const { data, error } = await supabase.rpc('remove_technician_from_queue_admin', {
+        p_removed_by_employee_id: session?.employee_id,
         p_employee_id: technicianToRemove.id,
         p_store_id: selectedStoreId,
         p_reason: reason,
