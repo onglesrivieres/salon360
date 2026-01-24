@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Edit2, Check, CheckCircle, Clock, AlertCircle, Filter, X, XCircle, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase, SaleTicket } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
@@ -15,9 +15,11 @@ import { formatTimeEST, getCurrentDateEST } from '../lib/timezone';
 interface TicketsPageProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
+  highlightedTicketId?: string | null;
+  onHighlightComplete?: () => void;
 }
 
-export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
+export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, onHighlightComplete }: TicketsPageProps) {
   const [viewMode, setViewMode] = useState<'tickets' | 'daily' | 'period'>('tickets');
   const [tickets, setTickets] = useState<SaleTicket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +37,10 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
   const [processing, setProcessing] = useState(false);
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
+
+  // Ref for highlighted ticket row (for scroll-into-view)
+  const highlightedRowRef = useRef<HTMLTableRowElement>(null);
+  const highlightedCardRef = useRef<HTMLDivElement>(null);
 
   // Check if user is a commission employee
   const [isCommissionEmployee, setIsCommissionEmployee] = useState(false);
@@ -97,6 +103,40 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
       clearInterval(refreshTimer);
     };
   }, [selectedDate, selectedStoreId]);
+
+  // Effect to handle ticket highlighting from navigation
+  useEffect(() => {
+    if (highlightedTicketId && !loading) {
+      // Check if the highlighted ticket exists in the current ticket list
+      const ticketExists = tickets.some(t => t.id === highlightedTicketId);
+
+      if (ticketExists) {
+        // Scroll to the highlighted ticket after a brief delay
+        setTimeout(() => {
+          const rowRef = highlightedRowRef.current;
+          const cardRef = highlightedCardRef.current;
+          const targetRef = rowRef || cardRef;
+
+          if (targetRef) {
+            targetRef.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center'
+            });
+          }
+
+          // Auto-open the TicketEditor
+          openEditor(highlightedTicketId);
+        }, 100);
+
+        // Clear the highlight after 5 seconds
+        const timer = setTimeout(() => {
+          onHighlightComplete?.();
+        }, 5000);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [highlightedTicketId, loading, tickets]);
 
   async function fetchTickets(silent = false) {
     try {
@@ -1029,12 +1069,16 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
                   rowBackgroundClass = 'bg-gray-100 hover:bg-gray-200';
                 }
 
+                const isHighlighted = ticket.id === highlightedTicketId;
+
                 return (
                   <tr
                     key={ticket.id}
+                    ref={isHighlighted ? highlightedRowRef : null}
                     className={`
                       ${rowBackgroundClass}
                       ${canView ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}
+                      ${isHighlighted ? 'animate-highlight-pulse ring-4 ring-yellow-400' : ''}
                       transition-colors duration-200
                     `}
                     onClick={() => canView && openEditor(ticket.id)}
@@ -1189,10 +1233,13 @@ export function TicketsPage({ selectedDate, onDateChange }: TicketsPageProps) {
             cardHoverClass = 'active:bg-gray-200';
           }
 
+          const isHighlighted = ticket.id === highlightedTicketId;
+
           return (
             <div
               key={ticket.id}
-              className={`${cardBackgroundClass} rounded-lg shadow p-3`}
+              ref={isHighlighted ? highlightedCardRef : null}
+              className={`${cardBackgroundClass} rounded-lg shadow p-3 ${isHighlighted ? 'animate-highlight-pulse ring-4 ring-yellow-400' : ''}`}
             >
               <div className="flex items-start justify-between mb-2">
                 <div

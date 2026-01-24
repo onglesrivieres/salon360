@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight, Bell, User, Calendar, History, Download } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight, Bell, User, Calendar, History, Download, Eye, RotateCcw } from 'lucide-react';
 import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, PendingCashTransactionChangeProposal, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket, AttendanceChangeProposalWithDetails, PendingTicketReopenRequest } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -97,6 +97,7 @@ export function PendingApprovalsPage() {
   const [ticketReopenRequests, setTicketReopenRequests] = useState<PendingTicketReopenRequest[]>([]);
   const [selectedTicketReopenRequest, setSelectedTicketReopenRequest] = useState<PendingTicketReopenRequest | null>(null);
   const [ticketReopenReviewComment, setTicketReopenReviewComment] = useState('');
+  const [viewingRequest, setViewingRequest] = useState<PendingTicketReopenRequest | null>(null);
   const [rejectedTickets, setRejectedTickets] = useState<any[]>([]);
   const [tabCounts, setTabCounts] = useState<{
     tickets: number;
@@ -525,15 +526,29 @@ export function PendingApprovalsPage() {
     }
   }
 
-  async function handleApproveTicketReopenRequest(request: PendingTicketReopenRequest) {
+  // Navigate to ticket without approval (just view)
+  function handleViewTicket(request: PendingTicketReopenRequest) {
+    const navState = {
+      ticketId: request.ticket_id,
+      ticketDate: request.ticket_date,
+      timestamp: Date.now()
+    };
+    sessionStorage.setItem('ticket_navigation_state', JSON.stringify(navState));
+    window.dispatchEvent(new CustomEvent('navigateToTicket', { detail: navState }));
+  }
+
+  // Approve and reopen the ticket, then navigate to it
+  async function handleApproveAndReopen(request: PendingTicketReopenRequest) {
     if (!session?.employee_id) return;
 
     try {
       setProcessing(true);
+
+      // Step 1: Approve the request
       const { data, error } = await supabase.rpc('approve_ticket_reopen_request', {
         p_request_id: request.request_id,
         p_reviewer_employee_id: session.employee_id,
-        p_review_comment: null,
+        p_review_comment: 'Approved and reopened',
       });
 
       if (error) throw error;
@@ -544,13 +559,29 @@ export function PendingApprovalsPage() {
         return;
       }
 
-      showToast(result.message || 'Request approved', 'success');
+      // Step 2: Reopen the ticket by clearing closed_at and completed_at
+      const { error: reopenError } = await supabase
+        .from('sale_tickets')
+        .update({ closed_at: null, completed_at: null })
+        .eq('id', request.ticket_id);
+
+      if (reopenError) {
+        console.error('Error reopening ticket:', reopenError);
+        showToast('Request approved but failed to reopen ticket', 'error');
+        return;
+      }
+
+      showToast('Request approved and ticket reopened', 'success');
       fetchTicketReopenRequests();
 
-      // Navigate to the ticket so reviewer can reopen it
-      if (result.ticket_id) {
-        window.location.href = `/tickets?open=${result.ticket_id}`;
-      }
+      // Step 3: Navigate to the ticket with highlight
+      const navState = {
+        ticketId: request.ticket_id,
+        ticketDate: request.ticket_date,
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem('ticket_navigation_state', JSON.stringify(navState));
+      window.dispatchEvent(new CustomEvent('navigateToTicket', { detail: navState }));
     } catch (error: any) {
       console.error('Error approving ticket reopen request:', error);
       showToast(error.message || 'Failed to approve request', 'error');
@@ -2617,23 +2648,41 @@ export function PendingApprovalsPage() {
                         <p className="text-sm text-amber-700">{request.reason_comment}</p>
                       </div>
 
-                      <div className="flex justify-between items-center">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                         <p className="text-xs text-gray-500">
                           Requested by: <span className="font-medium">{request.created_by_name}</span>
                         </p>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           <Button
                             size="sm"
-                            variant="primary"
-                            onClick={() => handleApproveTicketReopenRequest(request)}
+                            variant="secondary"
+                            onClick={() => handleViewTicket(request)}
                             disabled={processing}
                           >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Approve & View Ticket
+                            <Eye className="w-4 h-4 mr-1" />
+                            View Ticket
                           </Button>
                           <Button
                             size="sm"
                             variant="secondary"
+                            onClick={() => setViewingRequest(request)}
+                            disabled={processing}
+                          >
+                            <FileText className="w-4 h-4 mr-1" />
+                            View Request
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => handleApproveAndReopen(request)}
+                            disabled={processing}
+                          >
+                            <RotateCcw className="w-4 h-4 mr-1" />
+                            Approve & Reopen
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
                             onClick={() => {
                               setSelectedTicketReopenRequest(request);
                               setTicketReopenReviewComment('');
@@ -3067,6 +3116,74 @@ export function PendingApprovalsPage() {
                 disabled={processing || !ticketReopenReviewComment.trim()}
               >
                 {processing ? 'Rejecting...' : 'Reject Request'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* View Request Modal */}
+      <Modal
+        isOpen={viewingRequest !== null}
+        onClose={() => setViewingRequest(null)}
+        title="Ticket Change Request Details"
+      >
+        {viewingRequest && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Ticket</p>
+                <p className="text-lg font-semibold">#{viewingRequest.ticket_no}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Customer</p>
+                <p className="text-lg">{viewingRequest.customer_name || 'Walk-in'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Total</p>
+                <p className="text-lg">${viewingRequest.total.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Ticket Date</p>
+                <p className="text-lg">{viewingRequest.ticket_date}</p>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <p className="text-sm font-semibold text-amber-800 mb-2">Requested Changes</p>
+              <p className="text-amber-700">{viewingRequest.requested_changes_description}</p>
+
+              <p className="text-sm font-semibold text-amber-800 mt-4 mb-2">Reason</p>
+              <p className="text-amber-700">{viewingRequest.reason_comment}</p>
+            </div>
+
+            <div className="text-sm text-gray-500">
+              Requested by <span className="font-medium">{viewingRequest.created_by_name}</span>
+              {' '}on {formatDateTimeEST(viewingRequest.created_at)}
+            </div>
+
+            <div className="flex gap-2 pt-4 border-t">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  handleViewTicket(viewingRequest);
+                  setViewingRequest(null);
+                }}
+                disabled={processing}
+              >
+                <Eye className="w-4 h-4 mr-1" />
+                View Ticket
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  handleApproveAndReopen(viewingRequest);
+                  setViewingRequest(null);
+                }}
+                disabled={processing}
+              >
+                <RotateCcw className="w-4 h-4 mr-1" />
+                Approve & Reopen
               </Button>
             </div>
           </div>
