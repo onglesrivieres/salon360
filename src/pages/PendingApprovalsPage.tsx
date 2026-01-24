@@ -33,6 +33,12 @@ interface ViolationHistoryReport {
   votes_violation: number;
   votes_no_violation: number;
   responses: any;
+  info_requested_at: string | null;
+  info_requested_by: string | null;
+  info_requested_by_name: string | null;
+  info_request_message: string | null;
+  additional_info: string | null;
+  additional_info_submitted_at: string | null;
 }
 
 interface ProposalWithAttendance extends AttendanceChangeProposalWithDetails {
@@ -99,6 +105,11 @@ export function PendingApprovalsPage() {
   const [ticketReopenReviewComment, setTicketReopenReviewComment] = useState('');
   const [viewingRequest, setViewingRequest] = useState<PendingTicketReopenRequest | null>(null);
   const [rejectedTickets, setRejectedTickets] = useState<any[]>([]);
+  // Additional info request state
+  const [additionalInfoText, setAdditionalInfoText] = useState('');
+  const [infoRequestMessage, setInfoRequestMessage] = useState('');
+  const [showInfoRequestModal, setShowInfoRequestModal] = useState(false);
+  const [selectedReportForInfoRequest, setSelectedReportForInfoRequest] = useState<ViolationReportForApproval | null>(null);
   const [tabCounts, setTabCounts] = useState<{
     tickets: number;
     inventory: number;
@@ -115,9 +126,58 @@ export function PendingApprovalsPage() {
   const userRoles = session?.role || [];
   const isManagement = userRoles.some(role => ['Admin', 'Owner', 'Manager', 'Supervisor'].includes(role));
   const isSupervisor = session?.role_permission === 'Supervisor';
+  const isTechnician = session?.role_permission === 'Technician';
+  const isReceptionist = session?.role_permission === 'Receptionist';
+  const isCashier = session?.role_permission === 'Cashier';
+
+  // Access levels
+  const canViewAllRecords = isManagement || isReceptionist;
+  const canViewOwnRecordsOnly = isTechnician && !isManagement;
+  const hasPageAccess = isManagement || isReceptionist || isTechnician;
+  const canTakeActions = isManagement; // Only management can approve/reject
+
   const canViewQueueHistory = effectiveRole && Permissions.queue.canViewRemovalHistory(effectiveRole);
   const canReviewTransactionChanges = effectiveRole && Permissions.cashTransactions.canReviewChangeProposal(effectiveRole);
   const canReviewReopenRequests = effectiveRole && Permissions.tickets.canReviewReopenRequests(effectiveRole);
+
+  // Helper function to determine which tabs each role can see
+  function canViewTab(tabKey: TabType): boolean {
+    // Cashiers blocked from all tabs
+    if (isCashier) return false;
+
+    // Supervisor: only Cash tab (existing behavior)
+    if (isSupervisor) return tabKey === 'cash';
+
+    // Management and Receptionist: all tabs (with existing permission checks)
+    if (canViewAllRecords) {
+      if (tabKey === 'transaction-changes') return !!canReviewTransactionChanges;
+      if (tabKey === 'ticket-changes') return !!canReviewReopenRequests;
+      if (tabKey === 'queue-history') return !!canViewQueueHistory;
+      return true;
+    }
+
+    // Technician: only specific tabs with own records
+    if (isTechnician) {
+      const allowedTabs: TabType[] = [
+        'tickets', 'inventory', 'attendance',
+        'violations', 'ticket-changes', 'queue-history'
+      ];
+      return allowedTabs.includes(tabKey);
+    }
+
+    return false;
+  }
+
+  // Determine if Reporter info should be visible for a violation report
+  function canSeeReporterInfo(report: { reporter_employee_id: string; reported_employee_id: string }): boolean {
+    // Only Owner, Admin, Manager can see reporter info
+    const canSeeAsManagement = userRoles.some(role =>
+      ['Owner', 'Admin', 'Manager'].includes(role)
+    );
+    // If current user is the reported employee, always hide reporter
+    const isReportedEmployee = session?.employee_id === report.reported_employee_id;
+    return canSeeAsManagement && !isReportedEmployee;
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -130,11 +190,18 @@ export function PendingApprovalsPage() {
 
   // Fetch all tab counts and auto-navigate to first tab with pending items
   useEffect(() => {
-    if (!isManagement || !session?.employee_id || !selectedStoreId || initialTabSet) return;
+    if (!hasPageAccess || !session?.employee_id || !selectedStoreId || initialTabSet) return;
 
     // Supervisors can only see cash tab, so navigate there directly
     if (isSupervisor) {
       handleTabChange('cash');
+      setInitialTabSet(true);
+      return;
+    }
+
+    // Technicians: navigate to first allowed tab (tickets by default)
+    if (canViewOwnRecordsOnly) {
+      handleTabChange('tickets');
       setInitialTabSet(true);
       return;
     }
@@ -163,69 +230,69 @@ export function PendingApprovalsPage() {
       }
       setInitialTabSet(true);
     });
-  }, [isManagement, session?.employee_id, selectedStoreId, initialTabSet, isSupervisor]);
+  }, [hasPageAccess, session?.employee_id, selectedStoreId, initialTabSet, isSupervisor, canViewOwnRecordsOnly]);
 
   useEffect(() => {
-    if (!isManagement) return;
+    if (!hasPageAccess) return;
 
     if (session?.employee_id) {
-      if (activeTab === 'tickets') {
+      if (activeTab === 'tickets' && canViewTab('tickets')) {
         fetchPendingApprovals();
         fetchApprovalStats();
         fetchHistoricalApprovals();
         fetchRejectedTickets();
-      } else if (activeTab === 'inventory') {
+      } else if (activeTab === 'inventory' && canViewTab('inventory')) {
         fetchInventoryApprovals();
-      } else if (activeTab === 'cash') {
+      } else if (activeTab === 'cash' && canViewTab('cash')) {
         fetchCashTransactionApprovals();
-      } else if (activeTab === 'attendance') {
+      } else if (activeTab === 'attendance' && canViewTab('attendance')) {
         fetchAttendanceProposals();
-      } else if (activeTab === 'violations') {
+      } else if (activeTab === 'violations' && canViewTab('violations')) {
         fetchViolationReports();
         fetchViolationHistory();
-      } else if (activeTab === 'transaction-changes' && canReviewTransactionChanges) {
+      } else if (activeTab === 'transaction-changes' && canViewTab('transaction-changes')) {
         fetchTransactionChangeProposals();
-      } else if (activeTab === 'ticket-changes' && canReviewReopenRequests) {
+      } else if (activeTab === 'ticket-changes' && canViewTab('ticket-changes')) {
         fetchTicketReopenRequests();
-      } else if (activeTab === 'queue-history' && canViewQueueHistory) {
+      } else if (activeTab === 'queue-history' && canViewTab('queue-history')) {
         fetchQueueRemovalHistory();
       }
     }
-  }, [session?.employee_id, selectedStoreId, selectedDate, activeTab, isManagement, canViewQueueHistory, canReviewTransactionChanges, canReviewReopenRequests]);
+  }, [session?.employee_id, selectedStoreId, selectedDate, activeTab, hasPageAccess, canViewQueueHistory, canReviewTransactionChanges, canReviewReopenRequests]);
 
   useEffect(() => {
-    if (!isManagement) return;
+    if (!hasPageAccess) return;
 
     const interval = setInterval(() => {
       if (session?.employee_id) {
         // Refresh all tab counts
         fetchAllTabCounts();
 
-        if (activeTab === 'tickets') {
+        if (activeTab === 'tickets' && canViewTab('tickets')) {
           fetchPendingApprovals();
           fetchApprovalStats();
           fetchRejectedTickets();
-        } else if (activeTab === 'inventory') {
+        } else if (activeTab === 'inventory' && canViewTab('inventory')) {
           fetchInventoryApprovals();
-        } else if (activeTab === 'cash') {
+        } else if (activeTab === 'cash' && canViewTab('cash')) {
           fetchCashTransactionApprovals();
-        } else if (activeTab === 'attendance') {
+        } else if (activeTab === 'attendance' && canViewTab('attendance')) {
           fetchAttendanceProposals();
-        } else if (activeTab === 'violations') {
+        } else if (activeTab === 'violations' && canViewTab('violations')) {
           fetchViolationReports();
           fetchViolationHistory();
-        } else if (activeTab === 'transaction-changes' && canReviewTransactionChanges) {
+        } else if (activeTab === 'transaction-changes' && canViewTab('transaction-changes')) {
           fetchTransactionChangeProposals();
-        } else if (activeTab === 'ticket-changes' && canReviewReopenRequests) {
+        } else if (activeTab === 'ticket-changes' && canViewTab('ticket-changes')) {
           fetchTicketReopenRequests();
-        } else if (activeTab === 'queue-history' && canViewQueueHistory) {
+        } else if (activeTab === 'queue-history' && canViewTab('queue-history')) {
           fetchQueueRemovalHistory();
         }
       }
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [session?.employee_id, selectedStoreId, activeTab, isManagement, canViewQueueHistory, canReviewTransactionChanges, canReviewReopenRequests]);
+  }, [session?.employee_id, selectedStoreId, activeTab, hasPageAccess, canViewQueueHistory, canReviewTransactionChanges, canReviewReopenRequests]);
 
   function handleTabChange(tab: TabType) {
     setActiveTab(tab);
@@ -298,7 +365,16 @@ export function PendingApprovalsPage() {
       });
 
       if (error) throw error;
-      setTickets(data || []);
+
+      // Filter for Technician: only show tickets where they performed a service
+      let filteredData = data || [];
+      if (canViewOwnRecordsOnly && session?.employee_id) {
+        filteredData = filteredData.filter((ticket: { technician_ids?: string[] }) =>
+          ticket.technician_ids?.includes(session.employee_id)
+        );
+      }
+
+      setTickets(filteredData);
     } catch (error) {
       console.error('Error fetching pending approvals:', error);
       showToast('Failed to load pending approvals', 'error');
@@ -314,7 +390,16 @@ export function PendingApprovalsPage() {
         p_store_id: selectedStoreId,
       });
       if (error) throw error;
-      setRejectedTickets(data || []);
+
+      // Filter for Technician: only show their own rejected tickets
+      let filteredData = data || [];
+      if (canViewOwnRecordsOnly && session?.employee_id) {
+        filteredData = filteredData.filter((ticket: { technician_ids?: string[] }) =>
+          ticket.technician_ids?.includes(session.employee_id)
+        );
+      }
+
+      setRejectedTickets(filteredData);
     } catch (error) {
       console.error('Error fetching rejected tickets:', error);
     }
@@ -350,7 +435,16 @@ export function PendingApprovalsPage() {
       });
 
       if (error) throw error;
-      setInventoryApprovals(data || []);
+
+      // Filter for Technician: only show where they are the recipient
+      let filteredData = data || [];
+      if (canViewOwnRecordsOnly && session?.employee_id) {
+        filteredData = filteredData.filter((approval: { recipient_id?: string }) =>
+          approval.recipient_id === session.employee_id
+        );
+      }
+
+      setInventoryApprovals(filteredData);
     } catch (error) {
       console.error('Error fetching inventory approvals:', error);
     } finally {
@@ -392,7 +486,16 @@ export function PendingApprovalsPage() {
       });
 
       if (error) throw error;
-      setViolationReports(data || []);
+
+      // Filter for Technician: only show reports where they are the reported employee
+      let filteredData = data || [];
+      if (canViewOwnRecordsOnly && session?.employee_id) {
+        filteredData = filteredData.filter((report: { reported_employee_id?: string }) =>
+          report.reported_employee_id === session.employee_id
+        );
+      }
+
+      setViolationReports(filteredData);
     } catch (error) {
       console.error('Error fetching violation reports:', error);
     }
@@ -409,7 +512,16 @@ export function PendingApprovalsPage() {
       });
 
       if (error) throw error;
-      setViolationHistory(data || []);
+
+      // Filter for Technician: only show their own violation history
+      let filteredData = data || [];
+      if (canViewOwnRecordsOnly && session?.employee_id) {
+        filteredData = filteredData.filter((report: { reported_employee_id?: string }) =>
+          report.reported_employee_id === session.employee_id
+        );
+      }
+
+      setViolationHistory(filteredData);
     } catch (error) {
       console.error('Error fetching violation history:', error);
     }
@@ -432,10 +544,17 @@ export function PendingApprovalsPage() {
 
       if (error) throw error;
 
-      const transformedData = (data || []).map((item: any) => ({
+      let transformedData = (data || []).map((item: any) => ({
         ...item,
         work_date: item.attendance_records?.work_date,
       }));
+
+      // Filter for Technician: only show their own attendance proposals
+      if (canViewOwnRecordsOnly && session?.employee_id) {
+        transformedData = transformedData.filter((proposal: any) =>
+          proposal.employee_id === session.employee_id
+        );
+      }
 
       setAttendanceProposals(transformedData);
     } catch (error: any) {
@@ -462,8 +581,21 @@ export function PendingApprovalsPage() {
       if (managerData.error) throw managerData.error;
       if (supervisorData.error) throw supervisorData.error;
 
-      setHistoricalManagerTickets(managerData.data || []);
-      setHistoricalSupervisorTickets(supervisorData.data || []);
+      // Filter for Technician: only show their own historical tickets
+      let managerTickets = managerData.data || [];
+      let supervisorTickets = supervisorData.data || [];
+
+      if (canViewOwnRecordsOnly && session?.employee_id) {
+        managerTickets = managerTickets.filter((ticket: { technician_ids?: string[] }) =>
+          ticket.technician_ids?.includes(session.employee_id)
+        );
+        supervisorTickets = supervisorTickets.filter((ticket: { technician_ids?: string[] }) =>
+          ticket.technician_ids?.includes(session.employee_id)
+        );
+      }
+
+      setHistoricalManagerTickets(managerTickets);
+      setHistoricalSupervisorTickets(supervisorTickets);
     } catch (error) {
       console.error('Error fetching historical approvals:', error);
     }
@@ -482,7 +614,16 @@ export function PendingApprovalsPage() {
       });
 
       if (fetchError) throw fetchError;
-      setQueueRemovalRecords(data || []);
+
+      // Filter for Technician: only show their own queue removals
+      let filteredData = data || [];
+      if (canViewOwnRecordsOnly && session?.employee_id) {
+        filteredData = filteredData.filter((record: { employee_id?: string }) =>
+          record.employee_id === session.employee_id
+        );
+      }
+
+      setQueueRemovalRecords(filteredData);
     } catch (err: any) {
       console.error('Error fetching queue removal history:', err);
       showToast(err.message || 'Failed to load queue removal history', 'error');
@@ -519,7 +660,17 @@ export function PendingApprovalsPage() {
       });
 
       if (error) throw error;
-      setTicketReopenRequests(data || []);
+
+      // Filter for Technician: only show requests they created or tickets they worked on
+      let filteredData = data || [];
+      if (canViewOwnRecordsOnly && session?.employee_id) {
+        filteredData = filteredData.filter((request: { created_by_id?: string; technician_ids?: string[] }) =>
+          request.created_by_id === session.employee_id ||
+          request.technician_ids?.includes(session.employee_id)
+        );
+      }
+
+      setTicketReopenRequests(filteredData);
     } catch (error) {
       console.error('Error fetching ticket reopen requests:', error);
     } finally {
@@ -956,6 +1107,65 @@ export function PendingApprovalsPage() {
     }
   }
 
+  // Handler for management to request more info from reporter
+  async function handleRequestMoreInfo() {
+    if (!selectedReportForInfoRequest || !session?.employee_id) return;
+
+    try {
+      setProcessing(true);
+      const { error } = await supabase.rpc('request_violation_additional_info', {
+        p_violation_report_id: selectedReportForInfoRequest.report_id,
+        p_requested_by: session.employee_id,
+        p_message: infoRequestMessage.trim() || null
+      });
+
+      if (error) throw error;
+
+      showToast('Information request sent to reporter', 'success');
+      setShowInfoRequestModal(false);
+      setInfoRequestMessage('');
+      setSelectedReportForInfoRequest(null);
+      await fetchViolationReports();
+      await fetchViolationHistory();
+    } catch (error: any) {
+      console.error('Error requesting more info:', error);
+      showToast(error.message || 'Failed to send request', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  // Handler for reporter to submit additional info
+  async function handleSubmitAdditionalInfo(report: ViolationReportForApproval | ViolationHistoryReport) {
+    if (!session?.employee_id || !additionalInfoText.trim()) return;
+
+    try {
+      setProcessing(true);
+      const { error } = await supabase.rpc('submit_violation_additional_info', {
+        p_violation_report_id: report.report_id,
+        p_reporter_id: session.employee_id,
+        p_additional_info: additionalInfoText.trim()
+      });
+
+      if (error) throw error;
+
+      showToast('Additional information submitted', 'success');
+      setAdditionalInfoText('');
+      await fetchViolationReports();
+      await fetchViolationHistory();
+    } catch (error: any) {
+      console.error('Error submitting additional info:', error);
+      showToast(error.message || 'Failed to submit information', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  // Helper to check if current user is the reporter
+  function isReporter(report: { reporter_employee_id: string }): boolean {
+    return session?.employee_id === report.reporter_employee_id;
+  }
+
   async function handleReviewAttendanceProposal(proposalId: string, action: 'approve' | 'reject') {
     if (!session?.employee_id) return;
 
@@ -1165,7 +1375,25 @@ export function PendingApprovalsPage() {
     return getCurrentDateEST();
   }
 
-  if (!isManagement) {
+  // Block Cashiers explicitly
+  if (isCashier) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
+          <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-700 mb-4">
+            This page is not available to your role.
+          </p>
+          <p className="text-sm text-gray-600">
+            If you believe you should have access, please contact your administrator.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasPageAccess) {
     return (
       <div className="max-w-4xl mx-auto">
         <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
@@ -1197,9 +1425,13 @@ export function PendingApprovalsPage() {
       <div className="mb-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-2">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Management Approvals</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              {canTakeActions ? 'Management Approvals' : 'My Pending Items'}
+            </h2>
             <p className="text-sm text-gray-600">
-              Review and approve pending requests across all categories
+              {canTakeActions
+                ? 'Review and approve pending requests across all categories'
+                : 'View status of your pending requests and records'}
             </p>
           </div>
           <div className="flex items-center gap-1">
@@ -1238,7 +1470,7 @@ export function PendingApprovalsPage() {
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="border-b border-gray-200">
           <div className="flex flex-wrap gap-1 p-1">
-            {!isSupervisor && (
+            {canViewTab('tickets') && (
               <button
                 onClick={() => handleTabChange('tickets')}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
@@ -1256,7 +1488,7 @@ export function PendingApprovalsPage() {
                 )}
               </button>
             )}
-            {!isSupervisor && (
+            {canViewTab('inventory') && (
               <button
                 onClick={() => handleTabChange('inventory')}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
@@ -1274,23 +1506,25 @@ export function PendingApprovalsPage() {
                 )}
               </button>
             )}
-            <button
-              onClick={() => handleTabChange('cash')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === 'cash'
-                  ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <DollarSign className="w-4 h-4" />
-              Cash Management
-              {(activeTab === 'cash' ? cashTransactionApprovals.length : tabCounts.cash) > 0 && (
-                <Badge variant="warning" className="ml-1">
-                  {activeTab === 'cash' ? cashTransactionApprovals.length : tabCounts.cash}
-                </Badge>
-              )}
-            </button>
-            {canReviewTransactionChanges && !isSupervisor && (
+            {canViewTab('cash') && (
+              <button
+                onClick={() => handleTabChange('cash')}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                  activeTab === 'cash'
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <DollarSign className="w-4 h-4" />
+                Cash Management
+                {(activeTab === 'cash' ? cashTransactionApprovals.length : tabCounts.cash) > 0 && (
+                  <Badge variant="warning" className="ml-1">
+                    {activeTab === 'cash' ? cashTransactionApprovals.length : tabCounts.cash}
+                  </Badge>
+                )}
+              </button>
+            )}
+            {canViewTab('transaction-changes') && (
               <button
                 onClick={() => handleTabChange('transaction-changes')}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
@@ -1308,7 +1542,7 @@ export function PendingApprovalsPage() {
                 )}
               </button>
             )}
-            {!isSupervisor && (
+            {canViewTab('attendance') && (
               <button
                 onClick={() => handleTabChange('attendance')}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
@@ -1326,7 +1560,7 @@ export function PendingApprovalsPage() {
                 )}
               </button>
             )}
-            {!isSupervisor && (
+            {canViewTab('violations') && (
               <button
                 onClick={() => handleTabChange('violations')}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
@@ -1344,7 +1578,7 @@ export function PendingApprovalsPage() {
                 )}
               </button>
             )}
-            {canReviewReopenRequests && !isSupervisor && (
+            {canViewTab('ticket-changes') && (
               <button
                 onClick={() => handleTabChange('ticket-changes')}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
@@ -1362,7 +1596,7 @@ export function PendingApprovalsPage() {
                 )}
               </button>
             )}
-            {canViewQueueHistory && !isSupervisor && (
+            {canViewTab('queue-history') && (
               <button
                 onClick={() => handleTabChange('queue-history')}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
@@ -1540,28 +1774,32 @@ export function PendingApprovalsPage() {
                           </div>
                         </div>
 
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="primary"
-                            onClick={() => handleApproveClick(ticket)}
-                            className="flex-1"
-                            disabled={processing}
-                          >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleRejectClick(ticket)}
-                            className="flex-1 text-red-600 hover:bg-red-50"
-                            disabled={processing}
-                          >
-                            <XCircle className="w-4 h-4 mr-1" />
-                            Reject
-                          </Button>
-                        </div>
+                        {canTakeActions ? (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              onClick={() => handleApproveClick(ticket)}
+                              className="flex-1"
+                              disabled={processing}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRejectClick(ticket)}
+                              className="flex-1 text-red-600 hover:bg-red-50"
+                              disabled={processing}
+                            >
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Reject
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500 italic">View only</div>
+                        )}
                       </div>
                     );
                   })}
@@ -1767,25 +2005,29 @@ export function PendingApprovalsPage() {
                             <p className="text-sm text-gray-600 mt-1 italic">{approval.notes}</p>
                           )}
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleApproveInventory(approval)}
-                            disabled={processing}
-                          >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => handleRejectInventoryClick(approval)}
-                            disabled={processing}
-                          >
-                            <XCircle className="w-4 h-4 mr-1" />
-                            Reject
-                          </Button>
-                        </div>
+                        {canTakeActions ? (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveInventory(approval)}
+                              disabled={processing}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleRejectInventoryClick(approval)}
+                              disabled={processing}
+                            >
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Reject
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500 italic">View only</div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1841,25 +2083,29 @@ export function PendingApprovalsPage() {
                             Date: {formatDateEST(approval.date)}
                           </p>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleApproveCashTransaction(approval)}
-                            disabled={processing}
-                          >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => handleRejectCashTransactionClick(approval)}
-                            disabled={processing}
-                          >
-                            <XCircle className="w-4 h-4 mr-1" />
-                            Reject
-                          </Button>
-                        </div>
+                        {canTakeActions ? (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveCashTransaction(approval)}
+                              disabled={processing}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleRejectCashTransactionClick(approval)}
+                              disabled={processing}
+                            >
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Reject
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500 italic">View only</div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -2218,47 +2464,51 @@ export function PendingApprovalsPage() {
                             )}
 
                             <div className="flex justify-end gap-2">
-                              {selectedProposal?.id === proposal.id ? (
-                                <>
+                              {canTakeActions ? (
+                                selectedProposal?.id === proposal.id ? (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      onClick={() => {
+                                        setSelectedProposal(null);
+                                        setReviewComment('');
+                                      }}
+                                      disabled={processing}
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      onClick={() => handleReviewAttendanceProposal(proposal.id, 'reject')}
+                                      disabled={processing}
+                                      className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                                    >
+                                      <XCircle className="w-4 h-4 mr-1" />
+                                      Reject
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleReviewAttendanceProposal(proposal.id, 'approve')}
+                                      disabled={processing}
+                                      className="bg-green-600 hover:bg-green-700"
+                                    >
+                                      <CheckCircle className="w-4 h-4 mr-1" />
+                                      {processing ? 'Processing...' : 'Approve'}
+                                    </Button>
+                                  </>
+                                ) : (
                                   <Button
                                     size="sm"
-                                    variant="secondary"
-                                    onClick={() => {
-                                      setSelectedProposal(null);
-                                      setReviewComment('');
-                                    }}
+                                    onClick={() => setSelectedProposal(proposal)}
                                     disabled={processing}
                                   >
-                                    Cancel
+                                    Review
                                   </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    onClick={() => handleReviewAttendanceProposal(proposal.id, 'reject')}
-                                    disabled={processing}
-                                    className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
-                                  >
-                                    <XCircle className="w-4 h-4 mr-1" />
-                                    Reject
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleReviewAttendanceProposal(proposal.id, 'approve')}
-                                    disabled={processing}
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    <CheckCircle className="w-4 h-4 mr-1" />
-                                    {processing ? 'Processing...' : 'Approve'}
-                                  </Button>
-                                </>
+                                )
                               ) : (
-                                <Button
-                                  size="sm"
-                                  onClick={() => setSelectedProposal(proposal)}
-                                  disabled={processing}
-                                >
-                                  Review
-                                </Button>
+                                <span className="text-sm text-gray-500 italic">View only</span>
                               )}
                             </div>
                           </div>
@@ -2375,6 +2625,11 @@ export function PendingApprovalsPage() {
                                   <Badge className="bg-orange-100 text-orange-700">Insufficient Responders</Badge>
                                 )}
                               </div>
+                              {canSeeReporterInfo(report) && (
+                                <p className="text-sm text-gray-900 mb-2">
+                                  <span className="font-medium">Reporter:</span> {report.reporter_employee_name}
+                                </p>
+                              )}
                               <p className="text-sm text-gray-900 mb-2">
                                 <span className="font-medium">Reported Employee:</span> {report.reported_employee_name}
                               </p>
@@ -2384,6 +2639,61 @@ export function PendingApprovalsPage() {
                               <p className="text-xs text-gray-500">
                                 Date: {formatDateOnly(report.violation_date)}
                               </p>
+
+                              {/* Info Request Display */}
+                              {report.info_requested_at && (
+                                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <AlertCircle className="w-4 h-4 text-yellow-600" />
+                                    <span className="text-sm font-medium text-yellow-800">
+                                      Additional Information Requested
+                                    </span>
+                                  </div>
+                                  {report.info_request_message && (
+                                    <p className="text-sm text-yellow-700 mb-2 italic">
+                                      &ldquo;{report.info_request_message}&rdquo;
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-yellow-600 mb-2">
+                                    Requested on {formatDateTimeEST(report.info_requested_at)}
+                                  </p>
+
+                                  {/* Input for reporter to respond */}
+                                  {isReporter(report) && !report.additional_info_submitted_at && (
+                                    <div className="mt-3">
+                                      <textarea
+                                        value={additionalInfoText}
+                                        onChange={(e) => setAdditionalInfoText(e.target.value)}
+                                        placeholder="Provide additional details..."
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                        rows={3}
+                                        disabled={processing}
+                                      />
+                                      <Button
+                                        size="sm"
+                                        onClick={() => handleSubmitAdditionalInfo(report)}
+                                        disabled={processing || !additionalInfoText.trim()}
+                                        className="mt-2"
+                                      >
+                                        {processing ? 'Submitting...' : 'Submit Additional Info'}
+                                      </Button>
+                                    </div>
+                                  )}
+
+                                  {/* Show submitted info */}
+                                  {report.additional_info && (
+                                    <div className="mt-2 p-2 bg-white rounded border border-yellow-200">
+                                      <p className="text-xs font-medium text-gray-700 mb-1">Additional Info Provided:</p>
+                                      <p className="text-sm text-gray-800">{report.additional_info}</p>
+                                      {report.additional_info_submitted_at && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          Submitted {formatDateTimeEST(report.additional_info_submitted_at)}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
 
                               <div className="mt-3 pt-3 border-t border-gray-200">
                                 <p className="text-sm font-medium text-gray-900 mb-2">
@@ -2414,13 +2724,32 @@ export function PendingApprovalsPage() {
                               </div>
                             </div>
                             <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handleViolationDecisionClick(report)}
-                                disabled={processing}
-                              >
-                                Review & Decide
-                              </Button>
+                              {canTakeActions ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleViolationDecisionClick(report)}
+                                    disabled={processing}
+                                  >
+                                    Review & Decide
+                                  </Button>
+                                  {!report.info_requested_at && (
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      onClick={() => {
+                                        setSelectedReportForInfoRequest(report);
+                                        setShowInfoRequestModal(true);
+                                      }}
+                                      disabled={processing}
+                                    >
+                                      Request More Info
+                                    </Button>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-sm text-gray-500 italic">View only</span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2543,6 +2872,11 @@ export function PendingApprovalsPage() {
                               <Flag className="w-4 h-4 text-gray-600" />
                               {statusBadge}
                             </div>
+                            {canSeeReporterInfo(report) && (
+                              <p className="text-sm text-gray-900 mb-1">
+                                <span className="font-medium">Reporter:</span> {report.reporter_employee_name}
+                              </p>
+                            )}
                             <p className="text-sm text-gray-900 mb-1">
                               <span className="font-medium">Reported Employee:</span> {report.reported_employee_name}
                             </p>
@@ -2551,6 +2885,61 @@ export function PendingApprovalsPage() {
                               Date: {formatDateTimeEST(report.created_at)}
                               {report.queue_position !== null && ` • Queue Position: ${report.queue_position}`}
                             </p>
+
+                            {/* Info Request Display */}
+                            {report.info_requested_at && (
+                              <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <AlertCircle className="w-4 h-4 text-yellow-600" />
+                                  <span className="text-sm font-medium text-yellow-800">
+                                    Additional Information Requested
+                                  </span>
+                                </div>
+                                {report.info_request_message && (
+                                  <p className="text-sm text-yellow-700 mb-2 italic">
+                                    &ldquo;{report.info_request_message}&rdquo;
+                                  </p>
+                                )}
+                                <p className="text-xs text-yellow-600 mb-2">
+                                  Requested on {formatDateTimeEST(report.info_requested_at)}
+                                </p>
+
+                                {/* Input for reporter to respond */}
+                                {isReporter(report) && !report.additional_info_submitted_at && (
+                                  <div className="mt-3">
+                                    <textarea
+                                      value={additionalInfoText}
+                                      onChange={(e) => setAdditionalInfoText(e.target.value)}
+                                      placeholder="Provide additional details..."
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                      rows={3}
+                                      disabled={processing}
+                                    />
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleSubmitAdditionalInfo(report)}
+                                      disabled={processing || !additionalInfoText.trim()}
+                                      className="mt-2"
+                                    >
+                                      {processing ? 'Submitting...' : 'Submit Additional Info'}
+                                    </Button>
+                                  </div>
+                                )}
+
+                                {/* Show submitted info */}
+                                {report.additional_info && (
+                                  <div className="mt-2 p-2 bg-white rounded border border-yellow-200">
+                                    <p className="text-xs font-medium text-gray-700 mb-1">Additional Info Provided:</p>
+                                    <p className="text-sm text-gray-800">{report.additional_info}</p>
+                                    {report.additional_info_submitted_at && (
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        Submitted {formatDateTimeEST(report.additional_info_submitted_at)}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
 
                             {report.status === 'collecting_responses' && (
                               <div className="mt-3 pt-3 border-t border-gray-200">
@@ -2672,27 +3061,33 @@ export function PendingApprovalsPage() {
                             <FileText className="w-4 h-4 mr-1" />
                             View Request
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="primary"
-                            onClick={() => handleApproveAndReopen(request)}
-                            disabled={processing}
-                          >
-                            <RotateCcw className="w-4 h-4 mr-1" />
-                            Approve & Reopen
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            onClick={() => {
-                              setSelectedTicketReopenRequest(request);
-                              setTicketReopenReviewComment('');
-                            }}
-                            disabled={processing}
-                          >
-                            <XCircle className="w-4 h-4 mr-1" />
-                            Reject
-                          </Button>
+                          {canTakeActions ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                onClick={() => handleApproveAndReopen(request)}
+                                disabled={processing}
+                              >
+                                <RotateCcw className="w-4 h-4 mr-1" />
+                                Approve & Reopen
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                onClick={() => {
+                                  setSelectedTicketReopenRequest(request);
+                                  setTicketReopenReviewComment('');
+                                }}
+                                disabled={processing}
+                              >
+                                <XCircle className="w-4 h-4 mr-1" />
+                                Reject
+                              </Button>
+                            </>
+                          ) : (
+                            <span className="text-sm text-gray-500 italic self-center">View only</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2956,6 +3351,12 @@ export function PendingApprovalsPage() {
       >
         {selectedViolationReport && (
           <div className="space-y-4">
+            {canSeeReporterInfo(selectedViolationReport) && (
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-sm font-medium text-gray-900 mb-1">Reporter</p>
+                <p className="text-sm text-gray-700">{selectedViolationReport.reporter_employee_name}</p>
+              </div>
+            )}
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-sm font-medium text-gray-900 mb-1">Reported Employee</p>
               <p className="text-sm text-gray-700">{selectedViolationReport.reported_employee_name}</p>
@@ -2965,6 +3366,30 @@ export function PendingApprovalsPage() {
               <p className="text-sm font-medium text-gray-900 mb-1">Violation Description</p>
               <p className="text-sm text-gray-700">{selectedViolationReport.violation_description}</p>
             </div>
+
+            {/* Additional Info Display in Modal */}
+            {selectedViolationReport.info_requested_at && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-sm font-medium text-yellow-900 mb-2">Additional Information</p>
+                {selectedViolationReport.info_request_message && (
+                  <p className="text-sm text-yellow-700 mb-2">
+                    <span className="font-medium">Question asked:</span> &ldquo;{selectedViolationReport.info_request_message}&rdquo;
+                  </p>
+                )}
+                {selectedViolationReport.additional_info ? (
+                  <div className="bg-white rounded p-2 border border-yellow-200">
+                    <p className="text-sm text-gray-800">{selectedViolationReport.additional_info}</p>
+                    {selectedViolationReport.additional_info_submitted_at && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Submitted {formatDateTimeEST(selectedViolationReport.additional_info_submitted_at)}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-yellow-700 italic">Reporter has not yet provided additional information.</p>
+                )}
+              </div>
+            )}
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-sm font-medium text-blue-900 mb-2">Employee Votes</p>
@@ -3065,6 +3490,41 @@ export function PendingApprovalsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Request Additional Info Modal */}
+      <Modal
+        isOpen={showInfoRequestModal}
+        onClose={() => {
+          if (!processing) {
+            setShowInfoRequestModal(false);
+            setInfoRequestMessage('');
+            setSelectedReportForInfoRequest(null);
+          }
+        }}
+        title="Request Additional Information"
+        onConfirm={handleRequestMoreInfo}
+        confirmText={processing ? 'Sending...' : 'Send Request'}
+        cancelText="Cancel"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Request additional details from the reporter to help make your decision.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Question or Prompt (optional)
+            </label>
+            <textarea
+              value={infoRequestMessage}
+              onChange={(e) => setInfoRequestMessage(e.target.value)}
+              placeholder="What additional information do you need?"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              rows={3}
+              disabled={processing}
+            />
+          </div>
+        </div>
       </Modal>
 
       {/* Ticket Reopen Request Rejection Modal */}
