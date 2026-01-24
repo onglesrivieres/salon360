@@ -960,6 +960,12 @@ export interface ViolationReportForApproval {
   min_votes_required: number;
   threshold_met: boolean;
   insufficient_responders: boolean;
+  info_requested_at?: string | null;
+  info_requested_by?: string | null;
+  info_requested_by_name?: string | null;
+  info_request_message?: string | null;
+  additional_info?: string | null;
+  additional_info_submitted_at?: string | null;
 }
 
 // Client Management Types
