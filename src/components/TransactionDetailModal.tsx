@@ -58,16 +58,16 @@ export function TransactionDetailModal({ isOpen, onClose, transactionId }: Trans
 
       if (itemsError) throw itemsError;
 
-      const masterItemIds = [...new Set(itemsData.map((item: any) => item.master_item_id).filter(Boolean))];
+      const itemIds = [...new Set(itemsData.map((item: any) => item.item_id).filter(Boolean))];
 
-      const { data: masterItemsData, error: masterItemsError } = await supabase
-        .from('master_inventory_items')
+      const { data: inventoryItemsData, error: inventoryItemsError } = await supabase
+        .from('inventory_items')
         .select('id, name, unit')
-        .in('id', masterItemIds);
+        .in('id', itemIds);
 
-      if (masterItemsError) throw masterItemsError;
+      if (inventoryItemsError) throw inventoryItemsError;
 
-      const masterItemsMap = new Map(masterItemsData.map((item: any) => [item.id, item]));
+      const itemsMap = new Map(inventoryItemsData?.map((item: any) => [item.id, item]) || []);
 
       const detail: TransactionDetail = {
         id: transactionData.id,
@@ -93,11 +93,11 @@ export function TransactionDetailModal({ isOpen, onClose, transactionId }: Trans
         manager_approved_by_name: transactionData.manager_approved_by?.display_name,
         rejection_reason: transactionData.rejection_reason,
         items: (itemsData || []).map((item: any) => {
-          const masterItem = masterItemsMap.get(item.master_item_id);
+          const inventoryItem = itemsMap.get(item.item_id);
           return {
             id: item.id,
             item_id: item.item_id,
-            item_name: masterItem?.name || 'Unknown Item',
+            item_name: inventoryItem?.name || 'Unknown Item',
             purchase_unit_name: item.purchase_unit?.unit_name,
             purchase_quantity: item.purchase_quantity,
             purchase_unit_price: item.purchase_unit_price,

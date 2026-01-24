@@ -112,7 +112,7 @@ export function PendingApprovalsPage() {
   const { session, selectedStoreId, effectiveRole } = useAuth();
 
   const userRoles = session?.role || [];
-  const isManagement = userRoles.some(role => ['Owner', 'Manager', 'Supervisor'].includes(role));
+  const isManagement = userRoles.some(role => ['Admin', 'Owner', 'Manager', 'Supervisor'].includes(role));
   const isSupervisor = session?.role_permission === 'Supervisor';
   const canViewQueueHistory = effectiveRole && Permissions.queue.canViewRemovalHistory(effectiveRole);
   const canReviewTransactionChanges = effectiveRole && Permissions.cashTransactions.canReviewChangeProposal(effectiveRole);

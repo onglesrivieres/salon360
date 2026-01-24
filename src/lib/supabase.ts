@@ -425,9 +425,25 @@ export interface InventoryItem {
   unit_cost: number;
   brand?: string;
   supplier: string;
+  size?: string;
+  color_code?: string;
+  parent_id?: string;
+  is_master_item: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface InventoryItemWithHierarchy extends InventoryItem {
+  sub_items?: InventoryItem[];
+  total_sub_item_quantity?: number;
+  has_low_stock_sub_items?: boolean;
+  weighted_avg_cost?: number;
+  default_purchase_unit?: {
+    id: string;
+    unit_name: string;
+    multiplier: number;
+  };
 }
 
 export interface InventoryTransaction {

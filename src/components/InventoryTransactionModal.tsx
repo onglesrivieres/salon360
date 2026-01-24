@@ -1,15 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { X, Plus, Trash2, Check } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { NumericInput } from './ui/NumericInput';
+import { SearchableSelect, SearchableSelectOption } from './ui/SearchableSelect';
 import { useToast } from './ui/Toast';
 import { supabase, InventoryItem, Technician, PurchaseUnit, Supplier } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { InventoryItemModal } from './InventoryItemModal';
 import { UNITS } from '../lib/inventory-constants';
+import { Permissions } from '../lib/permissions';
 
 interface InventoryTransactionModalProps {
   isOpen: boolean;
@@ -81,6 +83,17 @@ export function InventoryTransactionModal({
   const [purchaseUnits, setPurchaseUnits] = useState<Record<string, PurchaseUnit[]>>({});
   const [pendingPurchaseUnits, setPendingPurchaseUnits] = useState<PendingPurchaseUnit[]>([]);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
+
+  // Create a map of master items for grouping sub-items
+  const masterItemsMap = useMemo(() => {
+    const map = new Map<string, InventoryItem>();
+    inventoryItems.forEach(item => {
+      if (item.is_master_item) {
+        map.set(item.id, item);
+      }
+    });
+    return map;
+  }, [inventoryItems]);
 
   useEffect(() => {
     if (isOpen && selectedStoreId) {
@@ -561,6 +574,9 @@ export function InventoryTransactionModal({
       }
     }
 
+    // Admin can self-approve - skip manager approval requirement
+    const canSelfApprove = session.role && Permissions.inventory.canSelfApprove(session.role);
+
     const { data: transactionResult, error: transactionError } = await supabase.rpc(
       'create_inventory_transaction_atomic',
       {
@@ -571,7 +587,7 @@ export function InventoryTransactionModal({
         p_supplier_id: transactionType === 'in' && supplierId ? supplierId : null,
         p_invoice_reference: transactionType === 'in' && invoiceReference ? invoiceReference.trim() : null,
         p_notes: notes.trim(),
-        p_requires_manager_approval: true,
+        p_requires_manager_approval: !canSelfApprove,  // Admin doesn't require approval
         p_requires_recipient_approval: transactionType === 'out',
       }
     );
@@ -1009,11 +1025,16 @@ export function InventoryTransactionModal({
               const selectedPurchaseUnit = itemPurchaseUnits.find(u => u.id === item.purchase_unit_id);
 
               const selectedSupplier = suppliers.find(s => s.id === supplierId);
-              const filteredInventoryItems = transactionType === 'in' && selectedSupplier
-                ? inventoryItems.filter(invItem =>
-                    invItem.supplier?.toLowerCase() === selectedSupplier.name.toLowerCase()
-                  )
-                : inventoryItems;
+              // Filter out master items (they can't have transactions) and optionally filter by supplier
+              const filteredInventoryItems = inventoryItems.filter(invItem => {
+                // Exclude master items - only sub-items and standalone items can have transactions
+                if (invItem.is_master_item) return false;
+                // For 'in' transactions with selected supplier, filter by supplier
+                if (transactionType === 'in' && selectedSupplier) {
+                  return invItem.supplier?.toLowerCase() === selectedSupplier.name.toLowerCase();
+                }
+                return true;
+              });
 
               return (
                 <div
@@ -1025,25 +1046,22 @@ export function InventoryTransactionModal({
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Item {index === 0 && <span className="text-red-500">*</span>}
                       </label>
-                      <Select
+                      <SearchableSelect
                         value={item.item_id}
-                        onChange={(e) => handleItemDropdownChange(index, e.target.value)}
+                        onChange={(value) => handleItemDropdownChange(index, value)}
+                        placeholder="Search items..."
                         required={index === 0}
                         className="text-sm"
-                      >
-                        <option value="">Select Item</option>
-                        <option value="__add_new__" className="text-blue-600 font-medium">
-                          + Add New Item
-                        </option>
-                        {filteredInventoryItems.length > 0 && (
-                          <option disabled>──────────</option>
-                        )}
-                        {filteredInventoryItems.map((invItem) => (
-                          <option key={invItem.id} value={invItem.id}>
-                            {invItem.name}{invItem.brand ? ` - ${invItem.brand}` : ''}
-                          </option>
-                        ))}
-                      </Select>
+                        allowAddNew={true}
+                        onAddNew={() => setShowAddItemModal(true)}
+                        addNewLabel="+ Add New Item"
+                        options={filteredInventoryItems.map((invItem): SearchableSelectOption => ({
+                          value: invItem.id,
+                          label: invItem.name,
+                          description: invItem.brand || undefined,
+                          groupLabel: invItem.parent_id ? masterItemsMap.get(invItem.parent_id)?.name : undefined,
+                        }))}
+                      />
                       {item.item_id && transactionType === 'out' && (
                         <p className="text-xs text-gray-500 mt-1">
                           Available: {getAvailableStock(item.item_id)}

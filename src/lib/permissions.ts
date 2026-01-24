@@ -313,6 +313,9 @@ export const Permissions = {
     canApproveAudit: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
     },
+    canSelfApprove: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin']);
+    },
   },
 
   suppliers: {

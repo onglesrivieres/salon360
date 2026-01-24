@@ -36,7 +36,12 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
     description: '',
     category: '',
     reorder_level: '0',
+    size: '',
+    color_code: '',
   });
+  const [itemType, setItemType] = useState<'standalone' | 'master' | 'sub'>('standalone');
+  const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
+  const [masterItems, setMasterItems] = useState<InventoryItem[]>([]);
   const [transactionCount, setTransactionCount] = useState<number>(0);
   const [loadingTransactionCount, setLoadingTransactionCount] = useState(false);
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
@@ -45,11 +50,31 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
   useEffect(() => {
     if (isOpen) {
       fetchSuppliers();
+      fetchMasterItems();
       if (item) {
         fetchTransactionCount();
       }
     }
   }, [isOpen, item]);
+
+  async function fetchMasterItems() {
+    if (!selectedStoreId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('store_id', selectedStoreId)
+        .eq('is_master_item', true)
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setMasterItems(data || []);
+    } catch (error) {
+      console.error('Error fetching master items:', error);
+    }
+  }
 
   useEffect(() => {
     if (item) {
@@ -60,7 +85,20 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         description: item.description || '',
         category: item.category,
         reorder_level: item.reorder_level.toString(),
+        size: item.size || '',
+        color_code: item.color_code || '',
       });
+      // Set item type based on existing item
+      if (item.is_master_item) {
+        setItemType('master');
+        setSelectedParentId(null);
+      } else if (item.parent_id) {
+        setItemType('sub');
+        setSelectedParentId(item.parent_id);
+      } else {
+        setItemType('standalone');
+        setSelectedParentId(null);
+      }
     } else {
       setFormData({
         supplier: '',
@@ -69,7 +107,11 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         description: '',
         category: '',
         reorder_level: '0',
+        size: '',
+        color_code: '',
       });
+      setItemType('standalone');
+      setSelectedParentId(null);
     }
     setTransactionCount(0);
   }, [item, isOpen]);
@@ -133,8 +175,22 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
       return;
     }
 
-    if (!formData.supplier || !formData.name || !formData.category) {
+    // Validation - master items don't need supplier, sub-items need parent
+    const isMasterItem = itemType === 'master';
+    const isSubItem = itemType === 'sub';
+
+    if (!isMasterItem && !formData.supplier) {
+      showToast('Please select a supplier', 'error');
+      return;
+    }
+
+    if (!formData.name || !formData.category) {
       showToast('Please fill in all required fields', 'error');
+      return;
+    }
+
+    if (isSubItem && !selectedParentId) {
+      showToast('Please select a parent master item', 'error');
       return;
     }
 
@@ -150,8 +206,12 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             description: formData.description.trim(),
             category: formData.category,
             brand: formData.brand.trim() || null,
-            supplier: formData.supplier,
-            reorder_level: parseFloat(formData.reorder_level) || 0,
+            supplier: isMasterItem ? '' : formData.supplier,
+            reorder_level: isMasterItem ? 0 : parseFloat(formData.reorder_level) || 0,
+            size: formData.size.trim() || null,
+            color_code: formData.color_code.trim() || null,
+            is_master_item: isMasterItem,
+            parent_id: isSubItem ? selectedParentId : null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', item.id);
@@ -168,9 +228,13 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           unit: 'piece',
           unit_cost: 0,
           quantity_on_hand: 0,
-          reorder_level: parseFloat(formData.reorder_level) || 0,
+          reorder_level: isMasterItem ? 0 : parseFloat(formData.reorder_level) || 0,
           brand: formData.brand.trim() || null,
-          supplier: formData.supplier,
+          supplier: isMasterItem ? '' : formData.supplier,
+          size: formData.size.trim() || null,
+          color_code: formData.color_code.trim() || null,
+          is_master_item: isMasterItem,
+          parent_id: isSubItem ? selectedParentId : null,
           is_active: true,
         };
 
@@ -179,7 +243,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           .insert(itemData);
 
         if (insertError) throw insertError;
-        showToast('New item created successfully', 'success');
+        showToast(`${isMasterItem ? 'Master item' : 'Item'} created successfully`, 'success');
       }
 
       onSuccess();
@@ -234,7 +298,77 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         }
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Item Type Selection - only for new items */}
+          {!item && (
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-gray-700">
+                Item Type <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="item_type"
+                    checked={itemType === 'standalone'}
+                    onChange={() => {
+                      setItemType('standalone');
+                      setSelectedParentId(null);
+                    }}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <span className="text-sm">Standalone Item</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="item_type"
+                    checked={itemType === 'master'}
+                    onChange={() => {
+                      setItemType('master');
+                      setSelectedParentId(null);
+                    }}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <span className="text-sm">Master Item (Group)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="item_type"
+                    checked={itemType === 'sub'}
+                    onChange={() => setItemType('sub')}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <span className="text-sm">Sub-Item (Variation)</span>
+                </label>
+              </div>
+
+              {/* Parent Selection for Sub-Items */}
+              {itemType === 'sub' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Parent Master Item <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    value={selectedParentId || ''}
+                    onChange={(e) => setSelectedParentId(e.target.value || null)}
+                    required
+                  >
+                    <option value="">Select Master Item</option>
+                    {masterItems.map(master => (
+                      <option key={master.id} value={master.id}>
+                        {master.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
+            {/* Supplier - not required for master items */}
+            {itemType !== 'master' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Supplier <span className="text-red-500">*</span>
@@ -261,30 +395,60 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
                 ))}
               </Select>
             </div>
+            )}
+
+            {/* Brand - shown for standalone and sub-items */}
+            {itemType !== 'master' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Brand
+              </label>
+              <Input
+                value={formData.brand}
+                onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                placeholder="e.g., OPI"
+              />
+            </div>
+            )}
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Brand
+              Item Name <span className="text-red-500">*</span>
             </label>
             <Input
-              value={formData.brand}
-              onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-              placeholder="e.g., OPI"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder={itemType === 'master' ? 'e.g., Gel Color Collection' : 'e.g., Base Gel'}
+              required
             />
           </div>
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Item Name <span className="text-red-500">*</span>
-          </label>
-          <Input
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="e.g., Base Gel"
-            required
-          />
-        </div>
+          {/* Size and Color Code - only for sub-items */}
+          {itemType === 'sub' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Color/Code
+                </label>
+                <Input
+                  value={formData.color_code}
+                  onChange={(e) => setFormData({ ...formData, color_code: e.target.value })}
+                  placeholder="e.g., 66, 67, Red"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Size
+                </label>
+                <Input
+                  value={formData.size}
+                  onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                  placeholder="e.g., Small, Medium, Large"
+                />
+              </div>
+            </div>
+          )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -315,6 +479,8 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           />
         </div>
 
+        {/* Reorder Level - not for master items */}
+        {itemType !== 'master' && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Reorder Level (Purchase Units)
@@ -331,6 +497,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             <span>Reorder when stock falls below this many purchase units (e.g., "2" means reorder when below 2 cases)</span>
           </p>
         </div>
+        )}
 
         {item && (
           <>
