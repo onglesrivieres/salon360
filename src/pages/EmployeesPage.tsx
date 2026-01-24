@@ -53,6 +53,7 @@ export function EmployeesPage() {
     tip_paired_enabled: true,
     attendance_display: true,
     count_ot: true,
+    skip_queue_on_checkin: false,
     weekly_schedule: getDefaultSchedule(),
   });
 
@@ -182,6 +183,7 @@ export function EmployeesPage() {
         tip_paired_enabled: employee.tip_paired_enabled ?? true,
         attendance_display: employee.attendance_display ?? true,
         count_ot: employee.count_ot ?? true,
+        skip_queue_on_checkin: employee.skip_queue_on_checkin ?? false,
         weekly_schedule: employee.weekly_schedule || getDefaultSchedule(),
       });
     } else {
@@ -197,6 +199,7 @@ export function EmployeesPage() {
         tip_paired_enabled: true,
         attendance_display: true,
         count_ot: true,
+        skip_queue_on_checkin: false,
         weekly_schedule: getDefaultSchedule(),
       });
     }
@@ -237,6 +240,7 @@ export function EmployeesPage() {
         tip_paired_enabled: formData.tip_paired_enabled,
         attendance_display: formData.attendance_display,
         count_ot: formData.count_ot,
+        skip_queue_on_checkin: formData.skip_queue_on_checkin,
         weekly_schedule: formData.weekly_schedule,
         updated_at: new Date().toISOString(),
       };
@@ -737,6 +741,20 @@ export function EmployeesPage() {
               />
               <label htmlFor="count_ot" className="ml-2 text-sm font-medium text-gray-700">
                 Count OT
+              </label>
+            </div>
+          )}
+          {formData.role.includes('Technician') && formData.pay_type === 'hourly' && (
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="skip_queue_on_checkin"
+                checked={formData.skip_queue_on_checkin}
+                onChange={(e) => setFormData({ ...formData, skip_queue_on_checkin: e.target.checked })}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="skip_queue_on_checkin" className="ml-2 text-sm font-medium text-gray-700">
+                Check-in without Queue
               </label>
             </div>
           )}

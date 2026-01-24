@@ -245,7 +245,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     try {
       const { data: employee } = await supabase
         .from('employees')
-        .select('attendance_display')
+        .select('attendance_display, role, skip_queue_on_checkin')
         .eq('id', employeeId)
         .maybeSingle();
 
@@ -296,13 +296,20 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
         if (checkInError) throw checkInError;
 
-        const { data: queueResult, error: queueError } = await supabase.rpc('join_ready_queue_with_checkin', {
-          p_employee_id: employeeId,
-          p_store_id: storeId
-        });
+        // Only join queue if not skipping (hourly technician with skip_queue_on_checkin enabled)
+        const shouldSkipQueue = employee?.role?.includes('Technician') &&
+                                payType === 'hourly' &&
+                                employee?.skip_queue_on_checkin === true;
 
-        if (queueError || !queueResult?.success) {
-          console.error('Failed to join queue:', queueError || queueResult?.message);
+        if (!shouldSkipQueue) {
+          const { data: queueResult, error: queueError } = await supabase.rpc('join_ready_queue_with_checkin', {
+            p_employee_id: employeeId,
+            p_store_id: storeId
+          });
+
+          if (queueError || !queueResult?.success) {
+            console.error('Failed to join queue:', queueError || queueResult?.message);
+          }
         }
 
         const storeMessage = storeName ? ` at ${storeName}` : '';
