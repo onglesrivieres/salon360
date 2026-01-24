@@ -136,9 +136,18 @@ export function LoginPage({ selectedAction, onCheckOutComplete, onBack }: LoginP
         if (checkInError) throw checkInError;
 
         // Only join queue if not skipping (hourly technician with skip_queue_on_checkin enabled)
-        const shouldSkipQueue = employee?.role?.includes('Technician') &&
+        const roleArray = Array.isArray(employee?.role) ? employee.role : [];
+        const shouldSkipQueue = roleArray.includes('Technician') &&
                                 payType === 'hourly' &&
                                 employee?.skip_queue_on_checkin === true;
+
+        console.log('DEBUG shouldSkipQueue check (LoginPage):', {
+          roleArray,
+          roleIncludesTechnician: roleArray.includes('Technician'),
+          payType,
+          skipQueueValue: employee?.skip_queue_on_checkin,
+          shouldSkipQueue
+        });
 
         if (shouldSkipQueue) {
           showToast(`Welcome ${displayName}! You're checked in.`, 'success');

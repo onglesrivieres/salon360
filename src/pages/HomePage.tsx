@@ -245,7 +245,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     try {
       const { data: employee } = await supabase
         .from('employees')
-        .select('attendance_display, role, skip_queue_on_checkin')
+        .select('attendance_display, role, skip_queue_on_checkin, pay_type')
         .eq('id', employeeId)
         .maybeSingle();
 
@@ -297,9 +297,19 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         if (checkInError) throw checkInError;
 
         // Only join queue if not skipping (hourly technician with skip_queue_on_checkin enabled)
-        const shouldSkipQueue = employee?.role?.includes('Technician') &&
-                                payType === 'hourly' &&
+        const roleArray = Array.isArray(employee?.role) ? employee.role : [];
+        const employeePayType = employee?.pay_type || payType;
+        const shouldSkipQueue = roleArray.includes('Technician') &&
+                                employeePayType === 'hourly' &&
                                 employee?.skip_queue_on_checkin === true;
+
+        console.log('DEBUG shouldSkipQueue check:', {
+          roleArray,
+          roleIncludesTechnician: roleArray.includes('Technician'),
+          employeePayType,
+          skipQueueValue: employee?.skip_queue_on_checkin,
+          shouldSkipQueue
+        });
 
         if (!shouldSkipQueue) {
           const { data: queueResult, error: queueError } = await supabase.rpc('join_ready_queue_with_checkin', {
