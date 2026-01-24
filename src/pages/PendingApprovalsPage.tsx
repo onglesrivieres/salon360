@@ -311,6 +311,17 @@ export function PendingApprovalsPage() {
     return () => clearInterval(interval);
   }, [session?.employee_id, selectedStoreId, activeTab, hasPageAccess, canViewQueueHistory, canReviewTransactionChanges, canReviewReopenRequests]);
 
+  // Reset initialTabSet when store changes to allow auto-navigation to re-run
+  // This enables smart tab navigation when Owner/Admin switches between stores
+  const previousStoreIdRef = React.useRef<string | null>(null);
+  useEffect(() => {
+    // Skip on initial mount (when previousStoreIdRef is null)
+    if (previousStoreIdRef.current !== null && selectedStoreId !== previousStoreIdRef.current) {
+      setInitialTabSet(false);
+    }
+    previousStoreIdRef.current = selectedStoreId;
+  }, [selectedStoreId]);
+
   function handleTabChange(tab: TabType) {
     setActiveTab(tab);
     const params = new URLSearchParams(window.location.search);
