@@ -30,21 +30,21 @@ CREATE INDEX IF NOT EXISTS idx_resources_active
 -- Enable Row Level Security
 ALTER TABLE resources ENABLE ROW LEVEL SECURITY;
 
--- RLS policies: All authenticated users can read
+-- RLS policies: All users can read (anon required for PIN-based auth)
 CREATE POLICY "resources_select" ON resources
-  FOR SELECT TO authenticated USING (true);
+  FOR SELECT TO anon, authenticated USING (true);
 
--- RLS policies: Authenticated users can insert (app-level permission checks handle role validation)
+-- RLS policies: Users can insert (app-level permission checks handle role validation)
 CREATE POLICY "resources_insert" ON resources
-  FOR INSERT TO authenticated WITH CHECK (true);
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
 
--- RLS policies: Authenticated users can update (app-level permission checks handle role validation)
+-- RLS policies: Users can update (app-level permission checks handle role validation)
 CREATE POLICY "resources_update" ON resources
-  FOR UPDATE TO authenticated USING (true);
+  FOR UPDATE TO anon, authenticated USING (true);
 
--- RLS policies: Authenticated users can delete (app-level permission checks handle role validation)
+-- RLS policies: Users can delete (app-level permission checks handle role validation)
 CREATE POLICY "resources_delete" ON resources
-  FOR DELETE TO authenticated USING (true);
+  FOR DELETE TO anon, authenticated USING (true);
 
 -- Add comment to table
 COMMENT ON TABLE resources IS 'Stores knowledge base items like SOPs, manuals, training materials, policies, and rules';
