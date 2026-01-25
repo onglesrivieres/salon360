@@ -623,7 +623,10 @@ function ResourceCard({
       className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
     >
       {/* Thumbnail */}
-      <div className="relative w-full h-40 bg-gray-100">
+      <div
+        className="relative w-full h-40 bg-gray-100"
+        onClick={() => alert('Thumbnail clicked!')}
+      >
         {resource.thumbnail_url && !imageError ? (
           <img
             src={resource.thumbnail_url}
