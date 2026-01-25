@@ -1035,3 +1035,24 @@ export interface TicketPhoto {
 export interface TicketPhotoWithUrl extends TicketPhoto {
   url: string;
 }
+
+// Resources (Knowledge Base)
+export type ResourceCategory = 'sop' | 'employee_manual' | 'training' | 'policy' | 'rules';
+export type ThumbnailSource = 'auto' | 'manual' | 'none';
+
+export interface Resource {
+  id: string;
+  store_id: string;
+  category: ResourceCategory;
+  title: string;
+  description: string | null;
+  link_url: string | null;
+  thumbnail_url: string | null;
+  thumbnail_source: ThumbnailSource;
+  display_order: number;
+  is_active: boolean;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}

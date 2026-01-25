@@ -32,8 +32,9 @@ const PendingApprovalsPage = lazy(() => import('./pages/PendingApprovalsPage').t
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
 const InsightsPage = lazy(() => import('./pages/InsightsPage').then(m => ({ default: m.InsightsPage })));
 const ClientsPage = lazy(() => import('./pages/ClientsPage').then(m => ({ default: m.ClientsPage })));
+const ResourcesPage = lazy(() => import('./pages/ResourcesPage').then(m => ({ default: m.ResourcesPage })));
 
-type Page = 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'configuration' | 'approvals' | 'inventory' | 'insights' | 'clients';
+type Page = 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'configuration' | 'approvals' | 'inventory' | 'insights' | 'clients' | 'resources';
 
 function AppContent() {
   const { isAuthenticated, selectedStoreId, selectStore, session, login, logout } = useAuth();
@@ -317,6 +318,7 @@ function AppContent() {
           {currentPage === 'inventory' && <InventoryPage />}
           {currentPage === 'services' && <ServicesPage />}
           {currentPage === 'insights' && <InsightsPage />}
+          {currentPage === 'resources' && <ResourcesPage />}
           {currentPage === 'settings' && <SettingsPage />}
           {currentPage === 'configuration' && <ConfigurationPage />}
         </Suspense>

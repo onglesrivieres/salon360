@@ -439,6 +439,22 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
     },
   },
+
+  resources: {
+    canView: (roles: Role[] | RolePermission): boolean => {
+      // All authenticated roles can view resources
+      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Cashier', 'Technician']);
+    },
+    canCreate: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
+    },
+    canEdit: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
+    },
+    canDelete: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
+    },
+  },
 };
 
 export function getPermissionMessage(
@@ -449,7 +465,7 @@ export function getPermissionMessage(
 }
 
 export function canAccessPage(
-  page: 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'settings' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'configuration' | 'safebalance' | 'queue-removal-history' | 'clients',
+  page: 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'settings' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'configuration' | 'safebalance' | 'queue-removal-history' | 'clients' | 'resources',
   roles: Role[] | RolePermission,
   payType?: 'hourly' | 'daily' | 'commission'
 ): boolean {
@@ -491,6 +507,8 @@ export function canAccessPage(
       return Permissions.queue.canViewRemovalHistory(roles);
     case 'clients':
       return Permissions.clients.canView(roles);
+    case 'resources':
+      return Permissions.resources.canView(roles);
     default:
       return false;
   }
@@ -541,6 +559,10 @@ export function getAccessiblePages(roles: Role[] | RolePermission, payType?: 'ho
 
   if (Permissions.clients.canView(roles)) {
     pages.push('clients');
+  }
+
+  if (Permissions.resources.canView(roles)) {
+    pages.push('resources');
   }
 
   return pages;
