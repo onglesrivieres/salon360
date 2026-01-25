@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
-import { supabase, Resource } from '../lib/supabase';
+import { supabase, Resource, ResourceSubcategory } from '../lib/supabase';
 import { useToast } from '../components/ui/Toast';
 import { ResourceModal } from '../components/ResourceModal';
 import { Button } from '../components/ui/Button';
@@ -15,8 +15,10 @@ import {
   Edit2,
   Trash2,
   Image,
-  RefreshCw
+  RefreshCw,
+  Settings
 } from 'lucide-react';
+import { getCategoryBadgeClasses } from '../lib/category-colors';
 
 type Tab = 'sop' | 'employee_manual';
 
@@ -31,8 +33,10 @@ export function ResourcesPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>('sop');
   const [resources, setResources] = useState<Resource[]>([]);
+  const [subcategories, setSubcategories] = useState<ResourceSubcategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -40,6 +44,9 @@ export function ResourcesPage() {
 
   // Delete confirmation state
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Category management modal
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   // Permission checks
   const canManage = effectiveRole && Permissions.resources.canCreate(effectiveRole);
@@ -68,15 +75,57 @@ export function ResourcesPage() {
     }
   }
 
+  // Fetch subcategories
+  async function fetchSubcategories() {
+    if (!selectedStoreId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('resource_categories')
+        .select('*')
+        .eq('store_id', selectedStoreId)
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+      setSubcategories(data || []);
+    } catch (error: any) {
+      console.error('Error fetching subcategories:', error);
+      // Don't show error toast for this, as the table might not exist yet
+    }
+  }
+
   useEffect(() => {
     fetchResources();
+    fetchSubcategories();
   }, [selectedStoreId]);
 
-  // Filter resources by tab and search
+  // Reset category filter when switching tabs
+  useEffect(() => {
+    setSelectedSubcategory(null);
+  }, [activeTab]);
+
+  // Get subcategories for current tab
+  const currentTabSubcategories = useMemo(() => {
+    return subcategories
+      .filter((c) => c.tab === activeTab)
+      .sort((a, b) => a.display_order - b.display_order);
+  }, [subcategories, activeTab]);
+
+  // Filter resources by tab, subcategory, and search
   const filteredResources = useMemo(() => {
-    return resources.filter(resource => {
+    return resources.filter((resource) => {
       // Filter by category (tab)
       if (resource.category !== activeTab) return false;
+
+      // Filter by subcategory if selected
+      if (selectedSubcategory !== null) {
+        if (selectedSubcategory === '__uncategorized__') {
+          if (resource.subcategory) return false;
+        } else {
+          if (resource.subcategory !== selectedSubcategory) return false;
+        }
+      }
 
       // Filter by search query
       if (searchQuery) {
@@ -88,17 +137,84 @@ export function ResourcesPage() {
 
       return true;
     });
-  }, [resources, activeTab, searchQuery]);
+  }, [resources, activeTab, selectedSubcategory, searchQuery]);
+
+  // Group resources by subcategory for display
+  const groupedResources = useMemo(() => {
+    // If a specific subcategory is selected, don't group
+    if (selectedSubcategory !== null) {
+      return [{ subcategory: null, resources: filteredResources }];
+    }
+
+    // Group by subcategory
+    const groups: { subcategory: string | null; resources: Resource[] }[] = [];
+    const categorized = new Map<string, Resource[]>();
+    const uncategorized: Resource[] = [];
+
+    filteredResources.forEach((resource) => {
+      if (resource.subcategory) {
+        const existing = categorized.get(resource.subcategory) || [];
+        existing.push(resource);
+        categorized.set(resource.subcategory, existing);
+      } else {
+        uncategorized.push(resource);
+      }
+    });
+
+    // Sort categories by their display_order
+    const categoryOrder = new Map(
+      currentTabSubcategories.map((c, i) => [c.name, i])
+    );
+
+    // Add categorized groups in order
+    Array.from(categorized.entries())
+      .sort(([a], [b]) => {
+        const orderA = categoryOrder.get(a) ?? 999;
+        const orderB = categoryOrder.get(b) ?? 999;
+        return orderA - orderB;
+      })
+      .forEach(([subcategory, resources]) => {
+        groups.push({ subcategory, resources });
+      });
+
+    // Add uncategorized at the end if there are any
+    if (uncategorized.length > 0) {
+      groups.push({ subcategory: null, resources: uncategorized });
+    }
+
+    return groups;
+  }, [filteredResources, selectedSubcategory, currentTabSubcategories]);
 
   // Count resources per tab
   const tabCounts = useMemo(() => {
     const counts: Record<Tab, number> = { sop: 0, employee_manual: 0 };
-    resources.forEach(resource => {
+    resources.forEach((resource) => {
       if (resource.category === 'sop') counts.sop++;
       else if (resource.category === 'employee_manual') counts.employee_manual++;
     });
     return counts;
   }, [resources]);
+
+  // Count resources per subcategory in current tab
+  const subcategoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { __uncategorized__: 0 };
+    resources
+      .filter((r) => r.category === activeTab)
+      .forEach((resource) => {
+        if (resource.subcategory) {
+          counts[resource.subcategory] = (counts[resource.subcategory] || 0) + 1;
+        } else {
+          counts.__uncategorized__++;
+        }
+      });
+    return counts;
+  }, [resources, activeTab]);
+
+  // Get subcategory color
+  function getSubcategoryColor(subcategoryName: string): string {
+    const cat = subcategories.find((c) => c.name === subcategoryName);
+    return cat?.color || 'blue';
+  }
 
   // Handle add
   function handleAddResource() {
@@ -125,7 +241,7 @@ export function ResourcesPage() {
         .update({
           is_active: false,
           updated_by: session?.employee_id || null,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', resource.id);
 
@@ -158,7 +274,10 @@ export function ResourcesPage() {
         <h1 className="text-2xl font-bold text-gray-900">Resources</h1>
         <div className="flex items-center gap-2">
           <button
-            onClick={fetchResources}
+            onClick={() => {
+              fetchResources();
+              fetchSubcategories();
+            }}
             disabled={loading}
             className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
             title="Refresh"
@@ -166,10 +285,19 @@ export function ResourcesPage() {
             <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
           </button>
           {canManage && (
-            <Button onClick={handleAddResource}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Resource
-            </Button>
+            <>
+              <button
+                onClick={() => setShowCategoryModal(true)}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Manage Categories"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+              <Button onClick={handleAddResource}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Resource
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -189,15 +317,64 @@ export function ResourcesPage() {
             >
               <Icon className="w-4 h-4" />
               <span>{label}</span>
-              <span className={`ml-1 px-2 py-0.5 text-xs rounded-full ${
-                activeTab === id ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
-              }`}>
+              <span
+                className={`ml-1 px-2 py-0.5 text-xs rounded-full ${
+                  activeTab === id ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                }`}
+              >
                 {tabCounts[id]}
               </span>
             </button>
           ))}
         </div>
       </div>
+
+      {/* Category Filter Pills */}
+      {currentTabSubcategories.length > 0 && (
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setSelectedSubcategory(null)}
+            className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+              selectedSubcategory === null
+                ? 'bg-gray-800 text-white border-gray-800'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            All ({resources.filter((r) => r.category === activeTab).length})
+          </button>
+          {currentTabSubcategories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() =>
+                setSelectedSubcategory(selectedSubcategory === cat.name ? null : cat.name)
+              }
+              className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                selectedSubcategory === cat.name
+                  ? `${getCategoryBadgeClasses(cat.color)} border-current font-medium`
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {cat.name} ({subcategoryCounts[cat.name] || 0})
+            </button>
+          ))}
+          {subcategoryCounts.__uncategorized__ > 0 && (
+            <button
+              onClick={() =>
+                setSelectedSubcategory(
+                  selectedSubcategory === '__uncategorized__' ? null : '__uncategorized__'
+                )
+              }
+              className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                selectedSubcategory === '__uncategorized__'
+                  ? 'bg-gray-200 text-gray-800 border-gray-400 font-medium'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              Uncategorized ({subcategoryCounts.__uncategorized__})
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">
@@ -221,8 +398,9 @@ export function ResourcesPage() {
           <p className="text-gray-500 mb-4">
             {searchQuery
               ? 'No resources match your search'
-              : `No ${activeTab === 'sop' ? 'SOPs' : 'employee manual items'} yet`
-            }
+              : selectedSubcategory
+              ? 'No resources in this category'
+              : `No ${activeTab === 'sop' ? 'SOPs' : 'employee manual items'} yet`}
           </p>
           {canManage && !searchQuery && (
             <Button onClick={handleAddResource} variant="secondary">
@@ -232,21 +410,51 @@ export function ResourcesPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredResources.map((resource) => (
-            <ResourceCard
-              key={resource.id}
-              resource={resource}
-              canManage={canManage}
-              onEdit={() => handleEditResource(resource)}
-              onDelete={() => handleDeleteResource(resource)}
-              isDeleting={deletingId === resource.id}
-            />
+        <div className="space-y-6">
+          {groupedResources.map((group, idx) => (
+            <div key={group.subcategory || `uncategorized-${idx}`}>
+              {/* Group Header */}
+              {selectedSubcategory === null && (
+                <div className="flex items-center gap-2 mb-3">
+                  {group.subcategory ? (
+                    <span
+                      className={`px-3 py-1 text-sm font-medium rounded-full ${getCategoryBadgeClasses(
+                        getSubcategoryColor(group.subcategory)
+                      )}`}
+                    >
+                      {group.subcategory}
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1 text-sm font-medium rounded-full bg-gray-100 text-gray-600">
+                      Uncategorized
+                    </span>
+                  )}
+                  <span className="text-sm text-gray-400">({group.resources.length})</span>
+                </div>
+              )}
+
+              {/* Resource Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {group.resources.map((resource) => (
+                  <ResourceCard
+                    key={resource.id}
+                    resource={resource}
+                    canManage={canManage}
+                    onEdit={() => handleEditResource(resource)}
+                    onDelete={() => handleDeleteResource(resource)}
+                    isDeleting={deletingId === resource.id}
+                    subcategoryColor={
+                      resource.subcategory ? getSubcategoryColor(resource.subcategory) : null
+                    }
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
 
-      {/* Modal */}
+      {/* Resource Modal */}
       {selectedStoreId && (
         <ResourceModal
           isOpen={showModal}
@@ -255,6 +463,20 @@ export function ResourcesPage() {
           resource={selectedResource}
           category={activeTab}
           storeId={selectedStoreId}
+          subcategories={currentTabSubcategories}
+          onCategoriesChanged={fetchSubcategories}
+        />
+      )}
+
+      {/* Category Management Modal */}
+      {selectedStoreId && (
+        <CategoryManagementModal
+          isOpen={showCategoryModal}
+          onClose={() => setShowCategoryModal(false)}
+          storeId={selectedStoreId}
+          tab={activeTab}
+          categories={currentTabSubcategories}
+          onCategoriesChanged={fetchSubcategories}
         />
       )}
     </div>
@@ -268,9 +490,17 @@ interface ResourceCardProps {
   onEdit: () => void;
   onDelete: () => void;
   isDeleting: boolean;
+  subcategoryColor: string | null;
 }
 
-function ResourceCard({ resource, canManage, onEdit, onDelete, isDeleting }: ResourceCardProps) {
+function ResourceCard({
+  resource,
+  canManage,
+  onEdit,
+  onDelete,
+  isDeleting,
+  subcategoryColor,
+}: ResourceCardProps) {
   const [imageError, setImageError] = useState(false);
 
   return (
@@ -287,6 +517,18 @@ function ResourceCard({ resource, canManage, onEdit, onDelete, isDeleting }: Res
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300">
             <Image className="w-16 h-16" />
+          </div>
+        )}
+        {/* Subcategory badge on thumbnail */}
+        {resource.subcategory && subcategoryColor && (
+          <div className="absolute top-2 left-2">
+            <span
+              className={`px-2 py-0.5 text-xs font-medium rounded-full ${getCategoryBadgeClasses(
+                subcategoryColor
+              )}`}
+            >
+              {resource.subcategory}
+            </span>
           </div>
         )}
       </div>
@@ -334,6 +576,323 @@ function ResourceCard({ resource, canManage, onEdit, onDelete, isDeleting }: Res
               </button>
             </>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Category Management Modal
+interface CategoryManagementModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  storeId: string;
+  tab: Tab;
+  categories: ResourceSubcategory[];
+  onCategoriesChanged: () => void;
+}
+
+function CategoryManagementModal({
+  isOpen,
+  onClose,
+  storeId,
+  tab,
+  categories,
+  onCategoriesChanged,
+}: CategoryManagementModalProps) {
+  const { showToast } = useToast();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [editingColor, setEditingColor] = useState('blue');
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // New category state
+  const [newName, setNewName] = useState('');
+  const [newColor, setNewColor] = useState('blue');
+  const [creating, setCreating] = useState(false);
+
+  if (!isOpen) return null;
+
+  async function handleCreate() {
+    if (!newName.trim()) {
+      showToast('Please enter a category name', 'error');
+      return;
+    }
+
+    const exists = categories.some((c) => c.name.toLowerCase() === newName.trim().toLowerCase());
+    if (exists) {
+      showToast('A category with this name already exists', 'error');
+      return;
+    }
+
+    try {
+      setCreating(true);
+
+      const { data: maxOrderData } = await supabase
+        .from('resource_categories')
+        .select('display_order')
+        .eq('store_id', storeId)
+        .eq('tab', tab)
+        .order('display_order', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const newDisplayOrder = (maxOrderData?.display_order ?? -1) + 1;
+
+      const { error } = await supabase.from('resource_categories').insert({
+        store_id: storeId,
+        tab: tab,
+        name: newName.trim(),
+        color: newColor,
+        display_order: newDisplayOrder,
+        is_active: true,
+      });
+
+      if (error) throw error;
+
+      showToast('Category created successfully', 'success');
+      setNewName('');
+      setNewColor('blue');
+      onCategoriesChanged();
+    } catch (error: any) {
+      console.error('Error creating category:', error);
+      showToast('Failed to create category', 'error');
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  function startEdit(category: ResourceSubcategory) {
+    setEditingId(category.id);
+    setEditingName(category.name);
+    setEditingColor(category.color);
+  }
+
+  async function handleSave(categoryId: string) {
+    if (!editingName.trim()) {
+      showToast('Category name cannot be empty', 'error');
+      return;
+    }
+
+    const exists = categories.some(
+      (c) => c.id !== categoryId && c.name.toLowerCase() === editingName.trim().toLowerCase()
+    );
+    if (exists) {
+      showToast('A category with this name already exists', 'error');
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const oldCategory = categories.find((c) => c.id === categoryId);
+      const oldName = oldCategory?.name;
+
+      const { error } = await supabase
+        .from('resource_categories')
+        .update({
+          name: editingName.trim(),
+          color: editingColor,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', categoryId);
+
+      if (error) throw error;
+
+      // Update resources with the old category name to use the new name
+      if (oldName && oldName !== editingName.trim()) {
+        await supabase
+          .from('resources')
+          .update({ subcategory: editingName.trim() })
+          .eq('store_id', storeId)
+          .eq('subcategory', oldName);
+      }
+
+      showToast('Category updated successfully', 'success');
+      setEditingId(null);
+      onCategoriesChanged();
+    } catch (error: any) {
+      console.error('Error updating category:', error);
+      showToast('Failed to update category', 'error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(category: ResourceSubcategory) {
+    if (
+      !confirm(
+        `Are you sure you want to delete "${category.name}"? Resources in this category will become uncategorized.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setDeletingId(category.id);
+
+      // Soft delete the category
+      const { error } = await supabase
+        .from('resource_categories')
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq('id', category.id);
+
+      if (error) throw error;
+
+      // Clear subcategory from resources
+      await supabase
+        .from('resources')
+        .update({ subcategory: null })
+        .eq('store_id', storeId)
+        .eq('subcategory', category.name);
+
+      showToast('Category deleted successfully', 'success');
+      onCategoriesChanged();
+    } catch (error: any) {
+      console.error('Error deleting category:', error);
+      showToast('Failed to delete category', 'error');
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  const tabLabel = tab === 'sop' ? 'SOP' : 'Employee Manual';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Manage {tabLabel} Categories
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-1 text-gray-400 hover:text-gray-600 rounded"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
+          {/* Existing Categories */}
+          {categories.length > 0 ? (
+            <div className="space-y-2">
+              {categories.map((category) => (
+                <div
+                  key={category.id}
+                  className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg"
+                >
+                  {editingId === category.id ? (
+                    <div className="flex-1 space-y-2">
+                      <Input
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        placeholder="Category name"
+                        autoFocus
+                      />
+                      <div className="flex gap-1 flex-wrap">
+                        {['pink', 'blue', 'purple', 'green', 'yellow'].map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => setEditingColor(color)}
+                            className={`w-6 h-6 rounded-full border-2 transition-all ${getCategoryBadgeClasses(color)} ${
+                              editingColor === color ? 'border-gray-800 scale-110' : 'border-transparent'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleSave(category.id)}
+                          disabled={saving}
+                        >
+                          {saving ? 'Saving...' : 'Save'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setEditingId(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <span
+                        className={`flex-1 px-2 py-1 text-sm rounded ${getCategoryBadgeClasses(
+                          category.color
+                        )}`}
+                      >
+                        {category.name}
+                      </span>
+                      <button
+                        onClick={() => startEdit(category)}
+                        className="p-1 text-gray-400 hover:text-blue-600 rounded"
+                        title="Edit"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(category)}
+                        disabled={deletingId === category.id}
+                        className="p-1 text-gray-400 hover:text-red-600 rounded disabled:opacity-50"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-gray-500 py-4">
+              No categories yet. Create one below.
+            </p>
+          )}
+
+          {/* Add New Category */}
+          <div className="border-t border-gray-200 pt-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Add New Category</h3>
+            <div className="space-y-2">
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Category name"
+              />
+              <div className="flex gap-1 flex-wrap">
+                {['pink', 'blue', 'purple', 'green', 'yellow'].map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setNewColor(color)}
+                    className={`w-6 h-6 rounded-full border-2 transition-all ${getCategoryBadgeClasses(color)} ${
+                      newColor === color ? 'border-gray-800 scale-110' : 'border-transparent'
+                    }`}
+                  />
+                ))}
+              </div>
+              <Button
+                onClick={handleCreate}
+                disabled={creating || !newName.trim()}
+                className="w-full"
+              >
+                {creating ? 'Creating...' : 'Create Category'}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-4 py-3 border-t border-gray-200">
+          <Button variant="secondary" onClick={onClose} className="w-full">
+            Close
+          </Button>
         </div>
       </div>
     </div>

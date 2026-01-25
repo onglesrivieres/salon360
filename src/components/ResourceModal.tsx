@@ -3,9 +3,10 @@ import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { useToast } from './ui/Toast';
-import { supabase, Resource, ResourceCategory } from '../lib/supabase';
+import { supabase, Resource, ResourceCategory, ResourceSubcategory } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Image, ExternalLink } from 'lucide-react';
+import { Image, ExternalLink, Plus, ChevronDown } from 'lucide-react';
+import { CATEGORY_COLORS, getCategoryBadgeClasses } from '../lib/category-colors';
 
 interface ResourceModalProps {
   isOpen: boolean;
@@ -14,6 +15,8 @@ interface ResourceModalProps {
   resource?: Resource | null;
   category: ResourceCategory;
   storeId: string;
+  subcategories: ResourceSubcategory[];
+  onCategoriesChanged: () => void;
 }
 
 const CATEGORY_LABELS: Record<ResourceCategory, string> = {
@@ -24,7 +27,16 @@ const CATEGORY_LABELS: Record<ResourceCategory, string> = {
   rules: 'Rules',
 };
 
-export function ResourceModal({ isOpen, onClose, onSuccess, resource, category, storeId }: ResourceModalProps) {
+export function ResourceModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  resource,
+  category,
+  storeId,
+  subcategories,
+  onCategoriesChanged
+}: ResourceModalProps) {
   const { session } = useAuth();
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -33,7 +45,14 @@ export function ResourceModal({ isOpen, onClose, onSuccess, resource, category, 
     description: '',
     link_url: '',
     thumbnail_url: '',
+    subcategory: '',
   });
+
+  // New category creation state
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryColor, setNewCategoryColor] = useState('blue');
+  const [creatingCategory, setCreatingCategory] = useState(false);
 
   useEffect(() => {
     if (resource && isOpen) {
@@ -42,6 +61,7 @@ export function ResourceModal({ isOpen, onClose, onSuccess, resource, category, 
         description: resource.description || '',
         link_url: resource.link_url || '',
         thumbnail_url: resource.thumbnail_url || '',
+        subcategory: resource.subcategory || '',
       });
     } else if (!resource && isOpen) {
       setFormData({
@@ -49,8 +69,12 @@ export function ResourceModal({ isOpen, onClose, onSuccess, resource, category, 
         description: '',
         link_url: '',
         thumbnail_url: '',
+        subcategory: '',
       });
     }
+    setShowNewCategory(false);
+    setNewCategoryName('');
+    setNewCategoryColor('blue');
   }, [resource, isOpen]);
 
   function handleClose() {
@@ -59,8 +83,71 @@ export function ResourceModal({ isOpen, onClose, onSuccess, resource, category, 
       description: '',
       link_url: '',
       thumbnail_url: '',
+      subcategory: '',
     });
+    setShowNewCategory(false);
+    setNewCategoryName('');
+    setNewCategoryColor('blue');
     onClose();
+  }
+
+  async function handleCreateCategory() {
+    if (!newCategoryName.trim()) {
+      showToast('Please enter a category name', 'error');
+      return;
+    }
+
+    // Check for duplicate
+    const exists = subcategories.some(
+      (c) => c.name.toLowerCase() === newCategoryName.trim().toLowerCase()
+    );
+    if (exists) {
+      showToast('A category with this name already exists', 'error');
+      return;
+    }
+
+    try {
+      setCreatingCategory(true);
+
+      // Get max display_order
+      const { data: maxOrderData } = await supabase
+        .from('resource_categories')
+        .select('display_order')
+        .eq('store_id', storeId)
+        .eq('tab', category)
+        .order('display_order', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const newDisplayOrder = (maxOrderData?.display_order ?? -1) + 1;
+
+      const { error } = await supabase.from('resource_categories').insert({
+        store_id: storeId,
+        tab: category,
+        name: newCategoryName.trim(),
+        color: newCategoryColor,
+        display_order: newDisplayOrder,
+        is_active: true,
+      });
+
+      if (error) throw error;
+
+      showToast('Category created successfully', 'success');
+      setFormData({ ...formData, subcategory: newCategoryName.trim() });
+      setShowNewCategory(false);
+      setNewCategoryName('');
+      setNewCategoryColor('blue');
+      onCategoriesChanged();
+    } catch (error: any) {
+      console.error('Error creating category:', error);
+      if (error.code === '23505') {
+        showToast('A category with this name already exists', 'error');
+      } else {
+        showToast('Failed to create category', 'error');
+      }
+    } finally {
+      setCreatingCategory(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -111,6 +198,7 @@ export function ResourceModal({ isOpen, onClose, onSuccess, resource, category, 
             link_url: formData.link_url.trim() || null,
             thumbnail_url: formData.thumbnail_url.trim() || null,
             thumbnail_source: thumbnailSource,
+            subcategory: formData.subcategory || null,
             updated_by: session?.employee_id || null,
             updated_at: new Date().toISOString(),
           })
@@ -137,6 +225,7 @@ export function ResourceModal({ isOpen, onClose, onSuccess, resource, category, 
           .insert({
             store_id: storeId,
             category: category,
+            subcategory: formData.subcategory || null,
             title: formData.title.trim(),
             description: formData.description.trim() || null,
             link_url: formData.link_url.trim() || null,
@@ -168,6 +257,11 @@ export function ResourceModal({ isOpen, onClose, onSuccess, resource, category, 
     }
   }
 
+  // Get active subcategories sorted by display_order
+  const activeSubcategories = subcategories
+    .filter((c) => c.is_active)
+    .sort((a, b) => a.display_order - b.display_order);
+
   return (
     <Modal
       isOpen={isOpen}
@@ -187,6 +281,94 @@ export function ResourceModal({ isOpen, onClose, onSuccess, resource, category, 
             required
             autoFocus
           />
+        </div>
+
+        {/* Subcategory Selector */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Category
+          </label>
+          {!showNewCategory ? (
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <select
+                  value={formData.subcategory}
+                  onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white pr-10"
+                >
+                  <option value="">Uncategorized</option>
+                  {activeSubcategories.map((cat) => (
+                    <option key={cat.id} value={cat.name}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNewCategory(true)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-1"
+                title="Add new category"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700">New Category</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNewCategory(false);
+                    setNewCategoryName('');
+                    setNewCategoryColor('blue');
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                  Cancel
+                </button>
+              </div>
+              <Input
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Category name"
+                autoFocus
+              />
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Color</label>
+                <div className="flex gap-2 flex-wrap">
+                  {CATEGORY_COLORS.map((color) => (
+                    <button
+                      key={color.key}
+                      type="button"
+                      onClick={() => setNewCategoryColor(color.key)}
+                      className={`px-3 py-1 text-xs rounded-full border-2 transition-all ${getCategoryBadgeClasses(color.key)} ${
+                        newCategoryColor === color.key
+                          ? 'border-gray-800 ring-2 ring-offset-1 ring-gray-400'
+                          : 'border-transparent'
+                      }`}
+                    >
+                      {color.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={handleCreateCategory}
+                disabled={creatingCategory || !newCategoryName.trim()}
+                size="sm"
+                className="w-full"
+              >
+                {creatingCategory ? 'Creating...' : 'Create Category'}
+              </Button>
+            </div>
+          )}
+          <p className="text-xs text-gray-500 mt-1">
+            Organize resources into categories for easier navigation
+          </p>
         </div>
 
         <div>

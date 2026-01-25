@@ -1044,6 +1044,7 @@ export interface Resource {
   id: string;
   store_id: string;
   category: ResourceCategory;
+  subcategory: string | null;
   title: string;
   description: string | null;
   link_url: string | null;
@@ -1053,6 +1054,18 @@ export interface Resource {
   is_active: boolean;
   created_by: string | null;
   updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ResourceSubcategory {
+  id: string;
+  store_id: string;
+  tab: ResourceCategory;
+  name: string;
+  color: string;
+  display_order: number;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
