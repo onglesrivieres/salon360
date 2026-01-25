@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Download, Printer, ChevronLeft, ChevronRight, Check, X, Circle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Download, Printer, ChevronLeft, ChevronRight, ChevronDown, Check, CheckCircle, X, Circle, Calendar, CalendarDays } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -85,6 +85,10 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   const { session, selectedStoreId, t } = useAuth();
   const isReceptionist = session?.role_permission === 'Receptionist';
 
+  // State for responsive view mode dropdown
+  const [isViewModeDropdownOpen, setIsViewModeDropdownOpen] = useState(false);
+  const viewModeDropdownRef = useRef<HTMLDivElement>(null);
+
   const [totals, setTotals] = useState({
     tips: 0,
     tips_cash: 0,
@@ -93,6 +97,29 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   const [multiStoreEmployeeIds, setMultiStoreEmployeeIds] = useState<Set<string>>(new Set());
   const [currentTime, setCurrentTime] = useState(new Date());
   const [storeClosingTime, setStoreClosingTime] = useState<string | null>(null);
+
+  // View mode tab configuration for responsive dropdown
+  const viewModeConfig: Array<{ key: 'detail' | 'weekly'; label: string; icon: typeof Calendar }> = [
+    { key: 'detail', label: 'Daily', icon: Calendar },
+    { key: 'weekly', label: 'Weekly', icon: CalendarDays },
+  ];
+  const visibleViewModes = viewModeConfig.filter(mode =>
+    mode.key === 'detail' || !isReceptionist
+  );
+  const currentViewMode = viewModeConfig.find(mode => mode.key === viewMode);
+
+  // Click-outside handler for view mode dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (viewModeDropdownRef.current && !viewModeDropdownRef.current.contains(event.target as Node)) {
+        setIsViewModeDropdownOpen(false);
+      }
+    }
+    if (isViewModeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isViewModeDropdownOpen]);
 
   // Timer refresh effect - update every 30 seconds if there are active timers
   useEffect(() => {
@@ -960,23 +987,63 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                 </Button>
               </div>
             )}
-            <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant={viewMode === 'detail' ? 'primary' : 'ghost'}
-              onClick={() => setViewMode('detail')}
-            >
-              Daily
-            </Button>
-            {!isReceptionist && (
-              <Button
-                size="sm"
-                variant={viewMode === 'weekly' ? 'primary' : 'ghost'}
-                onClick={() => setViewMode('weekly')}
-              >
-                Weekly
-              </Button>
+            {/* Mobile dropdown - visible on screens < md */}
+            {visibleViewModes.length > 1 && (
+              <div className="md:hidden" ref={viewModeDropdownRef}>
+                <div className="relative">
+                  <button
+                    onClick={() => setIsViewModeDropdownOpen(!isViewModeDropdownOpen)}
+                    className="flex items-center justify-between gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 min-w-[100px]"
+                  >
+                    <div className="flex items-center gap-2">
+                      {currentViewMode && (
+                        <>
+                          <currentViewMode.icon className="w-4 h-4" />
+                          <span>{currentViewMode.label}</span>
+                        </>
+                      )}
+                    </div>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${isViewModeDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {isViewModeDropdownOpen && (
+                    <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[120px]">
+                      {visibleViewModes.map((mode) => {
+                        const Icon = mode.icon;
+                        const isActive = viewMode === mode.key;
+                        return (
+                          <button
+                            key={mode.key}
+                            onClick={() => { setViewMode(mode.key); setIsViewModeDropdownOpen(false); }}
+                            className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm font-medium transition-colors ${
+                              isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Icon className="w-4 h-4" />
+                              <span>{mode.label}</span>
+                            </div>
+                            {isActive && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
+
+            {/* Desktop tabs - visible on screens >= md */}
+            <div className={`${visibleViewModes.length > 1 ? 'hidden md:flex' : 'flex'} gap-2`}>
+              {visibleViewModes.map((mode) => (
+                <Button
+                  key={mode.key}
+                  size="sm"
+                  variant={viewMode === mode.key ? 'primary' : 'ghost'}
+                  onClick={() => setViewMode(mode.key)}
+                >
+                  {mode.label}
+                </Button>
+              ))}
             </div>
           </div>
         </div>

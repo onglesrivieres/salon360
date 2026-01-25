@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Package,
   Plus,
@@ -75,6 +75,10 @@ export function InventoryPage() {
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [purchaseUnits, setPurchaseUnits] = useState<Record<string, { unit_name: string; multiplier: number }>>({});
 
+  // State for responsive tab dropdown
+  const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
+  const tabDropdownRef = useRef<HTMLDivElement>(null);
+
   // Lots tab state
   const [lots, setLots] = useState<InventoryPurchaseLotWithDetails[]>([]);
   const [lotsLoading, setLotsLoading] = useState(false);
@@ -113,6 +117,34 @@ export function InventoryPage() {
   const canDistribute = session?.role && Permissions.inventory.canDistribute(session.role);
   const canViewSuppliers = session?.role && Permissions.suppliers.canView(session.role);
   const canEditSuppliers = session?.role && Permissions.suppliers.canEdit(session.role);
+
+  // Tab configuration for responsive dropdown
+  const tabConfig: Array<{ key: Tab; label: string; icon: typeof Package; getCount?: () => number }> = [
+    { key: 'items', label: 'Items', icon: Package, getCount: () => items.length },
+    { key: 'transactions', label: 'Transactions', icon: ArrowUpDown, getCount: () => transactions.length },
+    { key: 'lots', label: 'Lots', icon: PackagePlus },
+    { key: 'distributions', label: 'Distributions', icon: PackageMinus },
+    { key: 'suppliers', label: 'Suppliers', icon: Building2 },
+  ];
+  const visibleTabs = tabConfig.filter(tab => {
+    if (['lots', 'distributions'].includes(tab.key)) return canDistribute;
+    if (tab.key === 'suppliers') return canViewSuppliers;
+    return true;
+  });
+  const currentTabConfig = tabConfig.find(tab => tab.key === activeTab);
+
+  // Click-outside handler for tab dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (tabDropdownRef.current && !tabDropdownRef.current.contains(event.target as Node)) {
+        setIsTabDropdownOpen(false);
+      }
+    }
+    if (isTabDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isTabDropdownOpen]);
 
   useEffect(() => {
     if (selectedStoreId) {
@@ -843,78 +875,80 @@ export function InventoryPage() {
       )}
 
       <div className="mb-6 border-b border-gray-200">
-        <div className="flex gap-4 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('items')}
-            className={`px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'items'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Package className="w-4 h-4" />
-              <span>Items ({items.length})</span>
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveTab('transactions')}
-            className={`px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'transactions'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <ArrowUpDown className="w-4 h-4" />
-              <span>Transactions ({transactions.length})</span>
-            </div>
-          </button>
-          {canDistribute && (
-            <>
-              <button
-                onClick={() => setActiveTab('lots')}
-                className={`px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === 'lots'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <PackagePlus className="w-4 h-4" />
-                  <span>Lots</span>
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('distributions')}
-                className={`px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === 'distributions'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <PackageMinus className="w-4 h-4" />
-                  <span>Distributions</span>
-                </div>
-              </button>
-            </>
-          )}
-          {canViewSuppliers && (
+        {/* Mobile dropdown - visible on screens < md */}
+        <div className="md:hidden p-2" ref={tabDropdownRef}>
+          <div className="relative">
             <button
-              onClick={() => setActiveTab('suppliers')}
-              className={`px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'suppliers'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
+              onClick={() => setIsTabDropdownOpen(!isTabDropdownOpen)}
+              className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200"
             >
               <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
-                <span>Suppliers</span>
+                {currentTabConfig && (
+                  <>
+                    <currentTabConfig.icon className="w-4 h-4" />
+                    <span>
+                      {currentTabConfig.label}
+                      {currentTabConfig.getCount && ` (${currentTabConfig.getCount()})`}
+                    </span>
+                  </>
+                )}
               </div>
+              <ChevronDown className={`w-4 h-4 transition-transform ${isTabDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
-          )}
+            {isTabDropdownOpen && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+                {visibleTabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      onClick={() => { setActiveTab(tab.key); setIsTabDropdownOpen(false); }}
+                      className={`w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+                        isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-4 h-4" />
+                        <span>
+                          {tab.label}
+                          {tab.getCount && ` (${tab.getCount()})`}
+                        </span>
+                      </div>
+                      {isActive && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Desktop tabs - visible on screens >= md */}
+        <div className="hidden md:flex gap-4 overflow-x-auto">
+          {visibleTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  isActive
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Icon className="w-4 h-4" />
+                  <span>
+                    {tab.label}
+                    {tab.getCount && ` (${tab.getCount()})`}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { BarChart3, FileText, CreditCard, Users } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { BarChart3, FileText, CreditCard, Users, ChevronDown, CheckCircle } from 'lucide-react';
 import { SalesOverview } from '../components/insights/SalesOverview';
 import { SalesReport } from '../components/insights/SalesReport';
 import { PaymentTypes } from '../components/insights/PaymentTypes';
@@ -21,6 +21,24 @@ export function InsightsPage() {
     { id: 'payment-types' as const, label: 'Payment Types', icon: CreditCard },
     { id: 'employee-sales' as const, label: 'Employee Sales', icon: Users },
   ];
+
+  // State for responsive tab dropdown
+  const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
+  const tabDropdownRef = useRef<HTMLDivElement>(null);
+  const currentTab = tabs.find(tab => tab.id === activeTab);
+
+  // Click-outside handler for tab dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (tabDropdownRef.current && !tabDropdownRef.current.contains(event.target as Node)) {
+        setIsTabDropdownOpen(false);
+      }
+    }
+    if (isTabDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isTabDropdownOpen]);
 
   useEffect(() => {
     const newDateRange = getDateRangeForFilter(selectedFilter, customDateRange);
@@ -59,7 +77,51 @@ export function InsightsPage() {
         </div>
 
         <div className="border-b border-gray-200">
-          <nav className="flex gap-0.5 px-2 md:gap-1 md:px-4 overflow-x-auto scrollbar-hide" aria-label="Tabs">
+          {/* Mobile dropdown - visible on screens < md */}
+          <div className="md:hidden p-2" ref={tabDropdownRef}>
+            <div className="relative">
+              <button
+                onClick={() => setIsTabDropdownOpen(!isTabDropdownOpen)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200"
+              >
+                <div className="flex items-center gap-2">
+                  {currentTab && (
+                    <>
+                      <currentTab.icon className="w-4 h-4" />
+                      <span>{currentTab.label}</span>
+                    </>
+                  )}
+                </div>
+                <ChevronDown className={`w-4 h-4 transition-transform ${isTabDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {isTabDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                  {tabs.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => { setActiveTab(tab.id); setIsTabDropdownOpen(false); }}
+                        className={`w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+                          isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-4 h-4" />
+                          <span>{tab.label}</span>
+                        </div>
+                        {isActive && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Desktop tabs - visible on screens >= md */}
+          <nav className="hidden md:flex gap-0.5 px-2 md:gap-1 md:px-4 overflow-x-auto scrollbar-hide" aria-label="Tabs">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;

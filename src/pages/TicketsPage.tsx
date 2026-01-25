@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Edit2, Check, CheckCircle, Clock, AlertCircle, Filter, X, XCircle, DollarSign, ChevronLeft, ChevronRight, ImageIcon } from 'lucide-react';
+import { Plus, Edit2, Check, CheckCircle, Clock, AlertCircle, Filter, X, XCircle, DollarSign, ChevronLeft, ChevronRight, ChevronDown, ImageIcon, FileText, Calendar, CalendarRange } from 'lucide-react';
 import { supabase, SaleTicket } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -42,6 +42,10 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   const highlightedRowRef = useRef<HTMLTableRowElement>(null);
   const highlightedCardRef = useRef<HTMLDivElement>(null);
 
+  // State for responsive view mode dropdown
+  const [isViewModeDropdownOpen, setIsViewModeDropdownOpen] = useState(false);
+  const viewModeDropdownRef = useRef<HTMLDivElement>(null);
+
   // Check if user is a commission employee
   const [isCommissionEmployee, setIsCommissionEmployee] = useState(false);
 
@@ -73,6 +77,30 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   const isSupervisor = session?.role_permission === 'Supervisor';
   const canViewDailyReport = session?.role ? ((Permissions.tipReport.canViewAll(session.role) && !isManagerOnly && !isSupervisor) || isCommissionEmployee) : false;
   const canViewPeriodReport = session?.role ? ((Permissions.tipReport.canViewPeriodReports(session.role) && !isManagerOnly && !isSupervisor) || isCommissionEmployee) : false;
+
+  // View mode tab configuration for responsive dropdown
+  const viewModeConfig: Array<{ key: 'tickets' | 'daily' | 'period'; label: string; icon: typeof FileText }> = [
+    { key: 'tickets', label: 'Tickets', icon: FileText },
+    { key: 'daily', label: 'Daily', icon: Calendar },
+    { key: 'period', label: 'Period', icon: CalendarRange },
+  ];
+  const visibleViewModes = viewModeConfig.filter(mode =>
+    mode.key === 'tickets' || (mode.key === 'daily' && canViewDailyReport) || (mode.key === 'period' && canViewPeriodReport)
+  );
+  const currentViewMode = viewModeConfig.find(mode => mode.key === viewMode);
+
+  // Click-outside handler for view mode dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (viewModeDropdownRef.current && !viewModeDropdownRef.current.contains(event.target as Node)) {
+        setIsViewModeDropdownOpen(false);
+      }
+    }
+    if (isViewModeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isViewModeDropdownOpen]);
 
   useEffect(() => {
     fetchTickets();
@@ -761,57 +789,75 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
         <div className="flex items-center gap-3">
-          {canViewDailyReport || canViewPeriodReport ? (
-            <div className="inline-flex rounded-lg border border-gray-300 bg-white">
-              <button
-                onClick={() => setViewMode('tickets')}
-                className={`px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium ${
-                  !canViewDailyReport && !canViewPeriodReport ? 'rounded-lg' : 'rounded-l-lg'
-                } transition-colors ${
-                  viewMode === 'tickets'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Tickets
-              </button>
-              {canViewDailyReport && (
+          {/* Mobile dropdown - visible on screens < md */}
+          {visibleViewModes.length > 1 && (
+            <div className="md:hidden" ref={viewModeDropdownRef}>
+              <div className="relative">
                 <button
-                  onClick={() => setViewMode('daily')}
-                  className={`px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium ${
-                    !canViewPeriodReport ? 'rounded-r-lg' : ''
-                  } border-l border-gray-300 transition-colors ${
-                    viewMode === 'daily'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
+                  onClick={() => setIsViewModeDropdownOpen(!isViewModeDropdownOpen)}
+                  className="flex items-center justify-between gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 min-w-[120px]"
                 >
-                  Daily
+                  <div className="flex items-center gap-2">
+                    {currentViewMode && (
+                      <>
+                        <currentViewMode.icon className="w-4 h-4" />
+                        <span>{currentViewMode.label}</span>
+                      </>
+                    )}
+                  </div>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${isViewModeDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
-              )}
-              {canViewPeriodReport && (
-                <button
-                  onClick={() => setViewMode('period')}
-                  className={`px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium rounded-r-lg border-l border-gray-300 transition-colors ${
-                    viewMode === 'period'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Period
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="inline-flex rounded-lg border border-gray-300 bg-white">
-              <button
-                onClick={() => setViewMode('tickets')}
-                className="px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg bg-blue-600 text-white"
-              >
-                Tickets
-              </button>
+                {isViewModeDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    {visibleViewModes.map((mode) => {
+                      const Icon = mode.icon;
+                      const isActive = viewMode === mode.key;
+                      return (
+                        <button
+                          key={mode.key}
+                          onClick={() => { setViewMode(mode.key); setIsViewModeDropdownOpen(false); }}
+                          className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm font-medium transition-colors ${
+                            isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Icon className="w-4 h-4" />
+                            <span>{mode.label}</span>
+                          </div>
+                          {isActive && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
+
+          {/* Desktop tabs - visible on screens >= md */}
+          <div className={`hidden ${visibleViewModes.length > 1 ? 'md:inline-flex' : 'inline-flex'} rounded-lg border border-gray-300 bg-white`}>
+            {visibleViewModes.map((mode, index) => {
+              const isFirst = index === 0;
+              const isLast = index === visibleViewModes.length - 1;
+              return (
+                <button
+                  key={mode.key}
+                  onClick={() => setViewMode(mode.key)}
+                  className={`px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium ${
+                    isFirst ? 'rounded-l-lg' : ''
+                  } ${isLast ? 'rounded-r-lg' : ''} ${
+                    !isFirst ? 'border-l border-gray-300' : ''
+                  } transition-colors ${
+                    viewMode === mode.key
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
           {viewMode === 'tickets' && (

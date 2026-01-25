@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { supabase, Resource, ResourceSubcategory } from '../lib/supabase';
@@ -16,7 +16,9 @@ import {
   Trash2,
   Image,
   RefreshCw,
-  Settings
+  Settings,
+  ChevronDown,
+  CheckCircle
 } from 'lucide-react';
 import { getCategoryBadgeClasses } from '../lib/category-colors';
 
@@ -53,6 +55,24 @@ export function ResourcesPage() {
 
   // Permission checks
   const canManage = effectiveRole && Permissions.resources.canCreate(effectiveRole);
+
+  // State for responsive tab dropdown
+  const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
+  const tabDropdownRef = useRef<HTMLDivElement>(null);
+  const currentTab = TAB_CONFIG.find(tab => tab.id === activeTab);
+
+  // Click-outside handler for tab dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (tabDropdownRef.current && !tabDropdownRef.current.contains(event.target as Node)) {
+        setIsTabDropdownOpen(false);
+      }
+    }
+    if (isTabDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isTabDropdownOpen]);
 
   // Fetch resources
   async function fetchResources() {
@@ -307,7 +327,60 @@ export function ResourcesPage() {
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
-        <div className="flex gap-0 overflow-x-auto">
+        {/* Mobile dropdown - visible on screens < md */}
+        <div className="md:hidden p-2" ref={tabDropdownRef}>
+          <div className="relative">
+            <button
+              onClick={() => setIsTabDropdownOpen(!isTabDropdownOpen)}
+              className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200"
+            >
+              <div className="flex items-center gap-2">
+                {currentTab && (
+                  <>
+                    <currentTab.icon className="w-4 h-4" />
+                    <span>{currentTab.label}</span>
+                    <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">
+                      {tabCounts[currentTab.id]}
+                    </span>
+                  </>
+                )}
+              </div>
+              <ChevronDown className={`w-4 h-4 transition-transform ${isTabDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isTabDropdownOpen && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                {TAB_CONFIG.map(({ id, label, icon: Icon }) => {
+                  const isActive = activeTab === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => { setActiveTab(id); setIsTabDropdownOpen(false); }}
+                      className={`w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+                        isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-4 h-4" />
+                        <span>{label}</span>
+                        <span
+                          className={`ml-1 px-2 py-0.5 text-xs rounded-full ${
+                            isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {tabCounts[id]}
+                        </span>
+                      </div>
+                      {isActive && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Desktop tabs - visible on screens >= md */}
+        <div className="hidden md:flex gap-0 overflow-x-auto">
           {TAB_CONFIG.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
