@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useImperativeHandle, forwardRef } from 'react';
 import { ImageIcon, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Permissions } from '../../lib/permissions';
@@ -12,13 +12,19 @@ interface TicketPhotosSectionProps {
   readOnly?: boolean;
 }
 
+export interface TicketPhotosSectionRef {
+  uploadPendingPhotos: () => Promise<boolean>;
+  hasPendingChanges: boolean;
+}
+
 const MAX_PHOTOS = 5;
 
-export function TicketPhotosSection({
-  storeId,
-  ticketId,
-  readOnly = false,
-}: TicketPhotosSectionProps) {
+export const TicketPhotosSection = forwardRef<TicketPhotosSectionRef, TicketPhotosSectionProps>(
+  function TicketPhotosSection({
+    storeId,
+    ticketId,
+    readOnly = false,
+  }, ref) {
   const { t, session, effectiveRole } = useAuth();
   const { showToast } = useToast();
   const [previewPhoto, setPreviewPhoto] = useState<TicketPhotoWithUrl | null>(null);
@@ -26,26 +32,36 @@ export function TicketPhotosSection({
 
   const {
     photos,
+    pendingPhotos,
     isLoading,
     isUploading,
     error,
     canAddMore,
     remainingSlots,
-    uploadPhoto,
+    addPendingPhoto,
+    removePendingPhoto,
+    uploadPendingPhotos,
     deletePhoto,
+    hasPendingChanges,
   } = useTicketPhotos({
     storeId,
     ticketId,
     uploadedBy: session?.employee_id || '',
   });
 
+  // Expose uploadPendingPhotos to parent via ref
+  useImperativeHandle(ref, () => ({
+    uploadPendingPhotos,
+    hasPendingChanges,
+  }), [uploadPendingPhotos, hasPendingChanges]);
+
   const canUpload = !readOnly && !!effectiveRole && Permissions.photos.canUploadTicketPhotos(effectiveRole);
   const canDelete = !!effectiveRole && Permissions.photos.canDeleteTicketPhotos(effectiveRole);
 
   const handleFileSelect = async (file: File) => {
-    const result = await uploadPhoto(file);
-    if (result) {
-      showToast(t('photos.uploadSuccess') || 'Photo uploaded', 'success');
+    const success = await addPendingPhoto(file);
+    if (success) {
+      showToast(t('photos.photoAdded') || 'Photo added', 'success');
     } else if (error) {
       showToast(error, 'error');
     }
@@ -58,6 +74,11 @@ export function TicketPhotosSection({
     } else {
       showToast(t('photos.deleteFailed') || 'Failed to delete photo', 'error');
     }
+  };
+
+  const handleRemovePendingPhoto = (id: string) => {
+    removePendingPhoto(id);
+    showToast(t('photos.photoRemoved') || 'Photo removed', 'success');
   };
 
   const openPreview = (photo: TicketPhotoWithUrl, index: number) => {
@@ -100,7 +121,7 @@ export function TicketPhotosSection({
             {t('photos.title') || 'Photos'}
           </h3>
           <span className="text-xs text-gray-500">
-            ({photos.length}/{MAX_PHOTOS})
+            ({photos.length + pendingPhotos.length}/{MAX_PHOTOS})
           </span>
         </div>
       </div>
@@ -119,7 +140,7 @@ export function TicketPhotosSection({
         </div>
       ) : (
         <div className="flex gap-3 flex-wrap items-start">
-          {/* Photo thumbnails */}
+          {/* Saved photo thumbnails */}
           {photos.map((photo, index) => (
             <PhotoThumbnail
               key={photo.id}
@@ -128,6 +149,18 @@ export function TicketPhotosSection({
               onDelete={() => handleDeletePhoto(photo.id)}
               canDelete={canDelete && !readOnly}
               size="md"
+            />
+          ))}
+
+          {/* Pending photo thumbnails (not yet uploaded) */}
+          {pendingPhotos.map((pending) => (
+            <PhotoThumbnail
+              key={pending.id}
+              photo={pending}
+              onDelete={() => handleRemovePendingPhoto(pending.id)}
+              canDelete={canUpload}
+              size="md"
+              isPending
             />
           ))}
 
@@ -144,7 +177,7 @@ export function TicketPhotosSection({
           )}
 
           {/* Empty state */}
-          {photos.length === 0 && !canUpload && (
+          {photos.length === 0 && pendingPhotos.length === 0 && !canUpload && (
             <p className="text-sm text-gray-500 italic">
               {t('photos.noPhotos') || 'No photos'}
             </p>
@@ -168,4 +201,4 @@ export function TicketPhotosSection({
       )}
     </div>
   );
-}
+});

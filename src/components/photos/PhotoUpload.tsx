@@ -59,26 +59,28 @@ export function PhotoUpload({
         disabled={isDisabled}
       />
 
-      {/* Buttons */}
-      <button
-        type="button"
-        onClick={handleTakePhotoClick}
-        disabled={isDisabled}
-        className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]"
-      >
-        <Camera className="w-5 h-5" />
-        <span>{t('photos.takePhoto') || 'Take Photo'}</span>
-      </button>
+      {/* Compact square buttons side by side */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={handleTakePhotoClick}
+          disabled={isDisabled}
+          className="flex flex-col items-center justify-center w-20 h-20 text-xs font-medium text-gray-600 bg-gray-50 border border-dashed border-gray-300 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Camera className="w-6 h-6 mb-1" />
+          <span className="text-center leading-tight">{t('photos.takePhoto') || 'Take Photo'}</span>
+        </button>
 
-      <button
-        type="button"
-        onClick={handleAddFileClick}
-        disabled={isDisabled}
-        className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]"
-      >
-        <Paperclip className="w-5 h-5" />
-        <span>{t('photos.addFile') || 'Add File'}</span>
-      </button>
+        <button
+          type="button"
+          onClick={handleAddFileClick}
+          disabled={isDisabled}
+          className="flex flex-col items-center justify-center w-20 h-20 text-xs font-medium text-gray-600 bg-gray-50 border border-dashed border-gray-300 rounded-lg hover:bg-gray-100 hover:border-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Paperclip className="w-6 h-6 mb-1" />
+          <span className="text-center leading-tight">{t('photos.addFile') || 'Add File'}</span>
+        </button>
+      </div>
 
       {remainingSlots <= 0 && (
         <p className="text-xs text-amber-600 text-center">

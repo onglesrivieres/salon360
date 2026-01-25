@@ -273,6 +273,8 @@ export const translations = {
       deleteFailed: 'Failed to delete photo',
       maxReached: 'Maximum 5 photos reached',
       noPhotos: 'No photos',
+      photoAdded: 'Photo added',
+      photoRemoved: 'Photo removed',
     },
   },
   fr: {
@@ -548,6 +550,8 @@ export const translations = {
       deleteFailed: 'Échec de la suppression',
       maxReached: 'Maximum 5 photos atteint',
       noPhotos: 'Pas de photos',
+      photoAdded: 'Photo ajoutée',
+      photoRemoved: 'Photo retirée',
     },
   },
   vi: {
@@ -823,6 +827,8 @@ export const translations = {
       deleteFailed: 'Xóa ảnh thất bại',
       maxReached: 'Đã đạt tối đa 5 ảnh',
       noPhotos: 'Không có ảnh',
+      photoAdded: 'Đã thêm ảnh',
+      photoRemoved: 'Đã xóa ảnh',
     },
   },
 };

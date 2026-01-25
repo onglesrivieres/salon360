@@ -6,6 +6,14 @@ const MAX_FILE_SIZE_MB = 5;
 const MAX_DIMENSION = 2048;
 const BUCKET_NAME = 'salon360-photos';
 
+export interface PendingPhoto {
+  id: string;
+  file: File;
+  compressedBlob: Blob;
+  previewUrl: string;
+  filename: string;
+}
+
 interface UseTicketPhotosOptions {
   storeId: string;
   ticketId: string;
@@ -14,13 +22,18 @@ interface UseTicketPhotosOptions {
 
 interface UseTicketPhotosReturn {
   photos: TicketPhotoWithUrl[];
+  pendingPhotos: PendingPhoto[];
   isLoading: boolean;
   isUploading: boolean;
   error: string | null;
   canAddMore: boolean;
   remainingSlots: number;
-  uploadPhoto: (file: File) => Promise<TicketPhotoWithUrl | null>;
+  totalPhotoCount: number;
+  addPendingPhoto: (file: File) => Promise<boolean>;
+  removePendingPhoto: (id: string) => void;
+  uploadPendingPhotos: () => Promise<boolean>;
   deletePhoto: (photoId: string) => Promise<boolean>;
+  hasPendingChanges: boolean;
   refetch: () => Promise<void>;
 }
 
@@ -83,9 +96,12 @@ export function useTicketPhotos({
   uploadedBy,
 }: UseTicketPhotosOptions): UseTicketPhotosReturn {
   const [photos, setPhotos] = useState<TicketPhotoWithUrl[]>([]);
+  const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const totalPhotoCount = photos.length + pendingPhotos.length;
 
   const fetchPhotos = useCallback(async () => {
     if (!ticketId) {
@@ -124,44 +140,93 @@ export function useTicketPhotos({
     fetchPhotos();
   }, [fetchPhotos]);
 
-  const uploadPhoto = useCallback(
-    async (file: File): Promise<TicketPhotoWithUrl | null> => {
-      if (photos.length >= MAX_PHOTOS) {
+  // Cleanup blob URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      pendingPhotos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    };
+  }, []);
+
+  const addPendingPhoto = useCallback(
+    async (file: File): Promise<boolean> => {
+      if (totalPhotoCount >= MAX_PHOTOS) {
         setError(`Maximum ${MAX_PHOTOS} photos allowed`);
-        return null;
+        return false;
       }
 
       // Validate file type
       const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
       if (!validTypes.includes(file.type)) {
         setError('Invalid file type. Please use JPG, PNG, or WebP');
-        return null;
+        return false;
       }
 
       // Validate file size
       if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
         setError(`File too large. Maximum ${MAX_FILE_SIZE_MB}MB allowed`);
-        return null;
+        return false;
       }
 
       try {
-        setIsUploading(true);
         setError(null);
 
         // Compress image
         const compressedBlob = await compressImage(file);
 
+        // Create preview URL
+        const previewUrl = URL.createObjectURL(compressedBlob);
+
+        const pendingPhoto: PendingPhoto = {
+          id: crypto.randomUUID(),
+          file,
+          compressedBlob,
+          previewUrl,
+          filename: file.name,
+        };
+
+        setPendingPhotos((prev) => [...prev, pendingPhoto]);
+        return true;
+      } catch (err) {
+        console.error('Error preparing photo:', err);
+        setError('Failed to process photo');
+        return false;
+      }
+    },
+    [totalPhotoCount]
+  );
+
+  const removePendingPhoto = useCallback((id: string) => {
+    setPendingPhotos((prev) => {
+      const photo = prev.find((p) => p.id === id);
+      if (photo) {
+        URL.revokeObjectURL(photo.previewUrl);
+      }
+      return prev.filter((p) => p.id !== id);
+    });
+  }, []);
+
+  const uploadPendingPhotos = useCallback(async (): Promise<boolean> => {
+    if (pendingPhotos.length === 0) return true;
+    if (!ticketId) return false;
+
+    try {
+      setIsUploading(true);
+      setError(null);
+
+      for (let i = 0; i < pendingPhotos.length; i++) {
+        const pending = pendingPhotos[i];
+
         // Generate unique filename
         const timestamp = Date.now();
         const uuid = crypto.randomUUID();
-        const extension = 'jpg'; // Always save as JPEG after compression
+        const extension = 'jpg';
         const filename = `${timestamp}_${uuid}.${extension}`;
         const storagePath = `tickets/${storeId}/${ticketId}/${filename}`;
 
         // Upload to storage
         const { error: uploadError } = await supabase.storage
           .from(BUCKET_NAME)
-          .upload(storagePath, compressedBlob, {
+          .upload(storagePath, pending.compressedBlob, {
             contentType: 'image/jpeg',
             cacheControl: '3600',
           });
@@ -173,10 +238,10 @@ export function useTicketPhotos({
           store_id: storeId,
           ticket_id: ticketId,
           storage_path: storagePath,
-          filename: file.name,
-          file_size: compressedBlob.size,
+          filename: pending.filename,
+          file_size: pending.compressedBlob.size,
           mime_type: 'image/jpeg',
-          display_order: photos.length,
+          display_order: photos.length + i,
           uploaded_by: uploadedBy,
           caption: '',
         };
@@ -189,23 +254,29 @@ export function useTicketPhotos({
 
         if (insertError) throw insertError;
 
+        // Add to saved photos
         const newPhoto: TicketPhotoWithUrl = {
           ...insertedPhoto,
           url: getPublicUrl(storagePath),
         };
 
         setPhotos((prev) => [...prev, newPhoto]);
-        return newPhoto;
-      } catch (err) {
-        console.error('Error uploading photo:', err);
-        setError('Failed to upload photo');
-        return null;
-      } finally {
-        setIsUploading(false);
+
+        // Revoke blob URL
+        URL.revokeObjectURL(pending.previewUrl);
       }
-    },
-    [photos.length, storeId, ticketId, uploadedBy]
-  );
+
+      // Clear pending photos
+      setPendingPhotos([]);
+      return true;
+    } catch (err) {
+      console.error('Error uploading photos:', err);
+      setError('Failed to upload photos');
+      return false;
+    } finally {
+      setIsUploading(false);
+    }
+  }, [pendingPhotos, ticketId, storeId, photos.length, uploadedBy]);
 
   const deletePhoto = useCallback(
     async (photoId: string): Promise<boolean> => {
@@ -222,7 +293,6 @@ export function useTicketPhotos({
 
         if (storageError) {
           console.error('Storage delete error:', storageError);
-          // Continue anyway - the file might not exist
         }
 
         // Delete from database
@@ -246,13 +316,18 @@ export function useTicketPhotos({
 
   return {
     photos,
+    pendingPhotos,
     isLoading,
     isUploading,
     error,
-    canAddMore: photos.length < MAX_PHOTOS,
-    remainingSlots: MAX_PHOTOS - photos.length,
-    uploadPhoto,
+    canAddMore: totalPhotoCount < MAX_PHOTOS,
+    remainingSlots: MAX_PHOTOS - totalPhotoCount,
+    totalPhotoCount,
+    addPendingPhoto,
+    removePendingPhoto,
+    uploadPendingPhotos,
     deletePhoto,
+    hasPendingChanges: pendingPhotos.length > 0,
     refetch: fetchPhotos,
   };
 }

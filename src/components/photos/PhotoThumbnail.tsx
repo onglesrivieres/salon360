@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { TicketPhotoWithUrl } from '../../lib/supabase';
+import { PendingPhoto } from './useTicketPhotos';
 
 interface PhotoThumbnailProps {
-  photo: TicketPhotoWithUrl;
+  photo: TicketPhotoWithUrl | PendingPhoto;
   onClick?: () => void;
   onDelete?: () => void;
   canDelete?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  isPending?: boolean;
 }
 
 export function PhotoThumbnail({
@@ -16,6 +18,7 @@ export function PhotoThumbnail({
   onDelete,
   canDelete = false,
   size = 'md',
+  isPending = false,
 }: PhotoThumbnailProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -27,18 +30,30 @@ export function PhotoThumbnail({
     lg: 'w-24 h-24',
   };
 
-  const handleDelete = async (e: React.MouseEvent) => {
+  // Get the image URL based on photo type
+  const imageUrl = isPending
+    ? (photo as PendingPhoto).previewUrl
+    : (photo as TicketPhotoWithUrl).url;
+
+  const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onDelete && !isDeleting) {
-      setIsDeleting(true);
-      await onDelete();
-      setIsDeleting(false);
+      if (isPending) {
+        // Pending photos delete instantly (no async)
+        onDelete();
+      } else {
+        // Saved photos need async delete
+        setIsDeleting(true);
+        Promise.resolve(onDelete()).finally(() => setIsDeleting(false));
+      }
     }
   };
 
   return (
     <div
-      className={`relative ${sizeClasses[size]} rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 group`}
+      className={`relative ${sizeClasses[size]} rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 group ${
+        isPending ? 'ring-2 ring-blue-300' : ''
+      }`}
     >
       {/* Loading placeholder */}
       {isLoading && !hasError && (
@@ -56,7 +71,7 @@ export function PhotoThumbnail({
 
       {/* Image */}
       <img
-        src={photo.url}
+        src={imageUrl}
         alt={photo.filename}
         className={`w-full h-full object-cover cursor-pointer transition-transform hover:scale-105 ${
           isLoading ? 'opacity-0' : 'opacity-100'

@@ -431,11 +431,11 @@ export const Permissions = {
 
   photos: {
     canUploadTicketPhotos: (roles: Role[] | RolePermission): boolean => {
-      // All roles that can create/edit tickets, except Cashier
-      return hasAnyRole(roles, ['Admin', 'Technician', 'Receptionist', 'Supervisor', 'Manager', 'Owner']);
+      // All users can upload photos and delete pending (unsaved) photos
+      return hasAnyRole(roles, ['Admin', 'Technician', 'Receptionist', 'Cashier', 'Supervisor', 'Manager', 'Owner']);
     },
     canDeleteTicketPhotos: (roles: Role[] | RolePermission): boolean => {
-      // Supervisor and above can delete photos
+      // Only Supervisor and above can delete saved photos from Supabase
       return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
     },
   },
