@@ -599,7 +599,10 @@ function ResourceCard({
 
   return (
     <div
-      onClick={onView}
+      onClick={() => {
+        alert('Card clicked!');
+        onView();
+      }}
       className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
     >
       {/* Thumbnail */}
