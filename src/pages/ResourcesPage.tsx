@@ -602,13 +602,24 @@ function ResourceCard({
   subcategoryColor,
 }: ResourceCardProps) {
   const [imageError, setImageError] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Use native DOM event listener for testing
+  useEffect(() => {
+    const card = cardRef.current;
+    if (card) {
+      const handleClick = () => {
+        alert('Native click worked!');
+        onView();
+      };
+      card.addEventListener('click', handleClick);
+      return () => card.removeEventListener('click', handleClick);
+    }
+  }, [onView]);
 
   return (
     <div
-      onClick={() => {
-        alert('Card clicked!');
-        onView();
-      }}
+      ref={cardRef}
       className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
     >
       {/* Thumbnail */}
