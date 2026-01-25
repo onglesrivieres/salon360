@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Edit2, Check, CheckCircle, Clock, AlertCircle, Filter, X, XCircle, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit2, Check, CheckCircle, Clock, AlertCircle, Filter, X, XCircle, DollarSign, ChevronLeft, ChevronRight, ImageIcon } from 'lucide-react';
 import { supabase, SaleTicket } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -191,7 +191,8 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
             completed_at,
             service:store_services!ticket_items_store_service_id_fkey(code, name, duration_min),
             employee:employees!ticket_items_employee_id_fkey(display_name)
-          )
+          ),
+          ticket_photos (id)
         `)
         .eq('ticket_date', selectedDate);
 
@@ -1032,6 +1033,8 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Approval
                 </th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -1168,6 +1171,11 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                         )}
                       </div>
                     </td>
+                    <td className="px-3 py-2 text-center">
+                      {ticket.ticket_photos && ticket.ticket_photos.length > 0 && (
+                        <ImageIcon className="w-4 h-4 text-blue-500 inline-block" />
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -1295,7 +1303,12 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                       Required
                     </span>
                   )}
-                  {getApprovalStatusBadge(ticket)}
+                  <div className="flex items-center gap-1">
+                    {getApprovalStatusBadge(ticket)}
+                    {ticket.ticket_photos && ticket.ticket_photos.length > 0 && (
+                      <ImageIcon className="w-4 h-4 text-blue-500" />
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="pt-2 border-t border-gray-100">

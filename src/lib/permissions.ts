@@ -428,6 +428,17 @@ export const Permissions = {
       return true;
     },
   },
+
+  photos: {
+    canUploadTicketPhotos: (roles: Role[] | RolePermission): boolean => {
+      // All users can upload photos and delete pending (unsaved) photos
+      return hasAnyRole(roles, ['Admin', 'Technician', 'Receptionist', 'Cashier', 'Supervisor', 'Manager', 'Owner']);
+    },
+    canDeleteTicketPhotos: (roles: Role[] | RolePermission): boolean => {
+      // Only Supervisor and above can delete saved photos from Supabase
+      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+    },
+  },
 };
 
 export function getPermissionMessage(

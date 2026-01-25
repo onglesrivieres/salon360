@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, Trash2, Banknote, CreditCard, Clock, Award, Lock, CheckCircle, AlertCircle, Edit2, Gift, UserPlus, User, Eye } from 'lucide-react';
 import {
   supabase,
@@ -30,6 +30,7 @@ import { BlacklistWarning } from './clients/BlacklistWarning';
 import { ColorDisplay } from './clients/ColorDisplay';
 import { QuickAddClientModal } from './clients/QuickAddClientModal';
 import { TicketReopenRequestModal } from './TicketReopenRequestModal';
+import { TicketPhotosSection, TicketPhotosSectionRef } from './tickets/TicketPhotosSection';
 
 interface TicketEditorProps {
   ticketId: string | null;
@@ -74,6 +75,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
   const { getSettingBoolean } = useSettings();
+  const photosSectionRef = useRef<TicketPhotosSectionRef>(null);
 
   const enableCashPayments = getSettingBoolean('enable_cash_payments', true);
   const enableCardPayments = getSettingBoolean('enable_card_payments', true);
@@ -1503,6 +1505,14 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
         showToast('Ticket created successfully', 'success');
       }
 
+      // Upload any pending photos before closing
+      if (photosSectionRef.current?.hasPendingChanges) {
+        const photoUploadSuccess = await photosSectionRef.current.uploadPendingPhotos();
+        if (!photoUploadSuccess) {
+          showToast('Some photos failed to upload', 'error');
+        }
+      }
+
       onClose();
     } catch (error: any) {
       showToast(error.message || 'Failed to save ticket', 'error');
@@ -2770,6 +2780,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
               placeholder={canEditNotes ? "Add notes or comments..." : ""}
             />
           </div>
+
+          {/* Photos Section */}
+          {ticketId && selectedStoreId && (
+            <TicketPhotosSection
+              ref={photosSectionRef}
+              storeId={selectedStoreId}
+              ticketId={ticketId}
+              readOnly={isReadOnly}
+            />
+          )}
 
           <div className="flex justify-between items-center gap-1.5 pt-2 fixed md:static bottom-0 left-0 right-0 bg-white p-2 md:p-0 shadow-lg md:shadow-none z-10">
             <div className="flex gap-1.5">
