@@ -531,8 +531,6 @@ export function ResourcesPage() {
         </div>
       )}
 
-      {/* Resource Modal - TEMPORARILY COMMENTED OUT FOR TESTING */}
-      {/*
       {selectedStoreId && (
         <ResourceModal
           isOpen={showModal}
@@ -545,10 +543,7 @@ export function ResourcesPage() {
           onCategoriesChanged={fetchSubcategories}
         />
       )}
-      */}
 
-      {/* Category Management Modal - TEMPORARILY COMMENTED OUT FOR TESTING */}
-      {/*
       {selectedStoreId && (
         <CategoryManagementModal
           isOpen={showCategoryModal}
@@ -559,10 +554,7 @@ export function ResourcesPage() {
           onCategoriesChanged={fetchSubcategories}
         />
       )}
-      */}
 
-      {/* Resource View Modal - TEMPORARILY COMMENTED OUT FOR TESTING */}
-      {/*
       <ResourceViewModal
         isOpen={!!viewingResource}
         onClose={() => setViewingResource(null)}
@@ -576,7 +568,6 @@ export function ResourcesPage() {
           }
         }}
       />
-      */}
     </div>
   );
 }
@@ -602,31 +593,18 @@ function ResourceCard({
   subcategoryColor,
 }: ResourceCardProps) {
   const [imageError, setImageError] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
 
-  // Use native DOM event listener for testing
-  useEffect(() => {
-    const card = cardRef.current;
-    if (card) {
-      const handleClick = () => {
-        alert('Native click worked!');
-        onView();
-      };
-      card.addEventListener('click', handleClick);
-      return () => card.removeEventListener('click', handleClick);
-    }
-  }, [onView]);
+  const handleCardClick = () => {
+    onView();
+  };
 
   return (
     <div
-      ref={cardRef}
+      onClick={handleCardClick}
       className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
     >
       {/* Thumbnail */}
-      <div
-        className="relative w-full h-40 bg-gray-100"
-        onClick={() => alert('Thumbnail clicked!')}
-      >
+      <div className="relative w-full h-40 bg-gray-100">
         {resource.thumbnail_url && !imageError ? (
           <img
             src={resource.thumbnail_url}
