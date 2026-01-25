@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { supabase, Resource, ResourceSubcategory } from '../lib/supabase';
@@ -532,7 +531,6 @@ export function ResourcesPage() {
         </div>
       )}
 
-      {/* Resource Modal */}
       {selectedStoreId && (
         <ResourceModal
           isOpen={showModal}
@@ -546,7 +544,6 @@ export function ResourcesPage() {
         />
       )}
 
-      {/* Category Management Modal */}
       {selectedStoreId && (
         <CategoryManagementModal
           isOpen={showCategoryModal}
@@ -558,7 +555,6 @@ export function ResourcesPage() {
         />
       )}
 
-      {/* Resource View Modal */}
       <ResourceViewModal
         isOpen={!!viewingResource}
         onClose={() => setViewingResource(null)}
@@ -598,9 +594,13 @@ function ResourceCard({
 }: ResourceCardProps) {
   const [imageError, setImageError] = useState(false);
 
+  const handleCardClick = () => {
+    onView();
+  };
+
   return (
     <div
-      onClick={onView}
+      onClick={handleCardClick}
       className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
     >
       {/* Thumbnail */}
@@ -714,92 +714,96 @@ function ResourceViewModal({
 
   if (!isOpen || !resource) return null;
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-    >
+  return (
+    <>
+      {/* Backdrop */}
       <div
-        className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Thumbnail (larger) */}
-        <div className="relative w-full h-64 bg-gray-100 flex-shrink-0">
-          {resource.thumbnail_url && !imageError ? (
-            <img
-              src={resource.thumbnail_url}
-              alt={resource.title}
-              className="w-full h-full object-cover"
-              onError={() => setImageError(true)}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-300">
-              <Image className="w-24 h-24" />
-            </div>
-          )}
-          {/* Category badge */}
-          {resource.subcategory && subcategoryColor && (
-            <div className="absolute top-3 left-3">
-              <span
-                className={`px-3 py-1 text-sm font-medium rounded-full ${getCategoryBadgeClasses(
-                  subcategoryColor
-                )}`}
-              >
-                {resource.subcategory}
-              </span>
-            </div>
-          )}
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-white rounded-full shadow-md transition-colors"
-          >
-            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">{resource.title}</h2>
-          {resource.description && (
-            <p className="text-gray-600 whitespace-pre-wrap">{resource.description}</p>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="px-6 py-4 border-t border-gray-200 flex gap-3 flex-shrink-0">
-          {resource.link_url && (
-            <a
-              href={resource.link_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Open Link
-            </a>
-          )}
-          {canManage && (
+        className="fixed inset-0 bg-black bg-opacity-50 z-50"
+        onClick={onClose}
+      />
+      {/* Modal container */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div
+          className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Thumbnail (larger) */}
+          <div className="relative w-full h-64 bg-gray-100 flex-shrink-0">
+            {resource.thumbnail_url && !imageError ? (
+              <img
+                src={resource.thumbnail_url}
+                alt={resource.title}
+                className="w-full h-full object-cover"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-300">
+                <Image className="w-24 h-24" />
+              </div>
+            )}
+            {/* Category badge */}
+            {resource.subcategory && subcategoryColor && (
+              <div className="absolute top-3 left-3">
+                <span
+                  className={`px-3 py-1 text-sm font-medium rounded-full ${getCategoryBadgeClasses(
+                    subcategoryColor
+                  )}`}
+                >
+                  {resource.subcategory}
+                </span>
+              </div>
+            )}
+            {/* Close button */}
             <button
-              onClick={onEdit}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+              onClick={onClose}
+              className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-white rounded-full shadow-md transition-colors"
             >
-              <Edit2 className="w-4 h-4" />
-              Edit
+              <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
-          )}
-          <button
-            onClick={onClose}
-            className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-          >
-            Close
-          </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 overflow-y-auto flex-1">
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">{resource.title}</h2>
+            {resource.description && (
+              <p className="text-gray-600 whitespace-pre-wrap">{resource.description}</p>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="px-6 py-4 border-t border-gray-200 flex gap-3 flex-shrink-0">
+            {resource.link_url && (
+              <a
+                href={resource.link_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Open Link
+              </a>
+            )}
+            {canManage && (
+              <button
+                onClick={onEdit}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+              >
+                <Edit2 className="w-4 h-4" />
+                Edit
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
-    </div>,
-    document.body
+    </>
   );
 }
 
