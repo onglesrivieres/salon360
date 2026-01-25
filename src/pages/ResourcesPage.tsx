@@ -53,6 +53,11 @@ export function ResourcesPage() {
   // View modal state
   const [viewingResource, setViewingResource] = useState<Resource | null>(null);
 
+  // Debug: log viewingResource changes
+  useEffect(() => {
+    console.log('[DEBUG] viewingResource state changed to:', viewingResource?.id, viewingResource?.title);
+  }, [viewingResource]);
+
   // Permission checks
   const canManage = effectiveRole && Permissions.resources.canCreate(effectiveRole);
 
@@ -516,7 +521,10 @@ export function ResourcesPage() {
                     key={resource.id}
                     resource={resource}
                     canManage={canManage}
-                    onView={() => setViewingResource(resource)}
+                    onView={() => {
+                      console.log('[DEBUG] onView called for resource:', resource.id, resource.title);
+                      setViewingResource(resource);
+                    }}
                     onEdit={() => handleEditResource(resource)}
                     onDelete={() => handleDeleteResource(resource)}
                     isDeleting={deletingId === resource.id}
@@ -594,7 +602,9 @@ function ResourceCard({
 }: ResourceCardProps) {
   const [imageError, setImageError] = useState(false);
 
-  const handleCardClick = () => {
+  const handleCardClick = (e: React.MouseEvent) => {
+    console.log('[DEBUG] handleCardClick triggered, event target:', e.target);
+    console.log('[DEBUG] Current target:', e.currentTarget);
     onView();
   };
 
@@ -707,12 +717,20 @@ function ResourceViewModal({
 }: ResourceViewModalProps) {
   const [imageError, setImageError] = useState(false);
 
+  // Debug logging
+  console.log('[DEBUG] ResourceViewModal render - isOpen:', isOpen, 'resource:', resource?.id);
+
   // Reset imageError when resource changes
   useEffect(() => {
     setImageError(false);
   }, [resource?.id]);
 
-  if (!isOpen || !resource) return null;
+  if (!isOpen || !resource) {
+    console.log('[DEBUG] ResourceViewModal returning null - isOpen:', isOpen, 'resource:', resource);
+    return null;
+  }
+
+  console.log('[DEBUG] ResourceViewModal rendering content for:', resource.title);
 
   return (
     <>
