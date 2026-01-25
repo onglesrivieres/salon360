@@ -557,7 +557,8 @@ export function ResourcesPage() {
         />
       )}
 
-      {/* Resource View Modal */}
+      {/* Resource View Modal - TEMPORARILY COMMENTED OUT FOR TESTING */}
+      {/*
       <ResourceViewModal
         isOpen={!!viewingResource}
         onClose={() => setViewingResource(null)}
@@ -571,6 +572,7 @@ export function ResourcesPage() {
           }
         }}
       />
+      */}
     </div>
   );
 }
