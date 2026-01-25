@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { supabase, Resource, ResourceSubcategory } from '../lib/supabase';
@@ -706,9 +707,14 @@ function ResourceViewModal({
 }: ResourceViewModalProps) {
   const [imageError, setImageError] = useState(false);
 
+  // Reset imageError when resource changes
+  useEffect(() => {
+    setImageError(false);
+  }, [resource?.id]);
+
   if (!isOpen || !resource) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
@@ -792,7 +798,8 @@ function ResourceViewModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
