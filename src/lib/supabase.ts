@@ -168,6 +168,8 @@ export interface SaleTicket {
   reviewed_by_receptionist?: boolean;
   created_at: string;
   updated_at: string;
+  // Optional: populated when ticket_photos is included in query
+  ticket_photos?: { id: string }[];
 }
 
 export interface TicketItem {
