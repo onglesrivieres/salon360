@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Layout } from './components/Layout';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -164,13 +164,23 @@ function AppContent() {
     isReadyForRedirectCheck
   );
 
-  // Auto-redirect to approvals page if there are pending items
+  // Track if we've already done the initial redirect for this session
+  const hasRedirectedToApprovals = useRef(false);
+
+  // Reset redirect flag when store changes (to allow redirect for new store)
+  useEffect(() => {
+    hasRedirectedToApprovals.current = false;
+  }, [selectedStoreId]);
+
+  // Auto-redirect to approvals page if there are pending items (only once per store)
   useEffect(() => {
     if (
       pendingApprovalsRedirect.hasChecked &&
       pendingApprovalsRedirect.shouldRedirect &&
+      !hasRedirectedToApprovals.current &&
       currentPage !== 'approvals'
     ) {
+      hasRedirectedToApprovals.current = true;
       setCurrentPage('approvals');
     }
   }, [pendingApprovalsRedirect.hasChecked, pendingApprovalsRedirect.shouldRedirect, currentPage]);
