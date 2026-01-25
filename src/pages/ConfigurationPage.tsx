@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Settings, AlertCircle, Search, RefreshCw, Copy, CheckCircle2, Loader2, AlertTriangle, Shield, UserCog } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Settings, AlertCircle, Search, RefreshCw, Copy, CheckCircle2, CheckCircle, Loader2, AlertTriangle, Shield, UserCog, ChevronDown } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { NumericInput } from '../components/ui/NumericInput';
 import { useToast } from '../components/ui/Toast';
@@ -91,6 +91,30 @@ export function ConfigurationPage() {
   const [activeTab, setActiveTab] = useState<'settings' | 'permissions'>('settings');
 
   const canManageSettings = session?.role?.includes('Owner') || session?.role?.includes('Admin');
+
+  // State for responsive tab dropdown
+  const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
+  const tabDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Tab configuration
+  const tabConfig: Array<{ key: 'settings' | 'permissions'; label: string; icon: typeof Settings }> = [
+    { key: 'settings', label: 'App Settings', icon: Settings },
+    { key: 'permissions', label: 'Role Permissions', icon: UserCog },
+  ];
+  const currentTab = tabConfig.find(tab => tab.key === activeTab);
+
+  // Click-outside handler for tab dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (tabDropdownRef.current && !tabDropdownRef.current.contains(event.target as Node)) {
+        setIsTabDropdownOpen(false);
+      }
+    }
+    if (isTabDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isTabDropdownOpen]);
 
   useEffect(() => {
     if (selectedStoreId) {
@@ -378,29 +402,70 @@ export function ConfigurationPage() {
           </Button>
         </div>
 
-        <div className="flex gap-2 mb-6 border-b border-gray-200">
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`px-4 py-2 font-medium transition-colors border-b-2 ${
-              activeTab === 'settings'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Settings className="w-4 h-4 inline mr-2" />
-            App Settings
-          </button>
-          <button
-            onClick={() => setActiveTab('permissions')}
-            className={`px-4 py-2 font-medium transition-colors border-b-2 ${
-              activeTab === 'permissions'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <UserCog className="w-4 h-4 inline mr-2" />
-            Role Permissions
-          </button>
+        <div className="mb-6 border-b border-gray-200">
+          {/* Mobile dropdown - visible on screens < md */}
+          <div className="md:hidden p-2" ref={tabDropdownRef}>
+            <div className="relative">
+              <button
+                onClick={() => setIsTabDropdownOpen(!isTabDropdownOpen)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200"
+              >
+                <div className="flex items-center gap-2">
+                  {currentTab && (
+                    <>
+                      <currentTab.icon className="w-4 h-4" />
+                      <span>{currentTab.label}</span>
+                    </>
+                  )}
+                </div>
+                <ChevronDown className={`w-4 h-4 transition-transform ${isTabDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {isTabDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                  {tabConfig.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        onClick={() => { setActiveTab(tab.key); setIsTabDropdownOpen(false); }}
+                        className={`w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+                          isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-4 h-4" />
+                          <span>{tab.label}</span>
+                        </div>
+                        {isActive && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Desktop tabs - visible on screens >= md */}
+          <div className="hidden md:flex gap-2">
+            {tabConfig.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+                    activeTab === tab.key
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 inline mr-2" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {activeTab === 'settings' && validationIssues.length > 0 && (

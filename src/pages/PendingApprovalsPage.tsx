@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight, Bell, User, Calendar, History, Download, Eye, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight, ChevronDown, Bell, User, Calendar, History, Download, Eye, RotateCcw } from 'lucide-react';
 import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, PendingCashTransactionChangeProposal, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket, AttendanceChangeProposalWithDetails, PendingTicketReopenRequest } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -119,6 +119,8 @@ export function PendingApprovalsPage() {
     violations: number;
     ticketChanges: number;
   }>({ tickets: 0, inventory: 0, cash: 0, transactionChanges: 0, attendance: 0, violations: 0, ticketChanges: 0 });
+  const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
+  const tabDropdownRef = useRef<HTMLDivElement>(null);
   const [initialTabSet, setInitialTabSet] = useState(false);
   const { showToast } = useToast();
   const { session, selectedStoreId, effectiveRole } = useAuth();
@@ -167,6 +169,27 @@ export function PendingApprovalsPage() {
 
     return false;
   }
+
+  // Tab configuration for responsive tabs
+  const tabConfig: Array<{
+    key: TabType;
+    label: string;
+    icon: typeof FileText;
+    badgeVariant: 'danger' | 'warning' | 'default';
+    getCount: () => number;
+  }> = [
+    { key: 'tickets', label: 'Tickets', icon: FileText, badgeVariant: 'danger', getCount: () => activeTab === 'tickets' ? tickets.length : tabCounts.tickets },
+    { key: 'inventory', label: 'Inventory', icon: Package, badgeVariant: 'warning', getCount: () => activeTab === 'inventory' ? inventoryApprovals.length : tabCounts.inventory },
+    { key: 'cash', label: 'Cash Management', icon: DollarSign, badgeVariant: 'warning', getCount: () => activeTab === 'cash' ? cashTransactionApprovals.length : tabCounts.cash },
+    { key: 'transaction-changes', label: 'Transaction Changes', icon: FileText, badgeVariant: 'warning', getCount: () => activeTab === 'transaction-changes' ? transactionChangeProposals.length : tabCounts.transactionChanges },
+    { key: 'attendance', label: 'Shift Request', icon: Bell, badgeVariant: 'warning', getCount: () => activeTab === 'attendance' ? attendanceProposals.filter(p => p.status === 'pending').length : tabCounts.attendance },
+    { key: 'violations', label: 'Turn Violation', icon: Flag, badgeVariant: 'danger', getCount: () => activeTab === 'violations' ? violationReports.length : tabCounts.violations },
+    { key: 'ticket-changes', label: 'Ticket Changes', icon: FileText, badgeVariant: 'warning', getCount: () => activeTab === 'ticket-changes' ? ticketReopenRequests.length : tabCounts.ticketChanges },
+    { key: 'queue-history', label: 'Queue History', icon: History, badgeVariant: 'default', getCount: () => queueRemovalRecords.length },
+  ];
+
+  const visibleTabs = tabConfig.filter(tab => canViewTab(tab.key));
+  const currentTabConfig = tabConfig.find(tab => tab.key === activeTab);
 
   // Determine if Reporter info should be visible for a violation report
   function canSeeReporterInfo(report: { reporter_employee_id: string; reported_employee_id: string }): boolean {
@@ -321,6 +344,19 @@ export function PendingApprovalsPage() {
     }
     previousStoreIdRef.current = selectedStoreId;
   }, [selectedStoreId]);
+
+  // Click-outside handler for mobile tab dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (tabDropdownRef.current && !tabDropdownRef.current.contains(event.target as Node)) {
+        setIsTabDropdownOpen(false);
+      }
+    }
+    if (isTabDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isTabDropdownOpen]);
 
   function handleTabChange(tab: TabType) {
     setActiveTab(tab);
@@ -1527,151 +1563,80 @@ export function PendingApprovalsPage() {
 
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="border-b border-gray-200">
-          <div className="flex flex-wrap gap-1 p-1">
-            {canViewTab('tickets') && (
+          {/* Mobile dropdown - visible on screens < md */}
+          <div className="md:hidden p-2" ref={tabDropdownRef}>
+            <div className="relative">
               <button
-                onClick={() => handleTabChange('tickets')}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === 'tickets'
-                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
+                onClick={() => setIsTabDropdownOpen(!isTabDropdownOpen)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200"
               >
-                <FileText className="w-4 h-4" />
-                Tickets
-                {(activeTab === 'tickets' ? tickets.length : tabCounts.tickets) > 0 && (
-                  <Badge variant="error" className="ml-1">
-                    {activeTab === 'tickets' ? tickets.length : tabCounts.tickets}
-                  </Badge>
-                )}
+                <div className="flex items-center gap-2">
+                  {currentTabConfig && (
+                    <>
+                      <currentTabConfig.icon className="w-4 h-4" />
+                      <span>{currentTabConfig.label}</span>
+                      {currentTabConfig.getCount() > 0 && (
+                        <Badge variant={currentTabConfig.badgeVariant} className="ml-1">
+                          {currentTabConfig.getCount()}
+                        </Badge>
+                      )}
+                    </>
+                  )}
+                </div>
+                <ChevronDown className={`w-4 h-4 transition-transform ${isTabDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
-            )}
-            {canViewTab('inventory') && (
-              <button
-                onClick={() => handleTabChange('inventory')}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === 'inventory'
-                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <Package className="w-4 h-4" />
-                Inventory
-                {(activeTab === 'inventory' ? inventoryApprovals.length : tabCounts.inventory) > 0 && (
-                  <Badge variant="warning" className="ml-1">
-                    {activeTab === 'inventory' ? inventoryApprovals.length : tabCounts.inventory}
-                  </Badge>
-                )}
-              </button>
-            )}
-            {canViewTab('cash') && (
-              <button
-                onClick={() => handleTabChange('cash')}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === 'cash'
-                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <DollarSign className="w-4 h-4" />
-                Cash Management
-                {(activeTab === 'cash' ? cashTransactionApprovals.length : tabCounts.cash) > 0 && (
-                  <Badge variant="warning" className="ml-1">
-                    {activeTab === 'cash' ? cashTransactionApprovals.length : tabCounts.cash}
-                  </Badge>
-                )}
-              </button>
-            )}
-            {canViewTab('transaction-changes') && (
-              <button
-                onClick={() => handleTabChange('transaction-changes')}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === 'transaction-changes'
-                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                Transaction Changes
-                {(activeTab === 'transaction-changes' ? transactionChangeProposals.length : tabCounts.transactionChanges) > 0 && (
-                  <Badge variant="warning" className="ml-1">
-                    {activeTab === 'transaction-changes' ? transactionChangeProposals.length : tabCounts.transactionChanges}
-                  </Badge>
-                )}
-              </button>
-            )}
-            {canViewTab('attendance') && (
-              <button
-                onClick={() => handleTabChange('attendance')}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === 'attendance'
-                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <Bell className="w-4 h-4" />
-                Shift Request
-                {(activeTab === 'attendance' ? attendanceProposals.filter(p => p.status === 'pending').length : tabCounts.attendance) > 0 && (
-                  <Badge variant="warning" className="ml-1">
-                    {activeTab === 'attendance' ? attendanceProposals.filter(p => p.status === 'pending').length : tabCounts.attendance}
-                  </Badge>
-                )}
-              </button>
-            )}
-            {canViewTab('violations') && (
-              <button
-                onClick={() => handleTabChange('violations')}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === 'violations'
-                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <Flag className="w-4 h-4" />
-                Turn Violation
-                {(activeTab === 'violations' ? violationReports.length : tabCounts.violations) > 0 && (
-                  <Badge variant="error" className="ml-1">
-                    {activeTab === 'violations' ? violationReports.length : tabCounts.violations}
-                  </Badge>
-                )}
-              </button>
-            )}
-            {canViewTab('ticket-changes') && (
-              <button
-                onClick={() => handleTabChange('ticket-changes')}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === 'ticket-changes'
-                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                Ticket Changes
-                {(activeTab === 'ticket-changes' ? ticketReopenRequests.length : tabCounts.ticketChanges) > 0 && (
-                  <Badge variant="warning" className="ml-1">
-                    {activeTab === 'ticket-changes' ? ticketReopenRequests.length : tabCounts.ticketChanges}
-                  </Badge>
-                )}
-              </button>
-            )}
-            {canViewTab('queue-history') && (
-              <button
-                onClick={() => handleTabChange('queue-history')}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === 'queue-history'
-                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <History className="w-4 h-4" />
-                Queue History
-                {queueRemovalRecords.length > 0 && (
-                  <Badge variant="secondary" className="ml-1">
-                    {queueRemovalRecords.length}
-                  </Badge>
-                )}
-              </button>
-            )}
+
+              {isTabDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+                  {visibleTabs.map((tab) => {
+                    const Icon = tab.icon;
+                    const count = tab.getCount();
+                    const isActive = activeTab === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        onClick={() => { handleTabChange(tab.key); setIsTabDropdownOpen(false); }}
+                        className={`w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+                          isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-4 h-4" />
+                          <span>{tab.label}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {count > 0 && <Badge variant={tab.badgeVariant}>{count}</Badge>}
+                          {isActive && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Desktop tabs - visible on screens >= md */}
+          <div className="hidden md:flex flex-wrap gap-1 p-1">
+            {visibleTabs.map((tab) => {
+              const Icon = tab.icon;
+              const count = tab.getCount();
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => handleTabChange(tab.key)}
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                    activeTab === tab.key
+                      ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {tab.label}
+                  {count > 0 && <Badge variant={tab.badgeVariant} className="ml-1">{count}</Badge>}
+                </button>
+              );
+            })}
           </div>
         </div>
 
