@@ -531,7 +531,8 @@ export function ResourcesPage() {
         </div>
       )}
 
-      {/* Resource Modal */}
+      {/* Resource Modal - TEMPORARILY COMMENTED OUT FOR TESTING */}
+      {/*
       {selectedStoreId && (
         <ResourceModal
           isOpen={showModal}
@@ -544,8 +545,10 @@ export function ResourcesPage() {
           onCategoriesChanged={fetchSubcategories}
         />
       )}
+      */}
 
-      {/* Category Management Modal */}
+      {/* Category Management Modal - TEMPORARILY COMMENTED OUT FOR TESTING */}
+      {/*
       {selectedStoreId && (
         <CategoryManagementModal
           isOpen={showCategoryModal}
@@ -556,6 +559,7 @@ export function ResourcesPage() {
           onCategoriesChanged={fetchSubcategories}
         />
       )}
+      */}
 
       {/* Resource View Modal - TEMPORARILY COMMENTED OUT FOR TESTING */}
       {/*
