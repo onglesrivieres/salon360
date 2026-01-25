@@ -48,6 +48,9 @@ export function ResourcesPage() {
   // Category management modal
   const [showCategoryModal, setShowCategoryModal] = useState(false);
 
+  // View modal state
+  const [viewingResource, setViewingResource] = useState<Resource | null>(null);
+
   // Permission checks
   const canManage = effectiveRole && Permissions.resources.canCreate(effectiveRole);
 
@@ -440,6 +443,7 @@ export function ResourcesPage() {
                     key={resource.id}
                     resource={resource}
                     canManage={canManage}
+                    onView={() => setViewingResource(resource)}
                     onEdit={() => handleEditResource(resource)}
                     onDelete={() => handleDeleteResource(resource)}
                     isDeleting={deletingId === resource.id}
@@ -479,6 +483,21 @@ export function ResourcesPage() {
           onCategoriesChanged={fetchSubcategories}
         />
       )}
+
+      {/* Resource View Modal */}
+      <ResourceViewModal
+        isOpen={!!viewingResource}
+        onClose={() => setViewingResource(null)}
+        resource={viewingResource}
+        subcategoryColor={viewingResource?.subcategory ? getSubcategoryColor(viewingResource.subcategory) : null}
+        canManage={canManage}
+        onEdit={() => {
+          if (viewingResource) {
+            handleEditResource(viewingResource);
+            setViewingResource(null);
+          }
+        }}
+      />
     </div>
   );
 }
@@ -487,6 +506,7 @@ export function ResourcesPage() {
 interface ResourceCardProps {
   resource: Resource;
   canManage: boolean | null | undefined;
+  onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
   isDeleting: boolean;
@@ -496,6 +516,7 @@ interface ResourceCardProps {
 function ResourceCard({
   resource,
   canManage,
+  onView,
   onEdit,
   onDelete,
   isDeleting,
@@ -504,7 +525,10 @@ function ResourceCard({
   const [imageError, setImageError] = useState(false);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+    <div
+      onClick={onView}
+      className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+    >
       {/* Thumbnail */}
       <div className="relative w-full h-40 bg-gray-100">
         {resource.thumbnail_url && !imageError ? (
@@ -551,6 +575,7 @@ function ResourceCard({
               href={resource.link_url}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
               className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors"
             >
               <ExternalLink className="w-4 h-4" />
@@ -560,14 +585,20 @@ function ResourceCard({
           {canManage && (
             <>
               <button
-                onClick={onEdit}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
                 className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                 title="Edit"
               >
                 <Edit2 className="w-4 h-4" />
               </button>
               <button
-                onClick={onDelete}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
                 disabled={isDeleting}
                 className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                 title="Delete"
@@ -576,6 +607,116 @@ function ResourceCard({
               </button>
             </>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Resource View Modal
+interface ResourceViewModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  resource: Resource | null;
+  subcategoryColor: string | null;
+  canManage: boolean | null | undefined;
+  onEdit: () => void;
+}
+
+function ResourceViewModal({
+  isOpen,
+  onClose,
+  resource,
+  subcategoryColor,
+  canManage,
+  onEdit,
+}: ResourceViewModalProps) {
+  const [imageError, setImageError] = useState(false);
+
+  if (!isOpen || !resource) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Thumbnail (larger) */}
+        <div className="relative w-full h-64 bg-gray-100 flex-shrink-0">
+          {resource.thumbnail_url && !imageError ? (
+            <img
+              src={resource.thumbnail_url}
+              alt={resource.title}
+              className="w-full h-full object-cover"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-300">
+              <Image className="w-24 h-24" />
+            </div>
+          )}
+          {/* Category badge */}
+          {resource.subcategory && subcategoryColor && (
+            <div className="absolute top-3 left-3">
+              <span
+                className={`px-3 py-1 text-sm font-medium rounded-full ${getCategoryBadgeClasses(
+                  subcategoryColor
+                )}`}
+              >
+                {resource.subcategory}
+              </span>
+            </div>
+          )}
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-white rounded-full shadow-md transition-colors"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto flex-1">
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">{resource.title}</h2>
+          {resource.description && (
+            <p className="text-gray-600 whitespace-pre-wrap">{resource.description}</p>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 py-4 border-t border-gray-200 flex gap-3 flex-shrink-0">
+          {resource.link_url && (
+            <a
+              href={resource.link_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Open Link
+            </a>
+          )}
+          {canManage && (
+            <button
+              onClick={onEdit}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+            >
+              <Edit2 className="w-4 h-4" />
+              Edit
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
