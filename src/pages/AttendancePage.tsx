@@ -82,7 +82,7 @@ export function AttendancePage() {
   const [employeePayType, setEmployeePayType] = useState<'hourly' | 'daily' | 'commission' | null>(null);
   const [employeeCountOtMap, setEmployeeCountOtMap] = useState<Record<string, boolean>>({});
   const { showToast } = useToast();
-  const { session, selectedStoreId } = useAuth();
+  const { session, selectedStoreId, t } = useAuth();
 
   useEffect(() => {
     if (selectedStoreId) {
@@ -145,7 +145,7 @@ export function AttendancePage() {
       }
     } catch (error: any) {
       console.error('Error fetching attendance:', error);
-      showToast('Failed to load attendance data', 'error');
+      showToast(t('attendance.failedToLoad'), 'error');
     } finally {
       setLoading(false);
     }
@@ -399,7 +399,7 @@ export function AttendancePage() {
     a.click();
     window.URL.revokeObjectURL(url);
 
-    showToast('Attendance report exported successfully', 'success');
+    showToast(t('attendance.exportedSuccess'), 'success');
   }
 
   const calendarDays = getCalendarDays();
@@ -426,7 +426,7 @@ export function AttendancePage() {
     return (
       <div className="max-w-7xl mx-auto">
         <div className="bg-white rounded-lg shadow p-8 text-center">
-          <p className="text-gray-600">You don't have permission to view attendance records.</p>
+          <p className="text-gray-600">{t('attendance.noPermission')}</p>
         </div>
       </div>
     );
@@ -435,12 +435,12 @@ export function AttendancePage() {
   return (
     <div className="w-full max-w-full mx-auto px-2">
       <div className="mb-2 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
-        <h2 className="text-sm md:text-base font-bold text-gray-900">Attendance Tracking</h2>
+        <h2 className="text-sm md:text-base font-bold text-gray-900">{t('attendance.tracking')}</h2>
         <div className="flex items-center gap-2">
           {session && session.role && Permissions.endOfDay.canExport(session.role) && (
             <Button variant="secondary" size="sm" onClick={exportCSV}>
               <Download className="w-3 h-3 mr-1" />
-              Export
+              {t('attendance.export')}
             </Button>
           )}
         </div>
@@ -460,18 +460,18 @@ export function AttendancePage() {
             </Button>
           </div>
           <Button variant="secondary" size="sm" onClick={navigateToday} className="min-h-[44px] md:min-h-0 w-full md:w-auto text-xs">
-            Today
+            {t('common.today')}
           </Button>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="text-sm text-gray-500">Loading attendance data...</div>
+            <div className="text-sm text-gray-500">{t('common.loading')}</div>
           </div>
         ) : Object.keys(summary).length === 0 ? (
           <div className="text-center py-12">
             <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-sm text-gray-500">No attendance records for this period</p>
+            <p className="text-sm text-gray-500">{t('attendance.noRecordsPeriod')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -479,7 +479,7 @@ export function AttendancePage() {
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left p-1 text-[11px] font-semibold text-gray-900 sticky left-0 bg-white z-10 w-[70px] min-w-[70px] max-w-[70px]">
-                    Employee
+                    {t('attendance.employee')}
                   </th>
                   {calendarDays.map((day, index) => {
                     const isToday = formatDateISOEST(day) === formatDateISOEST(new Date());
@@ -498,7 +498,7 @@ export function AttendancePage() {
                     );
                   })}
                   <th className="text-right p-1 text-[11px] font-semibold text-gray-900 sticky right-0 bg-white z-10 w-[55px] min-w-[55px] max-w-[55px]">
-                    Total
+                    {t('attendance.total')}
                   </th>
                 </tr>
               </thead>
@@ -638,7 +638,7 @@ export function AttendancePage() {
                         <>
                           <tr className="bg-gray-100">
                             <td colSpan={calendarDays.length + 2} className="p-1 text-xs font-bold text-gray-700">
-                              Hourly Employees
+                              {t('attendance.hourlyEmployees')}
                             </td>
                           </tr>
                           {hourly.map(renderEmployeeRow)}
@@ -649,7 +649,7 @@ export function AttendancePage() {
                         <>
                           <tr className="bg-gray-100">
                             <td colSpan={calendarDays.length + 2} className="p-1 text-xs font-bold text-gray-700">
-                              Daily Employees
+                              {t('attendance.dailyEmployees')}
                             </td>
                           </tr>
                           {daily.map(renderEmployeeRow)}
@@ -660,7 +660,7 @@ export function AttendancePage() {
                         <>
                           <tr className="bg-gray-100">
                             <td colSpan={calendarDays.length + 2} className="p-1 text-xs font-bold text-gray-700">
-                              Commission Employees
+                              {t('attendance.commissionEmployees')}
                             </td>
                           </tr>
                           {commission.map(renderEmployeeRow)}
@@ -676,25 +676,25 @@ export function AttendancePage() {
       </div>
 
       <div className="bg-white rounded-lg shadow p-3">
-        <h3 className="text-xs font-semibold text-gray-900 mb-2">Legend</h3>
+        <h3 className="text-xs font-semibold text-gray-900 mb-2">{t('attendance.legend')}</h3>
         <div className="flex flex-wrap gap-3">
           <div className="flex items-center gap-1.5">
             <div className="w-10 h-6 bg-green-500 animate-pulse rounded"></div>
-            <span className="text-[10px] text-gray-600">Currently checked in</span>
+            <span className="text-[10px] text-gray-600">{t('attendance.currentlyCheckedIn')}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-10 h-6 bg-yellow-100 animate-pulse rounded"></div>
-            <span className="text-[10px] text-gray-600">Pending change request</span>
+            <span className="text-[10px] text-gray-600">{t('attendance.pendingChangeRequest')}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-10 h-6 bg-gray-200 rounded"></div>
-            <span className="text-[10px] text-gray-600">Checked out</span>
+            <span className="text-[10px] text-gray-600">{t('attendance.checkedOut')}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-10 h-6 bg-gray-200 rounded flex items-center justify-center">
               <span className="text-[9px] font-medium text-orange-600">12:00</span>
             </div>
-            <span className="text-[10px] text-gray-600">Auto check-out time</span>
+            <span className="text-[10px] text-gray-600">{t('attendance.autoCheckOutTime')}</span>
           </div>
           {hasOvertimeEmployees && (
             <div className="flex items-center gap-1.5">
@@ -702,7 +702,7 @@ export function AttendancePage() {
                 <span className="text-[7px] font-semibold">8.00</span>
                 <span className="text-[7px] font-semibold text-orange-600">+1.50 OT</span>
               </div>
-              <span className="text-[10px] text-gray-600">Overtime (hourly employees)</span>
+              <span className="text-[10px] text-gray-600">{t('attendance.overtime')}</span>
             </div>
           )}
         </div>

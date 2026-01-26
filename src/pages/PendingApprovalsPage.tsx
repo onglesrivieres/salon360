@@ -123,7 +123,7 @@ export function PendingApprovalsPage() {
   const tabDropdownRef = useRef<HTMLDivElement>(null);
   const [initialTabSet, setInitialTabSet] = useState(false);
   const { showToast } = useToast();
-  const { session, selectedStoreId, effectiveRole } = useAuth();
+  const { session, selectedStoreId, effectiveRole, t } = useAuth();
 
   const userRoles = session?.role || [];
   const isManagement = userRoles.some(role => ['Admin', 'Owner', 'Manager', 'Supervisor'].includes(role));
@@ -178,14 +178,14 @@ export function PendingApprovalsPage() {
     badgeVariant: 'danger' | 'warning' | 'default';
     getCount: () => number;
   }> = [
-    { key: 'tickets', label: 'Tickets', icon: FileText, badgeVariant: 'danger', getCount: () => activeTab === 'tickets' ? tickets.length : tabCounts.tickets },
-    { key: 'inventory', label: 'Inventory', icon: Package, badgeVariant: 'warning', getCount: () => activeTab === 'inventory' ? inventoryApprovals.length : tabCounts.inventory },
-    { key: 'cash', label: 'Cash Management', icon: DollarSign, badgeVariant: 'warning', getCount: () => activeTab === 'cash' ? cashTransactionApprovals.length : tabCounts.cash },
-    { key: 'transaction-changes', label: 'Transaction Changes', icon: FileText, badgeVariant: 'warning', getCount: () => activeTab === 'transaction-changes' ? transactionChangeProposals.length : tabCounts.transactionChanges },
-    { key: 'attendance', label: 'Shift Request', icon: Bell, badgeVariant: 'warning', getCount: () => activeTab === 'attendance' ? attendanceProposals.filter(p => p.status === 'pending').length : tabCounts.attendance },
-    { key: 'violations', label: 'Turn Violation', icon: Flag, badgeVariant: 'danger', getCount: () => activeTab === 'violations' ? violationReports.length : tabCounts.violations },
-    { key: 'ticket-changes', label: 'Ticket Changes', icon: FileText, badgeVariant: 'warning', getCount: () => activeTab === 'ticket-changes' ? ticketReopenRequests.length : tabCounts.ticketChanges },
-    { key: 'queue-history', label: 'Queue History', icon: History, badgeVariant: 'default', getCount: () => queueRemovalRecords.length },
+    { key: 'tickets', label: t('approvals.tabTickets'), icon: FileText, badgeVariant: 'danger', getCount: () => activeTab === 'tickets' ? tickets.length : tabCounts.tickets },
+    { key: 'inventory', label: t('approvals.tabInventory'), icon: Package, badgeVariant: 'warning', getCount: () => activeTab === 'inventory' ? inventoryApprovals.length : tabCounts.inventory },
+    { key: 'cash', label: t('approvals.tabCash'), icon: DollarSign, badgeVariant: 'warning', getCount: () => activeTab === 'cash' ? cashTransactionApprovals.length : tabCounts.cash },
+    { key: 'transaction-changes', label: t('approvals.tabTransactionChanges'), icon: FileText, badgeVariant: 'warning', getCount: () => activeTab === 'transaction-changes' ? transactionChangeProposals.length : tabCounts.transactionChanges },
+    { key: 'attendance', label: t('approvals.tabShiftRequest'), icon: Bell, badgeVariant: 'warning', getCount: () => activeTab === 'attendance' ? attendanceProposals.filter(p => p.status === 'pending').length : tabCounts.attendance },
+    { key: 'violations', label: t('approvals.tabTurnViolation'), icon: Flag, badgeVariant: 'danger', getCount: () => activeTab === 'violations' ? violationReports.length : tabCounts.violations },
+    { key: 'ticket-changes', label: t('approvals.tabTicketChanges'), icon: FileText, badgeVariant: 'warning', getCount: () => activeTab === 'ticket-changes' ? ticketReopenRequests.length : tabCounts.ticketChanges },
+    { key: 'queue-history', label: t('approvals.tabQueueHistory'), icon: History, badgeVariant: 'default', getCount: () => queueRemovalRecords.length },
   ];
 
   const visibleTabs = tabConfig.filter(tab => canViewTab(tab.key));

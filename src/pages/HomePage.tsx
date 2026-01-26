@@ -65,7 +65,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       const session = await authenticateWithPIN(pin);
 
       if (!session) {
-        setPinError('Invalid PIN. Please try again.');
+        setPinError(t('home.invalidPin'));
         setIsLoading(false);
         return;
       }
@@ -81,7 +81,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           .eq('active', true);
 
         if (allStoresError || !allStores || allStores.length === 0) {
-          setPinError('No stores available.');
+          setPinError(t('home.noStoresAvailable'));
           setIsLoading(false);
           return;
         }
@@ -103,7 +103,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           .eq('employee_id', session.employee_id);
 
         if (storeError || !assignedStores || assignedStores.length === 0) {
-          setPinError('No store found for this employee.');
+          setPinError(t('home.noStoreFound'));
           setIsLoading(false);
           return;
         }
@@ -165,13 +165,13 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
         if (checkInError) {
           console.error('Error checking attendance:', checkInError);
-          setPinError('Failed to verify check-in status. Please try again.');
+          setPinError(t('home.failedToVerifyCheckIn'));
           setIsLoading(false);
           return;
         }
 
         if (!activeCheckIn) {
-          setPinError('You must check in before joining the ready queue. Please use the Check In/Out button first.');
+          setPinError(t('home.mustCheckInFirst'));
           setIsLoading(false);
           return;
         }
@@ -196,7 +196,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       }
     } catch (error: any) {
       console.error('Authentication failed:', error);
-      setPinError('Failed to process request. Please try again.');
+      setPinError(t('home.failedToProcess'));
     } finally {
       setIsLoading(false);
     }
@@ -235,7 +235,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       }
     } catch (error) {
       console.error('Error handling store selection:', error);
-      setPinError('Failed to process store selection. Please try again.');
+      setPinError(t('home.failedStoreSelection'));
     } finally {
       setIsLoading(false);
     }
@@ -250,7 +250,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         .maybeSingle();
 
       if (employee && employee.attendance_display === false) {
-        setPinError('Attendance tracking is not enabled for your account');
+        setPinError(t('home.attendanceNotEnabled'));
         return;
       }
 
@@ -272,7 +272,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         console.log('Today attendance record found:', todayAttendance);
 
         if (todayAttendance) {
-          setPinError('You are already checked in');
+          setPinError(t('home.alreadyCheckedIn'));
           return;
         }
 
@@ -284,7 +284,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         if (windowError) throw windowError;
 
         if (!canCheckIn) {
-          setPinError('Check-in is only available 15 minutes before opening time');
+          setPinError(t('home.checkInWindowOnly'));
           return;
         }
 
@@ -335,7 +335,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
         if (!activeAttendance) {
           console.log('No active check-in found for employee');
-          setPinError('You are not checked in');
+          setPinError(t('home.notCheckedIn'));
           return;
         }
 
@@ -355,7 +355,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
         if (!checkOutSuccess) {
           console.error('Check-out failed: No active check-in found');
-          setPinError('No active check-in found');
+          setPinError(t('home.noActiveCheckIn'));
           return;
         }
 
@@ -377,7 +377,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       }
     } catch (error: any) {
       console.error('Check-in/out failed:', error);
-      setPinError('Check-in/out failed. Please try again.');
+      setPinError(t('home.checkInOutFailed'));
     }
   };
 

@@ -7,7 +7,7 @@ import { changePIN } from '../lib/auth';
 
 export function SettingsPage() {
   const { showToast } = useToast();
-  const { session } = useAuth();
+  const { session, t } = useAuth();
 
   const [oldPIN, setOldPIN] = useState('');
   const [newPIN, setNewPIN] = useState('');
@@ -18,27 +18,27 @@ export function SettingsPage() {
     e.preventDefault();
 
     if (!/^\d{4}$/.test(oldPIN)) {
-      showToast('Current PIN must be 4 digits', 'error');
+      showToast(t('settings.currentPinMust4Digits'), 'error');
       return;
     }
 
     if (!/^\d{4}$/.test(newPIN)) {
-      showToast('New PIN must be 4 digits', 'error');
+      showToast(t('settings.newPinMust4Digits'), 'error');
       return;
     }
 
     if (newPIN !== confirmPIN) {
-      showToast('New PINs do not match', 'error');
+      showToast(t('settings.pinsDoNotMatch'), 'error');
       return;
     }
 
     if (oldPIN === newPIN) {
-      showToast('New PIN must be different from current PIN', 'error');
+      showToast(t('settings.pinMustBeDifferent'), 'error');
       return;
     }
 
     if (!session) {
-      showToast('Session expired', 'error');
+      showToast(t('settings.sessionExpired'), 'error');
       return;
     }
 
@@ -48,15 +48,15 @@ export function SettingsPage() {
       const result = await changePIN(session.employee_id, oldPIN, newPIN);
 
       if (result.success) {
-        showToast('PIN changed successfully', 'success');
+        showToast(t('settings.pinChangedSuccess'), 'success');
         setOldPIN('');
         setNewPIN('');
         setConfirmPIN('');
       } else {
-        showToast(result.error || 'Failed to change PIN', 'error');
+        showToast(result.error || t('settings.failedToChangePIN'), 'error');
       }
     } catch (error) {
-      showToast('An error occurred', 'error');
+      showToast(t('settings.anErrorOccurred'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -65,13 +65,13 @@ export function SettingsPage() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-4">
-        <h2 className="text-lg font-bold text-gray-900 mb-3">Settings</h2>
+        <h2 className="text-lg font-bold text-gray-900 mb-3">{t('settings.title')}</h2>
       </div>
 
       <div className="max-w-2xl">
         <div className="mb-4">
             <p className="text-sm text-gray-600">
-              Update your 4-digit PIN for accessing the system
+              {t('settings.updatePinMessage')}
             </p>
           </div>
 
@@ -79,12 +79,12 @@ export function SettingsPage() {
             <div className="flex items-start gap-3 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-blue-800">
-                <p className="font-medium mb-1">Security Tips</p>
+                <p className="font-medium mb-1">{t('settings.securityTips')}</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
-                  <li>Choose a PIN that is easy for you to remember but hard for others to guess</li>
-                  <li>Do not use obvious combinations like 1234 or 0000</li>
-                  <li>Do not share your PIN with anyone</li>
-                  <li>Change your PIN regularly for better security</li>
+                  <li>{t('settings.securityTip1')}</li>
+                  <li>{t('settings.securityTip2')}</li>
+                  <li>{t('settings.securityTip3')}</li>
+                  <li>{t('settings.securityTip4')}</li>
                 </ul>
               </div>
             </div>
@@ -92,7 +92,7 @@ export function SettingsPage() {
             <form onSubmit={handleChangePIN} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Current PIN
+                  {t('auth.currentPIN')}
                 </label>
                 <input
                   type="password"
@@ -110,7 +110,7 @@ export function SettingsPage() {
               <div className="border-t border-gray-200 pt-6">
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    New PIN
+                    {t('auth.newPIN')}
                   </label>
                   <input
                     type="password"
@@ -127,7 +127,7 @@ export function SettingsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Confirm New PIN
+                    {t('settings.confirmNewPin')}
                   </label>
                   <input
                     type="password"
@@ -153,7 +153,7 @@ export function SettingsPage() {
                     setConfirmPIN('');
                   }}
                 >
-                  Clear
+                  {t('common.clear')}
                 </Button>
                 <Button
                   type="submit"
@@ -164,7 +164,7 @@ export function SettingsPage() {
                     confirmPIN.length !== 4
                   }
                 >
-                  {isSubmitting ? 'Changing PIN...' : 'Change PIN'}
+                  {isSubmitting ? t('settings.changingPin') : t('auth.changePIN')}
                 </Button>
               </div>
             </form>
@@ -173,7 +173,7 @@ export function SettingsPage() {
               <div className="flex items-start gap-2 text-sm text-gray-600">
                 <Key className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
                 <p>
-                  If you forgot your current PIN, please contact your manager to reset it.
+                  {t('settings.forgotPinMessage')}
                 </p>
               </div>
             </div>

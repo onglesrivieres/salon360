@@ -108,7 +108,7 @@ export function InventoryPage() {
   const [isDistributionFilterPanelOpen, setIsDistributionFilterPanelOpen] = useState(false);
 
   const { showToast } = useToast();
-  const { selectedStoreId, session } = useAuth();
+  const { selectedStoreId, session, t } = useAuth();
 
   const canCreateItems = session?.role && Permissions.inventory.canCreateItems(session.role);
   const canEditItems = session?.role && Permissions.inventory.canEditItems(session.role);
@@ -120,11 +120,11 @@ export function InventoryPage() {
 
   // Tab configuration for responsive dropdown
   const tabConfig: Array<{ key: Tab; label: string; icon: typeof Package; getCount?: () => number }> = [
-    { key: 'items', label: 'Items', icon: Package, getCount: () => items.length },
-    { key: 'transactions', label: 'Transactions', icon: ArrowUpDown, getCount: () => transactions.length },
-    { key: 'lots', label: 'Lots', icon: PackagePlus },
-    { key: 'distributions', label: 'Distributions', icon: PackageMinus },
-    { key: 'suppliers', label: 'Suppliers', icon: Building2 },
+    { key: 'items', label: t('inventory.items'), icon: Package, getCount: () => items.length },
+    { key: 'transactions', label: t('inventory.transactions'), icon: ArrowUpDown, getCount: () => transactions.length },
+    { key: 'lots', label: t('inventory.lots'), icon: PackagePlus },
+    { key: 'distributions', label: t('inventory.distributions'), icon: PackageMinus },
+    { key: 'suppliers', label: t('inventory.suppliers'), icon: Building2 },
   ];
   const visibleTabs = tabConfig.filter(tab => {
     if (['lots', 'distributions'].includes(tab.key)) return canDistribute;
@@ -206,7 +206,7 @@ export function InventoryPage() {
       setItems(itemsResult.data || []);
     } catch (error) {
       console.error('Error fetching items:', error);
-      showToast('Failed to load inventory items', 'error');
+      showToast(t('inventory.failedToLoadItems'), 'error');
     } finally {
       setLoading(false);
     }
@@ -254,7 +254,7 @@ export function InventoryPage() {
       setTransactions(transactionsWithDetails);
     } catch (error) {
       console.error('Error fetching transactions:', error);
-      showToast('Failed to load transactions', 'error');
+      showToast(t('inventory.failedToLoadTransactions'), 'error');
     }
   }
 
@@ -269,7 +269,7 @@ export function InventoryPage() {
       setSuppliers(data || []);
     } catch (error) {
       console.error('Error fetching suppliers:', error);
-      showToast('Failed to load suppliers', 'error');
+      showToast(t('inventory.failedToLoadSuppliers'), 'error');
     }
   }
 
@@ -315,7 +315,7 @@ export function InventoryPage() {
       setLots(lotsWithDetails);
     } catch (error) {
       console.error('Error fetching lots:', error);
-      showToast('Failed to load purchase lots', 'error');
+      showToast(t('inventory.failedToLoadLots'), 'error');
     } finally {
       setLotsLoading(false);
     }
@@ -369,7 +369,7 @@ export function InventoryPage() {
       setDistributions(distributionsWithDetails);
     } catch (error) {
       console.error('Error fetching distributions:', error);
-      showToast('Failed to load distributions', 'error');
+      showToast(t('inventory.failedToLoadDistributions'), 'error');
     } finally {
       setDistributionsLoading(false);
     }
@@ -386,11 +386,11 @@ export function InventoryPage() {
         .eq('id', supplier.id);
 
       if (error) throw error;
-      showToast(`Supplier ${supplier.is_active ? 'deactivated' : 'activated'} successfully`, 'success');
+      showToast(supplier.is_active ? t('inventory.supplierDeactivated') : t('inventory.supplierActivated'), 'success');
       fetchSuppliers();
     } catch (error) {
       console.error('Error updating supplier:', error);
-      showToast('Failed to update supplier', 'error');
+      showToast(t('inventory.failedToLoadSuppliers'), 'error');
     }
   }
 
@@ -836,8 +836,8 @@ export function InventoryPage() {
       <div className="p-6 max-w-7xl mx-auto">
         <div className="text-center py-12">
           <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">No Store Selected</h2>
-          <p className="text-gray-500">Please select a store to view inventory</p>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">{t('inventory.noStoreSelected')}</h2>
+          <p className="text-gray-500">{t('inventory.pleaseSelectStore')}</p>
         </div>
       </div>
     );
@@ -846,8 +846,8 @@ export function InventoryPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Inventory Management</h1>
-        <p className="text-gray-600">Track and manage store inventory items and transactions</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('inventory.title')}</h1>
+        <p className="text-gray-600">{t('common.trackAndManage')}</p>
       </div>
 
       {lowStockItems.length > 0 && (
@@ -861,14 +861,13 @@ export function InventoryPage() {
             }`}
           >
             <Eye className="w-4 h-4" />
-            {showLowStockOnly ? 'Show All' : 'View'}
+            {showLowStockOnly ? t('common.showAll') : t('common.view')}
           </button>
           <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
           <div>
-            <p className="font-medium text-amber-900">Low Stock Alert</p>
+            <p className="font-medium text-amber-900">{t('common.lowStockAlert')}</p>
             <p className="text-sm text-amber-700">
-              {lowStockItems.length} item{lowStockItems.length !== 1 ? 's' : ''} below reorder
-              level
+              {lowStockItems.length} {t('common.itemsBelowReorder')}
             </p>
           </div>
         </div>
