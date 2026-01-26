@@ -23,6 +23,7 @@ interface TechnicianSummary {
   service_revenue: number;
   addon_revenue: number;
   total_revenue: number;
+  approved_revenue: number;
   items: ServiceItemDetail[];
 }
 
@@ -314,6 +315,7 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
             service_revenue: 0,
             addon_revenue: 0,
             total_revenue: 0,
+            approved_revenue: 0,
             items: [],
           });
         }
@@ -322,11 +324,22 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
         const serviceRevenue = (parseFloat(item.qty) || 0) * (parseFloat(item.price_each) || 0);
         const addonRevenue = parseFloat(item.addon_price) || 0;
 
+        // Check if ticket is approved (same pattern as TipReportPage)
+        const approvalStatus = (ticket as any).approval_status;
+        const isApprovedTicket = approvalStatus === 'approved' ||
+                                 approvalStatus === 'auto_approved' ||
+                                 !approvalStatus; // null = legacy tickets
+
         summary.services_count += 1;
         summary.revenue += itemRevenue;
         summary.service_revenue += serviceRevenue;
         summary.addon_revenue += addonRevenue;
         summary.total_revenue += itemRevenue;
+
+        // Only add to approved_revenue if ticket is approved
+        if (isApprovedTicket) {
+          summary.approved_revenue += itemRevenue;
+        }
 
         summary.items.push({
           ticket_id: ticket.id,
@@ -503,13 +516,13 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
                         <div className="flex justify-between items-center">
                           <span className="text-[9px] text-gray-600">Sub-total</span>
                           <span className="text-[9px] font-semibold text-gray-900">
-                            ${summary.total_revenue.toFixed(0)}
+                            ${summary.approved_revenue.toFixed(0)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
                           <span className="text-[9px] font-medium text-gray-900">Total</span>
                           <span className="text-[10px] font-bold text-gray-900">
-                            ${summary.total_revenue.toFixed(0)}
+                            ${summary.approved_revenue.toFixed(0)}
                           </span>
                         </div>
                       </>
@@ -517,7 +530,7 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
                       <div className="flex justify-between items-center">
                         <span className="text-[9px] font-medium text-gray-900">Total Revenue</span>
                         <span className="text-[10px] font-bold text-gray-900">
-                          ${summary.total_revenue.toFixed(0)}
+                          ${summary.approved_revenue.toFixed(0)}
                         </span>
                       </div>
                     )}
