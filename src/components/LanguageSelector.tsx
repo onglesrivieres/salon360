@@ -7,6 +7,7 @@ const languages: { code: Locale; flag: string; label: string }[] = [
   { code: 'en', flag: '🇨🇦', label: 'EN' },
   { code: 'fr', flag: '🇫🇷', label: 'FR' },
   { code: 'vi', flag: '🇻🇳', label: 'VI' },
+  { code: 'km', flag: '🇰🇭', label: 'KM' },
 ];
 
 export function LanguageSelector() {
