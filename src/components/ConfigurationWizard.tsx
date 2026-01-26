@@ -239,7 +239,7 @@ export function ConfigurationWizard({
             <span className="text-sm font-medium text-gray-600">
               Step {step} of {totalSteps}
             </span>
-            <span className="text-sm text-gray-500">Store Configuration</span>
+            <span className="text-sm text-gray-500">Configuration</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
