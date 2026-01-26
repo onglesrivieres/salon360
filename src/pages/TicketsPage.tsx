@@ -71,12 +71,11 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   // Determine if tips should be hidden (commission employees without management role)
   const shouldHideTips = isCommissionEmployee && !isManagement;
 
-  // Management can view all reports, commission employees can view their own Daily/Weekly reports
-  // Manager and Supervisor roles are excluded from Daily/Period tabs on Tickets page (but can still access Tip Report page)
-  const isManagerOnly = session?.role_permission === 'Manager';
-  const isSupervisor = session?.role_permission === 'Supervisor';
-  const canViewDailyReport = session?.role ? ((Permissions.tipReport.canViewAll(session.role) && !isManagerOnly && !isSupervisor) || isCommissionEmployee) : false;
-  const canViewPeriodReport = session?.role ? ((Permissions.tipReport.canViewPeriodReports(session.role) && !isManagerOnly && !isSupervisor) || isCommissionEmployee) : false;
+  // Daily/Period tabs visible to: Admin, Owner, Manager, Supervisor, Receptionist (via canViewAll)
+  // Commission employees can also view their own Daily/Weekly reports
+  // Cashier and Technician cannot access these tabs
+  const canViewDailyReport = session?.role ? (Permissions.tipReport.canViewAll(session.role) || isCommissionEmployee) : false;
+  const canViewPeriodReport = session?.role ? (Permissions.tipReport.canViewPeriodReports(session.role) || isCommissionEmployee) : false;
 
   // View mode tab configuration for responsive dropdown
   const viewModeConfig: Array<{ key: 'tickets' | 'daily' | 'period'; label: string; icon: typeof FileText }> = [
