@@ -68,7 +68,7 @@ function getDynamicDisplayName(setting: AppSetting, allSettings: AppSetting[]): 
 
 export function ConfigurationPage() {
   const { showToast } = useToast();
-  const { selectedStoreId, session } = useAuth();
+  const { selectedStoreId, session, t } = useAuth();
 
   const [settings, setSettings] = useState<AppSetting[]>([]);
   const [filteredSettings, setFilteredSettings] = useState<AppSetting[]>([]);
@@ -98,8 +98,8 @@ export function ConfigurationPage() {
 
   // Tab configuration
   const tabConfig: Array<{ key: 'settings' | 'permissions'; label: string; icon: typeof Settings }> = [
-    { key: 'settings', label: 'App Settings', icon: Settings },
-    { key: 'permissions', label: 'Role Permissions', icon: UserCog },
+    { key: 'settings', label: t('config.appSettings'), icon: Settings },
+    { key: 'permissions', label: t('config.rolePermissions'), icon: UserCog },
   ];
   const currentTab = tabConfig.find(tab => tab.key === activeTab);
 
@@ -182,7 +182,7 @@ export function ConfigurationPage() {
       await validateConfiguration();
     } catch (error) {
       console.error('Error loading settings:', error);
-      showToast('Failed to load settings', 'error');
+      showToast(t('config.failedToLoad'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -229,7 +229,7 @@ export function ConfigurationPage() {
 
   function handleToggleClick(setting: AppSetting, newValue: boolean) {
     if (!canManageSettings) {
-      showToast('You do not have permission to change settings', 'error');
+      showToast(t('config.noPermissionChange'), 'error');
       return;
     }
 
@@ -243,14 +243,14 @@ export function ConfigurationPage() {
 
   function handleNumericChange(setting: AppSetting, newValue: number) {
     if (!canManageSettings) {
-      showToast('You do not have permission to change settings', 'error');
+      showToast(t('config.noPermissionChange'), 'error');
       return;
     }
 
     // Validate range for auto_approval_minutes and auto_approval_minutes_manager
     if (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') {
       if (newValue < 10 || newValue > 10080) {
-        showToast('Value must be between 10 minutes and 10080 minutes (7 days)', 'error');
+        showToast(t('config.valueBetweenMinutes'), 'error');
         return;
       }
     }
@@ -258,7 +258,7 @@ export function ConfigurationPage() {
     // Validate range for violation_min_votes_required
     if (setting.setting_key === 'violation_min_votes_required') {
       if (newValue < 1 || newValue > 10) {
-        showToast('Value must be between 1 and 10 votes', 'error');
+        showToast(t('config.valueBetweenVotes'), 'error');
         return;
       }
     }
@@ -266,7 +266,7 @@ export function ConfigurationPage() {
     // Validate range for small_service_threshold
     if (setting.setting_key === 'small_service_threshold') {
       if (newValue < 0 || newValue > 500) {
-        showToast('Value must be between $0 and $500', 'error');
+        showToast(t('config.valueBetweenDollars'), 'error');
         return;
       }
     }
@@ -281,7 +281,7 @@ export function ConfigurationPage() {
 
   function handleStringChange(setting: AppSetting, newValue: string) {
     if (!canManageSettings) {
-      showToast('You do not have permission to change settings', 'error');
+      showToast(t('config.noPermissionChange'), 'error');
       return;
     }
 
@@ -330,7 +330,7 @@ export function ConfigurationPage() {
 
       if (setting.requires_restart) {
         showToast(
-          'This change requires a page refresh to take effect',
+          t('config.refreshRequired'),
           'info'
         );
       }
@@ -338,7 +338,7 @@ export function ConfigurationPage() {
       await validateConfiguration();
     } catch (error) {
       console.error('Error updating setting:', error);
-      showToast('Failed to update setting', 'error');
+      showToast(t('config.failedToUpdate'), 'error');
     }
   }
 
@@ -367,7 +367,7 @@ export function ConfigurationPage() {
     return (
       <div className="max-w-7xl mx-auto">
         <div className="text-center py-12">
-          <p className="text-gray-600">Please select a store to view configuration</p>
+          <p className="text-gray-600">{t('config.pleaseSelectStore')}</p>
         </div>
       </div>
     );
@@ -378,7 +378,7 @@ export function ConfigurationPage() {
       <div className="max-w-7xl mx-auto">
         <div className="text-center py-12">
           <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">You do not have permission to view or modify store configuration</p>
+          <p className="text-gray-600">{t('config.noPermission')}</p>
         </div>
       </div>
     );
@@ -389,7 +389,7 @@ export function ConfigurationPage() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-lg font-bold text-gray-900 mb-1">Store Configuration</h2>
+            <h2 className="text-lg font-bold text-gray-900 mb-1">{t('config.title')}</h2>
             <p className="text-sm text-gray-600">{storeName}</p>
           </div>
           <Button
@@ -398,7 +398,7 @@ export function ConfigurationPage() {
             disabled={isLoading}
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('config.refresh')}
           </Button>
         </div>
 
@@ -474,7 +474,7 @@ export function ConfigurationPage() {
               <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <h3 className="font-medium text-orange-900 mb-2">
-                  Configuration Issues Found
+                  {t('config.configIssuesFound')}
                 </h3>
                 <ul className="space-y-1">
                   {validationIssues.map((issue, i) => (
@@ -497,7 +497,7 @@ export function ConfigurationPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search settings..."
+                  placeholder={t('config.searchSettings')}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>

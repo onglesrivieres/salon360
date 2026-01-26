@@ -687,20 +687,20 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const requireOpeningCash = getSettingBoolean('require_opening_cash_count', false);
 
   const allNavItems = [
-    { id: 'home' as const, label: 'Home', icon: Home },
+    { id: 'home' as const, label: t('home.title'), icon: Home },
     { id: 'tickets' as const, label: t('nav.tickets'), icon: Receipt },
-    { id: 'approvals' as const, label: 'Approvals', icon: CheckCircle, badge: showPendingApprovalBadge ? pendingApprovalsCount : 0 },
-    { id: 'tipreport' as const, label: 'Tip Report', icon: Coins },
-    { id: 'eod' as const, label: 'End of Day', icon: DollarSign },
-    { id: 'safebalance' as const, label: 'Safe Balance', icon: Vault },
-    { id: 'attendance' as const, label: 'Attendance', icon: Calendar },
+    { id: 'approvals' as const, label: t('approvals.title'), icon: CheckCircle, badge: showPendingApprovalBadge ? pendingApprovalsCount : 0 },
+    { id: 'tipreport' as const, label: t('eod.title'), icon: Coins },
+    { id: 'eod' as const, label: t('cash.title'), icon: DollarSign },
+    { id: 'safebalance' as const, label: t('safe.title'), icon: Vault },
+    { id: 'attendance' as const, label: t('attendance.title'), icon: Calendar },
     { id: 'technicians' as const, label: t('nav.employees'), icon: Users },
-    { id: 'clients' as const, label: 'Clients', icon: UserCircle },
-    { id: 'inventory' as const, label: 'Inventory', icon: Package, hidden: !showInventory },
+    { id: 'clients' as const, label: t('clients.title'), icon: UserCircle },
+    { id: 'inventory' as const, label: t('inventory.title'), icon: Package, hidden: !showInventory },
     { id: 'services' as const, label: t('nav.services'), icon: Briefcase },
-    { id: 'insights' as const, label: 'Insights', icon: TrendingUp },
-    { id: 'resources' as const, label: 'Resources', icon: FolderOpen },
-    { id: 'configuration' as const, label: 'Configuration', icon: Settings },
+    { id: 'insights' as const, label: t('insights.title'), icon: TrendingUp },
+    { id: 'resources' as const, label: t('common.details'), icon: FolderOpen },
+    { id: 'configuration' as const, label: t('config.title'), icon: Settings },
   ];
 
   const navItems = allNavItems.filter(item => !item.hidden);
@@ -774,7 +774,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                         : 'text-gray-400 fill-gray-400'
                     }`}
                   />
-                  <span>QUEUE</span>
+                  <span>{t('queue.title')}</span>
                 </button>
               )}
             </div>
@@ -831,14 +831,14 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             <div className="flex items-center gap-2 flex-1">
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
               <p className="text-sm font-medium">
-                Opening cash count required! Record opening cash before creating any sale tickets today.
+                {t('cash.openingCashRequired')}
               </p>
             </div>
             <button
               onClick={() => onNavigate('eod')}
               className="flex-shrink-0 bg-white text-amber-700 px-3 py-1.5 rounded text-xs font-semibold hover:bg-amber-50 transition-colors whitespace-nowrap"
             >
-              Count Now
+              {t('cash.countNow')}
             </button>
           </div>
         </div>
@@ -902,8 +902,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-600">
               {canViewAllQueueStatuses
-                ? 'Real-time view of all technicians and their current status'
-                : 'Technicians who have checked in and joined the queue'}
+                ? t('queue.ready')
+                : t('queue.ready')}
             </p>
             <button
               onClick={fetchTechnicianQueue}
@@ -911,14 +911,14 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${loadingQueue ? 'animate-spin' : ''}`} />
-              Refresh
+              {t('common.refresh')}
             </button>
           </div>
 
           {loadingQueue && sortedTechnicians.length === 0 ? (
             <div className="text-center py-8">
               <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-2" />
-              <p className="text-sm text-gray-600">Loading queue...</p>
+              <p className="text-sm text-gray-600">{t('messages.loading')}</p>
             </div>
           ) : (
             <TechnicianQueue
@@ -945,14 +945,14 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-lg font-medium hover:bg-red-100 transition-colors"
               >
                 <Flag className="w-4 h-4" />
-                Report Turn Violation
+                {t('violations.reportViolation')}
               </button>
             </div>
           )}
 
           <div className="pt-4 border-t border-gray-200">
             <p className="text-xs text-gray-500 text-center">
-              Queue updates automatically every 30 seconds
+              {t('queue.ready')}
             </p>
           </div>
         </div>
@@ -976,11 +976,11 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           setShowLeaveConfirm(false);
           setEmployeeToRemove(undefined);
         }}
-        title="Leave Queue"
+        title={t('queue.leaveQueue')}
       >
         <div className="text-center py-4">
           <p className="text-lg text-gray-900 mb-6">
-            Are you sure you want to leave the ready queue?
+            {t('common.confirmAction')}
           </p>
           <div className="flex gap-3 justify-center">
             <button
@@ -990,14 +990,14 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               }}
               className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
             >
-              Cancel
+              {t('actions.cancel')}
             </button>
             <button
               onClick={confirmLeaveQueue}
               disabled={!!leavingQueueEmployeeId}
               className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
             >
-              {leavingQueueEmployeeId ? 'Leaving...' : 'Leave Queue'}
+              {leavingQueueEmployeeId ? t('messages.loading') : t('queue.leaveQueue')}
             </button>
           </div>
         </div>

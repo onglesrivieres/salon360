@@ -13,7 +13,7 @@ import { ClientDetailsModal } from '../components/clients/ClientDetailsModal';
 type FilterTab = 'all' | 'active' | 'blacklisted';
 
 export function ClientsPage() {
-  const { session, selectedStoreId } = useAuth();
+  const { session, selectedStoreId, t } = useAuth();
   const { showToast } = useToast();
 
   const [search, setSearch] = useState('');
@@ -70,10 +70,10 @@ export function ClientsPage() {
     if (client.is_blacklisted) {
       const result = await unblacklistClient(client.id);
       if (result.success) {
-        showToast('Client removed from blacklist', 'success');
+        showToast(t('clients.clientUnblacklisted'), 'success');
         refetch();
       } else {
-        showToast(result.error || 'Failed to update client', 'error');
+        showToast(result.error || t('clients.failedToUpdate'), 'error');
       }
     } else {
       if (!reason) return;
@@ -82,10 +82,10 @@ export function ClientsPage() {
         blacklisted_by: session.employee_id,
       });
       if (result.success) {
-        showToast('Client blacklisted', 'success');
+        showToast(t('clients.clientBlacklisted'), 'success');
         refetch();
       } else {
-        showToast(result.error || 'Failed to blacklist client', 'error');
+        showToast(result.error || t('clients.failedToBlacklist'), 'error');
       }
     }
   };
@@ -93,10 +93,10 @@ export function ClientsPage() {
   const handleDeleteClient = async (client: ClientWithStats) => {
     const result = await deleteClient(client.id);
     if (result.success) {
-      showToast('Client deleted', 'success');
+      showToast(t('clients.clientDeleted'), 'success');
       refetch();
     } else {
-      showToast(result.error || 'Failed to delete client', 'error');
+      showToast(result.error || t('clients.failedToDelete'), 'error');
     }
   };
 
@@ -113,10 +113,10 @@ export function ClientsPage() {
         <div>
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <UserCircle className="w-6 h-6" />
-            Clients
+            {t('clients.title')}
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {totalCount} {totalCount === 1 ? 'client' : 'clients'} total
+            {totalCount} {t('clients.clientsTotal')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -134,7 +134,7 @@ export function ClientsPage() {
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Add Client
+              {t('clients.addClient')}
             </button>
           )}
         </div>
@@ -149,7 +149,7 @@ export function ClientsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or phone..."
+            placeholder={t('clients.searchPlaceholder')}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -166,12 +166,12 @@ export function ClientsPage() {
                   : 'bg-white text-gray-700 hover:bg-gray-50'
               }`}
             >
-              {tab === 'all' && 'All'}
-              {tab === 'active' && 'Active'}
+              {tab === 'all' && t('clients.all')}
+              {tab === 'active' && t('clients.active')}
               {tab === 'blacklisted' && (
                 <span className="flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3" />
-                  Blacklisted
+                  {t('clients.blacklisted')}
                 </span>
               )}
             </button>

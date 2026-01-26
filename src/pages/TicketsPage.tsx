@@ -36,7 +36,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
   const { showToast } = useToast();
-  const { session, selectedStoreId } = useAuth();
+  const { session, selectedStoreId, t } = useAuth();
 
   // Ref for highlighted ticket row (for scroll-into-view)
   const highlightedRowRef = useRef<HTMLTableRowElement>(null);
@@ -80,9 +80,9 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
   // View mode tab configuration for responsive dropdown
   const viewModeConfig: Array<{ key: 'tickets' | 'daily' | 'period'; label: string; icon: typeof FileText }> = [
-    { key: 'tickets', label: 'Tickets', icon: FileText },
-    { key: 'daily', label: 'Daily', icon: Calendar },
-    { key: 'period', label: 'Period', icon: CalendarRange },
+    { key: 'tickets', label: t('tickets.viewModeTickets'), icon: FileText },
+    { key: 'daily', label: t('tickets.viewModeDaily'), icon: Calendar },
+    { key: 'period', label: t('tickets.viewModePeriod'), icon: CalendarRange },
   ];
   const visibleViewModes = viewModeConfig.filter(mode =>
     mode.key === 'tickets' || (mode.key === 'daily' && canViewDailyReport) || (mode.key === 'period' && canViewPeriodReport)
@@ -109,11 +109,11 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   useEffect(() => {
     if (!canViewDailyReport && viewMode === 'daily') {
       setViewMode('tickets');
-      showToast('You do not have permission to view daily reports', 'error');
+      showToast(t('tickets.noPermissionDailyReports'), 'error');
     }
     if (!canViewPeriodReport && viewMode === 'period') {
       setViewMode('tickets');
-      showToast('You do not have permission to view period reports', 'error');
+      showToast(t('tickets.noPermissionPeriodReports'), 'error');
     }
   }, [viewMode, canViewDailyReport, canViewPeriodReport]);
 
@@ -192,7 +192,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
         const today = getCurrentDateEST();
         if (selectedDate !== today) {
           onDateChange(today);
-          showToast('Cashiers can only view today\'s tickets', 'info');
+          showToast(t('tickets.cashiersOnlyToday'), 'info');
           return;
         }
       }
@@ -278,7 +278,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
       setTickets(filteredData);
     } catch (error) {
       console.error('Error fetching tickets:', error);
-      showToast('Failed to load tickets', 'error');
+      showToast(t('tickets.failedToLoad'), 'error');
     } finally {
       if (!silent) {
         setLoading(false);
@@ -376,7 +376,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   function getApprovalStatusBadge(ticket: SaleTicket) {
     if (!ticket.approval_status) {
       if (ticket.closed_at) {
-        return <Badge variant="success">Closed</Badge>;
+        return <Badge variant="success">{t('tickets.closed')}</Badge>;
       }
       return null;
     }
@@ -386,28 +386,28 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
             <Clock className="w-3 h-3 mr-1" />
-            Pending
+            {t('tickets.pending')}
           </span>
         );
       case 'approved':
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
             <CheckCircle className="w-3 h-3 mr-1" />
-            {ticket.approved_by ? 'Approved' : 'Auto'}
+            {ticket.approved_by ? t('tickets.approved') : t('tickets.auto')}
           </span>
         );
       case 'auto_approved':
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
             <Clock className="w-3 h-3 mr-1" />
-            Auto
+            {t('tickets.auto')}
           </span>
         );
       case 'rejected':
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
             <AlertCircle className="w-3 h-3 mr-1" />
-            Rejected
+            {t('tickets.rejected')}
           </span>
         );
       default:
@@ -678,7 +678,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     event.stopPropagation(); // Prevent opening the editor
 
     if (!session?.employee_id) {
-      showToast('Session expired. Please log in again.', 'error');
+      showToast(t('tickets.sessionExpired'), 'error');
       return;
     }
 
@@ -708,11 +708,11 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
         },
       }]);
 
-      showToast('Ticket approved successfully', 'success');
+      showToast(t('tickets.approvedSuccess'), 'success');
       fetchTickets();
     } catch (error: any) {
       console.error('Error approving ticket:', error);
-      showToast(error.message || 'Failed to approve ticket', 'error');
+      showToast(error.message || t('tickets.failedToApprove'), 'error');
     } finally {
       setProcessing(false);
     }
@@ -727,12 +727,12 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
   async function handleRejectTicket() {
     if (!selectedTicketForApproval || !rejectionReason.trim()) {
-      showToast('Please provide a rejection reason', 'error');
+      showToast(t('tickets.provideRejectionReason'), 'error');
       return;
     }
 
     if (!session?.employee_id) {
-      showToast('Session expired. Please log in again.', 'error');
+      showToast(t('tickets.sessionExpired'), 'error');
       return;
     }
 
@@ -764,14 +764,14 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
         },
       }]);
 
-      showToast('Ticket rejected and sent for admin review', 'success');
+      showToast(t('tickets.rejectedSentForReview'), 'success');
       setShowRejectModal(false);
       setSelectedTicketForApproval(null);
       setRejectionReason('');
       fetchTickets();
     } catch (error: any) {
       console.error('Error rejecting ticket:', error);
-      showToast(error.message || 'Failed to reject ticket', 'error');
+      showToast(error.message || t('tickets.failedToReject'), 'error');
     } finally {
       setProcessing(false);
     }
@@ -780,7 +780,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading tickets...</div>
+        <div className="text-gray-500">{t('common.loading')}</div>
       </div>
     );
   }
@@ -871,7 +871,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                       : 'bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  All
+                  {t('tickets.all')}
                 </button>
                 <button
                   onClick={() => setQuickFilter('unclosed')}
@@ -881,7 +881,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                       : 'bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  Unclosed
+                  {t('tickets.unclosed')}
                 </button>
               </div>
               <div className="relative">
@@ -894,7 +894,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                   }`}
                 >
                   <Filter className="w-4 h-4" />
-                  <span>Filters</span>
+                  <span>{t('tickets.filters')}</span>
                   {getActiveFilterCount() > 0 && (
                     <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full">
                       {getActiveFilterCount()}
@@ -911,7 +911,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                 <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                   <div className="p-4 space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
+                      <h3 className="text-sm font-semibold text-gray-900">{t('tickets.filters')}</h3>
                       <button
                         onClick={() => setIsFilterPanelOpen(false)}
                         className="text-gray-400 hover:text-gray-600"
@@ -922,51 +922,51 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Approval Status
+                        {t('tickets.approvalStatus')}
                       </label>
                       <select
                         value={approvalFilter}
                         onChange={(e) => setApprovalFilter(e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="all">All Tickets</option>
-                        <option value="self_service_pending">Self-Service (Needs Review)</option>
-                        <option value="open">Open</option>
-                        <option value="closed">Closed (No Status)</option>
-                        <option value="pending_approval">Pending Approval</option>
-                        <option value="approved">Approved</option>
-                        <option value="auto_approved">Auto-Approved</option>
-                        <option value="rejected">Rejected</option>
+                        <option value="all">{t('tickets.allTickets')}</option>
+                        <option value="self_service_pending">{t('tickets.selfServiceNeedsReview')}</option>
+                        <option value="open">{t('tickets.open')}</option>
+                        <option value="closed">{t('tickets.closedNoStatus')}</option>
+                        <option value="pending_approval">{t('tickets.pendingApproval')}</option>
+                        <option value="approved">{t('tickets.approved')}</option>
+                        <option value="auto_approved">{t('tickets.autoApproved')}</option>
+                        <option value="rejected">{t('tickets.rejected')}</option>
                       </select>
                     </div>
 
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Payment Method
+                        {t('tickets.paymentMethod')}
                       </label>
                       <select
                         value={paymentMethodFilter}
                         onChange={(e) => setPaymentMethodFilter(e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="all">All Payment Methods</option>
-                        <option value="Cash">Cash</option>
-                        <option value="Card">Card</option>
-                        <option value="Mixed">Mixed</option>
-                        <option value="Other">Other</option>
+                        <option value="all">{t('tickets.allPaymentMethods')}</option>
+                        <option value="Cash">{t('tickets.cash')}</option>
+                        <option value="Card">{t('tickets.card')}</option>
+                        <option value="Mixed">{t('tickets.mixed')}</option>
+                        <option value="Other">{t('tickets.other')}</option>
                       </select>
                     </div>
 
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Technician
+                        {t('tickets.technician')}
                       </label>
                       <select
                         value={technicianFilter}
                         onChange={(e) => setTechnicianFilter(e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="all">All Technicians</option>
+                        <option value="all">{t('tickets.allTechnicians')}</option>
                         {technicians.map(tech => (
                           <option key={tech.id} value={tech.id}>{tech.name}</option>
                         ))}
@@ -978,7 +978,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                         onClick={clearAllFilters}
                         className="w-full px-3 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                       >
-                        Clear All Filters
+                        {t('tickets.clearAllFilters')}
                       </button>
                     )}
                   </div>
@@ -1031,8 +1031,8 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
           {viewMode === 'tickets' && session && session.role_permission && Permissions.tickets.canCreate(session.role_permission) && (
             <Button size="sm" onClick={() => openEditor()} className="min-h-[44px] md:min-h-0">
               <Plus className="w-4 h-4 md:w-3 md:h-3 mr-1" />
-              <span className="hidden xs:inline">New Ticket</span>
-              <span className="xs:hidden">New</span>
+              <span className="hidden xs:inline">{t('tickets.newTicket')}</span>
+              <span className="xs:hidden">{t('common.new')}</span>
             </Button>
           )}
         </div>
@@ -1054,30 +1054,30 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Time
+                  {t('tickets.time')}
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
+                  {t('tickets.customer')}
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Service
+                  {t('tickets.service')}
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tech
+                  {t('tickets.tech')}
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Sub-total
+                  {t('tickets.subtotal')}
                 </th>
                 {canViewTotalColumn() && (
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total
+                    {t('tickets.total')}
                   </th>
                 )}
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  {t('tickets.status')}
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Approval
+                  {t('tickets.approval')}
                 </th>
                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
                 </th>
@@ -1168,13 +1168,13 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                                   ? 'bg-red-100 text-red-800'
                                   : 'bg-gray-100 text-gray-800'
                               }`}>
-                                Closed
+                                {t('tickets.closed')}
                               </div>
                             );
                           })()
                         ) : ticket.completed_at ? (
                           <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                            Completed
+                            {t('tickets.completed')}
                           </div>
                         ) : (
                           <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -1191,7 +1191,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                          ['Supervisor', 'Manager'].includes(ticket.opened_by_role || '') &&
                          !ticket.approval_status && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            Required
+                            {t('tickets.required')}
                           </span>
                         )}
                         {getApprovalStatusBadge(ticket)}
@@ -1201,7 +1201,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                               onClick={(e) => handleApproveTicket(ticket, e)}
                               disabled={processing}
                               className="w-7 h-7 flex items-center justify-center rounded bg-green-500 hover:bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Approve"
+                              title={t('common.approve')}
                             >
                               <Check className="w-4 h-4" />
                             </button>
@@ -1209,7 +1209,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                               onClick={(e) => handleRejectTicketClick(ticket, e)}
                               disabled={processing}
                               className="w-7 h-7 flex items-center justify-center rounded bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Reject"
+                              title={t('common.reject')}
                             >
                               <X className="w-4 h-4" />
                             </button>
@@ -1231,14 +1231,14 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
         {filteredTickets.length === 0 && tickets.length > 0 && (
           <div className="text-center py-8">
-            <p className="text-sm text-gray-500">No tickets match the selected filter</p>
+            <p className="text-sm text-gray-500">{t('tickets.noTicketsMatchFilter')}</p>
           </div>
         )}
         {tickets.length === 0 && (
           <div className="text-center py-8">
-            <p className="text-sm text-gray-500 mb-3">No tickets found for this date</p>
+            <p className="text-sm text-gray-500 mb-3">{t('tickets.noTicketsForDate')}</p>
             {session && session.role_permission && Permissions.tickets.canCreate(session.role_permission) && (
-              <Button size="sm" onClick={() => openEditor()}>Create First Ticket</Button>
+              <Button size="sm" onClick={() => openEditor()}>{t('tickets.createFirstTicket')}</Button>
             )}
           </div>
         )}
@@ -1327,13 +1327,13 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                             ? 'bg-red-100 text-red-800'
                             : 'bg-gray-100 text-gray-800'
                         }`}>
-                          Closed
+                          {t('tickets.closed')}
                         </div>
                       );
                     })()
                   ) : ticket.completed_at ? (
                     <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                      Completed
+                      {t('tickets.completed')}
                     </div>
                   ) : (
                     <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -1346,7 +1346,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                    ['Supervisor', 'Manager'].includes(ticket.opened_by_role || '') &&
                    !ticket.approval_status && (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                      Required
+                      {t('tickets.required')}
                     </span>
                   )}
                   <div className="flex items-center gap-1">
@@ -1360,19 +1360,19 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
               <div className="pt-2 border-t border-gray-100">
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <div>
-                    <div className="text-xs text-gray-500">Sub-total</div>
+                    <div className="text-xs text-gray-500">{t('tickets.subtotal')}</div>
                     <div className="text-sm font-semibold text-gray-900">${getSubtotal(ticket).toFixed(2)}</div>
                   </div>
                   {canViewTotalColumn() && (
                     <div>
-                      <div className="text-xs text-gray-500">Total</div>
+                      <div className="text-xs text-gray-500">{t('tickets.total')}</div>
                       <div className="text-sm font-semibold text-gray-900">${getGrandTotalCollected(ticket).toFixed(2)}</div>
                     </div>
                   )}
                   {isClosedTicket && !shouldHideTips && (
                     <div className={isHighTip ? 'bg-orange-50 rounded px-2 -mx-2' : ''}>
                       <div className={`text-xs font-medium ${isHighTip ? 'text-orange-700' : 'text-gray-500'}`}>
-                        Total Tips
+                        {t('tickets.totalTips')}
                       </div>
                       <div className={`text-sm font-semibold ${isHighTip ? 'text-orange-700' : 'text-green-600'}`}>
                         ${totalTips.toFixed(2)}
@@ -1404,14 +1404,14 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
         })}
         {filteredTickets.length === 0 && tickets.length > 0 && (
           <div className="bg-white rounded-lg shadow p-8 text-center">
-            <p className="text-sm text-gray-500">No tickets match the selected filter</p>
+            <p className="text-sm text-gray-500">{t('tickets.noTicketsMatchFilter')}</p>
           </div>
         )}
         {tickets.length === 0 && (
           <div className="bg-white rounded-lg shadow p-8 text-center">
-            <p className="text-sm text-gray-500 mb-3">No tickets found for this date</p>
+            <p className="text-sm text-gray-500 mb-3">{t('tickets.noTicketsForDate')}</p>
             {session && session.role_permission && Permissions.tickets.canCreate(session.role_permission) && (
-              <Button size="sm" onClick={() => openEditor()}>Create First Ticket</Button>
+              <Button size="sm" onClick={() => openEditor()}>{t('tickets.createFirstTicket')}</Button>
             )}
           </div>
         )}
@@ -1422,33 +1422,33 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
       <Modal
         isOpen={showRejectModal}
         onClose={() => !processing && setShowRejectModal(false)}
-        title="Reject Ticket"
+        title={t('tickets.rejectTicket')}
         onConfirm={handleRejectTicket}
-        confirmText={processing ? 'Rejecting...' : 'Reject Ticket'}
+        confirmText={processing ? t('tickets.rejecting') : t('tickets.rejectTicket')}
         confirmVariant="danger"
-        cancelText="Cancel"
+        cancelText={t('common.cancel')}
       >
         {selectedTicketForApproval && (
           <div>
             <p className="text-gray-700 mb-3">
-              Rejecting ticket <strong>{selectedTicketForApproval.ticket_no}</strong> will send it for admin review.
+              {t('tickets.rejectingTicketWillSend').replace('{ticketNo}', selectedTicketForApproval.ticket_no || '')}
             </p>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Reason for Rejection <span className="text-red-600">*</span>
+                {t('tickets.reasonForRejection')} <span className="text-red-600">*</span>
               </label>
               <textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 rows={3}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Please explain why you are rejecting this ticket..."
+                placeholder={t('tickets.explainRejection')}
                 disabled={processing}
               />
             </div>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <p className="text-sm text-yellow-800">
-                The ticket will be locked and require admin review before any further action can be taken.
+                {t('tickets.ticketLockedWarning')}
               </p>
             </div>
           </div>

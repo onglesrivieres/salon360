@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { BarChart3, FileText, CreditCard, Users, ChevronDown, CheckCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { SalesOverview } from '../components/insights/SalesOverview';
 import { SalesReport } from '../components/insights/SalesReport';
 import { PaymentTypes } from '../components/insights/PaymentTypes';
@@ -10,16 +11,17 @@ import { TimeFilterType, DateRange, getDateRangeForFilter, getFilterLabel } from
 type InsightsTab = 'sales-overview' | 'sales-report' | 'payment-types' | 'employee-sales';
 
 export function InsightsPage() {
+  const { t } = useAuth();
   const [activeTab, setActiveTab] = useState<InsightsTab>('sales-overview');
   const [selectedFilter, setSelectedFilter] = useState<TimeFilterType>('today');
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
   const [dateRange, setDateRange] = useState<DateRange>(() => getDateRangeForFilter('today'));
 
   const tabs = [
-    { id: 'sales-overview' as const, label: 'Sales Overview', icon: BarChart3 },
-    { id: 'sales-report' as const, label: 'Sales Report', icon: FileText },
-    { id: 'payment-types' as const, label: 'Payment Types', icon: CreditCard },
-    { id: 'employee-sales' as const, label: 'Employee Sales', icon: Users },
+    { id: 'sales-overview' as const, label: t('insights.salesOverview'), icon: BarChart3 },
+    { id: 'sales-report' as const, label: t('insights.salesReport'), icon: FileText },
+    { id: 'payment-types' as const, label: t('insights.paymentTypes'), icon: CreditCard },
+    { id: 'employee-sales' as const, label: t('insights.employeeSales'), icon: Users },
   ];
 
   // State for responsive tab dropdown
@@ -64,8 +66,8 @@ export function InsightsPage() {
       <div className="bg-white rounded-lg shadow border border-gray-200">
         <div className="px-4 py-4 border-b border-gray-200 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:px-6">
           <div>
-            <h1 className="text-xl font-bold text-gray-900 lg:text-2xl">Insights</h1>
-            <p className="text-xs text-gray-600 mt-1 sm:text-sm">Analytics and reports for business insights</p>
+            <h1 className="text-xl font-bold text-gray-900 lg:text-2xl">{t('insights.title')}</h1>
+            <p className="text-xs text-gray-600 mt-1 sm:text-sm">{t('insights.subtitle')}</p>
           </div>
           <TimeFilterDropdown
             selectedFilter={selectedFilter}
