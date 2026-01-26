@@ -1286,6 +1286,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           notes: formData.notes,
           saved_by: session?.employee_id,
           updated_at: new Date().toISOString(),
+          todays_color: formData.todays_color || '',
         };
 
         if (
@@ -1420,6 +1421,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           saved_by: session?.employee_id,
           opened_by_role: session?.role_permission || null,
           reviewed_by_receptionist: session?.role_permission && Permissions.tickets.isSelfServiceRole(session.role_permission) ? false : true,
+          todays_color: formData.todays_color || '',
         };
 
         if (formData.opening_time) {
