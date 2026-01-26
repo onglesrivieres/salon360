@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AuthSession, getSession, saveSession, clearSession, updateLastActivity } from '../lib/auth';
-import { Locale, getDeviceLocale, translations } from '../lib/i18n';
+import { Locale, getDeviceLocale, translations, SUPPORTED_LOCALES } from '../lib/i18n';
 import { Role } from '../lib/permissions';
 import { clearPendingApprovalsRedirectCheck } from '../hooks/usePendingApprovalsRedirect';
 
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const savedLocale = localStorage.getItem(LOCALE_KEY) as Locale;
-    if (savedLocale && ['en', 'fr', 'vi'].includes(savedLocale)) {
+    if (savedLocale && SUPPORTED_LOCALES.includes(savedLocale)) {
       setLocaleState(savedLocale);
     } else {
       const deviceLocale = getDeviceLocale();
