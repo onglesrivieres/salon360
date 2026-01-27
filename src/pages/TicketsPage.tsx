@@ -71,11 +71,14 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   // Determine if tips should be hidden (commission employees without management role)
   const shouldHideTips = isCommissionEmployee && !isManagement;
 
-  // Daily/Period tabs visible to: Admin, Owner, Manager, Supervisor, Receptionist (via canViewAll)
-  // Commission employees can also view their own Daily/Weekly reports
-  // Cashier and Technician cannot access these tabs
+  // Daily tab: Admin, Owner, Manager, Supervisor, Receptionist, or commission employees
+  // Cashier and non-commission Technician cannot access this tab
   const canViewDailyReport = session?.role ? (Permissions.tipReport.canViewAll(session.role) || isCommissionEmployee) : false;
-  const canViewPeriodReport = session?.role ? (Permissions.tipReport.canViewPeriodReports(session.role) || isCommissionEmployee) : false;
+  // Period tab: Only Admin, Owner, and commission employees can see it
+  // Manager, Supervisor, Receptionist, and Cashier cannot access this tab
+  const canViewPeriodReport = session?.role ? (
+    session.role.some(r => ['Admin', 'Owner'].includes(r)) || isCommissionEmployee
+  ) : false;
 
   // View mode tab configuration for responsive dropdown
   const viewModeConfig: Array<{ key: 'tickets' | 'daily' | 'period'; label: string; icon: typeof FileText }> = [
@@ -1039,11 +1042,11 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
       {viewMode === 'daily' ? (
         <div className="bg-white rounded-lg shadow">
-          <TicketsDetailView selectedDate={selectedDate} onRefresh={fetchTickets} />
+          <TicketsDetailView selectedDate={selectedDate} onRefresh={fetchTickets} isCommissionEmployee={isCommissionEmployee} />
         </div>
       ) : viewMode === 'period' ? (
         <div className="bg-white rounded-lg shadow">
-          <TicketsPeriodView selectedDate={selectedDate} onDateChange={onDateChange} />
+          <TicketsPeriodView selectedDate={selectedDate} onDateChange={onDateChange} isCommissionEmployee={isCommissionEmployee} />
         </div>
       ) : (
         <>
