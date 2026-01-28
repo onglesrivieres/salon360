@@ -23,6 +23,8 @@ export function ClientsPage() {
   const [showEditorModal, setShowEditorModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [editingClient, setEditingClient] = useState<ClientWithStats | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Debounce search
   useEffect(() => {
@@ -31,6 +33,11 @@ export function ClientsPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, filterTab]);
 
   const { clients, isLoading, error, totalCount, refetch } = useClients(selectedStoreId, {
     search: debouncedSearch,
@@ -48,6 +55,20 @@ export function ClientsPage() {
   const filteredClients = filterTab === 'active'
     ? clients.filter(c => !c.is_blacklisted)
     : clients;
+
+  // Sort by last_visit (most recent first), clients without visits go to the end
+  const sortedClients = [...filteredClients].sort((a, b) => {
+    if (!a.last_visit && !b.last_visit) return 0;
+    if (!a.last_visit) return 1;
+    if (!b.last_visit) return -1;
+    return b.last_visit.localeCompare(a.last_visit);
+  });
+
+  // Paginate
+  const totalPages = Math.ceil(sortedClients.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedClients = sortedClients.slice(startIndex, endIndex);
 
   const handleAddClient = () => {
     setEditingClient(null);
@@ -188,11 +209,53 @@ export function ClientsPage() {
 
       {/* Clients Table */}
       <ClientsTable
-        clients={filteredClients}
+        clients={paginatedClients}
         isLoading={isLoading}
         onViewDetails={handleViewDetails}
         canViewFullPhone={canViewFullPhone}
       />
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white rounded-lg border border-gray-200 px-4 py-3">
+          <div className="text-sm text-gray-600">
+            Showing {startIndex + 1}-{Math.min(endIndex, sortedClients.length)} of {sortedClients.length} clients
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              First
+            </button>
+            <button
+              onClick={() => setCurrentPage(p => p - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="px-3 py-1.5 text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => p + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Last
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Editor Modal */}
       {selectedStoreId && (
