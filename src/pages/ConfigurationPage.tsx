@@ -446,36 +446,23 @@ export function ConfigurationPage() {
     console.log('Updating global setting:', setting.setting_key, 'from', setting.setting_value, 'to', newValue);
 
     try {
-      // Use .select().single() to get the updated row back
-      const { data, error: updateError } = await supabase
-        .from('app_global_settings')
-        .update({
-          setting_value: newValue,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', setting.id)
-        .select()
-        .single();
+      // Use RPC function to update (bypasses RLS issues and handles JSONB properly)
+      const { data, error: updateError } = await supabase.rpc('update_global_setting', {
+        p_id: setting.id,
+        p_value: newValue,
+      });
 
       console.log('Update response:', { data, error: updateError });
 
       if (updateError) throw updateError;
 
-      // Log to audit table
-      const { error: auditError } = await supabase
-        .from('app_global_settings_audit')
-        .insert({
-          setting_key: setting.setting_key,
-          old_value: setting.setting_value,
-          new_value: newValue,
-          changed_by: session?.employee_id,
-          is_critical: setting.is_critical,
-        });
-
-      if (auditError) console.error('Audit log error:', auditError);
+      // Check if RPC returned success
+      if (!data?.success) {
+        throw new Error(data?.error || 'Update failed');
+      }
 
       // Use the returned data to ensure we have the correct value from database
-      const savedValue = data?.setting_value ?? newValue;
+      const savedValue = data?.data?.setting_value ?? newValue;
       console.log('Saved value from DB:', savedValue);
 
       setGlobalSettings((prev) =>
