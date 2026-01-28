@@ -1,12 +1,17 @@
-import { useState, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { useState, useCallback, useMemo } from 'react';
+import {
+  getStorageService,
+  getR2PathFromUrl,
+  type StorageService,
+  type StorageConfig,
+} from '../lib/storage';
 
 const MAX_FILE_SIZE_MB = 2;
 const MAX_DIMENSION = 400;
-const BUCKET_NAME = 'salon360-photos';
 
 interface UseLogoUploadOptions {
   storeId: string;
+  storageConfig?: StorageConfig | null;
   onSuccess?: (url: string) => void;
   onError?: (error: string) => void;
 }
@@ -18,21 +23,6 @@ interface UseLogoUploadReturn {
   deleteLogo: (currentUrl: string) => Promise<boolean>;
 }
 
-function getStoragePathFromUrl(url: string): string | null {
-  try {
-    const urlObj = new URL(url);
-    const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/public\/salon360-photos\/(.+)/);
-    return pathMatch ? pathMatch[1] : null;
-  } catch {
-    return null;
-  }
-}
-
-function getPublicUrl(storagePath: string): string {
-  const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(storagePath);
-  return data.publicUrl;
-}
-
 async function compressImage(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -40,6 +30,8 @@ async function compressImage(file: File): Promise<Blob> {
     const ctx = canvas.getContext('2d');
 
     img.onload = () => {
+      URL.revokeObjectURL(img.src);
+
       let { width, height } = img;
 
       // Scale down if larger than max dimension
@@ -76,21 +68,45 @@ async function compressImage(file: File): Promise<Blob> {
       );
     };
 
-    img.onerror = () => reject(new Error('Failed to load image'));
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src);
+      reject(new Error('Failed to load image'));
+    };
+
     img.src = URL.createObjectURL(file);
   });
 }
 
 export function useLogoUpload({
   storeId,
+  storageConfig,
   onSuccess,
   onError,
 }: UseLogoUploadOptions): UseLogoUploadReturn {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Get the R2 storage service - throws if not configured
+  const storage: StorageService | null = useMemo(() => {
+    if (!storageConfig) {
+      return null;
+    }
+    try {
+      return getStorageService(storageConfig);
+    } catch {
+      return null;
+    }
+  }, [storageConfig]);
+
   const uploadLogo = useCallback(
     async (file: File): Promise<string | null> => {
+      if (!storage) {
+        const errorMsg = 'Storage is not configured. Please configure Cloudflare R2 in Settings.';
+        setError(errorMsg);
+        onError?.(errorMsg);
+        return null;
+      }
+
       // Validate file type
       const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
       if (!validTypes.includes(file.type)) {
@@ -120,29 +136,25 @@ export function useLogoUpload({
         const storagePath = `logos/${storeId}/logo_${timestamp}.png`;
 
         // Delete any existing logos for this store first
-        const { data: existingFiles } = await supabase.storage
-          .from(BUCKET_NAME)
-          .list(`logos/${storeId}`);
-
-        if (existingFiles && existingFiles.length > 0) {
-          const filesToDelete = existingFiles.map((f) => `logos/${storeId}/${f.name}`);
-          await supabase.storage.from(BUCKET_NAME).remove(filesToDelete);
+        const listResult = await storage.list(`logos/${storeId}`);
+        if (listResult.files && listResult.files.length > 0) {
+          const filesToDelete = listResult.files.map((f) => f.path);
+          await storage.deleteMultiple(filesToDelete);
         }
 
         // Upload new logo
-        const { error: uploadError } = await supabase.storage
-          .from(BUCKET_NAME)
-          .upload(storagePath, compressedBlob, {
-            contentType: 'image/png',
-            cacheControl: '3600',
-            upsert: true,
-          });
+        const result = await storage.upload(storagePath, compressedBlob, {
+          contentType: 'image/png',
+          cacheControl: '3600',
+          upsert: true,
+        });
 
-        if (uploadError) throw uploadError;
+        if (!result.success) {
+          throw new Error(result.error || 'Upload failed');
+        }
 
-        const publicUrl = getPublicUrl(storagePath);
-        onSuccess?.(publicUrl);
-        return publicUrl;
+        onSuccess?.(result.url);
+        return result.url;
       } catch (err) {
         console.error('Error uploading logo:', err);
         const errorMsg = 'Failed to upload logo';
@@ -153,30 +165,34 @@ export function useLogoUpload({
         setIsUploading(false);
       }
     },
-    [storeId, onSuccess, onError]
+    [storeId, storage, onSuccess, onError]
   );
 
   const deleteLogo = useCallback(
     async (currentUrl: string): Promise<boolean> => {
       if (!currentUrl) return true;
 
+      if (!storage) {
+        setError('Storage is not configured');
+        return false;
+      }
+
       try {
         setError(null);
 
-        // Try to extract storage path from URL
-        const storagePath = getStoragePathFromUrl(currentUrl);
-
-        if (storagePath) {
-          await supabase.storage.from(BUCKET_NAME).remove([storagePath]);
+        // Extract path from R2 URL
+        const r2PublicUrl = storageConfig?.r2Config?.publicUrl || '';
+        if (r2PublicUrl && currentUrl.startsWith(r2PublicUrl)) {
+          const storagePath = getR2PathFromUrl(currentUrl, r2PublicUrl);
+          if (storagePath) {
+            await storage.delete(storagePath);
+          }
         } else {
           // Fallback: delete all logos in the store folder
-          const { data: existingFiles } = await supabase.storage
-            .from(BUCKET_NAME)
-            .list(`logos/${storeId}`);
-
-          if (existingFiles && existingFiles.length > 0) {
-            const filesToDelete = existingFiles.map((f) => `logos/${storeId}/${f.name}`);
-            await supabase.storage.from(BUCKET_NAME).remove(filesToDelete);
+          const listResult = await storage.list(`logos/${storeId}`);
+          if (listResult.files && listResult.files.length > 0) {
+            const filesToDelete = listResult.files.map((f) => f.path);
+            await storage.deleteMultiple(filesToDelete);
           }
         }
 
@@ -187,7 +203,7 @@ export function useLogoUpload({
         return false;
       }
     },
-    [storeId]
+    [storeId, storage, storageConfig]
   );
 
   return {

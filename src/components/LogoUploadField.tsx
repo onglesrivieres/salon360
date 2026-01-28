@@ -1,12 +1,14 @@
 import React, { useRef, useState } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { useLogoUpload } from '../hooks/useLogoUpload';
+import type { StorageConfig } from '../lib/storage';
 
 interface LogoUploadFieldProps {
   currentLogoUrl: string;
   storeId: string;
   onLogoChange: (url: string) => void;
   disabled?: boolean;
+  storageConfig?: StorageConfig | null;
 }
 
 export function LogoUploadField({
@@ -14,6 +16,7 @@ export function LogoUploadField({
   storeId,
   onLogoChange,
   disabled = false,
+  storageConfig,
 }: LogoUploadFieldProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -21,6 +24,7 @@ export function LogoUploadField({
 
   const { isUploading, error, uploadLogo, deleteLogo } = useLogoUpload({
     storeId,
+    storageConfig,
     onSuccess: (url) => {
       onLogoChange(url);
       setPreviewUrl(null);

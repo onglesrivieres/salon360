@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ClipboardCheck, UserCheck, FileText } from 'lucide-react';
+import { ClipboardCheck, UserCheck, FileText, Building2 } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { PinModal } from '../components/PinModal';
 import { StoreSelectionModal } from '../components/StoreSelectionModal';
@@ -536,11 +536,9 @@ export function HomePage({ onActionSelected }: HomePageProps) {
                 className="w-32 h-32 sm:w-40 sm:h-40 object-contain"
               />
             ) : (
-              <img
-                src="/qr-code.png"
-                alt="QR Code"
-                className="w-32 h-32 sm:w-40 sm:h-40"
-              />
+              <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-2xl bg-blue-600 flex items-center justify-center">
+                <Building2 className="w-16 h-16 sm:w-20 sm:h-20 text-white" />
+              </div>
             )}
           </div>
 

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { setCurrentTimezone } from '../lib/timezone';
+import type { StorageConfig } from '../lib/storage';
 
 interface AppSetting {
   id: string;
@@ -30,6 +31,9 @@ interface SettingsContextType {
   getSettingString: (key: string, defaultValue?: string) => string;
   getAppName: () => string;
   getAppLogoUrl: () => string;
+  getR2PublicUrl: () => string;
+  isR2Configured: () => boolean;
+  getStorageConfig: () => StorageConfig | null;
   refreshSettings: () => Promise<void>;
 }
 
@@ -156,6 +160,40 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     return getSettingString('app_logo_url', '');
   }
 
+  function getR2PublicUrl(): string {
+    return getSettingString('r2_public_url', '');
+  }
+
+  function isR2Configured(): boolean {
+    const accountId = getSettingString('r2_account_id', '');
+    const accessKeyId = getSettingString('r2_access_key_id', '');
+    const secretAccessKey = getSettingString('r2_secret_access_key', '');
+    const bucketName = getSettingString('r2_bucket_name', '');
+    const publicUrl = getSettingString('r2_public_url', '');
+
+    return !!(accountId && accessKeyId && secretAccessKey && bucketName && publicUrl);
+  }
+
+  function getStorageConfig(): StorageConfig | null {
+    if (!selectedStoreId) return null;
+
+    if (!isR2Configured()) {
+      // R2 is not configured - return null
+      return null;
+    }
+
+    return {
+      storeId: selectedStoreId,
+      r2Config: {
+        accountId: getSettingString('r2_account_id', ''),
+        accessKeyId: getSettingString('r2_access_key_id', ''),
+        secretAccessKey: getSettingString('r2_secret_access_key', ''),
+        bucketName: getSettingString('r2_bucket_name', ''),
+        publicUrl: getR2PublicUrl(),
+      },
+    };
+  }
+
   async function refreshSettings() {
     await loadSettings();
   }
@@ -172,6 +210,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         getSettingString,
         getAppName,
         getAppLogoUrl,
+        getR2PublicUrl,
+        isR2Configured,
+        getStorageConfig,
         refreshSettings,
       }}
     >

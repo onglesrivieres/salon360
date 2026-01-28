@@ -4,13 +4,14 @@ import { Button } from '../components/ui/Button';
 import { NumericInput } from '../components/ui/NumericInput';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { supabase } from '../lib/supabase';
 import { CriticalSettingConfirmationModal } from '../components/CriticalSettingConfirmationModal';
 import { SettingsDependencyIndicator } from '../components/SettingsDependencyIndicator';
-import { ConfigurationWizard } from '../components/ConfigurationWizard';
 import { RolePermissionMatrix } from '../components/RolePermissionMatrix';
 import { StoreHoursEditor } from '../components/StoreHoursEditor';
 import { LogoUploadField } from '../components/LogoUploadField';
+import { StorageConfigSection } from '../components/StorageConfigSection';
 
 interface AppSetting {
   id: string;
@@ -70,6 +71,7 @@ function getDynamicDisplayName(setting: AppSetting, allSettings: AppSetting[]): 
 export function ConfigurationPage() {
   const { showToast } = useToast();
   const { selectedStoreId, session, t } = useAuth();
+  const { getStorageConfig, getSettingString } = useSettings();
 
   const [settings, setSettings] = useState<AppSetting[]>([]);
   const [filteredSettings, setFilteredSettings] = useState<AppSetting[]>([]);
@@ -85,7 +87,6 @@ export function ConfigurationPage() {
     newValue: boolean | string | number;
   } | null>(null);
 
-  const [showWizard, setShowWizard] = useState(false);
   const [storeName, setStoreName] = useState('');
   const [hasConfiguration, setHasConfiguration] = useState(false);
 
@@ -155,10 +156,22 @@ export function ConfigurationPage() {
       });
 
       if (error) throw error;
-      setHasConfiguration(data);
 
       if (!data) {
-        setShowWizard(true);
+        // Auto-initialize with 'full' preset instead of showing wizard
+        const { error: initError } = await supabase.rpc('initialize_store_settings', {
+          p_store_id: selectedStoreId,
+          p_preset: 'full',
+        });
+
+        if (initError) {
+          console.error('Error auto-initializing settings:', initError);
+        } else {
+          setHasConfiguration(true);
+          loadSettings();
+        }
+      } else {
+        setHasConfiguration(true);
       }
     } catch (error) {
       console.error('Error checking configuration:', error);
@@ -555,6 +568,30 @@ export function ConfigurationPage() {
         <div className="space-y-6">
           <StoreHoursEditor storeId={selectedStoreId} />
           {Object.entries(settingsByCategory).map(([category, categorySettings]) => (
+            category === 'Storage' ? (
+              <div key={category} className="bg-white rounded-lg shadow">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="font-semibold text-gray-900">{category}</h3>
+                </div>
+                <div className="p-6">
+                  <StorageConfigSection
+                    storeId={selectedStoreId}
+                    r2AccountId={getSettingString('r2_account_id', '')}
+                    r2AccessKeyId={getSettingString('r2_access_key_id', '')}
+                    r2SecretAccessKey={getSettingString('r2_secret_access_key', '')}
+                    r2BucketName={getSettingString('r2_bucket_name', '')}
+                    r2PublicUrl={getSettingString('r2_public_url', '')}
+                    onSettingChange={async (key, value) => {
+                      const setting = categorySettings.find((s) => s.setting_key === key);
+                      if (setting) {
+                        await handleStringChange(setting, value);
+                      }
+                    }}
+                    disabled={!canManageSettings}
+                  />
+                </div>
+              </div>
+            ) :
             <div key={category} className="bg-white rounded-lg shadow">
               <div className="px-6 py-4 border-b border-gray-200">
                 <h3 className="font-semibold text-gray-900">{category}</h3>
@@ -629,6 +666,7 @@ export function ConfigurationPage() {
                           storeId={selectedStoreId}
                           onLogoChange={(url) => handleStringChange(setting, url)}
                           disabled={!canManageSettings}
+                          storageConfig={getStorageConfig()}
                         />
                       ) : typeof setting.setting_value === 'number' ? (
                         <div className="flex flex-col items-end gap-2">
@@ -771,19 +809,6 @@ export function ConfigurationPage() {
           requiresRestart={pendingChange.setting.requires_restart}
           currentValue={pendingChange.setting.setting_value}
           newValue={pendingChange.newValue}
-        />
-      )}
-
-      {showWizard && (
-        <ConfigurationWizard
-          isOpen={showWizard}
-          onClose={() => setShowWizard(false)}
-          onComplete={() => {
-            setShowWizard(false);
-            loadSettings();
-          }}
-          storeId={selectedStoreId}
-          storeName={storeName}
         />
       )}
     </div>
