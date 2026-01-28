@@ -260,10 +260,19 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     return weekNo;
   }
 
-  async function fetchDailyTipData(dateToFetch: string): Promise<Map<string, TechnicianSummary>> {
+  async function fetchDailyTipData(dateToFetch: string, forWeeklyView: boolean = false): Promise<Map<string, TechnicianSummary>> {
     const canViewAll = session?.role_permission ? Permissions.tipReport.canViewAll(session.role_permission) : false;
     const isRestrictedRole = !canViewAll && session?.role_permission === 'Technician';
-    const isTechnician = isRestrictedRole;
+
+    // In Weekly view, Supervisors and Technicians can only see their own data
+    // Only Admin, Manager, Owner can see all data in Weekly view
+    const canViewAllInWeekly = session?.role
+      ? session.role.some(r => ['Admin', 'Manager', 'Owner'].includes(r))
+      : false;
+
+    const isTechnician = forWeeklyView
+      ? !canViewAllInWeekly  // In Weekly: restrict Supervisor and Technician
+      : isRestrictedRole;    // In Daily: only restrict Technician
 
     const { data: allEmployeeStores, error: allEmployeeStoresError } = await supabase
       .from('employee_stores')
@@ -466,7 +475,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       const weekStart = getWeekStartDate(selectedDate);
       const weekDates = getWeekDates(weekStart);
 
-      const dailyDataPromises = weekDates.map(date => fetchDailyTipData(date));
+      const dailyDataPromises = weekDates.map(date => fetchDailyTipData(date, true));
       const dailyDataResults = await Promise.all(dailyDataPromises);
 
       const dataMap = new Map<string, Map<string, Map<string, { store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>>();

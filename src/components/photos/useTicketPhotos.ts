@@ -1,10 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase, TicketPhoto, TicketPhotoWithUrl } from '../../lib/supabase';
+import {
+  getStorageService,
+  getR2PathFromUrl,
+  type StorageService,
+  type StorageConfig,
+} from '../../lib/storage';
 
 const MAX_PHOTOS = 5;
 const MAX_FILE_SIZE_MB = 5;
 const MAX_DIMENSION = 2048;
-const BUCKET_NAME = 'salon360-photos';
 
 export interface PendingPhoto {
   id: string;
@@ -18,6 +23,7 @@ interface UseTicketPhotosOptions {
   storeId: string;
   ticketId: string;
   uploadedBy: string;
+  storageConfig?: StorageConfig | null;
 }
 
 interface UseTicketPhotosReturn {
@@ -37,11 +43,6 @@ interface UseTicketPhotosReturn {
   refetch: () => Promise<void>;
 }
 
-function getPublicUrl(storagePath: string): string {
-  const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(storagePath);
-  return data.publicUrl;
-}
-
 async function compressImage(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -49,6 +50,8 @@ async function compressImage(file: File): Promise<Blob> {
     const ctx = canvas.getContext('2d');
 
     img.onload = () => {
+      URL.revokeObjectURL(img.src);
+
       let { width, height } = img;
 
       // Scale down if larger than max dimension
@@ -85,7 +88,11 @@ async function compressImage(file: File): Promise<Blob> {
       );
     };
 
-    img.onerror = () => reject(new Error('Failed to load image'));
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src);
+      reject(new Error('Failed to load image'));
+    };
+
     img.src = URL.createObjectURL(file);
   });
 }
@@ -94,12 +101,25 @@ export function useTicketPhotos({
   storeId,
   ticketId,
   uploadedBy,
+  storageConfig,
 }: UseTicketPhotosOptions): UseTicketPhotosReturn {
   const [photos, setPhotos] = useState<TicketPhotoWithUrl[]>([]);
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Get the R2 storage service - null if not configured
+  const storage: StorageService | null = useMemo(() => {
+    if (!storageConfig) {
+      return null;
+    }
+    try {
+      return getStorageService(storageConfig);
+    } catch {
+      return null;
+    }
+  }, [storageConfig]);
 
   const totalPhotoCount = photos.length + pendingPhotos.length;
 
@@ -122,9 +142,10 @@ export function useTicketPhotos({
 
       if (fetchError) throw fetchError;
 
+      // Generate URLs for photos - use storage service if available
       const photosWithUrls: TicketPhotoWithUrl[] = (data || []).map((photo: TicketPhoto) => ({
         ...photo,
-        url: getPublicUrl(photo.storage_path),
+        url: storage ? storage.getPublicUrl(photo.storage_path) : photo.storage_path,
       }));
 
       setPhotos(photosWithUrls);
@@ -134,7 +155,7 @@ export function useTicketPhotos({
     } finally {
       setIsLoading(false);
     }
-  }, [ticketId]);
+  }, [ticketId, storage]);
 
   useEffect(() => {
     fetchPhotos();
@@ -209,6 +230,11 @@ export function useTicketPhotos({
     if (pendingPhotos.length === 0) return true;
     if (!ticketId) return false;
 
+    if (!storage) {
+      setError('Storage is not configured. Please configure Cloudflare R2 in Settings.');
+      return false;
+    }
+
     try {
       setIsUploading(true);
       setError(null);
@@ -223,15 +249,15 @@ export function useTicketPhotos({
         const filename = `${timestamp}_${uuid}.${extension}`;
         const storagePath = `tickets/${storeId}/${ticketId}/${filename}`;
 
-        // Upload to storage
-        const { error: uploadError } = await supabase.storage
-          .from(BUCKET_NAME)
-          .upload(storagePath, pending.compressedBlob, {
-            contentType: 'image/jpeg',
-            cacheControl: '3600',
-          });
+        // Upload to storage using the storage service
+        const uploadResult = await storage.upload(storagePath, pending.compressedBlob, {
+          contentType: 'image/jpeg',
+          cacheControl: '3600',
+        });
 
-        if (uploadError) throw uploadError;
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.error || 'Upload failed');
+        }
 
         // Save metadata to database
         const photoData: Omit<TicketPhoto, 'id' | 'created_at'> = {
@@ -257,7 +283,7 @@ export function useTicketPhotos({
         // Add to saved photos
         const newPhoto: TicketPhotoWithUrl = {
           ...insertedPhoto,
-          url: getPublicUrl(storagePath),
+          url: uploadResult.url,
         };
 
         setPhotos((prev) => [...prev, newPhoto]);
@@ -276,23 +302,29 @@ export function useTicketPhotos({
     } finally {
       setIsUploading(false);
     }
-  }, [pendingPhotos, ticketId, storeId, photos.length, uploadedBy]);
+  }, [pendingPhotos, ticketId, storeId, photos.length, uploadedBy, storage]);
 
   const deletePhoto = useCallback(
     async (photoId: string): Promise<boolean> => {
       const photo = photos.find((p) => p.id === photoId);
       if (!photo) return false;
 
+      if (!storage) {
+        setError('Storage is not configured');
+        return false;
+      }
+
       try {
         setError(null);
 
-        // Delete from storage
-        const { error: storageError } = await supabase.storage
-          .from(BUCKET_NAME)
-          .remove([photo.storage_path]);
-
-        if (storageError) {
-          console.error('Storage delete error:', storageError);
+        // Extract path and delete from R2
+        const r2PublicUrl = storageConfig?.r2Config?.publicUrl || '';
+        if (r2PublicUrl && photo.url.startsWith(r2PublicUrl)) {
+          const storagePath = getR2PathFromUrl(photo.url, r2PublicUrl) || photo.storage_path;
+          await storage.delete(storagePath);
+        } else {
+          // Use the storage_path directly
+          await storage.delete(photo.storage_path);
         }
 
         // Delete from database
@@ -311,7 +343,7 @@ export function useTicketPhotos({
         return false;
       }
     },
-    [photos]
+    [photos, storage, storageConfig]
   );
 
   return {

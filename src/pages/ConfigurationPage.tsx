@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Settings, AlertCircle, Search, RefreshCw, Copy, CheckCircle2, CheckCircle, Loader2, AlertTriangle, Shield, UserCog, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Settings, AlertCircle, Search, RefreshCw, CheckCircle, Loader2, AlertTriangle, Shield, UserCog, ChevronDown, Globe } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { NumericInput } from '../components/ui/NumericInput';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { supabase } from '../lib/supabase';
 import { CriticalSettingConfirmationModal } from '../components/CriticalSettingConfirmationModal';
 import { SettingsDependencyIndicator } from '../components/SettingsDependencyIndicator';
-import { ConfigurationWizard } from '../components/ConfigurationWizard';
 import { RolePermissionMatrix } from '../components/RolePermissionMatrix';
 import { StoreHoursEditor } from '../components/StoreHoursEditor';
+import { LogoUploadField } from '../components/LogoUploadField';
+import { StorageConfigSection } from '../components/StorageConfigSection';
 
 interface AppSetting {
   id: string;
@@ -23,6 +25,21 @@ interface AppSetting {
   is_critical: boolean;
   requires_restart: boolean;
   dependencies: Array<{ key: string; type: string; label: string }>;
+  display_order: number;
+  help_text: string;
+  updated_at: string;
+}
+
+interface AppGlobalSetting {
+  id: string;
+  setting_key: string;
+  setting_value: boolean | string | number;
+  category: string;
+  display_name: string;
+  description: string;
+  default_value: boolean | string | number;
+  is_critical: boolean;
+  requires_restart: boolean;
   display_order: number;
   help_text: string;
   updated_at: string;
@@ -69,10 +86,17 @@ function getDynamicDisplayName(setting: AppSetting, allSettings: AppSetting[]): 
 export function ConfigurationPage() {
   const { showToast } = useToast();
   const { selectedStoreId, session, t } = useAuth();
+  const { getStorageConfig, refreshSettings, refreshGlobalSettings } = useSettings();
 
+  // Store-specific settings state
   const [settings, setSettings] = useState<AppSetting[]>([]);
   const [filteredSettings, setFilteredSettings] = useState<AppSetting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Global settings state
+  const [globalSettings, setGlobalSettings] = useState<AppGlobalSetting[]>([]);
+  const [isGlobalLoading, setIsGlobalLoading] = useState(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showCriticalOnly, setShowCriticalOnly] = useState(false);
@@ -80,13 +104,12 @@ export function ConfigurationPage() {
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingChange, setPendingChange] = useState<{
-    setting: AppSetting;
+    setting: AppSetting | AppGlobalSetting;
     newValue: boolean | string | number;
+    isGlobal: boolean;
   } | null>(null);
 
-  const [showWizard, setShowWizard] = useState(false);
   const [storeName, setStoreName] = useState('');
-  const [hasConfiguration, setHasConfiguration] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'settings' | 'permissions'>('settings');
 
@@ -116,6 +139,12 @@ export function ConfigurationPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isTabDropdownOpen]);
 
+  // Load global settings on mount (no store dependency)
+  useEffect(() => {
+    loadGlobalSettings();
+  }, []);
+
+  // Load store settings when store changes
   useEffect(() => {
     if (selectedStoreId) {
       loadSettings();
@@ -127,6 +156,51 @@ export function ConfigurationPage() {
   useEffect(() => {
     filterSettings();
   }, [settings, searchQuery, selectedCategory, showCriticalOnly]);
+
+  async function loadGlobalSettings() {
+    setIsGlobalLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('app_global_settings')
+        .select('*')
+        .order('category')
+        .order('display_order');
+
+      if (error) {
+        console.error('Supabase error loading global settings:', error);
+        throw error;
+      }
+
+      // If no data, try to initialize global settings
+      if (!data || data.length === 0) {
+        console.log('No global settings found, initializing...');
+        const { error: initError } = await supabase.rpc('initialize_global_settings');
+
+        if (initError) {
+          console.error('Failed to initialize global settings:', initError);
+          throw initError;
+        }
+
+        // Reload after initialization
+        const { data: newData, error: reloadError } = await supabase
+          .from('app_global_settings')
+          .select('*')
+          .order('category')
+          .order('display_order');
+
+        if (reloadError) throw reloadError;
+        setGlobalSettings(newData || []);
+      } else {
+        setGlobalSettings(data);
+      }
+    } catch (error) {
+      console.error('Error loading global settings:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      showToast(`Failed to load app settings: ${errorMessage}`, 'error');
+    } finally {
+      setIsGlobalLoading(false);
+    }
+  }
 
   async function loadStoreName() {
     if (!selectedStoreId) return;
@@ -154,10 +228,19 @@ export function ConfigurationPage() {
       });
 
       if (error) throw error;
-      setHasConfiguration(data);
 
       if (!data) {
-        setShowWizard(true);
+        // Auto-initialize with 'full' preset instead of showing wizard
+        const { error: initError } = await supabase.rpc('initialize_store_settings', {
+          p_store_id: selectedStoreId,
+          p_preset: 'full',
+        });
+
+        if (initError) {
+          console.error('Error auto-initializing settings:', initError);
+        } else {
+          loadSettings();
+        }
       }
     } catch (error) {
       console.error('Error checking configuration:', error);
@@ -234,7 +317,7 @@ export function ConfigurationPage() {
     }
 
     if (setting.is_critical) {
-      setPendingChange({ setting, newValue });
+      setPendingChange({ setting, newValue, isGlobal: false });
       setShowConfirmModal(true);
     } else {
       updateSetting(setting, newValue);
@@ -272,7 +355,7 @@ export function ConfigurationPage() {
     }
 
     if (setting.is_critical) {
-      setPendingChange({ setting, newValue });
+      setPendingChange({ setting, newValue, isGlobal: false });
       setShowConfirmModal(true);
     } else {
       updateSetting(setting, newValue);
@@ -286,10 +369,24 @@ export function ConfigurationPage() {
     }
 
     if (setting.is_critical) {
-      setPendingChange({ setting, newValue });
+      setPendingChange({ setting, newValue, isGlobal: false });
       setShowConfirmModal(true);
     } else {
       updateSetting(setting, newValue);
+    }
+  }
+
+  function handleGlobalStringChange(setting: AppGlobalSetting, newValue: string) {
+    if (!canManageSettings) {
+      showToast(t('config.noPermissionChange'), 'error');
+      return;
+    }
+
+    if (setting.is_critical) {
+      setPendingChange({ setting, newValue, isGlobal: true });
+      setShowConfirmModal(true);
+    } else {
+      updateGlobalSetting(setting, newValue);
     }
   }
 
@@ -323,8 +420,11 @@ export function ConfigurationPage() {
         prev.map((s) => (s.id === setting.id ? { ...s, setting_value: newValue } : s))
       );
 
+      // Refresh SettingsContext to sync with updated values
+      await refreshSettings();
+
       showToast(
-        `${setting.display_name} ${newValue ? 'enabled' : 'disabled'}`,
+        `${setting.display_name} updated`,
         'success'
       );
 
@@ -342,9 +442,57 @@ export function ConfigurationPage() {
     }
   }
 
+  async function updateGlobalSetting(setting: AppGlobalSetting, newValue: boolean | string | number) {
+    console.log('Updating global setting:', setting.setting_key, 'from', setting.setting_value, 'to', newValue);
+
+    try {
+      // Use RPC function to update (bypasses RLS issues and handles JSONB properly)
+      const { data, error: updateError } = await supabase.rpc('update_global_setting', {
+        p_id: setting.id,
+        p_value: newValue,
+      });
+
+      console.log('Update response:', { data, error: updateError });
+
+      if (updateError) throw updateError;
+
+      // Check if RPC returned success
+      if (!data?.success) {
+        throw new Error(data?.error || 'Update failed');
+      }
+
+      // Use the returned data to ensure we have the correct value from database
+      const savedValue = data?.data?.setting_value ?? newValue;
+      console.log('Saved value from DB:', savedValue);
+
+      setGlobalSettings((prev) =>
+        prev.map((s) => (s.id === setting.id ? { ...s, setting_value: savedValue } : s))
+      );
+
+      // Refresh global settings in context
+      await refreshGlobalSettings();
+
+      // Also reload local state to ensure sync with database
+      await loadGlobalSettings();
+
+      showToast(`${setting.display_name} updated`, 'success');
+
+      if (setting.requires_restart) {
+        showToast(t('config.refreshRequired'), 'info');
+      }
+    } catch (error) {
+      console.error('Error updating global setting:', error);
+      showToast('Failed to update setting', 'error');
+    }
+  }
+
   function handleConfirmChange() {
     if (pendingChange) {
-      updateSetting(pendingChange.setting, pendingChange.newValue);
+      if (pendingChange.isGlobal) {
+        updateGlobalSetting(pendingChange.setting as AppGlobalSetting, pendingChange.newValue);
+      } else {
+        updateSetting(pendingChange.setting as AppSetting, pendingChange.newValue);
+      }
       setPendingChange(null);
       setShowConfirmModal(false);
     }
@@ -363,15 +511,20 @@ export function ConfigurationPage() {
     settings.map((s) => [s.setting_key, { display_name: s.display_name, setting_value: s.setting_value }])
   );
 
-  if (!selectedStoreId) {
-    return (
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center py-12">
-          <p className="text-gray-600">{t('config.pleaseSelectStore')}</p>
-        </div>
-      </div>
-    );
-  }
+  // Group global settings by category
+  const globalSettingsByCategory = globalSettings.reduce((acc, setting) => {
+    if (!acc[setting.category]) {
+      acc[setting.category] = [];
+    }
+    acc[setting.category].push(setting);
+    return acc;
+  }, {} as Record<string, AppGlobalSetting[]>);
+
+  // Helper to get global setting value
+  const getGlobalSettingValue = (key: string): string => {
+    const setting = globalSettings.find(s => s.setting_key === key);
+    return setting ? String(setting.setting_value) : '';
+  };
 
   if (!canManageSettings) {
     return (
@@ -390,14 +543,17 @@ export function ConfigurationPage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-bold text-gray-900 mb-1">{t('config.title')}</h2>
-            <p className="text-sm text-gray-600">{storeName}</p>
+            {selectedStoreId && <p className="text-sm text-gray-600">{storeName}</p>}
           </div>
           <Button
-            onClick={loadSettings}
+            onClick={() => {
+              loadGlobalSettings();
+              if (selectedStoreId) loadSettings();
+            }}
             variant="ghost"
-            disabled={isLoading}
+            disabled={isLoading || isGlobalLoading}
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 mr-2 ${(isLoading || isGlobalLoading) ? 'animate-spin' : ''}`} />
             {t('config.refresh')}
           </Button>
         </div>
@@ -488,7 +644,7 @@ export function ConfigurationPage() {
           </div>
         )}
 
-        {activeTab === 'settings' && (
+        {activeTab === 'settings' && selectedStoreId && (
           <div className="flex flex-wrap gap-3">
             <div className="flex-1 min-w-[200px]">
               <div className="relative">
@@ -537,208 +693,305 @@ export function ConfigurationPage() {
         }} />
       )}
 
-      {activeTab === 'settings' && isLoading ? (
-        <div className="text-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-2" />
-          <p className="text-gray-600">Loading configuration...</p>
-        </div>
-      ) : activeTab === 'settings' && Object.keys(settingsByCategory).length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <Settings className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600 mb-4">No settings found matching your filters</p>
-          <Button onClick={() => { setSearchQuery(''); setSelectedCategory('all'); setShowCriticalOnly(false); }}>
-            Clear Filters
-          </Button>
-        </div>
-      ) : activeTab === 'settings' ? (
+      {activeTab === 'settings' && (
         <div className="space-y-6">
-          <StoreHoursEditor storeId={selectedStoreId} />
-          {Object.entries(settingsByCategory).map(([category, categorySettings]) => (
-            <div key={category} className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="font-semibold text-gray-900">{category}</h3>
+          {/* App Settings Section (Global - No Store Required) */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <Globe className="w-5 h-5 text-blue-600" />
+                <h3 className="font-semibold text-gray-900">App Settings</h3>
               </div>
-              <div className="divide-y divide-gray-200">
-                {categorySettings.map((setting) => (
-                  <div key={setting.id} className="px-6 py-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium text-gray-900">
-                            {getDynamicDisplayName(setting, settings)}
-                          </h4>
-                          {setting.is_critical && (
-                            <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full font-medium">
-                              Critical
-                            </span>
-                          )}
-                          {setting.requires_restart && (
-                            <span className="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full font-medium">
-                              Requires Restart
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-600 mb-2">
-                          {setting.description}
-                        </p>
-                        {setting.help_text && (
-                          <p className="text-xs text-gray-500 italic">
-                            {setting.help_text}
-                          </p>
-                        )}
-                        <SettingsDependencyIndicator
-                          dependencies={setting.dependencies || []}
-                          allSettings={settingsMap}
-                          isEnabled={setting.setting_value}
-                        />
-                      </div>
-                      {setting.setting_key === 'store_timezone' ? (
-                        <select
-                          value={setting.setting_value as string}
-                          onChange={(e) => handleStringChange(setting, e.target.value)}
-                          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
-                        >
-                          <optgroup label="US Timezones">
-                            <option value="America/New_York">Eastern Time (ET)</option>
-                            <option value="America/Chicago">Central Time (CT)</option>
-                            <option value="America/Denver">Mountain Time (MT)</option>
-                            <option value="America/Phoenix">Mountain Time - Arizona (no DST)</option>
-                            <option value="America/Los_Angeles">Pacific Time (PT)</option>
-                            <option value="America/Anchorage">Alaska Time (AKT)</option>
-                            <option value="Pacific/Honolulu">Hawaii Time (HST)</option>
-                          </optgroup>
-                          <optgroup label="Other North American">
-                            <option value="America/Toronto">Toronto (ET)</option>
-                            <option value="America/Vancouver">Vancouver (PT)</option>
-                            <option value="America/Mexico_City">Mexico City</option>
-                          </optgroup>
-                        </select>
-                      ) : typeof setting.setting_value === 'number' ? (
-                        <div className="flex flex-col items-end gap-2">
-                          <div className="flex items-center gap-2">
-                            <NumericInput
-                              value={setting.setting_value.toString()}
-                              onChange={(e) => {
-                                const value = parseInt(e.target.value, 10);
-                                if (!isNaN(value)) {
-                                  handleNumericChange(setting, value);
-                                }
-                              }}
-                              min={
-                                (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10 :
-                                setting.setting_key === 'violation_min_votes_required' ? 1 :
-                                setting.setting_key === 'small_service_threshold' ? 0 : undefined
-                              }
-                              max={
-                                (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10080 :
-                                setting.setting_key === 'violation_min_votes_required' ? 10 :
-                                setting.setting_key === 'small_service_threshold' ? 500 : undefined
-                              }
-                              step="1"
-                              className="w-28 px-3 py-2"
-                            />
-                            <span className="text-sm text-gray-600">
-                              {setting.setting_key === 'violation_min_votes_required' ? 'votes' :
-                               setting.setting_key === 'small_service_threshold' ? 'dollars' : 'minutes'}
-                            </span>
+              <p className="text-sm text-gray-500 mt-1">These settings apply to all stores</p>
+            </div>
+
+            {isGlobalLoading ? (
+              <div className="p-6 text-center">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400 mx-auto" />
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {/* Branding Section */}
+                {globalSettingsByCategory['Branding'] && (
+                  <div className="p-6">
+                    <h4 className="font-medium text-gray-800 mb-4">Branding</h4>
+                    <div className="space-y-4">
+                      {globalSettingsByCategory['Branding'].map((setting) => (
+                        <div key={setting.id} className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h5 className="font-medium text-gray-900">{setting.display_name}</h5>
+                              {setting.is_critical && (
+                                <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full font-medium">
+                                  Critical
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600">{setting.description}</p>
+                            {setting.help_text && (
+                              <p className="text-xs text-gray-500 italic mt-1">{setting.help_text}</p>
+                            )}
                           </div>
-                          {(setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') && (
-                            <>
-                              <span className="text-xs text-gray-500">
-                                {formatMinutes(setting.setting_value as number)}
-                              </span>
-                              <div className="flex flex-wrap gap-1 justify-end">
-                                {[
-                                  { label: '30m', value: 30 },
-                                  { label: '1h', value: 60 },
-                                  { label: '24h', value: 1440 },
-                                  { label: '48h', value: 2880 },
-                                  { label: '3d', value: 4320 },
-                                  { label: '7d', value: 10080 },
-                                ].map((preset) => (
-                                  <button
-                                    key={preset.value}
-                                    onClick={() => handleNumericChange(setting, preset.value)}
-                                    className={`text-xs px-2 py-1 rounded transition-colors ${
-                                      setting.setting_value === preset.value
-                                        ? 'bg-blue-100 text-blue-700 font-medium'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                    }`}
-                                  >
-                                    {preset.label}
-                                  </button>
-                                ))}
-                              </div>
-                            </>
-                          )}
-                          {setting.setting_key === 'violation_min_votes_required' && (
-                            <div className="flex flex-wrap gap-1 justify-end">
-                              {[
-                                { label: '2', value: 2 },
-                                { label: '3', value: 3 },
-                                { label: '4', value: 4 },
-                                { label: '5', value: 5 },
-                              ].map((preset) => (
-                                <button
-                                  key={preset.value}
-                                  onClick={() => handleNumericChange(setting, preset.value)}
-                                  className={`text-xs px-2 py-1 rounded transition-colors ${
-                                    setting.setting_value === preset.value
-                                      ? 'bg-blue-100 text-blue-700 font-medium'
-                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                  }`}
-                                >
-                                  {preset.label}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                          {setting.setting_key === 'small_service_threshold' && (
-                            <div className="flex flex-wrap gap-1 justify-end">
-                              {[
-                                { label: '$20', value: 20 },
-                                { label: '$25', value: 25 },
-                                { label: '$30', value: 30 },
-                                { label: '$40', value: 40 },
-                                { label: '$50', value: 50 },
-                              ].map((preset) => (
-                                <button
-                                  key={preset.value}
-                                  onClick={() => handleNumericChange(setting, preset.value)}
-                                  className={`text-xs px-2 py-1 rounded transition-colors ${
-                                    setting.setting_value === preset.value
-                                      ? 'bg-blue-100 text-blue-700 font-medium'
-                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                  }`}
-                                >
-                                  {preset.label}
-                                </button>
-                              ))}
-                            </div>
-                          )}
+                          {setting.setting_key === 'app_name' ? (
+                            <input
+                              type="text"
+                              value={setting.setting_value as string}
+                              onChange={(e) => handleGlobalStringChange(setting, e.target.value)}
+                              maxLength={50}
+                              className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                              placeholder="Enter app name"
+                              disabled={!canManageSettings}
+                            />
+                          ) : setting.setting_key === 'app_logo_url' ? (
+                            <LogoUploadField
+                              currentLogoUrl={setting.setting_value as string}
+                              storeId="global"
+                              onLogoChange={(url) => handleGlobalStringChange(setting, url)}
+                              disabled={!canManageSettings}
+                              storageConfig={getStorageConfig()}
+                            />
+                          ) : null}
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => handleToggleClick(setting, !setting.setting_value)}
-                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                            setting.setting_value ? 'bg-blue-600' : 'bg-gray-200'
-                          }`}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                              setting.setting_value ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                      )}
+                      ))}
                     </div>
                   </div>
-                ))}
+                )}
+
+                {/* Storage Section */}
+                {globalSettingsByCategory['Storage'] && (
+                  <div className="p-6">
+                    <StorageConfigSection
+                      storeId="global"
+                      r2AccountId={getGlobalSettingValue('r2_account_id')}
+                      r2AccessKeyId={getGlobalSettingValue('r2_access_key_id')}
+                      r2SecretAccessKey={getGlobalSettingValue('r2_secret_access_key')}
+                      r2BucketName={getGlobalSettingValue('r2_bucket_name')}
+                      r2PublicUrl={getGlobalSettingValue('r2_public_url')}
+                      onSettingChange={async (key, value) => {
+                        const setting = globalSettingsByCategory['Storage'].find((s) => s.setting_key === key);
+                        if (setting) {
+                          await handleGlobalStringChange(setting, value);
+                        }
+                      }}
+                      disabled={!canManageSettings}
+                    />
+                  </div>
+                )}
               </div>
+            )}
+          </div>
+
+          {/* Store Settings Section (Requires Store Selection) */}
+          {!selectedStoreId ? (
+            <div className="bg-white rounded-lg shadow p-6 text-center">
+              <Settings className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">{t('config.pleaseSelectStore')}</p>
+              <p className="text-sm text-gray-500 mt-2">Select a store to view and manage store-specific settings</p>
             </div>
-          ))}
+          ) : isLoading ? (
+            <div className="text-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-2" />
+              <p className="text-gray-600">Loading store settings...</p>
+            </div>
+          ) : (
+            <>
+              <StoreHoursEditor storeId={selectedStoreId} />
+              {Object.entries(settingsByCategory).map(([category, categorySettings]) => (
+                <div key={category} className="bg-white rounded-lg shadow">
+                  <div className="px-6 py-4 border-b border-gray-200">
+                    <h3 className="font-semibold text-gray-900">{category}</h3>
+                  </div>
+                  <div className="divide-y divide-gray-200">
+                    {categorySettings.map((setting) => (
+                      <div key={setting.id} className="px-6 py-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium text-gray-900">
+                                {getDynamicDisplayName(setting, settings)}
+                              </h4>
+                              {setting.is_critical && (
+                                <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full font-medium">
+                                  Critical
+                                </span>
+                              )}
+                              {setting.requires_restart && (
+                                <span className="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full font-medium">
+                                  Requires Restart
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600 mb-2">
+                              {setting.description}
+                            </p>
+                            {setting.help_text && (
+                              <p className="text-xs text-gray-500 italic">
+                                {setting.help_text}
+                              </p>
+                            )}
+                            <SettingsDependencyIndicator
+                              dependencies={setting.dependencies || []}
+                              allSettings={settingsMap}
+                              isEnabled={setting.setting_value}
+                            />
+                          </div>
+                          {setting.setting_key === 'store_timezone' || setting.setting_key === 'timezone' ? (
+                            <select
+                              value={setting.setting_value as string}
+                              onChange={(e) => handleStringChange(setting, e.target.value)}
+                              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                            >
+                              <optgroup label="US Timezones">
+                                <option value="America/New_York">Eastern Time (ET)</option>
+                                <option value="America/Chicago">Central Time (CT)</option>
+                                <option value="America/Denver">Mountain Time (MT)</option>
+                                <option value="America/Phoenix">Mountain Time - Arizona (no DST)</option>
+                                <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                                <option value="America/Anchorage">Alaska Time (AKT)</option>
+                                <option value="Pacific/Honolulu">Hawaii Time (HST)</option>
+                              </optgroup>
+                              <optgroup label="Other North American">
+                                <option value="America/Toronto">Toronto (ET)</option>
+                                <option value="America/Vancouver">Vancouver (PT)</option>
+                                <option value="America/Mexico_City">Mexico City</option>
+                              </optgroup>
+                            </select>
+                          ) : typeof setting.setting_value === 'number' ? (
+                            <div className="flex flex-col items-end gap-2">
+                              <div className="flex items-center gap-2">
+                                <NumericInput
+                                  value={setting.setting_value.toString()}
+                                  onChange={(e) => {
+                                    const value = parseInt(e.target.value, 10);
+                                    if (!isNaN(value)) {
+                                      handleNumericChange(setting, value);
+                                    }
+                                  }}
+                                  min={
+                                    (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10 :
+                                    setting.setting_key === 'violation_min_votes_required' ? 1 :
+                                    setting.setting_key === 'small_service_threshold' ? 0 : undefined
+                                  }
+                                  max={
+                                    (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10080 :
+                                    setting.setting_key === 'violation_min_votes_required' ? 10 :
+                                    setting.setting_key === 'small_service_threshold' ? 500 : undefined
+                                  }
+                                  step="1"
+                                  className="w-28 px-3 py-2"
+                                />
+                                <span className="text-sm text-gray-600">
+                                  {setting.setting_key === 'violation_min_votes_required' ? 'votes' :
+                                   setting.setting_key === 'small_service_threshold' ? 'dollars' : 'minutes'}
+                                </span>
+                              </div>
+                              {(setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') && (
+                                <>
+                                  <span className="text-xs text-gray-500">
+                                    {formatMinutes(setting.setting_value as number)}
+                                  </span>
+                                  <div className="flex flex-wrap gap-1 justify-end">
+                                    {[
+                                      { label: '30m', value: 30 },
+                                      { label: '1h', value: 60 },
+                                      { label: '24h', value: 1440 },
+                                      { label: '48h', value: 2880 },
+                                      { label: '3d', value: 4320 },
+                                      { label: '7d', value: 10080 },
+                                    ].map((preset) => (
+                                      <button
+                                        key={preset.value}
+                                        onClick={() => handleNumericChange(setting, preset.value)}
+                                        className={`text-xs px-2 py-1 rounded transition-colors ${
+                                          setting.setting_value === preset.value
+                                            ? 'bg-blue-100 text-blue-700 font-medium'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                      >
+                                        {preset.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                              {setting.setting_key === 'violation_min_votes_required' && (
+                                <div className="flex flex-wrap gap-1 justify-end">
+                                  {[
+                                    { label: '2', value: 2 },
+                                    { label: '3', value: 3 },
+                                    { label: '4', value: 4 },
+                                    { label: '5', value: 5 },
+                                  ].map((preset) => (
+                                    <button
+                                      key={preset.value}
+                                      onClick={() => handleNumericChange(setting, preset.value)}
+                                      className={`text-xs px-2 py-1 rounded transition-colors ${
+                                        setting.setting_value === preset.value
+                                          ? 'bg-blue-100 text-blue-700 font-medium'
+                                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                      }`}
+                                    >
+                                      {preset.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                              {setting.setting_key === 'small_service_threshold' && (
+                                <div className="flex flex-wrap gap-1 justify-end">
+                                  {[
+                                    { label: '$20', value: 20 },
+                                    { label: '$25', value: 25 },
+                                    { label: '$30', value: 30 },
+                                    { label: '$40', value: 40 },
+                                    { label: '$50', value: 50 },
+                                  ].map((preset) => (
+                                    <button
+                                      key={preset.value}
+                                      onClick={() => handleNumericChange(setting, preset.value)}
+                                      className={`text-xs px-2 py-1 rounded transition-colors ${
+                                        setting.setting_value === preset.value
+                                          ? 'bg-blue-100 text-blue-700 font-medium'
+                                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                      }`}
+                                    >
+                                      {preset.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ) : typeof setting.setting_value === 'boolean' ? (
+                            <button
+                              onClick={() => handleToggleClick(setting, !setting.setting_value)}
+                              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                                setting.setting_value ? 'bg-blue-600' : 'bg-gray-200'
+                              }`}
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                  setting.setting_value ? 'translate-x-5' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                          ) : (
+                            <input
+                              type="text"
+                              value={setting.setting_value as string}
+                              onChange={(e) => handleStringChange(setting, e.target.value)}
+                              className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                              disabled={!canManageSettings}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
-      ) : null}
+      )}
 
       {pendingChange && (
         <CriticalSettingConfirmationModal
@@ -754,19 +1007,6 @@ export function ConfigurationPage() {
           requiresRestart={pendingChange.setting.requires_restart}
           currentValue={pendingChange.setting.setting_value}
           newValue={pendingChange.newValue}
-        />
-      )}
-
-      {showWizard && (
-        <ConfigurationWizard
-          isOpen={showWizard}
-          onClose={() => setShowWizard(false)}
-          onComplete={() => {
-            setShowWizard(false);
-            loadSettings();
-          }}
-          storeId={selectedStoreId}
-          storeName={storeName}
         />
       )}
     </div>

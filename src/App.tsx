@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Layout } from './components/Layout';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { SettingsProvider } from './contexts/SettingsContext';
+import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import { NumericKeypadProvider } from './contexts/NumericKeypadContext';
 import { PermissionsProvider } from './contexts/PermissionsContext';
 import { PermissionsCacheProvider } from './contexts/PermissionsCacheContext';
@@ -38,6 +38,7 @@ type Page = 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'attendance' | 'te
 
 function AppContent() {
   const { isAuthenticated, selectedStoreId, selectStore, session, login, logout } = useAuth();
+  const { getAppName } = useSettings();
   const [showWelcome, setShowWelcome] = useState(() => {
     return sessionStorage.getItem('welcome_shown') !== 'true';
   });
@@ -51,6 +52,12 @@ function AppContent() {
       setSelectedAction(null);
     }
   }, [isAuthenticated]);
+
+  // Update browser tab title with app name
+  useEffect(() => {
+    const appName = getAppName();
+    document.title = `${appName} - Sale Ticket Tracker`;
+  }, [getAppName]);
 
   // Set default page to tickets for all users
   const [currentPage, setCurrentPage] = useState<Page>('tickets');

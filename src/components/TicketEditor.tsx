@@ -540,6 +540,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           `
           )
           .eq('id', ticketId)
+          .order('id', { ascending: true, referencedTable: 'ticket_items' })
           .single();
 
         if (ticketError) throw ticketError;

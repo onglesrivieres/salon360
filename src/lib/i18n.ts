@@ -563,7 +563,7 @@ export const translations = {
       editHistory: 'Edit History',
     },
     cash: {
-      title: 'Cash Management',
+      title: 'Cash Balance',
       openingCash: 'Opening Cash',
       closingCash: 'Closing Cash',
       cashCount: 'Cash Count',
@@ -1260,7 +1260,7 @@ export const translations = {
       editHistory: 'Historique des modifications',
     },
     cash: {
-      title: 'Gestion de caisse',
+      title: 'Solde de caisse',
       openingCash: 'Caisse d\'ouverture',
       closingCash: 'Caisse de fermeture',
       cashCount: 'Comptage de caisse',
@@ -1957,7 +1957,7 @@ export const translations = {
       editHistory: 'Lịch sử chỉnh sửa',
     },
     cash: {
-      title: 'Quản lý tiền mặt',
+      title: 'Số dư tiền mặt',
       openingCash: 'Tiền đầu ca',
       closingCash: 'Tiền cuối ca',
       cashCount: 'Kiểm đếm tiền',
@@ -2654,7 +2654,7 @@ export const translations = {
       editHistory: 'ប្រវត្តិកែប្រែ',
     },
     cash: {
-      title: 'ការគ្រប់គ្រងសាច់ប្រាក់',
+      title: 'សមតុល្យសាច់ប្រាក់',
       openingCash: 'សាច់ប្រាក់បើក',
       closingCash: 'សាច់ប្រាក់បិទ',
       cashCount: 'រាប់សាច់ប្រាក់',

@@ -1069,3 +1069,20 @@ export interface ResourceSubcategory {
   created_at: string;
   updated_at: string;
 }
+
+// App Global Settings (app-wide settings like branding and storage)
+export interface AppGlobalSetting {
+  id: string;
+  setting_key: string;
+  setting_value: boolean | string | number;
+  default_value: boolean | string | number;
+  category: string;
+  display_name: string;
+  description: string;
+  is_critical: boolean;
+  requires_restart: boolean;
+  display_order: number;
+  help_text: string;
+  created_at: string;
+  updated_at: string;
+}

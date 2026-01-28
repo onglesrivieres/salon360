@@ -43,9 +43,10 @@ interface ServiceItemDetail {
 interface TicketsPeriodViewProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
+  isCommissionEmployee?: boolean;
 }
 
-export function TicketsPeriodView({ selectedDate, onDateChange }: TicketsPeriodViewProps) {
+export function TicketsPeriodView({ selectedDate, onDateChange, isCommissionEmployee = false }: TicketsPeriodViewProps) {
   const [summaries, setSummaries] = useState<TechnicianSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [weeklyData, setWeeklyData] = useState<Map<string, Map<string, Array<{ store_id: string; store_code: string; revenue: number }>>>>(new Map());
@@ -128,7 +129,8 @@ export function TicketsPeriodView({ selectedDate, onDateChange }: TicketsPeriodV
 
   async function fetchDailyTipData(dateToFetch: string): Promise<Map<string, TechnicianSummary>> {
     const canViewAll = session?.role ? Permissions.tipReport.canViewAll(session.role) : false;
-    const isTechnician = !canViewAll;
+    // Commission employees should only see their own tickets, regardless of their role
+    const isTechnician = !canViewAll || isCommissionEmployee;
 
     const { data: allEmployeeStores, error: allEmployeeStoresError } = await supabase
       .from('employee_stores')

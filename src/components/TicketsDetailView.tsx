@@ -61,9 +61,10 @@ interface TicketGroup {
 interface TicketsDetailViewProps {
   selectedDate: string;
   onRefresh?: () => void;
+  isCommissionEmployee?: boolean;
 }
 
-export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailViewProps) {
+export function TicketsDetailView({ selectedDate, onRefresh, isCommissionEmployee = false }: TicketsDetailViewProps) {
   const [summaries, setSummaries] = useState<TechnicianSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -184,7 +185,8 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
 
   async function fetchDailyTipData(dateToFetch: string): Promise<{ technicianMap: Map<string, TechnicianSummary>; multiStoreEmployees: Set<string> }> {
     const canViewAll = session?.role ? Permissions.tipReport.canViewAll(session.role) : false;
-    const isTechnician = !canViewAll;
+    // Commission employees should only see their own tickets, regardless of their role
+    const isTechnician = !canViewAll || isCommissionEmployee;
 
     const { data: allEmployeeStores, error: allEmployeeStoresError } = await supabase
       .from('employee_stores')
@@ -371,7 +373,8 @@ export function TicketsDetailView({ selectedDate, onRefresh }: TicketsDetailView
       setLoading(true);
 
       const canViewAll = session?.role ? Permissions.tipReport.canViewAll(session.role) : false;
-      const isTechnician = !canViewAll;
+      // Commission employees should only see their own tickets, regardless of their role
+      const isTechnician = !canViewAll || isCommissionEmployee;
 
       if (isTechnician && session?.employee_id) {
         const { data: employeeData, error: employeeError } = await supabase
