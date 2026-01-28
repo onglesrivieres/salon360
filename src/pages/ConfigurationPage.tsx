@@ -166,11 +166,37 @@ export function ConfigurationPage() {
         .order('category')
         .order('display_order');
 
-      if (error) throw error;
-      setGlobalSettings(data || []);
+      if (error) {
+        console.error('Supabase error loading global settings:', error);
+        throw error;
+      }
+
+      // If no data, try to initialize global settings
+      if (!data || data.length === 0) {
+        console.log('No global settings found, initializing...');
+        const { error: initError } = await supabase.rpc('initialize_global_settings');
+
+        if (initError) {
+          console.error('Failed to initialize global settings:', initError);
+          throw initError;
+        }
+
+        // Reload after initialization
+        const { data: newData, error: reloadError } = await supabase
+          .from('app_global_settings')
+          .select('*')
+          .order('category')
+          .order('display_order');
+
+        if (reloadError) throw reloadError;
+        setGlobalSettings(newData || []);
+      } else {
+        setGlobalSettings(data);
+      }
     } catch (error) {
       console.error('Error loading global settings:', error);
-      showToast('Failed to load app settings', 'error');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      showToast(`Failed to load app settings: ${errorMessage}`, 'error');
     } finally {
       setIsGlobalLoading(false);
     }
@@ -417,14 +443,21 @@ export function ConfigurationPage() {
   }
 
   async function updateGlobalSetting(setting: AppGlobalSetting, newValue: boolean | string | number) {
+    console.log('Updating global setting:', setting.setting_key, 'from', setting.setting_value, 'to', newValue);
+
     try {
-      const { error: updateError } = await supabase
+      // Use .select().single() to get the updated row back
+      const { data, error: updateError } = await supabase
         .from('app_global_settings')
         .update({
           setting_value: newValue,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', setting.id);
+        .eq('id', setting.id)
+        .select()
+        .single();
+
+      console.log('Update response:', { data, error: updateError });
 
       if (updateError) throw updateError;
 
@@ -441,12 +474,19 @@ export function ConfigurationPage() {
 
       if (auditError) console.error('Audit log error:', auditError);
 
+      // Use the returned data to ensure we have the correct value from database
+      const savedValue = data?.setting_value ?? newValue;
+      console.log('Saved value from DB:', savedValue);
+
       setGlobalSettings((prev) =>
-        prev.map((s) => (s.id === setting.id ? { ...s, setting_value: newValue } : s))
+        prev.map((s) => (s.id === setting.id ? { ...s, setting_value: savedValue } : s))
       );
 
       // Refresh global settings in context
       await refreshGlobalSettings();
+
+      // Also reload local state to ensure sync with database
+      await loadGlobalSettings();
 
       showToast(`${setting.display_name} updated`, 'success');
 
