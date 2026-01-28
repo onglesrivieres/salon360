@@ -235,7 +235,9 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
         query = query.is('closed_at', null);
       }
 
-      query = query.order('opened_at', { ascending: false});
+      query = query
+        .order('opened_at', { ascending: false })
+        .order('id', { ascending: true, referencedTable: 'ticket_items' });
 
       const { data, error } = await query;
 
