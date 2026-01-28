@@ -10,6 +10,7 @@ import { SettingsDependencyIndicator } from '../components/SettingsDependencyInd
 import { ConfigurationWizard } from '../components/ConfigurationWizard';
 import { RolePermissionMatrix } from '../components/RolePermissionMatrix';
 import { StoreHoursEditor } from '../components/StoreHoursEditor';
+import { LogoUploadField } from '../components/LogoUploadField';
 
 interface AppSetting {
   id: string;
@@ -613,6 +614,22 @@ export function ConfigurationPage() {
                             <option value="America/Mexico_City">Mexico City</option>
                           </optgroup>
                         </select>
+                      ) : setting.setting_key === 'app_name' ? (
+                        <input
+                          type="text"
+                          value={setting.setting_value as string}
+                          onChange={(e) => handleStringChange(setting, e.target.value)}
+                          maxLength={50}
+                          className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          placeholder="Enter app name"
+                        />
+                      ) : setting.setting_key === 'app_logo_url' ? (
+                        <LogoUploadField
+                          currentLogoUrl={setting.setting_value as string}
+                          storeId={selectedStoreId}
+                          onLogoChange={(url) => handleStringChange(setting, url)}
+                          disabled={!canManageSettings}
+                        />
                       ) : typeof setting.setting_value === 'number' ? (
                         <div className="flex flex-col items-end gap-2">
                           <div className="flex items-center gap-2">

@@ -6,6 +6,7 @@ import { StoreSelectionModal } from '../components/StoreSelectionModal';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { VersionNotification } from '../components/VersionNotification';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { supabase } from '../lib/supabase';
 import { authenticateWithPIN } from '../lib/auth';
 import { initializeVersionCheck, startVersionCheck } from '../lib/version';
@@ -17,6 +18,7 @@ interface HomePageProps {
 
 export function HomePage({ onActionSelected }: HomePageProps) {
   const { logout, t } = useAuth();
+  const { getAppName, getAppLogoUrl } = useSettings();
   const [selectedAction, setSelectedAction] = useState<'checkin' | 'checkout' | 'ready' | 'report' | null>(null);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -527,14 +529,22 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       <div className="w-full max-w-3xl">
         <div className="text-center mb-6 sm:mb-8">
           <div className="inline-flex items-center justify-center mb-3 sm:mb-4">
-            <img
-              src="/qr-code.png"
-              alt="QR Code"
-              className="w-32 h-32 sm:w-40 sm:h-40"
-            />
+            {getAppLogoUrl() ? (
+              <img
+                src={getAppLogoUrl()}
+                alt={getAppName()}
+                className="w-32 h-32 sm:w-40 sm:h-40 object-contain"
+              />
+            ) : (
+              <img
+                src="/qr-code.png"
+                alt="QR Code"
+                className="w-32 h-32 sm:w-40 sm:h-40"
+              />
+            )}
           </div>
 
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-2 sm:mb-3">{t('home.title')}</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-2 sm:mb-3">{getAppName()}</h1>
 
           <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-lg mx-auto px-2">
             {t('home.subtitle')}

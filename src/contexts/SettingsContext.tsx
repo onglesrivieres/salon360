@@ -28,6 +28,8 @@ interface SettingsContextType {
   getSettingBoolean: (key: string, defaultValue?: boolean) => boolean;
   getSettingNumber: (key: string, defaultValue?: number) => number;
   getSettingString: (key: string, defaultValue?: string) => string;
+  getAppName: () => string;
+  getAppLogoUrl: () => string;
   refreshSettings: () => Promise<void>;
 }
 
@@ -146,6 +148,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     return typeof value === 'string' ? value : defaultValue;
   }
 
+  function getAppName(): string {
+    return getSettingString('app_name', 'Salon360');
+  }
+
+  function getAppLogoUrl(): string {
+    return getSettingString('app_logo_url', '');
+  }
+
   async function refreshSettings() {
     await loadSettings();
   }
@@ -160,6 +170,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         getSettingBoolean,
         getSettingNumber,
         getSettingString,
+        getAppName,
+        getAppLogoUrl,
         refreshSettings,
       }}
     >
