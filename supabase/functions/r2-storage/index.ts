@@ -14,11 +14,11 @@ interface R2Config {
   bucketName: string;
 }
 
-async function getR2Config(supabase: ReturnType<typeof createClient>, storeId: string): Promise<R2Config | null> {
+async function getR2Config(supabase: ReturnType<typeof createClient>): Promise<R2Config | null> {
+  // R2 settings are now global (not per-store)
   const { data: settings, error } = await supabase
-    .from('app_settings')
+    .from('app_global_settings')
     .select('setting_key, setting_value')
-    .eq('store_id', storeId)
     .in('setting_key', ['r2_account_id', 'r2_access_key_id', 'r2_secret_access_key', 'r2_bucket_name']);
 
   if (error || !settings) {
@@ -225,12 +225,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get R2 configuration for this store
-    const r2Config = await getR2Config(supabase, storeId);
+    // Get R2 configuration (global settings)
+    const r2Config = await getR2Config(supabase);
 
     if (!r2Config) {
       return new Response(
-        JSON.stringify({ success: false, error: 'R2 not configured for this store' }),
+        JSON.stringify({ success: false, error: 'R2 not configured' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
