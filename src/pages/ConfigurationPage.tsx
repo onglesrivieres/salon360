@@ -71,7 +71,7 @@ function getDynamicDisplayName(setting: AppSetting, allSettings: AppSetting[]): 
 export function ConfigurationPage() {
   const { showToast } = useToast();
   const { selectedStoreId, session, t } = useAuth();
-  const { getStorageConfig, getSettingString } = useSettings();
+  const { getStorageConfig, getSettingString, refreshSettings } = useSettings();
 
   const [settings, setSettings] = useState<AppSetting[]>([]);
   const [filteredSettings, setFilteredSettings] = useState<AppSetting[]>([]);
@@ -336,6 +336,9 @@ export function ConfigurationPage() {
       setSettings((prev) =>
         prev.map((s) => (s.id === setting.id ? { ...s, setting_value: newValue } : s))
       );
+
+      // Refresh SettingsContext to sync with updated values
+      await refreshSettings();
 
       showToast(
         `${setting.display_name} ${newValue ? 'enabled' : 'disabled'}`,
