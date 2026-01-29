@@ -3125,7 +3125,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
               </div>
             )}
 
-            {formData.payment_method === 'Mixed' && (
+            {formData.payment_method === 'Mixed' && enableGiftCardPayments && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   <Gift className="w-4 h-4 text-purple-600" />
@@ -3360,7 +3360,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                 </div>
               )}
 
-              {formData.payment_method === 'Mixed' && (
+              {formData.payment_method === 'Mixed' && enableGiftCardPayments && (
                 <div className="flex justify-between items-center text-sm text-purple-700">
                   <span>Gift Card Redeemed:</span>
                   <span className="font-semibold">${calculateTempGiftCardCollected().toFixed(2)}</span>
