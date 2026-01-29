@@ -109,7 +109,7 @@ export function usePendingApprovalsRedirect(
           canReviewTransactionChanges
             ? supabase.rpc('get_pending_cash_transaction_change_proposals', { p_store_id: storeId })
             : Promise.resolve({ data: [] }),
-          supabase.from('attendance_change_proposals').select('id').eq('store_id', storeId).eq('status', 'pending'),
+          supabase.from('attendance_change_proposals').select('id, attendance_records!inner(store_id)').eq('attendance_records.store_id', storeId).eq('status', 'pending'),
           supabase.rpc('get_violation_reports_for_approval', { p_store_id: storeId }),
           canReviewReopenRequests
             ? supabase.rpc('get_pending_ticket_reopen_requests', { p_store_id: storeId })
