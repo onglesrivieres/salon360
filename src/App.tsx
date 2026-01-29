@@ -302,6 +302,7 @@ function AppContent() {
         accessStartTime={workingHoursCheck.accessStartTime || '08:45'}
         accessEndTime={workingHoursCheck.accessEndTime || ''}
         currentDay={workingHoursCheck.currentDay}
+        onGoHome={logout}
       />
     );
   }

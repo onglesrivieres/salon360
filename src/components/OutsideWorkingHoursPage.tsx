@@ -1,15 +1,18 @@
-import { Clock, AlertCircle } from 'lucide-react';
+import { Clock, AlertCircle, Home } from 'lucide-react';
+import { Button } from './ui/Button';
 
 interface OutsideWorkingHoursPageProps {
   accessStartTime: string;
   accessEndTime: string;
   currentDay: string;
+  onGoHome: () => void;
 }
 
 export function OutsideWorkingHoursPage({
   accessStartTime,
   accessEndTime,
   currentDay,
+  onGoHome,
 }: OutsideWorkingHoursPageProps) {
   const capitalizedDay = currentDay.charAt(0).toUpperCase() + currentDay.slice(1);
 
@@ -38,9 +41,17 @@ export function OutsideWorkingHoursPage({
           </p>
         </div>
 
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 mb-6">
           Please return during access hours to use the system.
         </p>
+
+        <Button
+          variant="outline"
+          onClick={onGoHome}
+        >
+          <Home className="w-4 h-4 mr-2" />
+          Go to Home
+        </Button>
       </div>
     </div>
   );
