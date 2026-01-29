@@ -34,7 +34,7 @@ const ROLE_COLORS: Record<Role, string> = {
 };
 
 export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatrixProps) {
-  const { employee, storeId } = useAuth();
+  const { session, selectedStoreId } = useAuth();
   const { getCachedPermissions, loadPermissions, invalidateCache } = usePermissionsCache();
   const [allPermissions, setAllPermissions] = useState<RolePermissions>(new Map());
   const [loading, setLoading] = useState(true);
@@ -49,16 +49,16 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
   const groupedPermissions = getPermissionsByModule();
 
   const loadAllPermissionsWithCache = useCallback(async () => {
-    if (!storeId) {
+    if (!selectedStoreId) {
       console.log('[Permissions] No storeId available, skipping load');
       return;
     }
 
-    console.log('[Permissions] Loading permissions for store:', storeId);
+    console.log('[Permissions] Loading permissions for store:', selectedStoreId);
     setLoadError(null);
 
     // Try to get cached data first (stale-while-revalidate pattern)
-    const cached = getCachedPermissions(storeId);
+    const cached = getCachedPermissions(selectedStoreId);
     console.log('[Permissions] Cache check:', cached ? `Found ${cached.size} roles` : 'No cache');
 
     if (cached && cached.size > 0) {
@@ -70,7 +70,7 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
       setIsRefreshing(true);
       try {
         console.log('[Permissions] Refreshing in background');
-        const fresh = await loadPermissions(storeId, true);
+        const fresh = await loadPermissions(selectedStoreId, true);
         console.log('[Permissions] Fresh data loaded:', fresh.size, 'roles');
         setAllPermissions(fresh);
       } catch (error) {
@@ -85,7 +85,7 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
     setLoading(true);
     try {
       console.log('[Permissions] No cache, loading from database');
-      const permissions = await loadPermissions(storeId);
+      const permissions = await loadPermissions(selectedStoreId);
       console.log('[Permissions] Loaded from database:', permissions.size, 'roles');
 
       if (!permissions || permissions.size === 0) {
@@ -101,7 +101,7 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
     } finally {
       setLoading(false);
     }
-  }, [storeId, getCachedPermissions, loadPermissions]);
+  }, [selectedStoreId, getCachedPermissions, loadPermissions]);
 
   useEffect(() => {
     loadAllPermissionsWithCache();
@@ -112,7 +112,7 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
   }, [searchTerm]);
 
   const togglePermission = async (role: Role, permissionKey: string, currentValue: boolean) => {
-    if (!storeId || !employee) return;
+    if (!selectedStoreId || !session) return;
 
     const cellKey = `${role}-${permissionKey}`;
     setSaving(prev => new Set(prev).add(cellKey));
@@ -137,16 +137,16 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
 
     try {
       const { error } = await supabase.rpc('update_role_permission', {
-        p_store_id: storeId,
+        p_store_id: selectedStoreId,
         p_role_name: role,
         p_permission_key: permissionKey,
         p_is_enabled: newValue,
-        p_employee_id: employee.id
+        p_employee_id: session.employee_id
       });
 
       if (error) throw error;
 
-      invalidateCache(storeId || undefined);
+      invalidateCache(selectedStoreId || undefined);
       onPermissionChange?.();
     } catch (error) {
       console.error('Error updating permission:', error);
@@ -173,7 +173,7 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
   };
 
   const toggleAllForRole = async (role: Role, enable: boolean) => {
-    if (!storeId || !employee) return;
+    if (!selectedStoreId || !session) return;
     if (!confirm(`${enable ? 'Enable' : 'Disable'} all permissions for ${role}? This will update all permissions at once.`)) return;
 
     setSaving(prev => new Set(prev).add(`role-${role}`));
@@ -183,15 +183,15 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
 
       for (const permKey of allPermKeys) {
         await supabase.rpc('update_role_permission', {
-          p_store_id: storeId,
+          p_store_id: selectedStoreId,
           p_role_name: role,
           p_permission_key: permKey,
           p_is_enabled: enable,
-          p_employee_id: employee.id
+          p_employee_id: session.employee_id
         });
       }
 
-      invalidateCache(storeId || undefined);
+      invalidateCache(selectedStoreId || undefined);
       await loadAllPermissionsWithCache();
       setHasChanges(true);
       onPermissionChange?.();
@@ -208,21 +208,21 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
   };
 
   const resetRoleToDefaults = async (role: Role) => {
-    if (!storeId || !employee) return;
+    if (!selectedStoreId || !session) return;
     if (!confirm(`Reset all ${role} permissions to defaults? This cannot be undone.`)) return;
 
     setSaving(prev => new Set(prev).add(`role-${role}`));
 
     try {
       const { error } = await supabase.rpc('reset_role_permissions_to_default', {
-        p_store_id: storeId,
+        p_store_id: selectedStoreId,
         p_role_name: role,
-        p_employee_id: employee.id
+        p_employee_id: session.employee_id
       });
 
       if (error) throw error;
 
-      invalidateCache(storeId || undefined);
+      invalidateCache(selectedStoreId || undefined);
       await loadAllPermissionsWithCache();
       setHasChanges(false);
       onPermissionChange?.();
