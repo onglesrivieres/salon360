@@ -251,7 +251,7 @@ export const translations = {
     },
     home: {
       title: 'Salon360',
-      subtitle: 'Complete salon management system for scheduling, tracking, and reporting',
+      subtitle: 'Complete salon management system for tracking and reporting',
       enterPinFor: 'Enter PIN for',
       checkedIn: 'checked in and in the ready queue',
       checkedInOnly: 'checked in',
@@ -948,7 +948,7 @@ export const translations = {
     },
     home: {
       title: 'Salon360',
-      subtitle: 'Système complet de gestion de salon pour la planification, le suivi et les rapports',
+      subtitle: 'Système complet de gestion de salon pour le suivi et les rapports',
       enterPinFor: 'Entrez le NIP pour',
       checkedIn: 'pointé et dans la file d\'attente',
       checkedInOnly: 'pointé',
@@ -1645,7 +1645,7 @@ export const translations = {
     },
     home: {
       title: 'Salon360',
-      subtitle: 'Hệ thống quản lý salon toàn diện cho lịch hẹn, theo dõi và báo cáo',
+      subtitle: 'Hệ thống quản lý salon toàn diện cho theo dõi và báo cáo',
       enterPinFor: 'Nhập PIN cho',
       checkedIn: 'đã điểm danh và vào hàng đợi',
       checkedInOnly: 'đã điểm danh',
