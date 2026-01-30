@@ -31,7 +31,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
-  const { hasNewVersion, handleRefresh } = useServiceWorkerUpdate();
+  const { hasNewVersion, handleUpdate } = useServiceWorkerUpdate();
   const [isOpeningCashMissing, setIsOpeningCashMissing] = useState(false);
   const [showQueueModal, setShowQueueModal] = useState(false);
   const [sortedTechnicians, setSortedTechnicians] = useState<TechnicianWithQueue[]>([]);
@@ -705,7 +705,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           onRespond={handleViolationResponse}
         />
       )}
-      {hasNewVersion && showVersionNotifications && <VersionNotification onRefresh={handleRefresh} />}
+      {hasNewVersion && showVersionNotifications && <VersionNotification onUpdate={handleUpdate} />}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="px-3 py-2 md:px-4">
           <div className="flex items-center justify-between">

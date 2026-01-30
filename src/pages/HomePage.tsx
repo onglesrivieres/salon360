@@ -34,7 +34,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     display_name: string;
     pay_type: string;
   } | null>(null);
-  const { hasNewVersion, handleRefresh } = useServiceWorkerUpdate();
+  const { hasNewVersion, handleUpdate } = useServiceWorkerUpdate();
   const [showStoreSelection, setShowStoreSelection] = useState(false);
   const [availableStoreIds, setAvailableStoreIds] = useState<string[]>([]);
   const [storeSelectionContext, setStoreSelectionContext] = useState<'checkin' | 'checkout' | 'ready' | 'general'>('general');
@@ -506,7 +506,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-3 sm:p-4">
-      {hasNewVersion && <VersionNotification onRefresh={handleRefresh} />}
+      {hasNewVersion && <VersionNotification onUpdate={handleUpdate} />}
       <div className="absolute top-4 right-4">
         <LanguageSelector />
       </div>

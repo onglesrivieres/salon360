@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DollarSign, TrendingUp, Vault, ChevronLeft, ChevronRight, TrendingDown, AlertTriangle, History, ChevronDown, ChevronUp, Edit3, Clock } from 'lucide-react';
 import { supabase, SafeBalanceSummary, CashTransactionWithDetails } from '../lib/supabase';
 import { useToast } from '../components/ui/Toast';
@@ -33,6 +33,8 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
 
   const canCreateChangeProposal = effectiveRole ? Permissions.cashTransactions.canCreateChangeProposal(effectiveRole) : false;
 
+  const fetchIdRef = useRef(0);
+
   useEffect(() => {
     loadSafeBalanceData();
   }, [selectedDate, selectedStoreId]);
@@ -40,18 +42,95 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
   async function loadSafeBalanceData() {
     if (!selectedStoreId || !session?.employee_id) return;
 
+    // Increment fetch ID to invalidate any in-flight requests
+    const currentFetchId = ++fetchIdRef.current;
+
     try {
       setLoadingSafeBalance(true);
 
-      const { data: balanceData, error: balanceError } = await supabase
-        .rpc('get_safe_balance_for_date', {
-          p_store_id: selectedStoreId,
-          p_date: selectedDate,
-        })
-        .maybeSingle();
+      // Clear stale data so loading spinner shows instead of old numbers
+      setSafeBalance(null);
+      setSafeDeposits([]);
+      setSafeWithdrawals([]);
+      setPendingProposals(new Set());
+      setBalanceWarning(null);
 
-      if (balanceError) throw balanceError;
+      // Calculate previous date for balance warning check
+      const previousDate = new Date(selectedDate + 'T12:00:00');
+      previousDate.setDate(previousDate.getDate() - 1);
+      const prevDateStr = previousDate.toISOString().split('T')[0];
 
+      // PHASE 1: Run 4 independent operations in parallel
+      const [balanceResult, depositsResult, withdrawalsResult, prevSnapshotResult] = await Promise.all([
+        // Balance summary via RPC
+        supabase
+          .rpc('get_safe_balance_for_date', {
+            p_store_id: selectedStoreId,
+            p_date: selectedDate,
+          })
+          .maybeSingle(),
+
+        // Deposits query
+        supabase
+          .from('cash_transactions')
+          .select(`
+            *,
+            created_by:employees!cash_transactions_created_by_id_fkey (
+              id,
+              name:legal_name
+            ),
+            approved_by:employees!cash_transactions_manager_approved_by_id_fkey (
+              id,
+              name:legal_name
+            )
+          `)
+          .eq('store_id', selectedStoreId)
+          .eq('date', selectedDate)
+          .in('transaction_type', ['cash_out', 'hq_deposit'])
+          .eq('category', 'Safe Deposit')
+          .order('created_at', { ascending: false }),
+
+        // Withdrawals query
+        supabase
+          .from('cash_transactions')
+          .select(`
+            *,
+            created_by:employees!cash_transactions_created_by_id_fkey (
+              id,
+              name:legal_name
+            ),
+            approved_by:employees!cash_transactions_manager_approved_by_id_fkey (
+              id,
+              name:legal_name
+            )
+          `)
+          .eq('store_id', selectedStoreId)
+          .eq('date', selectedDate)
+          .eq('transaction_type', 'cash_payout')
+          .in('category', ['Payroll', 'Tip Payout', 'Headquarter Deposit', 'Other'])
+          .order('created_at', { ascending: false }),
+
+        // Previous day snapshot for balance warning
+        supabase
+          .from('safe_balance_history')
+          .select('closing_balance, date')
+          .eq('store_id', selectedStoreId)
+          .eq('date', prevDateStr)
+          .maybeSingle(),
+      ]);
+
+      // Discard results if a newer fetch has started
+      if (fetchIdRef.current !== currentFetchId) return;
+
+      if (balanceResult.error) throw balanceResult.error;
+      if (depositsResult.error) throw depositsResult.error;
+      if (withdrawalsResult.error) throw withdrawalsResult.error;
+
+      const rawBalance = balanceResult.data;
+      const balanceData: SafeBalanceSummary | null = rawBalance &&
+        typeof rawBalance === 'object' && 'opening_balance' in rawBalance
+        ? rawBalance as SafeBalanceSummary
+        : null;
       setSafeBalance(balanceData || {
         opening_balance: 0,
         total_deposits: 0,
@@ -59,100 +138,22 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
         closing_balance: 0,
       });
 
-      const { data: transactions, error: transactionsError } = await supabase
-        .from('cash_transactions')
-        .select(`
-          *,
-          created_by:employees!cash_transactions_created_by_id_fkey (
-            id,
-            name:legal_name
-          ),
-          approved_by:employees!cash_transactions_manager_approved_by_id_fkey (
-            id,
-            name:legal_name
-          )
-        `)
-        .eq('store_id', selectedStoreId)
-        .eq('date', selectedDate)
-        .in('transaction_type', ['cash_out', 'hq_deposit'])
-        .eq('category', 'Safe Deposit')
-        .order('created_at', { ascending: false });
-
-      if (transactionsError) throw transactionsError;
-
-      const deposits = (transactions || []).map(t => ({
+      const deposits = (depositsResult.data || []).map(t => ({
         ...t,
         created_by_name: t.created_by?.name,
         manager_approved_by_name: t.approved_by?.name,
       }));
-
       setSafeDeposits(deposits);
 
-      const { data: withdrawalTransactions, error: withdrawalsError } = await supabase
-        .from('cash_transactions')
-        .select(`
-          *,
-          created_by:employees!cash_transactions_created_by_id_fkey (
-            id,
-            name:legal_name
-          ),
-          approved_by:employees!cash_transactions_manager_approved_by_id_fkey (
-            id,
-            name:legal_name
-          )
-        `)
-        .eq('store_id', selectedStoreId)
-        .eq('date', selectedDate)
-        .eq('transaction_type', 'cash_payout')
-        .in('category', ['Payroll', 'Tip Payout', 'Headquarter Deposit', 'Other'])
-        .order('created_at', { ascending: false });
-
-      if (withdrawalsError) throw withdrawalsError;
-
-      const withdrawals = (withdrawalTransactions || []).map(t => ({
+      const withdrawals = (withdrawalsResult.data || []).map(t => ({
         ...t,
         created_by_name: t.created_by?.name,
         manager_approved_by_name: t.approved_by?.name,
       }));
-
       setSafeWithdrawals(withdrawals);
 
-      // Load pending change proposals for this store
-      const allTransactionIds = [
-        ...deposits.map(d => d.id),
-        ...withdrawals.map(w => w.id),
-      ];
-
-      if (allTransactionIds.length > 0) {
-        const { data: proposals } = await supabase
-          .from('cash_transaction_change_proposals')
-          .select('cash_transaction_id')
-          .in('cash_transaction_id', allTransactionIds)
-          .eq('status', 'pending');
-
-        const pendingIds = new Set((proposals || []).map(p => p.cash_transaction_id));
-        setPendingProposals(pendingIds);
-      } else {
-        setPendingProposals(new Set());
-      }
-
-      await supabase.rpc('save_safe_balance_snapshot', {
-        p_store_id: selectedStoreId,
-        p_date: selectedDate,
-        p_employee_id: session.employee_id,
-      });
-
-      const previousDate = new Date(selectedDate + 'T12:00:00');
-      previousDate.setDate(previousDate.getDate() - 1);
-      const prevDateStr = previousDate.toISOString().split('T')[0];
-
-      const { data: prevSnapshot } = await supabase
-        .from('safe_balance_history')
-        .select('closing_balance, date')
-        .eq('store_id', selectedStoreId)
-        .eq('date', prevDateStr)
-        .maybeSingle();
-
+      // Balance warning check
+      const prevSnapshot = prevSnapshotResult.data;
       if (balanceData && prevSnapshot) {
         const expectedOpening = parseFloat(prevSnapshot.closing_balance.toString());
         const actualOpening = parseFloat(balanceData.opening_balance.toString());
@@ -168,11 +169,46 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
       } else {
         setBalanceWarning(null);
       }
+
+      // PHASE 2: Pending proposals (depends on deposits + withdrawals)
+      const allTransactionIds = [
+        ...deposits.map(d => d.id),
+        ...withdrawals.map(w => w.id),
+      ];
+
+      if (allTransactionIds.length > 0) {
+        const { data: proposals } = await supabase
+          .from('cash_transaction_change_proposals')
+          .select('cash_transaction_id')
+          .in('cash_transaction_id', allTransactionIds)
+          .eq('status', 'pending');
+
+        if (fetchIdRef.current !== currentFetchId) return;
+
+        const pendingIds = new Set((proposals || []).map(p => p.cash_transaction_id));
+        setPendingProposals(pendingIds);
+      } else {
+        setPendingProposals(new Set());
+      }
+
+      // Fire-and-forget: save snapshot (non-blocking write)
+      supabase.rpc('save_safe_balance_snapshot', {
+        p_store_id: selectedStoreId,
+        p_date: selectedDate,
+        p_employee_id: session.employee_id,
+      }).then(null, (err: unknown) => {
+        console.error('Failed to save safe balance snapshot:', err);
+      });
+
     } catch (error) {
-      console.error('Failed to load safe balance data:', error);
-      showToast('Failed to load safe balance data', 'error');
+      if (fetchIdRef.current === currentFetchId) {
+        console.error('Failed to load safe balance data:', error);
+        showToast('Failed to load safe balance data', 'error');
+      }
     } finally {
-      setLoadingSafeBalance(false);
+      if (fetchIdRef.current === currentFetchId) {
+        setLoadingSafeBalance(false);
+      }
     }
   }
 

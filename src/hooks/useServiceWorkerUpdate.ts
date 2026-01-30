@@ -44,12 +44,12 @@ export function useServiceWorkerUpdate() {
     },
   });
 
-  const handleRefresh = () => {
+  const handleUpdate = () => {
     updateServiceWorker(true);
   };
 
   return {
     hasNewVersion: needRefresh,
-    handleRefresh,
+    handleUpdate,
   };
 }
