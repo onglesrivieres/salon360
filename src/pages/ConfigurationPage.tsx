@@ -74,7 +74,7 @@ function formatMinutes(minutes: number): string {
 
 function getDynamicDisplayName(setting: AppSetting, allSettings: AppSetting[]): string {
   if (setting.setting_key === 'auto_approve_after_48_hours') {
-    const managerMinutesSetting = allSettings.find(s => s.setting_key === 'auto_approval_minutes_manager');
+    const managerMinutesSetting = allSettings.find(s => s.setting_key === 'manager_approval_minutes');
     if (managerMinutesSetting && typeof managerMinutesSetting.setting_value === 'number') {
       const timeStr = formatMinutes(managerMinutesSetting.setting_value);
       return `Auto-Approve After ${timeStr.charAt(0).toUpperCase() + timeStr.slice(1)}`;
@@ -233,7 +233,6 @@ export function ConfigurationPage() {
         // Auto-initialize with 'full' preset instead of showing wizard
         const { error: initError } = await supabase.rpc('initialize_store_settings', {
           p_store_id: selectedStoreId,
-          p_preset: 'full',
         });
 
         if (initError) {
@@ -331,7 +330,7 @@ export function ConfigurationPage() {
     }
 
     // Validate range for auto_approval_minutes and auto_approval_minutes_manager
-    if (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') {
+    if (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'manager_approval_minutes') {
       if (newValue < 10 || newValue > 10080) {
         showToast(t('config.valueBetweenMinutes'), 'error');
         return;
@@ -835,7 +834,46 @@ export function ConfigurationPage() {
                               isEnabled={setting.setting_value}
                             />
                           </div>
-                          {setting.setting_key === 'store_timezone' || setting.setting_key === 'timezone' ? (
+                          {setting.setting_key === 'customer_fields' ? (
+                            <div className="flex flex-col gap-3">
+                              {(() => {
+                                const fields = typeof setting.setting_value === 'object' && setting.setting_value !== null
+                                  ? setting.setting_value as Record<string, { required: boolean; visible: boolean }>
+                                  : { name: { required: false, visible: true }, phone: { required: false, visible: true } };
+                                return Object.entries(fields).map(([fieldName, fieldConfig]) => (
+                                  <div key={fieldName} className="flex items-center gap-4 bg-gray-50 rounded-lg p-3">
+                                    <span className="text-sm font-medium text-gray-700 w-20 capitalize">{fieldName}</span>
+                                    <label className="flex items-center gap-2 text-sm text-gray-600">
+                                      <input
+                                        type="checkbox"
+                                        checked={fieldConfig.visible}
+                                        onChange={(e) => {
+                                          const newFields = { ...fields, [fieldName]: { ...fieldConfig, visible: e.target.checked } };
+                                          updateSetting(setting, newFields as unknown as boolean | string | number);
+                                        }}
+                                        disabled={!canManageSettings}
+                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                      />
+                                      Visible
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm text-gray-600">
+                                      <input
+                                        type="checkbox"
+                                        checked={fieldConfig.required}
+                                        onChange={(e) => {
+                                          const newFields = { ...fields, [fieldName]: { ...fieldConfig, required: e.target.checked } };
+                                          updateSetting(setting, newFields as unknown as boolean | string | number);
+                                        }}
+                                        disabled={!canManageSettings || !fieldConfig.visible}
+                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+                                      />
+                                      Required
+                                    </label>
+                                  </div>
+                                ));
+                              })()}
+                            </div>
+                          ) : setting.setting_key === 'store_timezone' || setting.setting_key === 'timezone' ? (
                             <select
                               value={setting.setting_value as string}
                               onChange={(e) => handleStringChange(setting, e.target.value)}
@@ -868,12 +906,12 @@ export function ConfigurationPage() {
                                     }
                                   }}
                                   min={
-                                    (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10 :
+                                    (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'manager_approval_minutes') ? 10 :
                                     setting.setting_key === 'violation_min_votes_required' ? 1 :
                                     setting.setting_key === 'small_service_threshold' ? 0 : undefined
                                   }
                                   max={
-                                    (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') ? 10080 :
+                                    (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'manager_approval_minutes') ? 10080 :
                                     setting.setting_key === 'violation_min_votes_required' ? 10 :
                                     setting.setting_key === 'small_service_threshold' ? 500 : undefined
                                   }
@@ -885,7 +923,7 @@ export function ConfigurationPage() {
                                    setting.setting_key === 'small_service_threshold' ? 'dollars' : 'minutes'}
                                 </span>
                               </div>
-                              {(setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'auto_approval_minutes_manager') && (
+                              {(setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'manager_approval_minutes') && (
                                 <>
                                   <span className="text-xs text-gray-500">
                                     {formatMinutes(setting.setting_value as number)}

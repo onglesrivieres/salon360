@@ -210,15 +210,42 @@ export function getStorageService(config: StorageConfig): StorageService {
 // ============================================================================
 
 /**
- * Test R2 connection by attempting to list files
+ * Test credentials for R2 connection (passed directly, not from database)
  */
-export async function testR2Connection(storeId: string): Promise<{ success: boolean; error?: string }> {
+export interface R2TestCredentials {
+  accountId: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  bucketName: string;
+}
+
+/**
+ * Test R2 connection by attempting to access the bucket
+ * @param storeId - The store ID (required for request context)
+ * @param credentials - Optional credentials to test. If provided, tests these credentials directly.
+ *                      If not provided, tests credentials stored in the database.
+ */
+export async function testR2Connection(
+  storeId: string,
+  credentials?: R2TestCredentials
+): Promise<{ success: boolean; error?: string }> {
   try {
+    const body: Record<string, unknown> = {
+      action: 'test',
+      storeId,
+    };
+
+    // If credentials are provided, include them in the request body
+    // This allows testing credentials before they are saved to the database
+    if (credentials) {
+      body.accountId = credentials.accountId;
+      body.accessKeyId = credentials.accessKeyId;
+      body.secretAccessKey = credentials.secretAccessKey;
+      body.bucketName = credentials.bucketName;
+    }
+
     const { data, error } = await supabase.functions.invoke('r2-storage', {
-      body: {
-        action: 'test',
-        storeId,
-      },
+      body,
     });
 
     if (error) {

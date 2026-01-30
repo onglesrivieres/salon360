@@ -393,7 +393,7 @@ export function PendingApprovalsPage() {
         supabase.rpc('get_pending_inventory_approvals', { p_employee_id: session.employee_id, p_store_id: selectedStoreId }),
         supabase.rpc('get_pending_cash_transaction_approvals', { p_store_id: selectedStoreId }),
         canReviewTransactionChanges ? supabase.rpc('get_pending_cash_transaction_change_proposals', { p_store_id: selectedStoreId }) : Promise.resolve({ data: [] }),
-        supabase.from('attendance_change_proposals').select('id').eq('store_id', selectedStoreId).eq('status', 'pending'),
+        supabase.from('attendance_change_proposals').select('id, attendance_records!inner(store_id)').eq('attendance_records.store_id', selectedStoreId).eq('status', 'pending'),
         supabase.rpc('get_violation_reports_for_approval', { p_store_id: selectedStoreId }),
         canReviewReopenRequests ? supabase.rpc('get_pending_ticket_reopen_requests', { p_store_id: selectedStoreId }) : Promise.resolve({ data: [] }),
       ]);
