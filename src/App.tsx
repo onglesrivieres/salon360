@@ -148,7 +148,7 @@ function AppContent() {
 
   // Determine if check-in required modal should be shown
   const shouldShowCheckInRequiredModal =
-    (session?.role_permission === 'Receptionist' || session?.role_permission === 'Supervisor') &&
+    (session?.role_permission === 'Receptionist' || session?.role_permission === 'Supervisor' || session?.role_permission === 'Cashier') &&
     !checkInStatus.isLoading &&
     !checkInStatus.isCheckedIn &&
     !showStoreModal; // Don't show while store selection is open

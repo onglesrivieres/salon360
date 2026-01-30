@@ -512,7 +512,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
       }
 
       const allEmployees = (employeesRes.data || []).filter(emp =>
-        emp.role.includes('Technician') && !emp.role.includes('Cashier')
+        (emp.role.includes('Technician') || emp.role.includes('Receptionist')) && !emp.role.includes('Cashier')
       );
       const storeFilteredEmployees = selectedStoreId
         ? allEmployees.filter(emp => !emp.store_id || emp.store_id === selectedStoreId)

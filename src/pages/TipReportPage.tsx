@@ -83,7 +83,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   const [showDetails, setShowDetails] = useState(true);
   const { showToast } = useToast();
   const { session, selectedStoreId, t } = useAuth();
-  const isReceptionist = session?.role_permission === 'Receptionist';
+  const isReceptionist = session?.role_permission === 'Receptionist' || session?.role_permission === 'Cashier';
 
   // State for responsive view mode dropdown
   const [isViewModeDropdownOpen, setIsViewModeDropdownOpen] = useState(false);

@@ -1024,7 +1024,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
               </button>
             </div>
           )}
-          {session?.role_permission === 'Receptionist' && viewMode !== 'period' && (
+          {(session?.role_permission === 'Receptionist' || session?.role_permission === 'Cashier') && viewMode !== 'period' && (
             <div className="flex items-center gap-2 flex-1 md:flex-initial">
               <input
                 type="date"

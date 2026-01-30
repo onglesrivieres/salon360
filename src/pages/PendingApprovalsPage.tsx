@@ -133,9 +133,9 @@ export function PendingApprovalsPage() {
   const isCashier = session?.role_permission === 'Cashier';
 
   // Access levels
-  const canViewAllRecords = isManagement || isReceptionist;
+  const canViewAllRecords = isManagement || isReceptionist || isCashier;
   const canViewOwnRecordsOnly = isTechnician && !isManagement;
-  const hasPageAccess = isManagement || isReceptionist || isTechnician;
+  const hasPageAccess = isManagement || isReceptionist || isTechnician || isCashier;
   const canTakeActions = isManagement; // Only management can approve/reject
 
   const canViewQueueHistory = effectiveRole && Permissions.queue.canViewRemovalHistory(effectiveRole);
@@ -144,9 +144,6 @@ export function PendingApprovalsPage() {
 
   // Helper function to determine which tabs each role can see
   function canViewTab(tabKey: TabType): boolean {
-    // Cashiers blocked from all tabs
-    if (isCashier) return false;
-
     // Supervisor: only Cash tab (existing behavior)
     if (isSupervisor) return tabKey === 'cash';
 

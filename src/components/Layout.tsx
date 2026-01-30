@@ -67,7 +67,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     session?.role_permission
   );
   const isCheckedInEmployee =
-    ['Receptionist', 'Supervisor', 'Technician'].includes(session?.role_permission ?? '') &&
+    ['Receptionist', 'Supervisor', 'Technician', 'Cashier'].includes(session?.role_permission ?? '') &&
     checkInStatus.isCheckedIn;
   const canSwitchStores = !isCheckedInEmployee;
 
