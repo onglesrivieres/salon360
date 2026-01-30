@@ -34,7 +34,13 @@ export function StorageConfigSection({
     setTestResult(null);
 
     try {
-      const result = await testR2Connection(storeId);
+      // Pass credentials directly to test them before they are saved to the database
+      const result = await testR2Connection(storeId, {
+        accountId: r2AccountId,
+        accessKeyId: r2AccessKeyId,
+        secretAccessKey: r2SecretAccessKey,
+        bucketName: r2BucketName,
+      });
       setTestResult(result);
     } catch (err) {
       setTestResult({ success: false, error: 'Connection test failed' });

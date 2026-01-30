@@ -213,6 +213,35 @@ Deno.serve(async (req: Request) => {
       path = body.path;
       paths = body.paths;
       prefix = body.prefix;
+
+      // For 'test' action, check if credentials are provided directly in the request body
+      // This allows testing credentials before they are saved to the database
+      if (action === 'test' && body.accountId && body.accessKeyId && body.secretAccessKey && body.bucketName) {
+        const testConfig: R2Config = {
+          accountId: String(body.accountId).replace(/^"|"$/g, ''),
+          accessKeyId: String(body.accessKeyId).replace(/^"|"$/g, ''),
+          secretAccessKey: String(body.secretAccessKey).replace(/^"|"$/g, ''),
+          bucketName: String(body.bucketName).replace(/^"|"$/g, ''),
+        };
+
+        const testS3Client = createS3Client(testConfig);
+        const result = await handleTest(testS3Client, testConfig.bucketName);
+
+        const duration = Date.now() - startTime;
+        console.log(`[${new Date().toISOString()}] R2 test (direct credentials) completed in ${duration}ms`);
+
+        return new Response(
+          JSON.stringify({
+            ...result,
+            duration_ms: duration,
+            timestamp: new Date().toISOString(),
+          }),
+          {
+            status: result.success ? 200 : 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
     }
 
     if (!storeId) {
