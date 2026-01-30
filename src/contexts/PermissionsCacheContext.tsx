@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Role } from '../lib/permissions';
 
@@ -21,7 +21,7 @@ interface PermissionsCacheContextType {
   getCachedPermissions: (storeId: string) => RolePermissions | null;
   loadPermissions: (storeId: string, forceRefresh?: boolean) => Promise<RolePermissions>;
   invalidateCache: (storeId?: string) => void;
-  isLoading: boolean;
+  updateCacheEntry: (storeId: string, role: Role, permissionKey: string, state: PermissionState) => void;
 }
 
 const PermissionsCacheContext = createContext<PermissionsCacheContextType | undefined>(undefined);
@@ -30,8 +30,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const ALL_ROLES: Role[] = ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Cashier'];
 
 export function PermissionsCacheProvider({ children }: { children: React.ReactNode }) {
-  const [cache, setCache] = useState<Map<string, CacheEntry>>(new Map());
-  const [isLoading, setIsLoading] = useState(false);
+  const cacheRef = useRef<Map<string, CacheEntry>>(new Map());
   const loadingRef = useRef<Map<string, Promise<RolePermissions>>>(new Map());
 
   const isCacheValid = useCallback((entry: CacheEntry): boolean => {
@@ -39,12 +38,12 @@ export function PermissionsCacheProvider({ children }: { children: React.ReactNo
   }, []);
 
   const getCachedPermissions = useCallback((storeId: string): RolePermissions | null => {
-    const entry = cache.get(storeId);
+    const entry = cacheRef.current.get(storeId);
     if (entry && isCacheValid(entry)) {
       return entry.data;
     }
     return null;
-  }, [cache, isCacheValid]);
+  }, [isCacheValid]);
 
   const loadPermissions = useCallback(async (storeId: string, forceRefresh = false): Promise<RolePermissions> => {
     // Return cached data if valid and not forcing refresh
@@ -63,7 +62,6 @@ export function PermissionsCacheProvider({ children }: { children: React.ReactNo
 
     // Create new loading promise
     const loadPromise = (async () => {
-      setIsLoading(true);
       try {
         // Try to use the optimized bulk query function first
         const { data: bulkData, error: bulkError } = await supabase.rpc('get_all_roles_permissions', {
@@ -91,12 +89,12 @@ export function PermissionsCacheProvider({ children }: { children: React.ReactNo
             }
           });
 
-          // Cache the result
-          setCache(prev => new Map(prev).set(storeId, {
+          // Cache the result (ref mutation, no re-render)
+          cacheRef.current.set(storeId, {
             data: rolePermissions,
             timestamp: Date.now(),
             storeId
-          }));
+          });
 
           return rolePermissions;
         }
@@ -131,19 +129,18 @@ export function PermissionsCacheProvider({ children }: { children: React.ReactNo
           rolePermissions.set(role, permMap);
         });
 
-        // Cache the result
-        setCache(prev => new Map(prev).set(storeId, {
+        // Cache the result (ref mutation, no re-render)
+        cacheRef.current.set(storeId, {
           data: rolePermissions,
           timestamp: Date.now(),
           storeId
-        }));
+        });
 
         return rolePermissions;
       } catch (error) {
         console.error('Error loading permissions:', error);
         throw error;
       } finally {
-        setIsLoading(false);
         loadingRef.current.delete(storeId);
       }
     })();
@@ -156,13 +153,19 @@ export function PermissionsCacheProvider({ children }: { children: React.ReactNo
 
   const invalidateCache = useCallback((storeId?: string) => {
     if (storeId) {
-      setCache(prev => {
-        const next = new Map(prev);
-        next.delete(storeId);
-        return next;
-      });
+      cacheRef.current.delete(storeId);
     } else {
-      setCache(new Map());
+      cacheRef.current.clear();
+    }
+  }, []);
+
+  const updateCacheEntry = useCallback((storeId: string, role: Role, permissionKey: string, state: PermissionState) => {
+    const entry = cacheRef.current.get(storeId);
+    if (entry) {
+      const rolePerms = entry.data.get(role);
+      if (rolePerms) {
+        rolePerms.set(permissionKey, state);
+      }
     }
   }, []);
 
@@ -172,7 +175,7 @@ export function PermissionsCacheProvider({ children }: { children: React.ReactNo
         getCachedPermissions,
         loadPermissions,
         invalidateCache,
-        isLoading
+        updateCacheEntry
       }}
     >
       {children}
