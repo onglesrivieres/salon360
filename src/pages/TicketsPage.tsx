@@ -350,7 +350,9 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     return session.role.includes('Receptionist') ||
            session.role.includes('Admin') ||
            session.role.includes('Manager') ||
-           session.role.includes('Owner');
+           session.role.includes('Owner') ||
+           session.role.includes('Supervisor') ||
+           session.role.includes('Cashier');
   }
 
   function getGrandTotalCollected(ticket: any): number {
