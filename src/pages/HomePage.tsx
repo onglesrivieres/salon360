@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ClipboardCheck, UserCheck, FileText, Building2 } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { PinModal } from '../components/PinModal';
@@ -9,7 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { supabase } from '../lib/supabase';
 import { authenticateWithPIN } from '../lib/auth';
-import { initializeVersionCheck, startVersionCheck } from '../lib/version';
+import { useServiceWorkerUpdate } from '../hooks/useServiceWorkerUpdate';
 import { getCurrentDateEST } from '../lib/timezone';
 
 interface HomePageProps {
@@ -34,24 +34,12 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     display_name: string;
     pay_type: string;
   } | null>(null);
-  const [hasNewVersion, setHasNewVersion] = useState(false);
+  const { hasNewVersion, handleRefresh } = useServiceWorkerUpdate();
   const [showStoreSelection, setShowStoreSelection] = useState(false);
   const [availableStoreIds, setAvailableStoreIds] = useState<string[]>([]);
   const [storeSelectionContext, setStoreSelectionContext] = useState<'checkin' | 'checkout' | 'ready' | 'general'>('general');
   const [pendingEmployeeId, setPendingEmployeeId] = useState<string | null>(null);
   const [selectedStoreName, setSelectedStoreName] = useState<string>('');
-
-  useEffect(() => {
-    initializeVersionCheck();
-
-    const stopVersionCheck = startVersionCheck(() => {
-      setHasNewVersion(true);
-    });
-
-    return () => {
-      stopVersionCheck();
-    };
-  }, []);
 
   const handleActionClick = (action: 'checkin' | 'checkout' | 'ready' | 'report') => {
     setSelectedAction(action);
@@ -514,10 +502,6 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     if (selectedAction === 'ready') return `${t('home.enterPinFor')} ${t('technician.ready')}`;
     if (selectedAction === 'report') return `${t('home.enterPinFor')} ${t('technician.report')}`;
     return t('auth.enterPIN');
-  };
-
-  const handleRefresh = () => {
-    window.location.reload();
   };
 
   return (

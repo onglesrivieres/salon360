@@ -6,7 +6,7 @@ import { canAccessPage, Permissions } from '../lib/permissions';
 import { supabase, Store, TechnicianWithQueue, WorkingEmployee, PendingViolationResponse } from '../lib/supabase';
 import { NotificationBadge } from './ui/NotificationBadge';
 import { VersionNotification } from './VersionNotification';
-import { initializeVersionCheck, startVersionCheck } from '../lib/version';
+import { useServiceWorkerUpdate } from '../hooks/useServiceWorkerUpdate';
 import { Modal } from './ui/Modal';
 import { TechnicianQueue } from './TechnicianQueue';
 import { getCurrentDateEST } from '../lib/timezone';
@@ -31,7 +31,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
-  const [hasNewVersion, setHasNewVersion] = useState(false);
+  const { hasNewVersion, handleRefresh } = useServiceWorkerUpdate();
   const [isOpeningCashMissing, setIsOpeningCashMissing] = useState(false);
   const [showQueueModal, setShowQueueModal] = useState(false);
   const [sortedTechnicians, setSortedTechnicians] = useState<TechnicianWithQueue[]>([]);
@@ -202,12 +202,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   }, []);
 
   useEffect(() => {
-    initializeVersionCheck();
-
-    const stopVersionCheck = startVersionCheck(() => {
-      setHasNewVersion(true);
-    });
-
     const handleOpeningCashUpdate = () => {
       checkOpeningCash();
     };
@@ -215,7 +209,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     window.addEventListener('openingCashUpdated', handleOpeningCashUpdate);
 
     return () => {
-      stopVersionCheck();
       window.removeEventListener('openingCashUpdated', handleOpeningCashUpdate);
     };
   }, [selectedStoreId]);
@@ -390,10 +383,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     setIsStoreDropdownOpen(false);
     setShowQueueModal(false);
   }
-
-  const handleRefresh = () => {
-    window.location.reload();
-  };
 
   async function fetchTechnicianQueue() {
     if (!selectedStoreId) return;
