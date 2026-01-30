@@ -801,8 +801,12 @@ export function ConfigurationPage() {
                     <h3 className="font-semibold text-gray-900">{category}</h3>
                   </div>
                   <div className="divide-y divide-gray-200">
-                    {categorySettings.map((setting) => (
-                      <div key={setting.id} className="px-6 py-4">
+                    {categorySettings.map((setting) => {
+                      const isDisabledByParent =
+                        setting.setting_key === 'small_service_threshold' &&
+                        settingsMap.get('enable_small_service')?.setting_value === false;
+                      return (
+                      <div key={setting.id} className={`px-6 py-4${isDisabledByParent ? ' opacity-50' : ''}`}>
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
@@ -917,6 +921,7 @@ export function ConfigurationPage() {
                                   }
                                   step="1"
                                   className="w-28 px-3 py-2"
+                                  disabled={!canManageSettings || isDisabledByParent}
                                 />
                                 <span className="text-sm text-gray-600">
                                   {setting.setting_key === 'violation_min_votes_required' ? 'votes' :
@@ -986,10 +991,13 @@ export function ConfigurationPage() {
                                     <button
                                       key={preset.value}
                                       onClick={() => handleNumericChange(setting, preset.value)}
+                                      disabled={isDisabledByParent}
                                       className={`text-xs px-2 py-1 rounded transition-colors ${
-                                        setting.setting_value === preset.value
-                                          ? 'bg-blue-100 text-blue-700 font-medium'
-                                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        isDisabledByParent
+                                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                          : setting.setting_value === preset.value
+                                            ? 'bg-blue-100 text-blue-700 font-medium'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                       }`}
                                     >
                                       {preset.label}
@@ -1022,7 +1030,8 @@ export function ConfigurationPage() {
                           )}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ))}
