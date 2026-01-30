@@ -999,34 +999,22 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   function handlePaymentMethodClick(method: 'Cash' | 'Card' | 'Mixed') {
     const subtotal = calculateSubtotal();
     const subtotalStr = subtotal > 0 ? subtotal.toFixed(2) : '';
+    const existingData = hasExistingPaymentData();
 
-    if (hasExistingPaymentData()) {
-      setTempPaymentData({
-        payment_cash: formData.payment_cash || '0',
-        payment_card: formData.payment_card || '0',
-        payment_gift_card: formData.payment_gift_card || '0',
-        tip_customer_cash: formData.tip_customer_cash || '0',
-        tip_customer_card: formData.tip_customer_card || '0',
-        tip_receptionist: formData.tip_receptionist || '0',
-        discount_amount: formData.discount_amount || '0',
-        discount_percentage: formData.discount_percentage || '0',
-        discount_percentage_cash: formData.discount_percentage_cash || '0',
-        discount_amount_cash: formData.discount_amount_cash || '0',
-      });
-    } else {
-      setTempPaymentData({
-        payment_cash: method === 'Cash' ? subtotalStr : '',
-        payment_card: method === 'Card' ? subtotalStr : '',
-        payment_gift_card: '',
-        tip_customer_cash: '',
-        tip_customer_card: '',
-        tip_receptionist: '',
-        discount_amount: '',
-        discount_percentage: '',
-        discount_percentage_cash: '',
-        discount_amount_cash: '',
-      });
-    }
+    setTempPaymentData({
+      // Always prefill payment with current subtotal for the selected method
+      payment_cash: method === 'Cash' ? subtotalStr : (existingData ? (formData.payment_cash || '0') : ''),
+      payment_card: method === 'Card' ? subtotalStr : (existingData ? (formData.payment_card || '0') : ''),
+      payment_gift_card: existingData ? (formData.payment_gift_card || '0') : '',
+      // Preserve existing tips and discounts
+      tip_customer_cash: existingData ? (formData.tip_customer_cash || '0') : '',
+      tip_customer_card: existingData ? (formData.tip_customer_card || '0') : '',
+      tip_receptionist: existingData ? (formData.tip_receptionist || '0') : '',
+      discount_amount: existingData ? (formData.discount_amount || '0') : '',
+      discount_percentage: existingData ? (formData.discount_percentage || '0') : '',
+      discount_percentage_cash: existingData ? (formData.discount_percentage_cash || '0') : '',
+      discount_amount_cash: existingData ? (formData.discount_amount_cash || '0') : '',
+    });
     setFormData({ ...formData, payment_method: method });
     setShowPaymentModal(true);
   }
@@ -3090,7 +3078,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                     disabled={isTicketClosed || isReadOnly}
                   />
                 </div>
-                {formData.payment_method === 'Cash' && tempPaymentData.payment_cash && (
+                {formData.payment_method === 'Cash' && tempPaymentData.payment_cash && parseFloat(tempPaymentData.payment_cash) === calculateSubtotal() && calculateSubtotal() > 0 && (
                   <p className="text-xs text-gray-500 mt-1">Prefilled with service subtotal</p>
                 )}
               </div>
@@ -3116,7 +3104,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                     disabled={isTicketClosed || isReadOnly}
                   />
                 </div>
-                {formData.payment_method === 'Card' && tempPaymentData.payment_card && (
+                {formData.payment_method === 'Card' && tempPaymentData.payment_card && parseFloat(tempPaymentData.payment_card) === calculateSubtotal() && calculateSubtotal() > 0 && (
                   <p className="text-xs text-gray-500 mt-1">Prefilled with service subtotal</p>
                 )}
               </div>
