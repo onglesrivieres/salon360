@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AlertTriangle, Search, RotateCcw, ChevronDown, ChevronRight, Loader2, CheckSquare, Square, AlertCircle, ChevronLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -35,77 +35,79 @@ const ROLE_COLORS: Record<Role, string> = {
 
 export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatrixProps) {
   const { session, selectedStoreId } = useAuth();
-  const { getCachedPermissions, loadPermissions, invalidateCache } = usePermissionsCache();
+  const { getCachedPermissions, loadPermissions, invalidateCache, updateCacheEntry } = usePermissionsCache();
   const [allPermissions, setAllPermissions] = useState<RolePermissions>(new Map());
   const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set(Object.keys(getPermissionsByModule())));
   const [hasChanges, setHasChanges] = useState(false);
   const [currentPages, setCurrentPages] = useState<Map<string, number>>(new Map());
+  const mountedRef = useRef(true);
 
   const groupedPermissions = getPermissionsByModule();
 
-  const loadAllPermissionsWithCache = useCallback(async () => {
-    if (!selectedStoreId) {
-      console.log('[Permissions] No storeId available, skipping load');
-      return;
-    }
+  // Load permissions once when storeId changes
+  useEffect(() => {
+    mountedRef.current = true;
 
-    console.log('[Permissions] Loading permissions for store:', selectedStoreId);
-    setLoadError(null);
+    const loadData = async () => {
+      if (!selectedStoreId) return;
 
-    // Try to get cached data first (stale-while-revalidate pattern)
-    const cached = getCachedPermissions(selectedStoreId);
-    console.log('[Permissions] Cache check:', cached ? `Found ${cached.size} roles` : 'No cache');
+      setLoadError(null);
 
-    if (cached && cached.size > 0) {
-      console.log('[Permissions] Using cached data');
-      setAllPermissions(cached);
-      setLoading(false);
-
-      // Refresh in background
-      setIsRefreshing(true);
-      try {
-        console.log('[Permissions] Refreshing in background');
-        const fresh = await loadPermissions(selectedStoreId, true);
-        console.log('[Permissions] Fresh data loaded:', fresh.size, 'roles');
-        setAllPermissions(fresh);
-      } catch (error) {
-        console.error('[Permissions] Error refreshing permissions:', error);
-      } finally {
-        setIsRefreshing(false);
+      // Check cache first
+      const cached = getCachedPermissions(selectedStoreId);
+      if (cached && cached.size > 0) {
+        setAllPermissions(cached);
+        setLoading(false);
+        return;
       }
-      return;
-    }
 
-    // No cache, show loading state
-    setLoading(true);
+      // No cache, load from database
+      setLoading(true);
+      try {
+        const permissions = await loadPermissions(selectedStoreId);
+        if (!mountedRef.current) return;
+
+        if (!permissions || permissions.size === 0) {
+          setLoadError('No permissions data found. Please contact support.');
+        } else {
+          setAllPermissions(permissions);
+        }
+      } catch (error) {
+        if (!mountedRef.current) return;
+        console.error('[Permissions] Error loading permissions:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load permissions';
+        setLoadError(errorMessage);
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [selectedStoreId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reload fresh from DB (used by bulk operations)
+  const reloadFromDatabase = useCallback(async () => {
+    if (!selectedStoreId) return;
     try {
-      console.log('[Permissions] No cache, loading from database');
-      const permissions = await loadPermissions(selectedStoreId);
-      console.log('[Permissions] Loaded from database:', permissions.size, 'roles');
-
-      if (!permissions || permissions.size === 0) {
-        console.warn('[Permissions] No permissions loaded - empty result');
-        setLoadError('No permissions data found. Please contact support.');
-      } else {
+      invalidateCache(selectedStoreId);
+      const permissions = await loadPermissions(selectedStoreId, true);
+      if (mountedRef.current) {
         setAllPermissions(permissions);
       }
     } catch (error) {
-      console.error('[Permissions] Error loading permissions:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load permissions';
-      setLoadError(errorMessage);
-    } finally {
-      setLoading(false);
+      console.error('[Permissions] Error reloading permissions:', error);
     }
-  }, [selectedStoreId, getCachedPermissions, loadPermissions]);
-
-  useEffect(() => {
-    loadAllPermissionsWithCache();
-  }, [loadAllPermissionsWithCache]);
+  }, [selectedStoreId, invalidateCache, loadPermissions]);
 
   useEffect(() => {
     setCurrentPages(new Map());
@@ -118,17 +120,18 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
     setSaving(prev => new Set(prev).add(cellKey));
 
     const newValue = !currentValue;
+    const newState: PermissionState = {
+      permission_key: permissionKey,
+      is_enabled: newValue,
+      is_default: false,
+      updated_at: new Date().toISOString()
+    };
 
     // Optimistic update
     setAllPermissions(prev => {
       const next = new Map(prev);
       const rolePerms = new Map(next.get(role) || new Map());
-      rolePerms.set(permissionKey, {
-        permission_key: permissionKey,
-        is_enabled: newValue,
-        is_default: false,
-        updated_at: new Date().toISOString()
-      });
+      rolePerms.set(permissionKey, newState);
       next.set(role, rolePerms);
       return next;
     });
@@ -146,7 +149,8 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
 
       if (error) throw error;
 
-      invalidateCache(selectedStoreId || undefined);
+      // Update cache entry directly (no invalidation, no re-fetch)
+      updateCacheEntry(selectedStoreId, role, permissionKey, newState);
       onPermissionChange?.();
     } catch (error) {
       console.error('Error updating permission:', error);
@@ -191,8 +195,7 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
         });
       }
 
-      invalidateCache(selectedStoreId || undefined);
-      await loadAllPermissionsWithCache();
+      await reloadFromDatabase();
       setHasChanges(true);
       onPermissionChange?.();
     } catch (error) {
@@ -222,8 +225,7 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
 
       if (error) throw error;
 
-      invalidateCache(selectedStoreId || undefined);
-      await loadAllPermissionsWithCache();
+      await reloadFromDatabase();
       setHasChanges(false);
       onPermissionChange?.();
     } catch (error) {
@@ -237,6 +239,32 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
       });
     }
   };
+
+  const retryLoad = useCallback(() => {
+    if (!selectedStoreId) return;
+    setLoadError(null);
+    setLoading(true);
+    invalidateCache(selectedStoreId);
+    loadPermissions(selectedStoreId, true)
+      .then(permissions => {
+        if (!mountedRef.current) return;
+        if (!permissions || permissions.size === 0) {
+          setLoadError('No permissions data found. Please contact support.');
+        } else {
+          setAllPermissions(permissions);
+        }
+      })
+      .catch(error => {
+        if (!mountedRef.current) return;
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load permissions';
+        setLoadError(errorMessage);
+      })
+      .finally(() => {
+        if (mountedRef.current) {
+          setLoading(false);
+        }
+      });
+  }, [selectedStoreId, invalidateCache, loadPermissions]);
 
   const toggleModule = (module: string) => {
     setExpandedModules(prev => {
@@ -288,7 +316,7 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
     return currentPages.get(module) ?? 1;
   };
 
-  const getTotalPages = (module: string, filteredPerms: PermissionMetadata[]): number => {
+  const getTotalPages = (_module: string, filteredPerms: PermissionMetadata[]): number => {
     return Math.ceil(filteredPerms.length / PERMISSIONS_PER_PAGE);
   };
 
@@ -336,10 +364,7 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
               <p className="text-sm text-red-800 mb-4">{loadError}</p>
               <Button
                 variant="primary"
-                onClick={() => {
-                  setLoadError(null);
-                  loadAllPermissionsWithCache();
-                }}
+                onClick={retryLoad}
               >
                 Retry Loading
               </Button>
@@ -371,7 +396,7 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
             </p>
             <Button
               variant="primary"
-              onClick={() => loadAllPermissionsWithCache()}
+              onClick={retryLoad}
             >
               Refresh
             </Button>
@@ -380,8 +405,6 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
       </div>
     );
   }
-
-  const showRefreshIndicator = isRefreshing && allPermissions.size > 0;
 
   return (
     <div className="space-y-4">
@@ -396,12 +419,6 @@ export function RolePermissionMatrix({ onPermissionChange }: RolePermissionMatri
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        {showRefreshIndicator && (
-          <div className="flex items-center gap-2 text-sm text-blue-600">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Refreshing...</span>
-          </div>
-        )}
       </div>
 
       {hasChanges && (
