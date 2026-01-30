@@ -13,14 +13,14 @@ export function VersionNotification({ onUpdate }: VersionNotificationProps) {
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Download className="w-5 h-5" />
-          <span className="font-medium">{t('newVersionAvailable')}</span>
+          <span className="font-medium">{t('common.newVersionAvailable')}</span>
         </div>
         <button
           onClick={onUpdate}
           className="px-4 py-2 bg-white text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-colors flex items-center gap-2"
         >
           <Download className="w-4 h-4" />
-          {t('updateNow')}
+          {t('common.updateNow')}
         </button>
       </div>
     </div>
