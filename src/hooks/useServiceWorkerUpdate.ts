@@ -45,11 +45,8 @@ export function useServiceWorkerUpdate() {
   });
 
   const handleUpdate = () => {
+    localStorage.setItem('app_just_updated', 'true');
     updateServiceWorker(true);
-    // Safety net: if the "controlling" event doesn't fire within 2s, force reload
-    setTimeout(() => {
-      window.location.reload();
-    }, 2000);
   };
 
   return {

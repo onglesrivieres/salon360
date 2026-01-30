@@ -16,6 +16,7 @@ import { RemoveTechnicianModal } from './RemoveTechnicianModal';
 import { ViolationReportModal } from './ViolationReportModal';
 import { ViolationResponseRibbon } from './ViolationResponseRibbon';
 import { useCheckInStatusCheck } from '../hooks/useCheckInStatusCheck';
+import { useToast } from './ui/Toast';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -53,6 +54,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [employeePayType, setEmployeePayType] = useState<'hourly' | 'daily' | 'commission' | undefined>(undefined);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const { showToast } = useToast();
+
   const canViewAllQueueStatuses = effectiveRole && Permissions.queue.canViewAllQueueStatuses(effectiveRole);
   const canRemoveTechnicians = effectiveRole && Permissions.queue.canRemoveTechnicians(effectiveRole);
   const canReportViolations = session?.employee_id && selectedStoreId;
@@ -67,6 +70,13 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     ['Receptionist', 'Supervisor', 'Technician'].includes(session?.role_permission ?? '') &&
     checkInStatus.isCheckedIn;
   const canSwitchStores = !isCheckedInEmployee;
+
+  useEffect(() => {
+    if (localStorage.getItem('app_just_updated') === 'true') {
+      localStorage.removeItem('app_just_updated');
+      showToast(t('common.updateSuccess'), 'success');
+    }
+  }, []);
 
   useEffect(() => {
     if (selectedStoreId) {
