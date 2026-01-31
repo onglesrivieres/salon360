@@ -62,15 +62,25 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
 
     try {
       const { data, error } = await supabase
-        .from('inventory_items')
-        .select('*')
+        .from('store_inventory_levels')
+        .select('*, item:inventory_items!inner(*)')
         .eq('store_id', selectedStoreId)
-        .eq('is_master_item', true)
         .eq('is_active', true)
-        .order('name');
+        .eq('inventory_items.is_master_item', true)
+        .order('name', { referencedTable: 'inventory_items' });
 
       if (error) throw error;
-      setMasterItems(data || []);
+
+      // Flatten to InventoryItem shape
+      const items = (data || []).map((level: any) => ({
+        ...level.item,
+        store_id: level.store_id,
+        quantity_on_hand: level.quantity_on_hand,
+        unit_cost: level.unit_cost,
+        reorder_level: level.reorder_level,
+        is_active: level.is_active,
+      }));
+      setMasterItems(items);
     } catch (error) {
       console.error('Error fetching master items:', error);
     }
@@ -198,7 +208,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
       setSaving(true);
 
       if (item) {
-        // Update existing item
+        // Update existing item - catalog fields go to inventory_items (global)
         const { error: updateError } = await supabase
           .from('inventory_items')
           .update({
@@ -207,7 +217,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             category: formData.category,
             brand: formData.brand.trim() || null,
             supplier: isMasterItem ? '' : formData.supplier,
-            reorder_level: isMasterItem ? 0 : parseFloat(formData.reorder_level) || 0,
             size: formData.size.trim() || null,
             color_code: formData.color_code.trim() || null,
             is_master_item: isMasterItem,
@@ -217,32 +226,58 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           .eq('id', item.id);
 
         if (updateError) throw updateError;
+
+        // Per-store reorder_level goes to store_inventory_levels
+        if (!isMasterItem) {
+          const { error: levelError } = await supabase
+            .from('store_inventory_levels')
+            .update({
+              reorder_level: parseFloat(formData.reorder_level) || 0,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('store_id', selectedStoreId)
+            .eq('item_id', item.id);
+
+          if (levelError) throw levelError;
+        }
+
         showToast('Item updated successfully', 'success');
       } else {
-        // Create new item
+        // Create new item - global catalog entry (no store_id)
+        // The DB trigger auto-creates store_inventory_levels for all active stores
         const itemData = {
-          store_id: selectedStoreId,
           name: formData.name.trim(),
           description: formData.description.trim(),
           category: formData.category,
           unit: 'piece',
-          unit_cost: 0,
-          quantity_on_hand: 0,
-          reorder_level: isMasterItem ? 0 : parseFloat(formData.reorder_level) || 0,
           brand: formData.brand.trim() || null,
           supplier: isMasterItem ? '' : formData.supplier,
           size: formData.size.trim() || null,
           color_code: formData.color_code.trim() || null,
           is_master_item: isMasterItem,
           parent_id: isSubItem ? selectedParentId : null,
-          is_active: true,
         };
 
-        const { error: insertError } = await supabase
+        const { data: insertedItem, error: insertError } = await supabase
           .from('inventory_items')
-          .insert(itemData);
+          .insert(itemData)
+          .select('id')
+          .single();
 
         if (insertError) throw insertError;
+
+        // Update the reorder_level for the current store (trigger created levels with 0)
+        if (!isMasterItem && insertedItem) {
+          const reorderLevel = parseFloat(formData.reorder_level) || 0;
+          if (reorderLevel > 0) {
+            await supabase
+              .from('store_inventory_levels')
+              .update({ reorder_level: reorderLevel, updated_at: new Date().toISOString() })
+              .eq('store_id', selectedStoreId)
+              .eq('item_id', insertedItem.id);
+          }
+        }
+
         showToast(`${isMasterItem ? 'Master item' : 'Item'} created successfully`, 'success');
       }
 

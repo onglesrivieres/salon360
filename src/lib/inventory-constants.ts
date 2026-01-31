@@ -10,12 +10,12 @@ export const UNITS = [
 ];
 
 export const CATEGORIES = [
-  'Polish',
-  'Tools',
-  'Supplies',
-  'Equipment',
-  'Furniture',
-  'Cleaning',
-  'PPE',
-  'Other',
+  'Manicure & Pedicure Tools',
+  'Nail Polish & Products',
+  'Electric Equipment',
+  'Gel & Acrylic Supplies',
+  'Nail Art Supplies',
+  'Sanitation & Hygiene',
+  'Furniture & Fixtures',
+  'Consumables & Misc',
 ];

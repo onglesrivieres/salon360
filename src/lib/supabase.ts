@@ -416,9 +416,21 @@ export interface ProductPreference {
   updated_at: string;
 }
 
-export interface InventoryItem {
+export interface StoreInventoryLevel {
   id: string;
   store_id: string;
+  item_id: string;
+  quantity_on_hand: number;
+  unit_cost: number;
+  reorder_level: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryItem {
+  id: string;
+  store_id?: string;
   name: string;
   description: string;
   category: string;

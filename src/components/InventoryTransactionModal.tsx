@@ -132,15 +132,24 @@ export function InventoryTransactionModal({
 
     try {
       const { data, error } = await supabase
-        .from('inventory_items')
-        .select('*')
+        .from('store_inventory_levels')
+        .select('*, item:inventory_items!inner(*)')
         .eq('store_id', selectedStoreId)
         .eq('is_active', true)
-        .order('created_at');
+        .order('created_at', { referencedTable: 'inventory_items' });
 
       if (error) throw error;
 
-      setInventoryItems(data || []);
+      // Flatten to InventoryItem shape
+      const flatItems = (data || []).map((level: any) => ({
+        ...level.item,
+        store_id: level.store_id,
+        quantity_on_hand: level.quantity_on_hand,
+        unit_cost: level.unit_cost,
+        reorder_level: level.reorder_level,
+        is_active: level.is_active,
+      }));
+      setInventoryItems(flatItems);
     } catch (error) {
       console.error('Error fetching inventory items:', error);
     }

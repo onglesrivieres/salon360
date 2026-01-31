@@ -177,14 +177,14 @@ export function InventoryPage() {
     try {
       setLoading(true);
 
-      // Fetch items and default purchase units in parallel
-      const [itemsResult, purchaseUnitsResult] = await Promise.all([
+      // Fetch items via store_inventory_levels JOIN inventory_items, and default purchase units in parallel
+      const [levelsResult, purchaseUnitsResult] = await Promise.all([
         supabase
-          .from('inventory_items')
-          .select('*')
+          .from('store_inventory_levels')
+          .select('*, item:inventory_items!inner(*)')
           .eq('store_id', selectedStoreId)
           .eq('is_active', true)
-          .order('created_at'),
+          .order('created_at', { referencedTable: 'inventory_items' }),
         supabase
           .from('store_product_purchase_units')
           .select('item_id, unit_name, multiplier')
@@ -192,7 +192,7 @@ export function InventoryPage() {
           .eq('is_default', true)
       ]);
 
-      if (itemsResult.error) throw itemsResult.error;
+      if (levelsResult.error) throw levelsResult.error;
 
       // Build purchase units lookup
       const unitsLookup: Record<string, { unit_name: string; multiplier: number }> = {};
@@ -203,7 +203,16 @@ export function InventoryPage() {
       }
       setPurchaseUnits(unitsLookup);
 
-      setItems(itemsResult.data || []);
+      // Flatten store_inventory_levels + inventory_items into InventoryItem shape
+      const flatItems = (levelsResult.data || []).map((level: any) => ({
+        ...level.item,
+        store_id: level.store_id,
+        quantity_on_hand: level.quantity_on_hand,
+        unit_cost: level.unit_cost,
+        reorder_level: level.reorder_level,
+        is_active: level.is_active,
+      }));
+      setItems(flatItems);
     } catch (error) {
       console.error('Error fetching items:', error);
       showToast(t('inventory.failedToLoadItems'), 'error');
