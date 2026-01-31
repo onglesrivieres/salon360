@@ -395,10 +395,18 @@ export function PendingApprovalsPage() {
         canReviewReopenRequests ? supabase.rpc('get_pending_ticket_reopen_requests', { p_store_id: selectedStoreId }) : Promise.resolve({ data: [] }),
       ]);
 
+      // Apply Receptionist/Cashier filters to counts
+      let ticketCount = ticketsRes.data?.length || 0;
+      let cashCount = cashRes.data?.length || 0;
+      if ((isReceptionist || isCashier) && session?.employee_id) {
+        ticketCount = (ticketsRes.data || []).filter((t: { closed_by?: string }) => t.closed_by === session.employee_id).length;
+        cashCount = (cashRes.data || []).filter((t: { created_by_id?: string }) => t.created_by_id === session.employee_id).length;
+      }
+
       const counts = {
-        tickets: ticketsRes.data?.length || 0,
+        tickets: ticketCount,
         inventory: inventoryRes.data?.length || 0,
-        cash: cashRes.data?.length || 0,
+        cash: cashCount,
         transactionChanges: transactionChangesRes.data?.length || 0,
         attendance: attendanceRes.data?.length || 0,
         violations: violationsRes.data?.length || 0,
@@ -435,6 +443,13 @@ export function PendingApprovalsPage() {
         );
       }
 
+      // Filter for Receptionist/Cashier: only show tickets they closed
+      if ((isReceptionist || isCashier) && session?.employee_id) {
+        filteredData = filteredData.filter((ticket: { closed_by?: string }) =>
+          ticket.closed_by === session.employee_id
+        );
+      }
+
       setTickets(filteredData);
     } catch (error) {
       console.error('Error fetching pending approvals:', error);
@@ -457,6 +472,13 @@ export function PendingApprovalsPage() {
       if (canViewOwnRecordsOnly && session?.employee_id) {
         filteredData = filteredData.filter((ticket: { technician_ids?: string[] }) =>
           ticket.technician_ids?.includes(session.employee_id)
+        );
+      }
+
+      // Filter for Receptionist/Cashier: only show tickets they closed
+      if ((isReceptionist || isCashier) && session?.employee_id) {
+        filteredData = filteredData.filter((ticket: { closed_by?: string }) =>
+          ticket.closed_by === session.employee_id
         );
       }
 
@@ -528,6 +550,11 @@ export function PendingApprovalsPage() {
       let filteredData = data || [];
       if (isSupervisor) {
         filteredData = filteredData.filter(approval => approval.created_by_role === 'Receptionist');
+      }
+
+      // Filter for Receptionist/Cashier: only show their own transactions
+      if ((isReceptionist || isCashier) && session?.employee_id) {
+        filteredData = filteredData.filter(approval => approval.created_by_id === session.employee_id);
       }
 
       setCashTransactionApprovals(filteredData);
@@ -1464,24 +1491,6 @@ export function PendingApprovalsPage() {
 
   function getMaxDate(): string {
     return getCurrentDateEST();
-  }
-
-  // Block Cashiers explicitly
-  if (isCashier) {
-    return (
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
-          <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
-          <p className="text-gray-700 mb-4">
-            This page is not available to your role.
-          </p>
-          <p className="text-sm text-gray-600">
-            If you believe you should have access, please contact your administrator.
-          </p>
-        </div>
-      </div>
-    );
   }
 
   if (!hasPageAccess) {

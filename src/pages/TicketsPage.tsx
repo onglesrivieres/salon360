@@ -38,6 +38,12 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   const { showToast } = useToast();
   const { session, selectedStoreId, t } = useAuth();
 
+  // Receptionist/Cashier: local date state to bypass global date lock (only for Tickets page)
+  const isLocalDateRole = session?.role_permission === 'Receptionist' || session?.role_permission === 'Cashier';
+  const [localDate, setLocalDate] = useState(getCurrentDateEST());
+  const activeDate = isLocalDateRole ? localDate : selectedDate;
+  const activeDateChange = isLocalDateRole ? setLocalDate : onDateChange;
+
   // Ref for highlighted ticket row (for scroll-into-view)
   const highlightedRowRef = useRef<HTMLTableRowElement>(null);
   const highlightedCardRef = useRef<HTMLDivElement>(null);
@@ -106,7 +112,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
   useEffect(() => {
     fetchTickets();
-  }, [selectedDate, selectedStoreId]);
+  }, [activeDate, selectedStoreId]);
 
   useEffect(() => {
     if (!canViewDailyReport && viewMode === 'daily') {
@@ -132,7 +138,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
       clearInterval(timer);
       clearInterval(refreshTimer);
     };
-  }, [selectedDate, selectedStoreId]);
+  }, [activeDate, selectedStoreId]);
 
   // Effect to handle ticket highlighting from navigation
   useEffect(() => {
@@ -175,7 +181,6 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
       }
 
       const isRestrictedRole = session?.role_permission === 'Technician';
-      const isCashier = session?.role_permission === 'Cashier';
 
       // Check if user is a commission employee
       let isCommissionEmployee = false;
@@ -187,16 +192,6 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
           .maybeSingle();
 
         isCommissionEmployee = employeeData?.pay_type === 'commission';
-      }
-
-      // Safety check: Cashiers can only view today's date
-      if (isCashier) {
-        const today = getCurrentDateEST();
-        if (selectedDate !== today) {
-          onDateChange(today);
-          showToast(t('tickets.cashiersOnlyToday'), 'info');
-          return;
-        }
       }
 
       let query = supabase
@@ -224,15 +219,10 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
           ),
           ticket_photos (id)
         `)
-        .eq('ticket_date', selectedDate);
+        .eq('ticket_date', activeDate);
 
       if (selectedStoreId) {
         query = query.eq('store_id', selectedStoreId);
-      }
-
-      // Cashiers can only see open tickets
-      if (isCashier) {
-        query = query.is('closed_at', null);
       }
 
       query = query
@@ -244,7 +234,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
       // DEBUG: Log query results to diagnose empty tickets issue
       console.log('fetchTickets DEBUG:', {
         selectedStoreId,
-        selectedDate,
+        activeDate,
         role_permission: session?.role_permission,
         role: session?.role,
         employee_id: session?.employee_id,
@@ -499,7 +489,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   }
 
   function navigateDay(direction: 'prev' | 'next'): void {
-    const currentDate = new Date(selectedDate + 'T00:00:00');
+    const currentDate = new Date(activeDate + 'T00:00:00');
     if (direction === 'prev') {
       currentDate.setDate(currentDate.getDate() - 1);
     } else {
@@ -508,15 +498,15 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     const year = currentDate.getFullYear();
     const month = String(currentDate.getMonth() + 1).padStart(2, '0');
     const day = String(currentDate.getDate()).padStart(2, '0');
-    onDateChange(`${year}-${month}-${day}`);
+    activeDateChange(`${year}-${month}-${day}`);
   }
 
   function canNavigatePrev(): boolean {
-    return selectedDate > getMinDate();
+    return activeDate > getMinDate();
   }
 
   function canNavigateNext(): boolean {
-    return selectedDate < getMaxDate();
+    return activeDate < getMaxDate();
   }
 
   function getServiceDuration(ticket: any): number {
@@ -994,7 +984,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
               </div>
             </>
           )}
-          {viewMode !== 'period' && session?.role_permission !== 'Cashier' && session?.role_permission !== 'Receptionist' && (
+          {viewMode !== 'period' && (
             <div className="flex items-center gap-2 flex-1 md:flex-initial">
               <button
                 onClick={() => navigateDay('prev')}
@@ -1007,8 +997,8 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
               <div className="flex items-center gap-2 flex-1 md:flex-initial">
                 <input
                   type="date"
-                  value={selectedDate}
-                  onChange={(e) => onDateChange(e.target.value)}
+                  value={activeDate}
+                  onChange={(e) => activeDateChange(e.target.value)}
                   min={getMinDate()}
                   max={getMaxDate()}
                   className="px-2 py-1.5 md:py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 md:flex-initial min-h-[44px] md:min-h-0"
@@ -1024,16 +1014,6 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
               </button>
             </div>
           )}
-          {(session?.role_permission === 'Receptionist' || session?.role_permission === 'Cashier') && viewMode !== 'period' && (
-            <div className="flex items-center gap-2 flex-1 md:flex-initial">
-              <input
-                type="date"
-                value={selectedDate}
-                disabled
-                className="px-2 py-1.5 md:py-1 text-sm border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed flex-1 md:flex-initial min-h-[44px] md:min-h-0"
-              />
-            </div>
-          )}
           {viewMode === 'tickets' && session && session.role_permission && Permissions.tickets.canCreate(session.role_permission) && (
             <Button size="sm" onClick={() => openEditor()} className="min-h-[44px] md:min-h-0">
               <Plus className="w-4 h-4 md:w-3 md:h-3 mr-1" />
@@ -1046,11 +1026,11 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
       {viewMode === 'daily' ? (
         <div className="bg-white rounded-lg shadow">
-          <TicketsDetailView selectedDate={selectedDate} onRefresh={fetchTickets} isCommissionEmployee={isCommissionEmployee} />
+          <TicketsDetailView selectedDate={activeDate} onRefresh={fetchTickets} isCommissionEmployee={isCommissionEmployee} />
         </div>
       ) : viewMode === 'period' ? (
         <div className="bg-white rounded-lg shadow">
-          <TicketsPeriodView selectedDate={selectedDate} onDateChange={onDateChange} isCommissionEmployee={isCommissionEmployee} />
+          <TicketsPeriodView selectedDate={activeDate} onDateChange={activeDateChange} isCommissionEmployee={isCommissionEmployee} />
         </div>
       ) : (
         <>
@@ -1465,7 +1445,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
         <TicketEditor
           ticketId={editingTicketId}
           onClose={closeEditor}
-          selectedDate={selectedDate}
+          selectedDate={activeDate}
           hideTips={shouldHideTips}
         />
       )}
