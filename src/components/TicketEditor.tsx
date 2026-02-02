@@ -25,7 +25,7 @@ import { formatDateTimeEST, convertToESTDatetimeString, convertESTDatetimeString
 import { getDayOfWeek, getFullDayName } from '../lib/schedule-utils';
 import { TechnicianQueue } from './TechnicianQueue';
 import { useClientLookup, addColorToHistory } from '../hooks/useClientLookup';
-import { formatPhoneNumber, normalizePhoneNumber, hasEnoughDigitsForLookup } from '../lib/phoneUtils';
+import { formatPhoneNumber, normalizePhoneNumber, hasEnoughDigitsForLookup, maskPhoneNumber } from '../lib/phoneUtils';
 import { BlacklistWarning } from './clients/BlacklistWarning';
 import { ColorDisplay } from './clients/ColorDisplay';
 import { QuickAddClientModal } from './clients/QuickAddClientModal';
@@ -158,6 +158,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   // Check if user is Technician (restricted roles for customer info)
   const isRestrictedCustomerInfoRole = session?.role &&
     session.role.includes('Technician');
+
+  const canViewFullPhoneWhenClosed = session?.role_permission &&
+    Permissions.tickets.canViewFullPhoneWhenClosed(session.role_permission);
+  const shouldMaskPhone = isTicketClosed && !canViewFullPhoneWhenClosed;
 
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>('');
   const [showCustomService, setShowCustomService] = useState(false);
@@ -2198,7 +2202,14 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                         {isRestrictedCustomerInfoRole ? (
                           <input
                             type="text"
-                            value={formData.customer_phone ? '**********' : ''}
+                            value={formData.customer_phone ? maskPhoneNumber(formData.customer_phone) : ''}
+                            disabled
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                          />
+                        ) : shouldMaskPhone ? (
+                          <input
+                            type="text"
+                            value={formData.customer_phone ? maskPhoneNumber(formData.customer_phone) : ''}
                             disabled
                             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
                           />
@@ -2223,8 +2234,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                           </>
                         )}
                       </div>
-                      {/* Client status indicator - hidden for restricted roles */}
-                      {!isRestrictedCustomerInfoRole && showCustomerPhone && hasEnoughDigitsForLookup(formData.customer_phone) && !clientLookup.isLoading && !isTicketClosed && (
+                      {/* Client status indicator - hidden for restricted roles and masked phone */}
+                      {!isRestrictedCustomerInfoRole && !shouldMaskPhone && showCustomerPhone && hasEnoughDigitsForLookup(formData.customer_phone) && !clientLookup.isLoading && !isTicketClosed && (
                         <div className="mt-1">
                           {linkedClient ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
