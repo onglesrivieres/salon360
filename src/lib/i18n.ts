@@ -107,6 +107,7 @@ export const translations = {
       noPermissionViewDaily: 'You do not have permission to view daily reports',
       noPermissionViewPeriod: 'You do not have permission to view period reports',
       noPermissionViewTicket: 'You do not have permission to view this ticket',
+      cashierCannotCreate: 'Technician must open their own tickets.',
     },
     item: {
       service: 'Service',
@@ -805,6 +806,7 @@ export const translations = {
       noPermissionViewDaily: 'Vous n\'avez pas la permission de voir les rapports quotidiens',
       noPermissionViewPeriod: 'Vous n\'avez pas la permission de voir les rapports périodiques',
       noPermissionViewTicket: 'Vous n\'avez pas la permission de voir ce billet',
+      cashierCannotCreate: 'Le technicien doit ouvrir ses propres tickets.',
     },
     item: {
       service: 'Service',
@@ -1503,6 +1505,7 @@ export const translations = {
       noPermissionViewDaily: 'Bạn không có quyền xem báo cáo hàng ngày',
       noPermissionViewPeriod: 'Bạn không có quyền xem báo cáo theo kỳ',
       noPermissionViewTicket: 'Bạn không có quyền xem phiếu này',
+      cashierCannotCreate: 'Kỹ thuật viên phải tự mở ticket của mình.',
     },
     item: {
       service: 'Dịch vụ',
@@ -2201,6 +2204,7 @@ export const translations = {
       noPermissionViewDaily: 'អ្នកមិនមានសិទ្ធិមើលរបាយការណ៍ប្រចាំថ្ងៃ',
       noPermissionViewPeriod: 'អ្នកមិនមានសិទ្ធិមើលរបាយការណ៍រយៈពេល',
       noPermissionViewTicket: 'អ្នកមិនមានសិទ្ធិមើលសំបុត្រនេះ',
+      cashierCannotCreate: 'Technician must open their own tickets.',
     },
     item: {
       service: 'សេវាកម្ម',

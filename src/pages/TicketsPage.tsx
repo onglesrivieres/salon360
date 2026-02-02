@@ -77,8 +77,8 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   // Determine if tips should be hidden (commission employees without management role)
   const shouldHideTips = isCommissionEmployee && !isManagement;
 
-  // Daily tab: Admin, Owner, Manager, Supervisor, Receptionist, or commission employees
-  // Cashier and non-commission Technician cannot access this tab
+  // Daily tab: Admin, Owner, Manager, Supervisor, Receptionist, Cashier, or commission employees
+  // Non-commission Technician cannot access this tab
   const canViewDailyReport = session?.role ? (Permissions.tipReport.canViewAll(session.role) || isCommissionEmployee) : false;
   // Period tab: Only Admin, Owner, and commission employees can see it
   // Manager, Supervisor, Receptionist, and Cashier cannot access this tab
@@ -1015,7 +1015,17 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
             </div>
           )}
           {viewMode === 'tickets' && session && session.role_permission && Permissions.tickets.canCreate(session.role_permission) && (
-            <Button size="sm" onClick={() => openEditor()} className="min-h-[44px] md:min-h-0">
+            <Button
+              size="sm"
+              onClick={() => {
+                if (session.role_permission === 'Cashier') {
+                  showToast(t('tickets.cashierCannotCreate'), 'error');
+                  return;
+                }
+                openEditor();
+              }}
+              className={`min-h-[44px] md:min-h-0${session.role_permission === 'Cashier' ? ' opacity-50 cursor-not-allowed' : ''}`}
+            >
               <Plus className="w-4 h-4 md:w-3 md:h-3 mr-1" />
               <span className="hidden xs:inline">{t('tickets.newTicket')}</span>
               <span className="xs:hidden">{t('common.new')}</span>
@@ -1224,7 +1234,17 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
           <div className="text-center py-8">
             <p className="text-sm text-gray-500 mb-3">{t('tickets.noTicketsForDate')}</p>
             {session && session.role_permission && Permissions.tickets.canCreate(session.role_permission) && (
-              <Button size="sm" onClick={() => openEditor()}>{t('tickets.createFirstTicket')}</Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (session.role_permission === 'Cashier') {
+                    showToast(t('tickets.cashierCannotCreate'), 'error');
+                    return;
+                  }
+                  openEditor();
+                }}
+                className={session.role_permission === 'Cashier' ? 'opacity-50 cursor-not-allowed' : ''}
+              >{t('tickets.createFirstTicket')}</Button>
             )}
           </div>
         )}
@@ -1397,7 +1417,17 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
           <div className="bg-white rounded-lg shadow p-8 text-center">
             <p className="text-sm text-gray-500 mb-3">{t('tickets.noTicketsForDate')}</p>
             {session && session.role_permission && Permissions.tickets.canCreate(session.role_permission) && (
-              <Button size="sm" onClick={() => openEditor()}>{t('tickets.createFirstTicket')}</Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (session.role_permission === 'Cashier') {
+                    showToast(t('tickets.cashierCannotCreate'), 'error');
+                    return;
+                  }
+                  openEditor();
+                }}
+                className={session.role_permission === 'Cashier' ? 'opacity-50 cursor-not-allowed' : ''}
+              >{t('tickets.createFirstTicket')}</Button>
             )}
           </div>
         )}
