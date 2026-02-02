@@ -139,6 +139,9 @@ export const Permissions = {
       // Other roles follow normal canEdit logic
       return Permissions.tickets.canEdit(roles, isClosed, isApproved);
     },
+    canViewFullPhoneWhenClosed: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
+    },
   },
 
   endOfDay: {
