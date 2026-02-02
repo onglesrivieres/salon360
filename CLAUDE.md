@@ -525,6 +525,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 | Approve Tickets | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
 | Reopen Tickets | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
 | Request Reopen | ✗ | ✗ | ✗ | ✓ | ✓ | ✗ | ✗ |
+| View Full Phone (Ticket) | ✓ | ✓ | ✓ | Masked | Masked | Masked | Masked |
 | **Financial** |
 | View EOD | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
 | Edit EOD | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
@@ -735,7 +736,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 ### 6.8 Client Rules
 
 - **Blacklist**: Clients can be blacklisted with reason tracking
-- **Phone Visibility**: Full phone number only visible to Supervisor+ roles
+- **Phone Visibility**: Full phone number only visible to Supervisor+ roles on the Clients page. On tickets, Technicians always see masked phone (`***-***-XXXX`); other non-management roles see masked phone on closed tickets; Admin/Owner/Manager always see full phone
 - **Deletion**: Requires Admin/Manager/Owner permission
 
 ---
@@ -1107,6 +1108,12 @@ Always filter by `store_id` when querying store-specific data:
 ---
 
 ## Recent Changes
+
+### 2026-02-02: Ticket Phone Number Masking
+- Technicians now see `***-***-XXXX` (last 4 digits) instead of `**********` on tickets
+- Non-management roles (Cashier, Receptionist, Supervisor) see masked phone on closed tickets
+- Admin/Owner/Manager always see full phone number on tickets
+- Added `canViewFullPhoneWhenClosed` permission to `Permissions.tickets`
 
 ### 2026-01-23: Inventory System Improvements
 - Fixed Admin role in inventory approval permissions
