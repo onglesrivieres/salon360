@@ -1015,6 +1015,25 @@ export interface ClientColorHistoryWithDetails extends ClientColorHistory {
   }>;
 }
 
+export interface VisitHistoryEntry {
+  id: string;
+  ticket_no: string;
+  ticket_date: string;
+  payment_method: string;
+  total: number;
+  closed_at: string | null;
+  services: Array<{
+    id: string;
+    name: string;
+    employee_name: string;
+    price: number;
+  }>;
+  colors: Array<{
+    id: string;
+    color: string;
+  }>;
+}
+
 export interface ClientWithStats extends Client {
   last_visit?: string;
   total_visits?: number;

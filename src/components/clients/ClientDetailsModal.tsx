@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, User, Phone, FileText, Calendar, Hash, AlertTriangle, Palette, Edit2 } from 'lucide-react';
-import { ClientWithStats, ClientColorHistoryWithDetails, supabase } from '../../lib/supabase';
+import { X, User, Phone, FileText, Calendar, Hash, AlertTriangle, Palette, Edit2, ChevronDown, ChevronUp, DollarSign, CreditCard, Gift } from 'lucide-react';
+import { ClientWithStats, VisitHistoryEntry, supabase } from '../../lib/supabase';
 import { formatPhoneNumber, maskPhoneNumber } from '../../lib/phoneUtils';
 
 interface ClientDetailsModalProps {
@@ -11,7 +11,7 @@ interface ClientDetailsModalProps {
   canViewFullPhone?: boolean;
 }
 
-type Tab = 'details' | 'colors';
+type Tab = 'details' | 'visits';
 
 export function ClientDetailsModal({
   isOpen,
@@ -21,13 +21,14 @@ export function ClientDetailsModal({
   canViewFullPhone = false,
 }: ClientDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>('details');
-  const [colorHistory, setColorHistory] = useState<ClientColorHistoryWithDetails[]>([]);
-  const [isLoadingColors, setIsLoadingColors] = useState(false);
+  const [visitHistory, setVisitHistory] = useState<VisitHistoryEntry[]>([]);
+  const [isLoadingVisits, setIsLoadingVisits] = useState(false);
+  const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
 
-  // Fetch color history when colors tab is selected
+  // Fetch visit history when visits tab is selected
   useEffect(() => {
-    if (isOpen && activeTab === 'colors' && client.id) {
-      fetchColorHistory();
+    if (isOpen && activeTab === 'visits' && client.id) {
+      fetchVisitHistory();
     }
   }, [isOpen, activeTab, client.id]);
 
@@ -35,63 +36,77 @@ export function ClientDetailsModal({
   useEffect(() => {
     if (isOpen) {
       setActiveTab('details');
+      setExpandedVisitId(null);
     }
   }, [isOpen]);
 
-  const fetchColorHistory = async () => {
-    setIsLoadingColors(true);
+  const fetchVisitHistory = async () => {
+    setIsLoadingVisits(true);
     try {
-      // Fetch color history entries
-      const { data: colorData, error } = await supabase
-        .from('client_color_history')
-        .select('*')
+      // Query 1: Fetch tickets with nested ticket_items
+      const { data: ticketData, error: ticketError } = await supabase
+        .from('sale_tickets')
+        .select(`
+          id,
+          ticket_no,
+          ticket_date,
+          payment_method,
+          total,
+          closed_at,
+          ticket_items (
+            id,
+            custom_service_name,
+            price,
+            service:store_services!ticket_items_store_service_id_fkey(name),
+            employee:employees!ticket_items_employee_id_fkey(display_name)
+          )
+        `)
         .eq('client_id', client.id)
-        .order('applied_date', { ascending: false })
+        .order('ticket_date', { ascending: false })
         .limit(20);
 
-      if (error) throw error;
+      if (ticketError) throw ticketError;
 
-      // For each entry with a ticket_id, fetch ticket details
-      const colorHistoryWithDetails = await Promise.all(
-        (colorData || []).map(async (entry) => {
-          if (!entry.ticket_id) {
-            return { ...entry, ticket_date: null, services: [] };
-          }
+      // Query 2: Fetch all color history for this client
+      const { data: colorData, error: colorError } = await supabase
+        .from('client_color_history')
+        .select('id, ticket_id, color')
+        .eq('client_id', client.id);
 
-          // Get ticket date
-          const { data: ticketData } = await supabase
-            .from('sale_tickets')
-            .select('ticket_date')
-            .eq('id', entry.ticket_id)
-            .maybeSingle();
+      if (colorError) throw colorError;
 
-          // Get services and employees from ticket_items
-          const { data: ticketItems } = await supabase
-            .from('ticket_items')
-            .select(`
-              service:store_services!ticket_items_store_service_id_fkey(name),
-              employee:employees!ticket_items_employee_id_fkey(display_name)
-            `)
-            .eq('sale_ticket_id', entry.ticket_id);
+      // Build color map by ticket_id
+      const colorMap = new Map<string, Array<{ id: string; color: string }>>();
+      (colorData || []).forEach((c) => {
+        if (c.ticket_id) {
+          const existing = colorMap.get(c.ticket_id) || [];
+          existing.push({ id: c.id, color: c.color });
+          colorMap.set(c.ticket_id, existing);
+        }
+      });
 
-          const services = ticketItems?.map((item: any) => ({
-            name: item.service?.name || 'Unknown Service',
-            employee_name: item.employee?.display_name || 'Unknown',
-          })) || [];
+      // Map tickets to VisitHistoryEntry
+      const visits: VisitHistoryEntry[] = (ticketData || []).map((ticket: any) => ({
+        id: ticket.id,
+        ticket_no: ticket.ticket_no,
+        ticket_date: ticket.ticket_date,
+        payment_method: ticket.payment_method || '',
+        total: ticket.total || 0,
+        closed_at: ticket.closed_at,
+        services: (ticket.ticket_items || []).map((item: any) => ({
+          id: item.id,
+          name: item.service?.name || item.custom_service_name || 'Unknown Service',
+          employee_name: item.employee?.display_name || 'Unknown',
+          price: item.price || 0,
+        })),
+        colors: colorMap.get(ticket.id) || [],
+      }));
 
-          return {
-            ...entry,
-            ticket_date: ticketData?.ticket_date || null,
-            services,
-          };
-        })
-      );
-
-      setColorHistory(colorHistoryWithDetails);
+      setVisitHistory(visits);
     } catch (err) {
-      console.error('Error fetching color history:', err);
+      console.error('Error fetching visit history:', err);
     } finally {
-      setIsLoadingColors(false);
+      setIsLoadingVisits(false);
     }
   };
 
@@ -104,6 +119,38 @@ export function ClientDetailsModal({
       day: 'numeric',
       year: 'numeric',
     });
+  };
+
+  const formatShortDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const getPaymentIcon = (method: string) => {
+    switch (method) {
+      case 'cash': return <DollarSign className="w-3.5 h-3.5" />;
+      case 'card': return <CreditCard className="w-3.5 h-3.5" />;
+      case 'gift_card': return <Gift className="w-3.5 h-3.5" />;
+      case 'mixed': return <CreditCard className="w-3.5 h-3.5" />;
+      default: return null;
+    }
+  };
+
+  const getPaymentLabel = (method: string) => {
+    switch (method) {
+      case 'cash': return 'Cash';
+      case 'card': return 'Card';
+      case 'gift_card': return 'Gift Card';
+      case 'mixed': return 'Mixed';
+      default: return method;
+    }
+  };
+
+  const getUniqueNames = (services: VisitHistoryEntry['services']) => {
+    const names = new Set(services.map(s => s.employee_name).filter(n => n !== 'Unknown'));
+    return Array.from(names);
   };
 
   return (
@@ -185,15 +232,15 @@ export function ClientDetailsModal({
                 Details
               </button>
               <button
-                onClick={() => setActiveTab('colors')}
+                onClick={() => setActiveTab('visits')}
                 className={`py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-1 ${
-                  activeTab === 'colors'
+                  activeTab === 'visits'
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <Palette className="w-4 h-4" />
-                Color History
+                <Calendar className="w-4 h-4" />
+                Visit History
               </button>
             </div>
           </div>
@@ -280,47 +327,125 @@ export function ClientDetailsModal({
               </div>
             )}
 
-            {activeTab === 'colors' && (
+            {activeTab === 'visits' && (
               <div>
-                {isLoadingColors ? (
+                {isLoadingVisits ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
                   </div>
-                ) : colorHistory.length === 0 ? (
+                ) : visitHistory.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    <Palette className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No color history yet</p>
+                    <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No visit history yet</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {colorHistory.map((entry) => (
-                      <div key={entry.id} className="p-3 bg-gray-50 rounded-lg space-y-2">
-                        {/* Color and Date Header */}
-                        <div className="flex items-start justify-between">
-                          <p className="text-sm font-medium text-gray-900">{entry.color}</p>
-                          <span className="text-xs text-gray-400">
-                            {formatDate(entry.ticket_date || entry.applied_date)}
-                          </span>
-                        </div>
+                  <div className="divide-y divide-gray-100">
+                    {visitHistory.map((visit) => {
+                      const isExpanded = expandedVisitId === visit.id;
+                      const serviceNames = visit.services.map(s => s.name).join(', ');
+                      const techNames = getUniqueNames(visit.services);
 
-                        {/* Services with Employees */}
-                        {entry.services.length > 0 && (
-                          <div className="text-xs text-gray-600 space-y-1">
-                            {entry.services.map((svc, idx) => (
-                              <div key={idx} className="flex items-center gap-2">
-                                <span className="text-gray-500">{svc.name}</span>
-                                <span className="text-blue-600">by {svc.employee_name}</span>
+                      return (
+                        <div key={visit.id}>
+                          {/* Summary Row */}
+                          <button
+                            onClick={() => setExpandedVisitId(isExpanded ? null : visit.id)}
+                            className="w-full text-left py-3 hover:bg-gray-50 transition-colors flex items-center gap-3"
+                          >
+                            {/* Date */}
+                            <div className="w-14 flex-shrink-0">
+                              <span className="text-sm font-medium text-gray-900">
+                                {formatShortDate(visit.ticket_date)}
+                              </span>
+                            </div>
+
+                            {/* Services & Technicians */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-800 truncate">
+                                {serviceNames || 'No services'}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
+                                {techNames.length > 0 ? techNames.join(', ') : '—'}
+                              </p>
+                            </div>
+
+                            {/* Color indicator */}
+                            {visit.colors.length > 0 && (
+                              <Palette className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
+                            )}
+
+                            {/* Total & Status */}
+                            <div className="flex-shrink-0 text-right">
+                              {visit.closed_at ? (
+                                <span className="text-sm font-medium text-gray-900">
+                                  ${visit.total.toFixed(2)}
+                                </span>
+                              ) : (
+                                <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700">
+                                  Open
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Expand icon */}
+                            <div className="flex-shrink-0 text-gray-400">
+                              {isExpanded ? (
+                                <ChevronUp className="w-4 h-4" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4" />
+                              )}
+                            </div>
+                          </button>
+
+                          {/* Expanded Details */}
+                          {isExpanded && (
+                            <div className="pb-3 pl-4 pr-2 bg-gray-50 rounded-b-lg mb-1">
+                              {/* Ticket info */}
+                              <div className="flex items-center gap-3 py-2 text-xs text-gray-500 border-b border-gray-200">
+                                <span className="font-mono">#{visit.ticket_no}</span>
+                                {visit.closed_at && visit.payment_method && (
+                                  <span className="flex items-center gap-1">
+                                    {getPaymentIcon(visit.payment_method)}
+                                    {getPaymentLabel(visit.payment_method)}
+                                  </span>
+                                )}
                               </div>
-                            ))}
-                          </div>
-                        )}
 
-                        {/* Service type fallback if no ticket linked */}
-                        {entry.services.length === 0 && entry.service_type && (
-                          <p className="text-xs text-gray-500">{entry.service_type}</p>
-                        )}
-                      </div>
-                    ))}
+                              {/* Service lines */}
+                              <div className="py-2 space-y-1.5">
+                                {visit.services.map((svc) => (
+                                  <div key={svc.id} className="flex items-center justify-between text-xs">
+                                    <div>
+                                      <span className="text-gray-800">{svc.name}</span>
+                                      <span className="text-gray-400"> — by </span>
+                                      <span className="text-blue-600">{svc.employee_name}</span>
+                                    </div>
+                                    <span className="text-gray-600 font-medium">${svc.price.toFixed(2)}</span>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Colors */}
+                              {visit.colors.length > 0 && (
+                                <div className="pt-1.5 border-t border-gray-200">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <Palette className="w-3 h-3 text-purple-500" />
+                                    {visit.colors.map((c) => (
+                                      <span
+                                        key={c.id}
+                                        className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full"
+                                      >
+                                        {c.color}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
