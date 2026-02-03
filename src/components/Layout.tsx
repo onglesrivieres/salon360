@@ -705,7 +705,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const navItems = allNavItems.filter(item => !item.hidden);
 
   const shouldShowQueueButton = enableReadyQueue && showQueueButtonInHeader;
-  const shouldShowOpeningCashBanner = showOpeningCashBanner && requireOpeningCash && isOpeningCashMissing;
+  const canAccessEod = effectiveRole ? canAccessPage('eod', effectiveRole, employeePayType) : false;
+  const shouldShowOpeningCashBanner = showOpeningCashBanner && requireOpeningCash && isOpeningCashMissing && canAccessEod;
 
   return (
     <div className="min-h-screen bg-gray-50">

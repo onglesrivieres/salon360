@@ -160,7 +160,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     module: 'endOfDay',
     action: 'view',
     displayName: 'View End of Day',
-    description: 'Ability to view the end of day page and reports',
+    description: 'Ability to view the end of day page, reports, and opening cash banner',
     isCritical: false,
     defaultRoles: ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']
   },
