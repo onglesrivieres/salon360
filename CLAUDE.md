@@ -527,8 +527,8 @@ When a user has multiple roles, the highest-ranking role determines their permis
 | Request Reopen | ✗ | ✗ | ✗ | ✓ | ✓ | ✗ | ✗ |
 | View Full Phone (Ticket) | ✓ | ✓ | ✓ | Masked | Masked | Masked | Masked |
 | **Financial** |
-| View EOD | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
-| Edit EOD | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| View EOD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
+| Edit EOD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
 | View Safe Balance | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
 | View Insights | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
 | **Tips** |

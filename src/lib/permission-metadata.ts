@@ -162,7 +162,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'View End of Day',
     description: 'Ability to view the end of day page, reports, and opening cash banner',
     isCritical: false,
-    defaultRoles: ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']
+    defaultRoles: ['Admin', 'Receptionist', 'Cashier', 'Supervisor', 'Manager', 'Owner']
   },
   {
     key: 'endOfDay.canViewAll',
@@ -171,7 +171,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'View All EOD Records',
     description: 'Ability to view all end of day records',
     isCritical: false,
-    defaultRoles: ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']
+    defaultRoles: ['Admin', 'Receptionist', 'Cashier', 'Supervisor', 'Manager', 'Owner']
   },
   {
     key: 'endOfDay.canExport',
@@ -180,7 +180,7 @@ export const permissionMetadata: PermissionMetadata[] = [
     displayName: 'Export EOD Data',
     description: 'Ability to export end of day data',
     isCritical: false,
-    defaultRoles: ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner']
+    defaultRoles: ['Admin', 'Receptionist', 'Cashier', 'Supervisor', 'Manager', 'Owner']
   },
   {
     key: 'tipReport.canView',
