@@ -563,6 +563,21 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
         setTicket(ticketData);
 
+        // Restore linkedClient from existing client_id to prevent edit flow from overwriting it to null
+        if (ticketData.client_id) {
+          const { data: clientData } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('id', ticketData.client_id)
+            .maybeSingle();
+          if (clientData) {
+            setLinkedClient(clientData);
+            if (clientData.is_blacklisted && clientData.blacklisted_by) {
+              fetchBlacklistedByName(clientData.blacklisted_by);
+            }
+          }
+        }
+
         const ticketItems = (ticketData as any).ticket_items || [];
         const firstItem = ticketItems[0];
 

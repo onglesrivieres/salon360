@@ -163,6 +163,7 @@ export interface SaleTicket {
   approved_by?: string | null;
   approval_deadline?: string | null;
   rejection_reason?: string | null;
+  client_id?: string | null;
   requires_admin_review?: boolean;
   opened_by_role?: string;
   reviewed_by_receptionist?: boolean;
