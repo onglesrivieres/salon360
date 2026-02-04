@@ -411,6 +411,7 @@ export function EmployeesPage() {
               const baseOptions = [
                 { value: 'all', label: 'All Roles' },
                 { value: 'Technician', label: t('emp.technician') },
+                { value: 'Trainee', label: t('emp.trainee') },
                 { value: 'Receptionist', label: t('emp.receptionist') },
                 { value: 'Supervisor', label: t('emp.supervisor') },
                 { value: 'Cashier', label: t('emp.cashier') },
@@ -573,6 +574,7 @@ export function EmployeesPage() {
               if (isManager) {
                 return [
                   { value: 'Technician', label: t('emp.technician') },
+                  { value: 'Trainee', label: t('emp.trainee') },
                   { value: 'Receptionist', label: t('emp.receptionist') },
                   { value: 'Cashier', label: t('emp.cashier') },
                   { value: 'Supervisor', label: t('emp.supervisor') },
@@ -582,6 +584,7 @@ export function EmployeesPage() {
               // Base roles for Owner (includes Manager)
               const baseRoles = [
                 { value: 'Technician', label: t('emp.technician') },
+                { value: 'Trainee', label: t('emp.trainee') },
                 { value: 'Receptionist', label: t('emp.receptionist') },
                 { value: 'Cashier', label: t('emp.cashier') },
                 { value: 'Supervisor', label: t('emp.supervisor') },
@@ -744,7 +747,7 @@ export function EmployeesPage() {
               </label>
             </div>
           )}
-          {formData.role.includes('Technician') && formData.pay_type === 'hourly' && (
+          {(formData.role.includes('Technician') || formData.role.includes('Trainee')) && formData.pay_type === 'hourly' && (
             <div className="flex items-center">
               <input
                 type="checkbox"

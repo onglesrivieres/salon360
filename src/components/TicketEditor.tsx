@@ -157,7 +157,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
   // Check if user is Technician (restricted roles for customer info)
   const isRestrictedCustomerInfoRole = session?.role &&
-    session.role.includes('Technician');
+    (session.role.includes('Technician') || session.role.includes('Trainee'));
 
   const canViewFullPhoneWhenClosed = session?.role_permission &&
     Permissions.tickets.canViewFullPhoneWhenClosed(session.role_permission);
@@ -516,7 +516,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
       }
 
       const allEmployees = (employeesRes.data || []).filter(emp =>
-        (emp.role.includes('Technician') || emp.role.includes('Receptionist')) && !emp.role.includes('Cashier')
+        (emp.role.includes('Technician') || emp.role.includes('Trainee') || emp.role.includes('Receptionist')) && !emp.role.includes('Cashier')
       );
       const storeFilteredEmployees = selectedStoreId
         ? allEmployees.filter(emp => !emp.store_id || emp.store_id === selectedStoreId)
@@ -1299,7 +1299,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
         if (
           ticket.opened_by_role &&
-          ['Technician', 'Supervisor'].includes(ticket.opened_by_role) &&
+          ['Technician', 'Trainee', 'Supervisor'].includes(ticket.opened_by_role) &&
           !ticket.reviewed_by_receptionist &&
           session?.role_permission &&
           Permissions.tickets.canReviewSelfServiceTicket(session.role_permission)
@@ -2005,7 +2005,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
           {isReadOnly &&
            ticket?.opened_by_role &&
-           ticket.opened_by_role === 'Technician' &&
+           (ticket.opened_by_role === 'Technician' || ticket.opened_by_role === 'Trainee') &&
            session?.employee_id === ticket.created_by && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <div className="flex items-start gap-2">

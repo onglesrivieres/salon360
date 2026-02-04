@@ -439,7 +439,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
       filtered = filtered.filter(ticket => {
         if (approvalFilter === 'self_service_pending') {
           return ticket.opened_by_role &&
-            ['Technician', 'Supervisor'].includes(ticket.opened_by_role) &&
+            ['Technician', 'Trainee', 'Supervisor'].includes(ticket.opened_by_role) &&
             !ticket.reviewed_by_receptionist;
         }
         if (approvalFilter === 'open') return !ticket.closed_at;
@@ -1098,7 +1098,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
                 const isSelfServiceTicket =
                   ticket.opened_by_role &&
-                  ['Technician', 'Supervisor'].includes(ticket.opened_by_role) &&
+                  ['Technician', 'Trainee', 'Supervisor'].includes(ticket.opened_by_role) &&
                   !ticket.reviewed_by_receptionist &&
                   !ticket.closed_at;
 
@@ -1271,7 +1271,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
           const isSelfServiceTicket =
             ticket.opened_by_role &&
-            ['Technician', 'Supervisor'].includes(ticket.opened_by_role) &&
+            ['Technician', 'Trainee', 'Supervisor'].includes(ticket.opened_by_role) &&
             !ticket.reviewed_by_receptionist &&
             !ticket.closed_at;
 

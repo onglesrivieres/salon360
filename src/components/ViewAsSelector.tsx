@@ -15,6 +15,7 @@ const ALL_ROLES: Role[] = [
   'Supervisor',
   'Receptionist',
   'Technician',
+  'Trainee',
   'Cashier'
 ];
 

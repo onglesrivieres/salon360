@@ -138,7 +138,7 @@ export function LoginPage({ selectedAction, onCheckOutComplete, onBack }: LoginP
         // Only join queue if not skipping (hourly technician with skip_queue_on_checkin enabled)
         const roleArray = Array.isArray(employee?.role) ? employee.role : [];
         const shouldSkipQueue = roleArray.includes('Cashier') ||
-                                (roleArray.includes('Technician') &&
+                                ((roleArray.includes('Technician') || roleArray.includes('Trainee')) &&
                                 payType === 'hourly' &&
                                 employee?.skip_queue_on_checkin === true);
 

@@ -297,7 +297,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
         const roleArray = Array.isArray(employee?.role) ? employee.role : [];
         const employeePayType = employee?.pay_type || payType;
         const shouldSkipQueue = roleArray.includes('Cashier') ||
-                                (roleArray.includes('Technician') &&
+                                ((roleArray.includes('Technician') || roleArray.includes('Trainee')) &&
                                 employeePayType === 'hourly' &&
                                 employee?.skip_queue_on_checkin === true);
 

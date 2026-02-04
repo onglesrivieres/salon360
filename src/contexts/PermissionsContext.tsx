@@ -87,7 +87,7 @@ export function PermissionsProvider({ children }: PermissionsProviderProps) {
       throw new Error('No store ID available');
     }
 
-    const roles: Role[] = ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Cashier'];
+    const roles: Role[] = ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Trainee', 'Cashier'];
     const result = new Map<string, Map<string, boolean>>();
 
     for (const role of roles) {
