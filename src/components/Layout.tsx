@@ -8,6 +8,7 @@ import { NotificationBadge } from './ui/NotificationBadge';
 import { VersionNotification } from './VersionNotification';
 import { useServiceWorkerUpdate } from '../hooks/useServiceWorkerUpdate';
 import { Modal } from './ui/Modal';
+import { Select } from './ui/Select';
 import { TechnicianQueue } from './TechnicianQueue';
 import { getCurrentDateEST } from '../lib/timezone';
 import { ViewAsSelector } from './ViewAsSelector';
@@ -41,6 +42,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [leavingQueueEmployeeId, setLeavingQueueEmployeeId] = useState<string | undefined>();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [employeeToRemove, setEmployeeToRemove] = useState<string | undefined>();
+  const [leaveReason, setLeaveReason] = useState('');
+  const [leaveNotes, setLeaveNotes] = useState('');
   const [userQueueStatus, setUserQueueStatus] = useState<'ready' | 'neutral' | 'busy'>('neutral');
   const [showRemovalModal, setShowRemovalModal] = useState(false);
   const [technicianToRemove, setTechnicianToRemove] = useState<{ id: string; name: string } | null>(null);
@@ -425,13 +428,16 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   };
 
   const confirmLeaveQueue = async () => {
-    if (!employeeToRemove || !selectedStoreId) return;
+    if (!employeeToRemove || !selectedStoreId || !leaveReason) return;
+    if (leaveReason === 'Other' && !leaveNotes.trim()) return;
 
     setLeavingQueueEmployeeId(employeeToRemove);
     try {
       const { error } = await supabase.rpc('leave_ready_queue', {
         p_employee_id: employeeToRemove,
-        p_store_id: selectedStoreId
+        p_store_id: selectedStoreId,
+        p_reason: leaveReason,
+        p_notes: leaveNotes.trim() || null
       });
 
       if (error) throw error;
@@ -439,6 +445,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       await fetchTechnicianQueue();
       setShowLeaveConfirm(false);
       setEmployeeToRemove(undefined);
+      setLeaveReason('');
+      setLeaveNotes('');
     } catch (error) {
       console.error('Error leaving queue:', error);
       alert('Failed to leave queue. Please try again.');
@@ -929,7 +937,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               showLegend={true}
               currentTime={currentTime}
               currentEmployeeId={session?.employee_id}
-              allowLeaveQueue={!canViewAllQueueStatuses}
+              allowLeaveQueue={true}
               onLeaveQueue={handleLeaveQueue}
               leavingQueueEmployeeId={leavingQueueEmployeeId}
               canRemoveTechnicians={canRemoveTechnicians}
@@ -973,29 +981,81 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       <Modal
         isOpen={showLeaveConfirm}
         onClose={() => {
-          setShowLeaveConfirm(false);
-          setEmployeeToRemove(undefined);
+          if (!leavingQueueEmployeeId) {
+            setShowLeaveConfirm(false);
+            setEmployeeToRemove(undefined);
+            setLeaveReason('');
+            setLeaveNotes('');
+          }
         }}
         title={t('queue.leaveQueue')}
       >
-        <div className="text-center py-4">
-          <p className="text-lg text-gray-900 mb-6">
-            {t('common.confirmAction')}
-          </p>
-          <div className="flex gap-3 justify-center">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('queue.leaveReasonTitle')} <span className="text-red-500">*</span>
+            </label>
+            <Select
+              value={leaveReason}
+              onChange={(e) => setLeaveReason(e.target.value)}
+              disabled={!!leavingQueueEmployeeId}
+            >
+              <option value="">—</option>
+              <option value="Tired">{t('queue.reasonTired')}</option>
+              <option value="Cannot perform service">{t('queue.reasonCannotPerform')}</option>
+              <option value="Other">{t('queue.reasonOther')}</option>
+            </Select>
+          </div>
+
+          {leaveReason === 'Other' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('queue.notesRequired')} <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={leaveNotes}
+                onChange={(e) => setLeaveNotes(e.target.value)}
+                placeholder={t('queue.notesPlaceholder')}
+                rows={3}
+                disabled={!!leavingQueueEmployeeId}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+            </div>
+          )}
+
+          {leaveReason && leaveReason !== 'Other' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('queue.notesPlaceholder')}
+              </label>
+              <textarea
+                value={leaveNotes}
+                onChange={(e) => setLeaveNotes(e.target.value)}
+                placeholder={t('queue.notesPlaceholder')}
+                rows={2}
+                disabled={!!leavingQueueEmployeeId}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
             <button
               onClick={() => {
                 setShowLeaveConfirm(false);
                 setEmployeeToRemove(undefined);
+                setLeaveReason('');
+                setLeaveNotes('');
               }}
-              className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              disabled={!!leavingQueueEmployeeId}
+              className="flex-1 px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
             >
               {t('actions.cancel')}
             </button>
             <button
               onClick={confirmLeaveQueue}
-              disabled={!!leavingQueueEmployeeId}
-              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+              disabled={!leaveReason || (leaveReason === 'Other' && !leaveNotes.trim()) || !!leavingQueueEmployeeId}
+              className="flex-1 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
             >
               {leavingQueueEmployeeId ? t('messages.loading') : t('queue.leaveQueue')}
             </button>
