@@ -33,6 +33,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
     store_id: string;
     display_name: string;
     pay_type: string;
+    role: string[];
   } | null>(null);
   const { hasNewVersion, handleUpdate } = useServiceWorkerUpdate();
   const [showStoreSelection, setShowStoreSelection] = useState(false);
@@ -121,11 +122,14 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       const payType = employee?.pay_type || 'hourly';
       const displayName = employee?.display_name || session.display_name || 'Employee';
 
+      const roleArray: string[] = Array.isArray(session.role) ? session.role : [];
+
       setAuthenticatedSession({
         employee_id: session.employee_id,
         store_id: storeId,
         display_name: displayName,
-        pay_type: payType
+        pay_type: payType,
+        role: roleArray
       });
 
       setShowPinModal(false);
@@ -141,6 +145,13 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           await handleCheckInOut(session.employee_id, storeId, displayName, payType, selectedAction);
         }
       } else if (selectedAction === 'ready') {
+        // Block Cashiers from joining the ready queue
+        if (roleArray.includes('Cashier')) {
+          setPinError(t('home.queueNotAvailableForRole'));
+          setIsLoading(false);
+          return;
+        }
+
         // Find the store where employee is currently checked in
         const today = getCurrentDateEST();
         const { data: activeCheckIn, error: checkInError } = await supabase
@@ -228,6 +239,11 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           storeName
         );
       } else if (selectedAction === 'ready') {
+        // Defense in depth: block Cashiers from reaching handleReady
+        if (authenticatedSession.role.includes('Cashier')) {
+          setPinError(t('home.queueNotAvailableForRole'));
+          return;
+        }
         await handleReady(authenticatedSession.employee_id, storeId, storeName);
       }
     } catch (error) {
@@ -428,6 +444,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
             setErrorMessage('You must check in before joining the ready queue.');
           } else if (queueResult?.error === 'SKIP_QUEUE_ENABLED') {
             setErrorMessage(t('home.queueNotAvailable'));
+          } else if (queueResult?.error === 'ROLE_NOT_ELIGIBLE') {
+            setErrorMessage(t('home.queueNotAvailableForRole'));
           } else {
             setErrorMessage(queueResult?.message || 'Unable to join the ready queue. Please ensure you are checked in.');
           }
