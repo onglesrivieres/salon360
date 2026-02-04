@@ -1109,6 +1109,28 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-04: Leave Queue with Reason (All Roles)
+- Changed `allowLeaveQueue` from Technician-only to all queue-eligible roles in `Layout.tsx`
+- Replaced simple confirmation modal with reason-selection modal (Tired, Cannot perform service, Other)
+- "Other" reason requires mandatory notes; other reasons have optional notes
+- Created `queue_leave_log` table to record voluntary departures with reason/notes
+- Updated `leave_ready_queue` RPC to accept optional `p_reason` and `p_notes` parameters
+- Added leave reason translation keys to all 4 languages (en, fr, vi, km)
+- HomePage check-in flow leave queue unchanged (no reason needed in that context)
+
+### 2026-02-04: Receptionist Ticket Approval
+- Added Receptionist to `Permissions.tickets.canApprove` in `permissions.ts`
+- Updated `approve_ticket` RPC: Receptionist can approve technician-level tickets directly and supervisor-level tickets when they worked on the ticket (same rules as Supervisor)
+- No changes needed to TicketsPage or PendingApprovalsPage (existing logic derives behavior from permission check)
+
+### 2026-02-03: Client Visit History Tab
+- Replaced "Color History" tab with "Visit History" in `ClientDetailsModal`
+- Shows last 20 client tickets with services, technicians, totals, and color info
+- Expandable rows: click to see ticket number, payment method, per-service details, and color badges
+- Open tickets show "Open" badge instead of total amount
+- Replaced N+1 query pattern with 2 batch queries (tickets + colors) joined in-memory
+- Added `VisitHistoryEntry` interface to `supabase.ts`
+
 ### 2026-02-02: Ticket Phone Number Masking
 - Technicians now see `***-***-XXXX` (last 4 digits) instead of `**********` on tickets
 - Non-management roles (Cashier, Receptionist, Supervisor) see masked phone on closed tickets
