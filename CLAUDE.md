@@ -725,6 +725,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 
 - **Ready Queue**: Technicians mark themselves ready for next service
 - **Queue Statuses**: ready, busy, neutral, small_service
+- **Skip Turn**: Technician can skip their turn, moving to end of queue (resets `ready_at` to `NOW()`)
 - **Cooldown**: After removal, cooldown period before rejoining
 - **Auto Status**:
   - Opens ticket → status = busy
@@ -903,6 +904,8 @@ TECHNICIAN_READY
       │
       ▼
   IN_QUEUE ◄─────────────────────────┐
+      │                               │
+      ├──→ SKIP_TURN (move to end)────┘
       │                               │
       ▼                               │
 ASSIGNED_TO_TICKET                    │
@@ -1108,6 +1111,13 @@ Always filter by `store_id` when querying store-specific data:
 ---
 
 ## Recent Changes
+
+### 2026-02-04: Skip Turn in Queue
+- Added yellow "Skip Turn" button next to red "Leave Queue" button in technician queue modal
+- Moves technician to end of queue by resetting `ready_at` to `NOW()` (no confirmation needed)
+- Created `skip_queue_turn` RPC function accepting `p_employee_id` and `p_store_id`
+- Both buttons disable each other while either action is in progress
+- Added `skipTurn` and `skippingTurn` translation keys to all 4 languages (en, fr, vi, km)
 
 ### 2026-02-04: Leave Queue with Reason (All Roles)
 - Changed `allowLeaveQueue` from Technician-only to all queue-eligible roles in `Layout.tsx`
