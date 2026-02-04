@@ -112,7 +112,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
       const { data: employee, error: empError } = await supabase
         .from('employees')
-        .select('pay_type, display_name')
+        .select('pay_type, display_name, skip_queue_on_checkin')
         .eq('id', session.employee_id)
         .maybeSingle();
 
@@ -162,6 +162,13 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
         if (!activeCheckIn) {
           setPinError(t('home.mustCheckInFirst'));
+          setIsLoading(false);
+          return;
+        }
+
+        // Check if employee is configured to skip queue
+        if (employee?.skip_queue_on_checkin === true) {
+          setPinError(t('home.queueNotAvailable'));
           setIsLoading(false);
           return;
         }
@@ -419,6 +426,8 @@ export function HomePage({ onActionSelected }: HomePageProps) {
             );
           } else if (queueResult?.error === 'CHECK_IN_REQUIRED') {
             setErrorMessage('You must check in before joining the ready queue.');
+          } else if (queueResult?.error === 'SKIP_QUEUE_ENABLED') {
+            setErrorMessage(t('home.queueNotAvailable'));
           } else {
             setErrorMessage(queueResult?.message || 'Unable to join the ready queue. Please ensure you are checked in.');
           }
