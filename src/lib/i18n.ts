@@ -368,6 +368,8 @@ export const translations = {
       reasonOther: 'Other',
       notesRequired: 'Please provide details',
       notesPlaceholder: 'Provide additional details...',
+      skipTurn: 'Skip Turn',
+      skippingTurn: 'Skipping...',
     },
     paymentMethods: {
       cash: 'Cash',
@@ -1073,6 +1075,8 @@ export const translations = {
       reasonOther: 'Autre',
       notesRequired: 'Veuillez fournir des détails',
       notesPlaceholder: 'Fournir des détails supplémentaires...',
+      skipTurn: 'Passer le tour',
+      skippingTurn: 'En cours...',
     },
     paymentMethods: {
       cash: 'Comptant',
@@ -1778,6 +1782,8 @@ export const translations = {
       reasonOther: 'Khác',
       notesRequired: 'Vui lòng cung cấp chi tiết',
       notesPlaceholder: 'Cung cấp thêm chi tiết...',
+      skipTurn: 'Bỏ lượt',
+      skippingTurn: 'Đang bỏ lượt...',
     },
     paymentMethods: {
       cash: 'Tiền mặt',
@@ -2483,6 +2489,8 @@ export const translations = {
       reasonOther: 'ផ្សេងទៀត',
       notesRequired: 'សូមផ្តល់ព័ត៌មានលម្អិត',
       notesPlaceholder: 'ផ្តល់ព័ត៌មានលម្អិតបន្ថែម...',
+      skipTurn: 'រំលងវេន',
+      skippingTurn: 'កំពុងរំលង...',
     },
     paymentMethods: {
       cash: 'សាច់ប្រាក់',

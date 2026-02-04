@@ -1,6 +1,7 @@
 import React from 'react';
 import { Award, Lock, Clock, XCircle } from 'lucide-react';
 import { TechnicianWithQueue } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 interface TechnicianQueueProps {
   sortedTechnicians: TechnicianWithQueue[];
@@ -13,6 +14,9 @@ interface TechnicianQueueProps {
   allowLeaveQueue?: boolean;
   onLeaveQueue?: (employeeId: string) => void;
   leavingQueueEmployeeId?: string;
+  allowSkipTurn?: boolean;
+  onSkipTurn?: (employeeId: string) => void;
+  skippingTurnEmployeeId?: string;
   canRemoveTechnicians?: boolean;
   onRemoveTechnician?: (employeeId: string, employeeName: string) => void;
   removingTechnicianId?: string;
@@ -29,10 +33,14 @@ export function TechnicianQueue({
   allowLeaveQueue = false,
   onLeaveQueue,
   leavingQueueEmployeeId,
+  allowSkipTurn = false,
+  onSkipTurn,
+  skippingTurnEmployeeId,
   canRemoveTechnicians = false,
   onRemoveTechnician,
   removingTechnicianId,
 }: TechnicianQueueProps) {
+  const { t } = useAuth();
 
   const calculateTimeRemaining = (tech: TechnicianWithQueue): string => {
     if (!tech.ticket_start_time || !tech.estimated_duration_min) {
@@ -66,10 +74,11 @@ export function TechnicianQueue({
   const neutralTechnicians = sortedTechnicians.filter(t => t.queue_status === 'neutral');
   const busyTechnicians = sortedTechnicians.filter(t => t.queue_status === 'busy');
 
-  const currentEmployeeInQueue = allowLeaveQueue && currentEmployeeId
+  const currentEmployeeInQueue = (allowLeaveQueue || allowSkipTurn) && currentEmployeeId
     ? availableTechnicians.find(tech => tech.employee_id === currentEmployeeId && tech.queue_status === 'ready')
     : null;
   const isLeaving = currentEmployeeInQueue && leavingQueueEmployeeId === currentEmployeeId;
+  const isSkipping = currentEmployeeInQueue && skippingTurnEmployeeId === currentEmployeeId;
 
   return (
     <div className="space-y-4">
@@ -218,22 +227,41 @@ export function TechnicianQueue({
 
       {currentEmployeeInQueue && (
         <div className="pt-4 border-t border-gray-200">
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={() => onLeaveQueue?.(currentEmployeeId!)}
-              disabled={!!isLeaving}
-              className="px-6 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-            >
-              {isLeaving ? (
-                <span className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Leaving Queue...
-                </span>
-              ) : (
-                'Leave Queue'
-              )}
-            </button>
+          <div className="flex justify-center gap-3">
+            {allowSkipTurn && onSkipTurn && (
+              <button
+                type="button"
+                onClick={() => onSkipTurn(currentEmployeeId!)}
+                disabled={!!isSkipping || !!isLeaving}
+                className="px-6 py-2.5 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                {isSkipping ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    {t('queue.skippingTurn')}
+                  </span>
+                ) : (
+                  t('queue.skipTurn')
+                )}
+              </button>
+            )}
+            {allowLeaveQueue && onLeaveQueue && (
+              <button
+                type="button"
+                onClick={() => onLeaveQueue(currentEmployeeId!)}
+                disabled={!!isLeaving || !!isSkipping}
+                className="px-6 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                {isLeaving ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    {t('queue.leaveQueue')}...
+                  </span>
+                ) : (
+                  t('queue.leaveQueue')
+                )}
+              </button>
+            )}
           </div>
         </div>
       )}

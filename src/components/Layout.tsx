@@ -40,6 +40,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [loadingQueue, setLoadingQueue] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [leavingQueueEmployeeId, setLeavingQueueEmployeeId] = useState<string | undefined>();
+  const [skippingTurnEmployeeId, setSkippingTurnEmployeeId] = useState<string | undefined>();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [employeeToRemove, setEmployeeToRemove] = useState<string | undefined>();
   const [leaveReason, setLeaveReason] = useState('');
@@ -425,6 +426,31 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const handleLeaveQueue = async (employeeId: string) => {
     setEmployeeToRemove(employeeId);
     setShowLeaveConfirm(true);
+  };
+
+  const handleSkipTurn = async (employeeId: string) => {
+    if (!selectedStoreId) return;
+
+    setSkippingTurnEmployeeId(employeeId);
+    try {
+      const { data, error } = await supabase.rpc('skip_queue_turn', {
+        p_employee_id: employeeId,
+        p_store_id: selectedStoreId,
+      });
+
+      if (error) throw error;
+
+      if (data && !data.success) {
+        throw new Error(data.message || 'Failed to skip turn');
+      }
+
+      await fetchTechnicianQueue();
+    } catch (error: any) {
+      console.error('Error skipping turn:', error);
+      alert(error.message || 'Failed to skip turn. Please try again.');
+    } finally {
+      setSkippingTurnEmployeeId(undefined);
+    }
   };
 
   const confirmLeaveQueue = async () => {
@@ -940,6 +966,9 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               allowLeaveQueue={true}
               onLeaveQueue={handleLeaveQueue}
               leavingQueueEmployeeId={leavingQueueEmployeeId}
+              allowSkipTurn={true}
+              onSkipTurn={handleSkipTurn}
+              skippingTurnEmployeeId={skippingTurnEmployeeId}
               canRemoveTechnicians={canRemoveTechnicians}
               onRemoveTechnician={handleRemoveTechnician}
               removingTechnicianId={removingTechnicianId}
