@@ -8,12 +8,12 @@ import { NotificationBadge } from './ui/NotificationBadge';
 import { VersionNotification } from './VersionNotification';
 import { useServiceWorkerUpdate } from '../hooks/useServiceWorkerUpdate';
 import { Modal } from './ui/Modal';
-import { Select } from './ui/Select';
 import { TechnicianQueue } from './TechnicianQueue';
 import { getCurrentDateEST } from '../lib/timezone';
 import { ViewAsSelector } from './ViewAsSelector';
 import { ViewAsBanner } from './ViewAsBanner';
 import { RemoveTechnicianModal } from './RemoveTechnicianModal';
+import { QueueReasonModal } from './QueueReasonModal';
 import { ViolationReportModal } from './ViolationReportModal';
 import { ViolationResponseRibbon } from './ViolationResponseRibbon';
 import { useCheckInStatusCheck } from '../hooks/useCheckInStatusCheck';
@@ -43,8 +43,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [skippingTurnEmployeeId, setSkippingTurnEmployeeId] = useState<string | undefined>();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [employeeToRemove, setEmployeeToRemove] = useState<string | undefined>();
-  const [leaveReason, setLeaveReason] = useState('');
-  const [leaveNotes, setLeaveNotes] = useState('');
+  const [showSkipConfirm, setShowSkipConfirm] = useState(false);
+  const [employeeToSkip, setEmployeeToSkip] = useState<string | undefined>();
   const [userQueueStatus, setUserQueueStatus] = useState<'ready' | 'neutral' | 'busy'>('neutral');
   const [showRemovalModal, setShowRemovalModal] = useState(false);
   const [technicianToRemove, setTechnicianToRemove] = useState<{ id: string; name: string } | null>(null);
@@ -429,13 +429,20 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   };
 
   const handleSkipTurn = async (employeeId: string) => {
-    if (!selectedStoreId) return;
+    setEmployeeToSkip(employeeId);
+    setShowSkipConfirm(true);
+  };
 
-    setSkippingTurnEmployeeId(employeeId);
+  const confirmSkipTurn = async (reason: string, notes: string) => {
+    if (!employeeToSkip || !selectedStoreId) return;
+
+    setSkippingTurnEmployeeId(employeeToSkip);
     try {
       const { data, error } = await supabase.rpc('skip_queue_turn', {
-        p_employee_id: employeeId,
+        p_employee_id: employeeToSkip,
         p_store_id: selectedStoreId,
+        p_reason: reason,
+        p_notes: notes || null,
       });
 
       if (error) throw error;
@@ -445,6 +452,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       }
 
       await fetchTechnicianQueue();
+      setShowSkipConfirm(false);
+      setEmployeeToSkip(undefined);
     } catch (error: any) {
       console.error('Error skipping turn:', error);
       alert(error.message || 'Failed to skip turn. Please try again.');
@@ -453,17 +462,16 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     }
   };
 
-  const confirmLeaveQueue = async () => {
-    if (!employeeToRemove || !selectedStoreId || !leaveReason) return;
-    if (leaveReason === 'Other' && !leaveNotes.trim()) return;
+  const confirmLeaveQueue = async (reason: string, notes: string) => {
+    if (!employeeToRemove || !selectedStoreId) return;
 
     setLeavingQueueEmployeeId(employeeToRemove);
     try {
       const { error } = await supabase.rpc('leave_ready_queue', {
         p_employee_id: employeeToRemove,
         p_store_id: selectedStoreId,
-        p_reason: leaveReason,
-        p_notes: leaveNotes.trim() || null
+        p_reason: reason,
+        p_notes: notes || null
       });
 
       if (error) throw error;
@@ -471,8 +479,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       await fetchTechnicianQueue();
       setShowLeaveConfirm(false);
       setEmployeeToRemove(undefined);
-      setLeaveReason('');
-      setLeaveNotes('');
     } catch (error) {
       console.error('Error leaving queue:', error);
       alert('Failed to leave queue. Please try again.');
@@ -1007,90 +1013,37 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         onSubmit={handleSubmitViolationReport}
       />
 
-      <Modal
+      <QueueReasonModal
         isOpen={showLeaveConfirm}
         onClose={() => {
           if (!leavingQueueEmployeeId) {
             setShowLeaveConfirm(false);
             setEmployeeToRemove(undefined);
-            setLeaveReason('');
-            setLeaveNotes('');
           }
         }}
-        title={t('queue.leaveQueue')}
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('queue.leaveReasonTitle')} <span className="text-red-500">*</span>
-            </label>
-            <Select
-              value={leaveReason}
-              onChange={(e) => setLeaveReason(e.target.value)}
-              disabled={!!leavingQueueEmployeeId}
-            >
-              <option value="">—</option>
-              <option value="Tired">{t('queue.reasonTired')}</option>
-              <option value="Cannot perform service">{t('queue.reasonCannotPerform')}</option>
-              <option value="Other">{t('queue.reasonOther')}</option>
-            </Select>
-          </div>
+        onConfirm={confirmLeaveQueue}
+        title={t('queue.leaveReasonTitle')}
+        confirmLabel={t('queue.leaveQueue')}
+        confirmingLabel={t('messages.loading')}
+        isSubmitting={!!leavingQueueEmployeeId}
+        confirmButtonColor="red"
+      />
 
-          {leaveReason === 'Other' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('queue.notesRequired')} <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={leaveNotes}
-                onChange={(e) => setLeaveNotes(e.target.value)}
-                placeholder={t('queue.notesPlaceholder')}
-                rows={3}
-                disabled={!!leavingQueueEmployeeId}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-              />
-            </div>
-          )}
-
-          {leaveReason && leaveReason !== 'Other' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('queue.notesPlaceholder')}
-              </label>
-              <textarea
-                value={leaveNotes}
-                onChange={(e) => setLeaveNotes(e.target.value)}
-                placeholder={t('queue.notesPlaceholder')}
-                rows={2}
-                disabled={!!leavingQueueEmployeeId}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-              />
-            </div>
-          )}
-
-          <div className="flex gap-3 pt-2">
-            <button
-              onClick={() => {
-                setShowLeaveConfirm(false);
-                setEmployeeToRemove(undefined);
-                setLeaveReason('');
-                setLeaveNotes('');
-              }}
-              disabled={!!leavingQueueEmployeeId}
-              className="flex-1 px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
-            >
-              {t('actions.cancel')}
-            </button>
-            <button
-              onClick={confirmLeaveQueue}
-              disabled={!leaveReason || (leaveReason === 'Other' && !leaveNotes.trim()) || !!leavingQueueEmployeeId}
-              className="flex-1 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-            >
-              {leavingQueueEmployeeId ? t('messages.loading') : t('queue.leaveQueue')}
-            </button>
-          </div>
-        </div>
-      </Modal>
+      <QueueReasonModal
+        isOpen={showSkipConfirm}
+        onClose={() => {
+          if (!skippingTurnEmployeeId) {
+            setShowSkipConfirm(false);
+            setEmployeeToSkip(undefined);
+          }
+        }}
+        onConfirm={confirmSkipTurn}
+        title={t('queue.skipReasonTitle')}
+        confirmLabel={t('queue.skipTurn')}
+        confirmingLabel={t('queue.skippingTurn')}
+        isSubmitting={!!skippingTurnEmployeeId}
+        confirmButtonColor="yellow"
+      />
 
       <RemoveTechnicianModal
         isOpen={showRemovalModal}
