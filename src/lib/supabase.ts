@@ -124,6 +124,7 @@ export interface StoreServiceWithDetails {
   created_at: string;
   updated_at: string;
   usage_count?: number;
+  requires_photos?: boolean;
 }
 
 export interface StoreServiceCategory {

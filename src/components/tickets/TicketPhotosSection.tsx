@@ -9,13 +9,14 @@ import { useToast } from '../ui/Toast';
 
 interface TicketPhotosSectionProps {
   storeId: string;
-  ticketId: string;
+  ticketId: string | null;
   readOnly?: boolean;
 }
 
 export interface TicketPhotosSectionRef {
-  uploadPendingPhotos: () => Promise<boolean>;
+  uploadPendingPhotos: (overrideTicketId?: string) => Promise<boolean>;
   hasPendingChanges: boolean;
+  pendingCount: number;
 }
 
 const MAX_PHOTOS = 5;
@@ -56,7 +57,8 @@ export const TicketPhotosSection = forwardRef<TicketPhotosSectionRef, TicketPhot
   useImperativeHandle(ref, () => ({
     uploadPendingPhotos,
     hasPendingChanges,
-  }), [uploadPendingPhotos, hasPendingChanges]);
+    pendingCount: pendingPhotos.length,
+  }), [uploadPendingPhotos, hasPendingChanges, pendingPhotos.length]);
 
   const canUpload = !readOnly && !!effectiveRole && Permissions.photos.canUploadTicketPhotos(effectiveRole);
   const canDelete = !!effectiveRole && Permissions.photos.canDeleteTicketPhotos(effectiveRole);
@@ -109,11 +111,6 @@ export const TicketPhotosSection = forwardRef<TicketPhotosSectionRef, TicketPhot
     }
   };
 
-  // Don't render if no ticket ID yet (new ticket)
-  if (!ticketId) {
-    return null;
-  }
-
   return (
     <div className="border-t border-gray-200 pt-4 mt-4">
       {/* Header */}
@@ -137,7 +134,7 @@ export const TicketPhotosSection = forwardRef<TicketPhotosSectionRef, TicketPhot
       )}
 
       {/* Content */}
-      {isLoading ? (
+      {isLoading && ticketId ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
         </div>

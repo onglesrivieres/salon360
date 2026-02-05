@@ -54,6 +54,7 @@ export function ServicesPage() {
     duration_min: '30',
     category: 'Extensions des Ongles',
     status: 'active' as ServiceStatus,
+    requires_photos: false,
   });
 
   const [averageDuration, setAverageDuration] = useState<{
@@ -514,6 +515,7 @@ export function ServicesPage() {
       duration_min: '30',
       category: '',
       status: 'active',
+      requires_photos: false,
     });
     setIsDrawerOpen(true);
   }
@@ -534,6 +536,7 @@ export function ServicesPage() {
       duration_min: service.duration_min.toString(),
       category: service.category,
       status: getServiceStatus(service),
+      requires_photos: service.requires_photos || false,
     });
     setIsDrawerOpen(true);
   }
@@ -598,6 +601,7 @@ export function ServicesPage() {
           active: formData.status === 'active',
           archived: formData.status === 'archived',
           updated_at: new Date().toISOString(),
+          requires_photos: formData.requires_photos,
         };
 
         const { error } = await supabase
@@ -654,6 +658,7 @@ export function ServicesPage() {
             duration_min: parseInt(formData.duration_min),
             active: formData.status === 'active',
             archived: formData.status === 'archived',
+            requires_photos: formData.requires_photos,
           });
 
         if (storeServiceError) {
@@ -1065,6 +1070,21 @@ export function ServicesPage() {
                 </p>
               </div>
             )}
+          </div>
+
+          <div>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.requires_photos}
+                onChange={(e) => setFormData({ ...formData, requires_photos: e.target.checked })}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-gray-700">Require photos & notes</span>
+                <p className="text-xs text-gray-500">When enabled, new tickets with this service require at least 2 photos and notes</p>
+              </div>
+            </label>
           </div>
 
           <div>

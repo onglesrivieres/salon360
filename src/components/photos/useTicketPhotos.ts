@@ -21,7 +21,7 @@ export interface PendingPhoto {
 
 interface UseTicketPhotosOptions {
   storeId: string;
-  ticketId: string;
+  ticketId: string | null;
   uploadedBy: string;
   storageConfig?: StorageConfig | null;
 }
@@ -37,9 +37,10 @@ interface UseTicketPhotosReturn {
   totalPhotoCount: number;
   addPendingPhoto: (file: File) => Promise<boolean>;
   removePendingPhoto: (id: string) => void;
-  uploadPendingPhotos: () => Promise<boolean>;
+  uploadPendingPhotos: (overrideTicketId?: string) => Promise<boolean>;
   deletePhoto: (photoId: string) => Promise<boolean>;
   hasPendingChanges: boolean;
+  pendingCount: number;
   refetch: () => Promise<void>;
 }
 
@@ -231,9 +232,10 @@ export function useTicketPhotos({
     });
   }, []);
 
-  const uploadPendingPhotos = useCallback(async (): Promise<boolean> => {
+  const uploadPendingPhotos = useCallback(async (overrideTicketId?: string): Promise<boolean> => {
     if (pendingPhotos.length === 0) return true;
-    if (!ticketId) return false;
+    const effectiveTicketId = overrideTicketId || ticketId;
+    if (!effectiveTicketId) return false;
 
     if (!storage) {
       setError('Storage is not configured. Please configure Cloudflare R2 in Settings.');
@@ -252,7 +254,7 @@ export function useTicketPhotos({
         const uuid = crypto.randomUUID();
         const extension = 'jpg';
         const filename = `${timestamp}_${uuid}.${extension}`;
-        const storagePath = `tickets/${storeId}/${ticketId}/${filename}`;
+        const storagePath = `tickets/${storeId}/${effectiveTicketId}/${filename}`;
 
         // Upload to storage using the storage service
         const uploadResult = await storage.upload(storagePath, pending.compressedBlob, {
@@ -267,7 +269,7 @@ export function useTicketPhotos({
         // Save metadata to database
         const photoData: Omit<TicketPhoto, 'id' | 'created_at'> = {
           store_id: storeId,
-          ticket_id: ticketId,
+          ticket_id: effectiveTicketId,
           storage_path: storagePath,
           filename: pending.filename,
           file_size: pending.compressedBlob.size,
@@ -365,6 +367,7 @@ export function useTicketPhotos({
     uploadPendingPhotos,
     deletePhoto,
     hasPendingChanges: pendingPhotos.length > 0,
+    pendingCount: pendingPhotos.length,
     refetch: fetchPhotos,
   };
 }

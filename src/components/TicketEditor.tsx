@@ -862,6 +862,13 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     }
   }
 
+  // Check if any service in the ticket requires photos
+  const hasRequiresPhotosService = items.some(item => {
+    if (item.is_custom) return false;
+    const svc = services.find(s => s.id === item.service_id);
+    return svc?.requires_photos;
+  });
+
   function calculateSubtotal(): number {
     const itemsTotal = items.reduce((sum, item) => {
       const price = parseFloat(item.price_each) || 0;
@@ -1249,6 +1256,19 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
       }
     }
 
+    // Validate photos and notes for new tickets with requires_photos services
+    if (!ticketId && hasRequiresPhotosService) {
+      if (!formData.notes || formData.notes.trim() === '') {
+        showToast('Notes are required for this service', 'error');
+        return;
+      }
+      const pendingCount = photosSectionRef.current?.pendingCount ?? 0;
+      if (pendingCount < 2) {
+        showToast('At least 2 photos are required for this service', 'error');
+        return;
+      }
+    }
+
     try {
       setSaving(true);
 
@@ -1263,6 +1283,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
       }
 
       const total = calculateTotal();
+      let createdTicketId: string | null = null;
       let paymentCash = parseFloat(formData.payment_cash) || 0;
       let paymentCard = parseFloat(formData.payment_card) || 0;
       let paymentGiftCard = parseFloat(formData.payment_gift_card) || 0;
@@ -1443,6 +1464,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           .single();
 
         if (ticketError) throw ticketError;
+        createdTicketId = newTicket.id;
 
         // Clear discount fields based on payment method
         let discountPercentage = parseFloat(formData.discount_percentage) || 0;
@@ -1514,7 +1536,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
       // Upload any pending photos before closing
       if (photosSectionRef.current?.hasPendingChanges) {
-        const photoUploadSuccess = await photosSectionRef.current.uploadPendingPhotos();
+        const photoUploadSuccess = await photosSectionRef.current.uploadPendingPhotos(createdTicketId || undefined);
         if (!photoUploadSuccess) {
           showToast('Some photos failed to upload', 'error');
         }
@@ -2781,26 +2803,30 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              Notes / Comments
+              Notes / Comments{hasRequiresPhotosService && !ticketId && <span className="text-red-500"> *</span>}
             </label>
             <textarea
               value={formData.notes}
               onChange={(e) =>
                 setFormData({ ...formData, notes: e.target.value })
               }
-              rows={1}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={hasRequiresPhotosService && !ticketId ? 2 : 1}
+              className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                hasRequiresPhotosService && !ticketId && (!formData.notes || formData.notes.trim() === '')
+                  ? 'border-red-300'
+                  : 'border-gray-300'
+              }`}
               disabled={!canEditNotes}
-              placeholder={canEditNotes ? "Add notes or comments..." : ""}
+              placeholder={canEditNotes ? (hasRequiresPhotosService && !ticketId ? "Notes required for this service..." : "Add notes or comments...") : ""}
             />
           </div>
 
           {/* Photos Section */}
-          {ticketId && selectedStoreId && (
+          {(ticketId || (!ticketId && hasRequiresPhotosService)) && selectedStoreId && (
             <TicketPhotosSection
               ref={photosSectionRef}
               storeId={selectedStoreId}
-              ticketId={ticketId}
+              ticketId={ticketId || null}
               readOnly={isReadOnly}
             />
           )}
