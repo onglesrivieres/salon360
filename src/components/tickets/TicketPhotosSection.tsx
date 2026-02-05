@@ -1,6 +1,7 @@
 import { useState, useImperativeHandle, forwardRef } from 'react';
 import { ImageIcon, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSettings } from '../../contexts/SettingsContext';
 import { Permissions } from '../../lib/permissions';
 import { PhotoUpload, PhotoThumbnail, PhotoPreview, useTicketPhotos } from '../photos';
 import { TicketPhotoWithUrl } from '../../lib/supabase';
@@ -26,6 +27,7 @@ export const TicketPhotosSection = forwardRef<TicketPhotosSectionRef, TicketPhot
     readOnly = false,
   }, ref) {
   const { t, session, effectiveRole } = useAuth();
+  const { getStorageConfig } = useSettings();
   const { showToast } = useToast();
   const [previewPhoto, setPreviewPhoto] = useState<TicketPhotoWithUrl | null>(null);
   const [previewIndex, setPreviewIndex] = useState(0);
@@ -47,6 +49,7 @@ export const TicketPhotosSection = forwardRef<TicketPhotosSectionRef, TicketPhot
     storeId,
     ticketId,
     uploadedBy: session?.employee_id || '',
+    storageConfig: getStorageConfig(),
   });
 
   // Expose uploadPendingPhotos to parent via ref
