@@ -79,7 +79,13 @@ export async function authenticateWithPIN(pin: string): Promise<AuthSession | nu
     pin_input: pin
   });
 
-  if (error || !data || data.length === 0) {
+  if (error) {
+    console.error('PIN auth RPC error:', error.message, error.code);
+    return null;
+  }
+
+  if (!data || data.length === 0) {
+    console.warn('PIN auth: no matching employee (wrong PIN, inactive, or no PIN set)');
     return null;
   }
 
