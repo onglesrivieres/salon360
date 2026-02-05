@@ -116,9 +116,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     )
   );
 
-  const canEditNotes = session && session.role_permission && ticket && Permissions.tickets.canEditNotes(
-    session.role_permission,
-    !!ticket.closed_at
+  const canEditNotes = session && session.role_permission && (
+    !ticketId || (ticket && Permissions.tickets.canEditNotes(
+      session.role_permission,
+      !!ticket.closed_at
+    ))
   );
 
   const canClose = session && session.role_permission && Permissions.tickets.canClose(session.role_permission);
