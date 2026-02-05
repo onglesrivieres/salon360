@@ -110,8 +110,12 @@ export function useTicketPhotos({
   const [error, setError] = useState<string | null>(null);
 
   // Get the R2 storage service - null if not configured
+  // Use primitive values for memoization to avoid infinite re-render loop.
+  // storageConfig is a new object each render (from getStorageConfig()), but the
+  // StorageService only depends on storeId and publicUrl.
+  const storagePublicUrl = storageConfig?.r2Config?.publicUrl;
   const storage: StorageService | null = useMemo(() => {
-    if (!storageConfig) {
+    if (!storageConfig || !storagePublicUrl) {
       return null;
     }
     try {
@@ -119,7 +123,8 @@ export function useTicketPhotos({
     } catch {
       return null;
     }
-  }, [storageConfig]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeId, storagePublicUrl]);
 
   const totalPhotoCount = photos.length + pendingPhotos.length;
 
