@@ -1,6 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, ClientWithStats } from '../lib/supabase';
 
+/**
+ * Splits an array of IDs into chunks and runs a query for each chunk,
+ * concatenating the results. Avoids URL length limits with large .in() lists.
+ */
+async function batchIn<T>(
+  queryFn: (ids: string[]) => PromiseLike<{ data: T[] | null; error: any }>,
+  ids: string[],
+  chunkSize = 50
+): Promise<T[]> {
+  const results: T[] = [];
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    const { data, error } = await queryFn(chunk);
+    if (error) throw error;
+    if (data) results.push(...data);
+  }
+  return results;
+}
+
 interface UseClientsOptions {
   search?: string;
   blacklistedOnly?: boolean;
@@ -73,15 +92,18 @@ export function useClients(
       }
 
       // Batch query 1: visit stats from sale_tickets (filtered by store_id)
-      const { data: ticketRows } = await supabase
-        .from('sale_tickets')
-        .select('client_id, ticket_date')
-        .eq('store_id', storeId)
-        .in('client_id', clientIds);
+      const ticketRows = await batchIn<{ client_id: string; ticket_date: string }>(
+        (ids) => supabase
+          .from('sale_tickets')
+          .select('client_id, ticket_date')
+          .eq('store_id', storeId)
+          .in('client_id', ids),
+        clientIds
+      );
 
       // Aggregate: last_visit (max ticket_date) and total_visits (count) per client
       const visitMap = new Map<string, { last_visit: string; total_visits: number }>();
-      for (const row of ticketRows || []) {
+      for (const row of ticketRows) {
         const existing = visitMap.get(row.client_id);
         if (!existing) {
           visitMap.set(row.client_id, { last_visit: row.ticket_date, total_visits: 1 });
@@ -94,15 +116,18 @@ export function useClients(
       }
 
       // Batch query 2: last color from client_color_history
-      const { data: colorRows } = await supabase
-        .from('client_color_history')
-        .select('client_id, color, applied_date')
-        .in('client_id', clientIds)
-        .order('applied_date', { ascending: false });
+      const colorRows = await batchIn<{ client_id: string; color: string; applied_date: string }>(
+        (ids) => supabase
+          .from('client_color_history')
+          .select('client_id, color, applied_date')
+          .in('client_id', ids)
+          .order('applied_date', { ascending: false }),
+        clientIds
+      );
 
       // First occurrence per client_id is the most recent (ordered DESC)
       const colorMap = new Map<string, string>();
-      for (const row of colorRows || []) {
+      for (const row of colorRows) {
         if (!colorMap.has(row.client_id)) {
           colorMap.set(row.client_id, row.color);
         }
@@ -119,12 +144,15 @@ export function useClients(
 
       const empNameMap = new Map<string, string>();
       if (blacklistedByIds.length > 0) {
-        const { data: empRows } = await supabase
-          .from('employees')
-          .select('id, display_name')
-          .in('id', blacklistedByIds);
+        const empRows = await batchIn<{ id: string; display_name: string }>(
+          (ids) => supabase
+            .from('employees')
+            .select('id, display_name')
+            .in('id', ids),
+          blacklistedByIds
+        );
 
-        for (const emp of empRows || []) {
+        for (const emp of empRows) {
           empNameMap.set(emp.id, emp.display_name);
         }
       }

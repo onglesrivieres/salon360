@@ -1144,6 +1144,14 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Fix Clients Page Last Visit & Total Visits Showing Empty
+- After the batch query refactor, all clients showed Last Visit = "Never" and Total Visits = 0 despite having ticket data
+- Root cause: `.in('client_id', clientIds)` with 200+ UUIDs exceeded PostgREST/Kong URL length limits → silent 414 error → `data` returned `null` → `ticketRows || []` silently produced empty array
+- Added `batchIn()` helper that chunks `.in()` calls into groups of 50 IDs, runs each query separately, and concatenates results
+- Applied chunked querying to all 3 batch queries (sale_tickets, client_color_history, employees)
+- `batchIn` throws on query errors (caught by existing `try/catch`) instead of silently returning empty
+- File modified: `src/hooks/useClients.ts`
+
 ### 2026-02-06: Fix Clients Page Sorting & Batch Query Optimization
 - Clients page was showing alphabetical order (A-names first) instead of sorting by most recent visit because `useClients.ts` fetched only the first 50 clients alphabetically from the DB, then client-side sort only operated within that subset
 - Removed DB-level pagination (`limit`/`offset`/`.range()`) — all clients for the store are now fetched so `ClientsPage.tsx` client-side sort by `last_visit` DESC works correctly across the full dataset
