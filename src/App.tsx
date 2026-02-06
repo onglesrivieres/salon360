@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense, Component, type ReactNode } from 'react';
 import { Layout } from './components/Layout';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -20,19 +20,68 @@ import { useWorkingHoursCheck } from './hooks/useWorkingHoursCheck';
 import { useCheckInStatusCheck } from './hooks/useCheckInStatusCheck';
 import { usePendingApprovalsRedirect } from './hooks/usePendingApprovalsRedirect';
 
-const EndOfDayPage = lazy(() => import('./pages/EndOfDayPage').then(m => ({ default: m.EndOfDayPage })));
-const SafeBalancePage = lazy(() => import('./pages/SafeBalancePage').then(m => ({ default: m.SafeBalancePage })));
-const TipReportPage = lazy(() => import('./pages/TipReportPage').then(m => ({ default: m.TipReportPage })));
-const AttendancePage = lazy(() => import('./pages/AttendancePage').then(m => ({ default: m.AttendancePage })));
-const EmployeesPage = lazy(() => import('./pages/EmployeesPage').then(m => ({ default: m.EmployeesPage })));
-const ServicesPage = lazy(() => import('./pages/ServicesPage').then(m => ({ default: m.ServicesPage })));
-const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
-const ConfigurationPage = lazy(() => import('./pages/ConfigurationPage').then(m => ({ default: m.ConfigurationPage })));
-const PendingApprovalsPage = lazy(() => import('./pages/PendingApprovalsPage').then(m => ({ default: m.PendingApprovalsPage })));
-const InventoryPage = lazy(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
-const InsightsPage = lazy(() => import('./pages/InsightsPage').then(m => ({ default: m.InsightsPage })));
-const ClientsPage = lazy(() => import('./pages/ClientsPage').then(m => ({ default: m.ClientsPage })));
-const ResourcesPage = lazy(() => import('./pages/ResourcesPage').then(m => ({ default: m.ResourcesPage })));
+function lazyWithReload<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+) {
+  return lazy(() =>
+    factory().catch(() => {
+      const reloaded = sessionStorage.getItem('chunk_reload');
+      if (!reloaded) {
+        sessionStorage.setItem('chunk_reload', 'true');
+        window.location.reload();
+      }
+      throw new Error('Failed to load page module');
+    })
+  );
+}
+
+class ChunkErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-64 gap-4">
+          <p className="text-gray-600">Something went wrong loading this page.</p>
+          <button
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            onClick={() => {
+              sessionStorage.removeItem('chunk_reload');
+              window.location.reload();
+            }}
+          >
+            Reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const EndOfDayPage = lazyWithReload(() => import('./pages/EndOfDayPage').then(m => ({ default: m.EndOfDayPage })));
+const SafeBalancePage = lazyWithReload(() => import('./pages/SafeBalancePage').then(m => ({ default: m.SafeBalancePage })));
+const TipReportPage = lazyWithReload(() => import('./pages/TipReportPage').then(m => ({ default: m.TipReportPage })));
+const AttendancePage = lazyWithReload(() => import('./pages/AttendancePage').then(m => ({ default: m.AttendancePage })));
+const EmployeesPage = lazyWithReload(() => import('./pages/EmployeesPage').then(m => ({ default: m.EmployeesPage })));
+const ServicesPage = lazyWithReload(() => import('./pages/ServicesPage').then(m => ({ default: m.ServicesPage })));
+const SettingsPage = lazyWithReload(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const ConfigurationPage = lazyWithReload(() => import('./pages/ConfigurationPage').then(m => ({ default: m.ConfigurationPage })));
+const PendingApprovalsPage = lazyWithReload(() => import('./pages/PendingApprovalsPage').then(m => ({ default: m.PendingApprovalsPage })));
+const InventoryPage = lazyWithReload(() => import('./pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
+const InsightsPage = lazyWithReload(() => import('./pages/InsightsPage').then(m => ({ default: m.InsightsPage })));
+const ClientsPage = lazyWithReload(() => import('./pages/ClientsPage').then(m => ({ default: m.ClientsPage })));
+const ResourcesPage = lazyWithReload(() => import('./pages/ResourcesPage').then(m => ({ default: m.ResourcesPage })));
 
 type Page = 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'configuration' | 'approvals' | 'inventory' | 'insights' | 'clients' | 'resources';
 
@@ -313,33 +362,35 @@ function AppContent() {
         currentPage={currentPage}
         onNavigate={(page) => setCurrentPage(page)}
       >
-        <Suspense fallback={
-          <div className="flex items-center justify-center h-64">
-            <div className="text-gray-500">Loading...</div>
-          </div>
-        }>
-          {currentPage === 'tickets' && (
-            <TicketsPage
-              selectedDate={selectedDate}
-              onDateChange={handleDateChange}
-              highlightedTicketId={highlightedTicketId}
-              onHighlightComplete={() => setHighlightedTicketId(null)}
-            />
-          )}
-          {currentPage === 'approvals' && <PendingApprovalsPage />}
-          {currentPage === 'tipreport' && <TipReportPage selectedDate={selectedDate} onDateChange={handleDateChange} />}
-          {currentPage === 'eod' && <EndOfDayPage selectedDate={selectedDate} onDateChange={handleDateChange} />}
-          {currentPage === 'safebalance' && <SafeBalancePage selectedDate={selectedDate} onDateChange={handleDateChange} />}
-          {currentPage === 'attendance' && <AttendancePage />}
-          {currentPage === 'technicians' && <EmployeesPage />}
-          {currentPage === 'clients' && <ClientsPage />}
-          {currentPage === 'inventory' && <InventoryPage />}
-          {currentPage === 'services' && <ServicesPage />}
-          {currentPage === 'insights' && <InsightsPage />}
-          {currentPage === 'resources' && <ResourcesPage />}
-          {currentPage === 'settings' && <SettingsPage />}
-          {currentPage === 'configuration' && <ConfigurationPage />}
-        </Suspense>
+        <ChunkErrorBoundary>
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-64">
+              <div className="text-gray-500">Loading...</div>
+            </div>
+          }>
+            {currentPage === 'tickets' && (
+              <TicketsPage
+                selectedDate={selectedDate}
+                onDateChange={handleDateChange}
+                highlightedTicketId={highlightedTicketId}
+                onHighlightComplete={() => setHighlightedTicketId(null)}
+              />
+            )}
+            {currentPage === 'approvals' && <PendingApprovalsPage />}
+            {currentPage === 'tipreport' && <TipReportPage selectedDate={selectedDate} onDateChange={handleDateChange} />}
+            {currentPage === 'eod' && <EndOfDayPage selectedDate={selectedDate} onDateChange={handleDateChange} />}
+            {currentPage === 'safebalance' && <SafeBalancePage selectedDate={selectedDate} onDateChange={handleDateChange} />}
+            {currentPage === 'attendance' && <AttendancePage />}
+            {currentPage === 'technicians' && <EmployeesPage />}
+            {currentPage === 'clients' && <ClientsPage />}
+            {currentPage === 'inventory' && <InventoryPage />}
+            {currentPage === 'services' && <ServicesPage />}
+            {currentPage === 'insights' && <InsightsPage />}
+            {currentPage === 'resources' && <ResourcesPage />}
+            {currentPage === 'settings' && <SettingsPage />}
+            {currentPage === 'configuration' && <ConfigurationPage />}
+          </Suspense>
+        </ChunkErrorBoundary>
       </Layout>
 
       <StoreSelectionModal

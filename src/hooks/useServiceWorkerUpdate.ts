@@ -45,6 +45,7 @@ export function useServiceWorkerUpdate() {
   });
 
   const handleUpdate = () => {
+    sessionStorage.removeItem('chunk_reload');
     localStorage.setItem('app_just_updated', 'true');
     updateServiceWorker(true);
   };
