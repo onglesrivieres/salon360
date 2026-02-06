@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, User, Phone, FileText, Calendar, Hash, AlertTriangle, Palette, Edit2, ChevronDown, ChevronUp, DollarSign, CreditCard, Gift } from 'lucide-react';
+import { X, User, Phone, FileText, Calendar, Hash, AlertTriangle, Palette, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
 import { ClientWithStats, VisitHistoryEntry, supabase } from '../../lib/supabase';
 import { formatPhoneNumber, maskPhoneNumber } from '../../lib/phoneUtils';
 
@@ -50,13 +50,10 @@ export function ClientDetailsModal({
           id,
           ticket_no,
           ticket_date,
-          payment_method,
-          total,
           closed_at,
           ticket_items (
             id,
             custom_service_name,
-            price_each,
             service:store_services!ticket_items_store_service_id_fkey(name),
             employee:employees!ticket_items_employee_id_fkey(display_name)
           )
@@ -90,14 +87,11 @@ export function ClientDetailsModal({
         id: ticket.id,
         ticket_no: ticket.ticket_no,
         ticket_date: ticket.ticket_date,
-        payment_method: ticket.payment_method || '',
-        total: ticket.total || 0,
         closed_at: ticket.closed_at,
         services: (ticket.ticket_items || []).map((item: any) => ({
           id: item.id,
           name: item.service?.name || item.custom_service_name || 'Unknown Service',
           employee_name: item.employee?.display_name || 'Unknown',
-          price: item.price_each || 0,
         })),
         colors: colorMap.get(ticket.id) || [],
       }));
@@ -126,26 +120,6 @@ export function ClientDetailsModal({
       month: 'short',
       day: 'numeric',
     });
-  };
-
-  const getPaymentIcon = (method: string) => {
-    switch (method) {
-      case 'cash': return <DollarSign className="w-3.5 h-3.5" />;
-      case 'card': return <CreditCard className="w-3.5 h-3.5" />;
-      case 'gift_card': return <Gift className="w-3.5 h-3.5" />;
-      case 'mixed': return <CreditCard className="w-3.5 h-3.5" />;
-      default: return null;
-    }
-  };
-
-  const getPaymentLabel = (method: string) => {
-    switch (method) {
-      case 'cash': return 'Cash';
-      case 'card': return 'Card';
-      case 'gift_card': return 'Gift Card';
-      case 'mixed': return 'Mixed';
-      default: return method;
-    }
   };
 
   const getUniqueNames = (services: VisitHistoryEntry['services']) => {
@@ -374,18 +348,12 @@ export function ClientDetailsModal({
                               <Palette className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
                             )}
 
-                            {/* Total & Status */}
-                            <div className="flex-shrink-0 text-right">
-                              {visit.closed_at ? (
-                                <span className="text-sm font-medium text-gray-900">
-                                  ${visit.total.toFixed(2)}
-                                </span>
-                              ) : (
-                                <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700">
-                                  Open
-                                </span>
-                              )}
-                            </div>
+                            {/* Status */}
+                            {!visit.closed_at && (
+                              <span className="flex-shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700">
+                                Open
+                              </span>
+                            )}
 
                             {/* Expand icon */}
                             <div className="flex-shrink-0 text-gray-400">
@@ -403,24 +371,15 @@ export function ClientDetailsModal({
                               {/* Ticket info */}
                               <div className="flex items-center gap-3 py-2 text-xs text-gray-500 border-b border-gray-200">
                                 <span className="font-mono">#{visit.ticket_no}</span>
-                                {visit.closed_at && visit.payment_method && (
-                                  <span className="flex items-center gap-1">
-                                    {getPaymentIcon(visit.payment_method)}
-                                    {getPaymentLabel(visit.payment_method)}
-                                  </span>
-                                )}
                               </div>
 
                               {/* Service lines */}
                               <div className="py-2 space-y-1.5">
                                 {visit.services.map((svc) => (
-                                  <div key={svc.id} className="flex items-center justify-between text-xs">
-                                    <div>
+                                  <div key={svc.id} className="text-xs">
                                       <span className="text-gray-800">{svc.name}</span>
                                       <span className="text-gray-400"> — by </span>
                                       <span className="text-blue-600">{svc.employee_name}</span>
-                                    </div>
-                                    <span className="text-gray-600 font-medium">${svc.price.toFixed(2)}</span>
                                   </div>
                                 ))}
                               </div>
