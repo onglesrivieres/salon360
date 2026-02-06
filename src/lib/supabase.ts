@@ -166,6 +166,7 @@ export interface SaleTicket {
   rejection_reason?: string | null;
   client_id?: string | null;
   requires_admin_review?: boolean;
+  approval_required_level?: string | null;
   opened_by_role?: string;
   reviewed_by_receptionist?: boolean;
   created_at: string;

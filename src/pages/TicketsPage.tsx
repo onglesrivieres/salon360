@@ -662,6 +662,13 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     const finalStatuses = ['approved', 'auto_approved', 'rejected'];
     if (ticket.approval_status && finalStatuses.includes(ticket.approval_status)) return false;
 
+    // Receptionist can only approve technician-level tickets they worked on
+    if (session.role_permission === 'Receptionist' &&
+        ticket.approval_required_level &&
+        ticket.approval_required_level !== 'technician') {
+      return false;
+    }
+
     // ALL users can only approve tickets where they personally performed the service
     if (ticket.ticket_items) {
       return ticket.ticket_items.some((item: any) => item.employee_id === session.employee_id);
