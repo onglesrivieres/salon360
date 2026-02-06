@@ -1142,6 +1142,15 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Remove Spa Expert Role
+- Removed defunct "Spa Expert" role from entire codebase (no employees held this role)
+- Dropped and recreated `employees_role_valid` and `valid_role_name` constraints without 'Spa Expert'
+- Cleaned `set_approval_deadline()` trigger: removed `v_closer_is_spa_expert` variable
+- Cleaned `approve_ticket()` RPC: removed `v_is_spa_expert` variable and condition
+- Removed `spaExpert` translation key from all 4 languages (en, fr, vi, km)
+- Updated migration scripts to replace 'Spa Expert' with 'Trainee' in role arrays/constraints
+- Migration applied to both salon360qc and salon365 databases
+
 ### 2026-02-06: Fix Receptionist & Supervisor Ticket Approval Rules
 - Fixed `set_approval_deadline()` trigger bug: Receptionist self-service tickets (performs + closes) now correctly get `approval_required_level = 'supervisor'` instead of silently falling through to `'technician'` (dead-code dual-role conditions never matched since employees have one role)
 - Fixed `approve_ticket()` RPC: Receptionist can no longer approve supervisor-level tickets; Receptionist and Supervisor must have worked on ticket to approve technician-level tickets (same rule as Technician)
