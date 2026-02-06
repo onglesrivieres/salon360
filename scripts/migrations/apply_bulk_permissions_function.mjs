@@ -43,7 +43,7 @@ BEGIN
       ) as permissions
     FROM (
       -- Generate all roles
-      SELECT unnest(ARRAY['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Spa Expert', 'Cashier']) as role_name
+      SELECT unnest(ARRAY['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Trainee', 'Cashier']) as role_name
     ) roles
     CROSS JOIN public.permission_definitions pd
     LEFT JOIN public.role_permissions rp

@@ -259,7 +259,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
         beforeFilterCount: filteredData.length
       });
 
-      // Filter tickets for technicians, spa experts, and commission employees to show only their work
+      // Filter tickets for technicians and commission employees to show only their work
       // But allow roles with canViewAll permission (Receptionist, Admin, etc.) to see everything
       if (!canViewAllTickets && (isRestrictedRole || isCommissionEmployee) && session?.employee_id) {
         filteredData = filteredData.filter(ticket =>

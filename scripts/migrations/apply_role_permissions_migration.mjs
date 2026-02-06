@@ -60,7 +60,7 @@ DROP CONSTRAINT IF EXISTS valid_role_name;
 
 ALTER TABLE public.role_permissions
 ADD CONSTRAINT valid_role_name
-CHECK (role_name IN ('Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Spa Expert', 'Cashier'));
+CHECK (role_name IN ('Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Technician', 'Trainee', 'Cashier'));
 
 -- Enable RLS
 ALTER TABLE public.permission_definitions ENABLE ROW LEVEL SECURITY;
