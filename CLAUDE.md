@@ -1144,6 +1144,13 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Remove New Ticket Button from End of Day Page
+- Removed the "New Ticket" button from the End of Day (Cash Balance) page header
+- Removed the `openNewTicket()` function that was only used by that button
+- TicketEditor, `isEditorOpen`/`editingTicketId` state, and `closeEditor` remain (used for editing existing tickets)
+- `Plus` icon import remains (used elsewhere on the page for cash transaction buttons)
+- File modified: `src/pages/EndOfDayPage.tsx`
+
 ### 2026-02-06: Add "Today" Button to Date Navigation
 - Added a "Today" button to the left of the date navigation (`[< ] [date] [> ]`) on all 5 pages with date pickers
 - Button is hidden when already viewing today's date (no visual clutter)

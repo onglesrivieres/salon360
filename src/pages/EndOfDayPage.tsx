@@ -690,11 +690,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     loadEODData();
   }
 
-  function openNewTicket() {
-    setEditingTicketId(null);
-    setIsEditorOpen(true);
-  }
-
   async function handleCashTransactionSubmit(transactionType: CashTransactionType, data: TransactionData) {
     if (!selectedStoreId || !session?.employee_id) {
       showToast('Missing required information', 'error');
@@ -936,11 +931,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               <Button variant="secondary" size="sm" onClick={handlePrint} className="hidden md:flex">
                 <Printer className="w-3 h-3 mr-1" />
                 Print
-              </Button>
-              <Button variant="primary" size="sm" onClick={openNewTicket} className="min-h-[44px] md:min-h-0">
-                <Plus className="w-4 h-4 md:w-3 md:h-3 mr-1" />
-                <span className="hidden xs:inline">New Ticket</span>
-                <span className="xs:hidden">New</span>
               </Button>
             </>
           )}
