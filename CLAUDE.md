@@ -1144,6 +1144,14 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Increase TicketEditor Action Button Size & Spacing
+- Enlarged all action buttons in the TicketEditor bottom bar for easier tapping/clicking
+- Outer container: `gap-1.5` → `gap-3`, `p-2` → `p-3` (more breathing room)
+- Inner button group: `gap-1.5` → `gap-2.5` (more space between buttons)
+- All 9 buttons: `px-2 py-1` → `px-3 py-2`, `text-xs` → `text-sm`, `min-h-[36px]` → `min-h-[44px]` on mobile
+- All 3 icons (Trash2, CheckCircle, Clock): `w-3 h-3` → `w-4 h-4`
+- File modified: `src/components/TicketEditor.tsx`
+
 ### 2026-02-06: Independent Per-Page Date Navigation
 - Previously, 4 pages (Tickets, TipReport, EOD, SafeBalance) shared a single `selectedDate` in App.tsx — changing date on one page changed all of them
 - 3 additional pages (Attendance, Insights, PendingApprovals) had local date state that reset to today on every page switch (component unmount)

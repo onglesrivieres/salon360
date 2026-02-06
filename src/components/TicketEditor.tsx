@@ -2763,11 +2763,11 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           )}
 
         </div>
-        <div className="flex justify-between items-center gap-1.5 border-t border-gray-200 bg-white p-2 flex-shrink-0">
-            <div className="flex gap-1.5">
+        <div className="flex justify-between items-center gap-3 border-t border-gray-200 bg-white p-3 flex-shrink-0">
+            <div className="flex gap-2.5">
               <button
                 onClick={onClose}
-                className="px-2 py-1 text-xs bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[36px] md:min-h-0"
+                className="px-3 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[44px] md:min-h-0"
               >
                 Close
               </button>
@@ -2775,9 +2775,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={saving}
-                  className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-medium min-h-[36px] md:min-h-0"
+                  className="px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-medium min-h-[44px] md:min-h-0"
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Trash2 className="w-4 h-4" />
                   Delete
                 </button>
               )}
@@ -2786,7 +2786,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[36px] md:min-h-0"
+                    className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[44px] md:min-h-0"
                   >
                     {saving ? 'Saving...' : 'Save'}
                   </button>
@@ -2794,9 +2794,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                     <button
                       onClick={handleMarkCompleted}
                       disabled={saving}
-                      className="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-medium min-h-[36px] md:min-h-0"
+                      className="px-3 py-2 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-medium min-h-[44px] md:min-h-0"
                     >
-                      <CheckCircle className="w-3 h-3" />
+                      <CheckCircle className="w-4 h-4" />
                       Complete
                     </button>
                   )}
@@ -2804,7 +2804,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                     <button
                       onClick={handleCloseTicket}
                       disabled={saving}
-                      className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[36px] md:min-h-0"
+                      className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[44px] md:min-h-0"
                     >
                       Close Ticket
                     </button>
@@ -2815,7 +2815,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                 <button
                   onClick={handleReopenTicket}
                   disabled={saving}
-                  className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[36px] md:min-h-0"
+                  className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[44px] md:min-h-0"
                 >
                   {saving ? 'Reopening...' : 'Reopen Ticket'}
                 </button>
@@ -2824,7 +2824,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                 <button
                   onClick={() => setShowRequestChangesModal(true)}
                   disabled={saving || hasPendingReopenRequest}
-                  className="px-2 py-1 text-xs bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[36px] md:min-h-0"
+                  className="px-3 py-2 text-sm bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[44px] md:min-h-0"
                 >
                   {hasPendingReopenRequest ? 'Request Pending' : 'Request Changes'}
                 </button>
@@ -2833,7 +2833,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                 <button
                   onClick={handleSaveComment}
                   disabled={saving}
-                  className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[36px] md:min-h-0"
+                  className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[44px] md:min-h-0"
                 >
                   {saving ? 'Saving...' : 'Save Comment'}
                 </button>
@@ -2842,9 +2842,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
             {ticketId && activityLogs.length > 0 && (
               <button
                 onClick={() => setShowActivityModal(true)}
-                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors flex items-center gap-1 font-medium min-h-[36px] md:min-h-0"
+                className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors flex items-center gap-1 font-medium min-h-[44px] md:min-h-0"
               >
-                <Clock className="w-3 h-3" />
+                <Clock className="w-4 h-4" />
                 Activity
               </button>
             )}
