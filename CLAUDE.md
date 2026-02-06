@@ -1144,6 +1144,11 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Fix `set_approval_deadline()` Broken Status Column Reference
+- Migrations `20260206000002` and `20260206000003` recreated `set_approval_deadline()` with `IF NEW.status = 'closed'` but `sale_tickets` has no `status` column — caused PostgreSQL error 42703 when closing tickets
+- Fixed condition to `IF NEW.closed_at IS NOT NULL AND OLD.closed_at IS NULL` (matching original logic from `squash_08`)
+- Migration `20260206000004_fix_set_approval_deadline_status_column.sql` applied to both salon360qc and salon365
+
 ### 2026-02-06: TicketEditor Flex Layout (No-Scroll Action Buttons)
 - Converted TicketEditor slide-in panel from single scrollable container to flex column layout
 - Header and action buttons are now always visible; only the middle content area scrolls
