@@ -1144,6 +1144,16 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Move Payment Summary into Payment Details Modal
+- Moved the Payment Summary block (Total Payments, Total Discounts, Tips, Grand Total Collected) from inline in `TicketEditor.tsx` into the bottom of the Payment Details modal popup
+- Summary now appears above the Cancel/Save buttons inside the modal instead of below the payment method section
+- Uses `formData` values (not `tempPaymentData`) to always reflect the saved state
+
+### 2026-02-06: Remove Ticket Approved Banner from TicketEditor
+- Removed the green "Ticket Approved" / "Auto-Approved by System" banner from closed tickets in `TicketEditor.tsx`
+- The `bg-green-50` banner with CheckCircle icon, approval text, and timestamp is no longer displayed
+- `isApproved` variable and `CheckCircle` import retained (used elsewhere in the component)
+
 ### 2026-02-06: Fix Stale Chunk Loading After Deployments
 - Added `lazyWithReload()` wrapper in `App.tsx` replacing all 13 `lazy()` calls
 - On chunk load failure (stale hash after rebuild), auto-reloads page once via `sessionStorage('chunk_reload')` flag
