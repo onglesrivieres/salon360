@@ -1079,13 +1079,15 @@ stores
 
 ## Key Patterns
 
-### Lazy Loading
-Non-critical pages use `React.lazy()` for code splitting (see App.tsx).
+### Lazy Loading with Stale Chunk Recovery
+Non-critical pages use `lazyWithReload()` for code splitting with automatic recovery from stale chunks after deployments (see App.tsx).
 
 ```typescript
-const InsightsPage = lazy(() => import('./pages/InsightsPage'));
-const ConfigurationPage = lazy(() => import('./pages/ConfigurationPage'));
+const InsightsPage = lazyWithReload(() => import('./pages/InsightsPage'));
+const ConfigurationPage = lazyWithReload(() => import('./pages/ConfigurationPage'));
 ```
+
+**Stale chunk handling**: When a dynamic import fails (e.g., old chunk hash after deployment), `lazyWithReload` auto-reloads the page once (tracked via `sessionStorage('chunk_reload')`). If the reload doesn't fix it, `ChunkErrorBoundary` catches the error and shows a "Something went wrong" fallback with a Reload button.
 
 ### Date Handling
 All dates are processed in EST timezone.
@@ -1141,6 +1143,13 @@ Always filter by `store_id` when querying store-specific data:
 ---
 
 ## Recent Changes
+
+### 2026-02-06: Fix Stale Chunk Loading After Deployments
+- Added `lazyWithReload()` wrapper in `App.tsx` replacing all 13 `lazy()` calls
+- On chunk load failure (stale hash after rebuild), auto-reloads page once via `sessionStorage('chunk_reload')` flag
+- Added `ChunkErrorBoundary` around `<Suspense>` as last-resort fallback with "Something went wrong" + Reload button
+- Cleared `chunk_reload` flag in `useServiceWorkerUpdate.ts` `handleUpdate` to prevent interference with future detection
+- Prevents blank page with "Expected a JavaScript module but got text/html" error when nginx serves HTML for missing old chunks
 
 ### 2026-02-06: Remove Spa Expert Role
 - Removed defunct "Spa Expert" role from entire codebase (no employees held this role)
