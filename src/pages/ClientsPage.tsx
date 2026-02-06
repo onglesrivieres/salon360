@@ -11,6 +11,8 @@ import { ClientEditorModal } from '../components/clients/ClientEditorModal';
 import { ClientDetailsModal } from '../components/clients/ClientDetailsModal';
 
 type FilterTab = 'all' | 'active' | 'blacklisted';
+type SortColumn = 'name' | 'phone_number' | 'last_visit' | 'total_visits' | 'status';
+type SortDirection = 'asc' | 'desc';
 
 export function ClientsPage() {
   const { session, selectedStoreId, t } = useAuth();
@@ -24,6 +26,8 @@ export function ClientsPage() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [editingClient, setEditingClient] = useState<ClientWithStats | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortColumn, setSortColumn] = useState<SortColumn>('last_visit');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const itemsPerPage = 10;
 
   // Debounce search
@@ -34,10 +38,10 @@ export function ClientsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when filters or sort change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, filterTab]);
+  }, [debouncedSearch, filterTab, sortColumn, sortDirection]);
 
   const { clients, isLoading, error, totalCount, refetch } = useClients(selectedStoreId, {
     search: debouncedSearch,
@@ -56,12 +60,52 @@ export function ClientsPage() {
     ? clients.filter(c => !c.is_blacklisted)
     : clients;
 
-  // Sort by last_visit (most recent first), clients without visits go to the end
+  function handleSort(column: SortColumn) {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  }
+
+  // Sort clients by selected column and direction
   const sortedClients = [...filteredClients].sort((a, b) => {
-    if (!a.last_visit && !b.last_visit) return 0;
-    if (!a.last_visit) return 1;
-    if (!b.last_visit) return -1;
-    return b.last_visit.localeCompare(a.last_visit);
+    let aVal: string | number;
+    let bVal: string | number;
+
+    switch (sortColumn) {
+      case 'name':
+        aVal = a.name.toLowerCase();
+        bVal = b.name.toLowerCase();
+        break;
+      case 'phone_number':
+        aVal = a.phone_number || '';
+        bVal = b.phone_number || '';
+        break;
+      case 'last_visit':
+        // Clients without visits always go to the end regardless of direction
+        if (!a.last_visit && !b.last_visit) return 0;
+        if (!a.last_visit) return 1;
+        if (!b.last_visit) return -1;
+        aVal = a.last_visit;
+        bVal = b.last_visit;
+        break;
+      case 'total_visits':
+        aVal = a.total_visits || 0;
+        bVal = b.total_visits || 0;
+        break;
+      case 'status':
+        aVal = a.is_blacklisted ? 1 : 0;
+        bVal = b.is_blacklisted ? 1 : 0;
+        break;
+      default:
+        return 0;
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
   });
 
   // Paginate
@@ -213,6 +257,9 @@ export function ClientsPage() {
         isLoading={isLoading}
         onViewDetails={handleViewDetails}
         canViewFullPhone={canViewFullPhone}
+        sortColumn={sortColumn}
+        sortDirection={sortDirection}
+        onSort={(column) => handleSort(column as SortColumn)}
       />
 
       {/* Pagination */}

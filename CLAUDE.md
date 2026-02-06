@@ -1144,6 +1144,17 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Add Clickable Column Sorting to Clients and Employees Pages
+- Clients page: added sort state (`sortColumn`/`sortDirection`) defaulting to `last_visit` DESC (preserves existing behavior)
+- Replaced hardcoded `last_visit` sort with dynamic comparator supporting 5 columns: name, phone, last visit, total visits, status
+- Clients without visits always sort to end regardless of direction
+- `ClientsTable.tsx`: replaced static `<th>` elements with clickable headers using `ChevronUp`/`ChevronDown` icons
+- Employees page: replaced hardcoded name+status sort with dynamic comparator supporting 5 columns: display name, role, status, assigned stores, schedule
+- Employees table headers made clickable with same chevron icon pattern
+- Clicking a column sorts ascending; clicking again toggles descending
+- Clients page resets to page 1 on sort change
+- Files modified: `ClientsPage.tsx`, `ClientsTable.tsx`, `EmployeesPage.tsx`
+
 ### 2026-02-06: Fix Clients Page Last Visit & Total Visits Showing Empty
 - After the batch query refactor, all clients showed Last Visit = "Never" and Total Visits = 0 despite having ticket data
 - Root cause: `.in('client_id', clientIds)` with 200+ UUIDs exceeded PostgREST/Kong URL length limits → silent 414 error → `data` returned `null` → `ticketRows || []` silently produced empty array

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Search, RefreshCw, AlertCircle } from 'lucide-react';
+import { Plus, Edit2, Search, RefreshCw, AlertCircle, ChevronUp, ChevronDown } from 'lucide-react';
 import { supabase, Employee, Store, WeeklySchedule } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -39,6 +39,10 @@ export function EmployeesPage() {
   const [tempPIN, setTempPIN] = useState('');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
+  type EmpSortColumn = 'display_name' | 'role' | 'status' | 'stores' | 'schedule';
+  type EmpSortDirection = 'asc' | 'desc';
+  const [sortColumn, setSortColumn] = useState<EmpSortColumn>('display_name');
+  const [sortDirection, setSortDirection] = useState<EmpSortDirection>('asc');
   const { showToast } = useToast();
   const { session, selectedStoreId, t } = useAuth();
 
@@ -90,19 +94,50 @@ export function EmployeesPage() {
       filtered = filtered.filter((e) => e.role.includes(filterRole as any));
     }
 
-    // Sort by: 1st display_name (A-Z), 2nd status (Active before Inactive)
+    // Dynamic sort by selected column
     filtered.sort((a, b) => {
-      // First compare by display_name
-      const nameCompare = a.display_name.localeCompare(b.display_name);
-      if (nameCompare !== 0) return nameCompare;
-      // If names are equal, Active comes before Inactive
-      if (a.status === 'Active' && b.status === 'Inactive') return -1;
-      if (a.status === 'Inactive' && b.status === 'Active') return 1;
+      let aVal: string;
+      let bVal: string;
+
+      switch (sortColumn) {
+        case 'display_name':
+          aVal = a.display_name.toLowerCase();
+          bVal = b.display_name.toLowerCase();
+          break;
+        case 'role':
+          aVal = (a.role[0] || '').toLowerCase();
+          bVal = (b.role[0] || '').toLowerCase();
+          break;
+        case 'status':
+          aVal = a.status;
+          bVal = b.status;
+          break;
+        case 'stores': {
+          const aStores = (employeeStoresMap[a.id] || [])
+            .map(sid => stores.find(s => s.id === sid)?.code || '')
+            .sort().join(',');
+          const bStores = (employeeStoresMap[b.id] || [])
+            .map(sid => stores.find(s => s.id === sid)?.code || '')
+            .sort().join(',');
+          aVal = aStores;
+          bVal = bStores;
+          break;
+        }
+        case 'schedule':
+          aVal = formatScheduleDisplay(a.weekly_schedule);
+          bVal = formatScheduleDisplay(b.weekly_schedule);
+          break;
+        default:
+          return 0;
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
 
     setFilteredEmployees(filtered);
-  }, [employees, searchTerm, filterStatus, filterRole, selectedStoreId, employeeStoresMap]);
+  }, [employees, searchTerm, filterStatus, filterRole, selectedStoreId, employeeStoresMap, sortColumn, sortDirection, stores]);
 
   async function fetchStores() {
     try {
@@ -362,6 +397,15 @@ export function EmployeesPage() {
     }
   }
 
+  function handleSort(column: EmpSortColumn) {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -433,21 +477,28 @@ export function EmployeesPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('emp.displayName')}
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('emp.role')}
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('emp.status')}
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('emp.assignedStores')}
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Schedule
-                </th>
+                {([
+                  { key: 'display_name' as EmpSortColumn, label: t('emp.displayName') },
+                  { key: 'role' as EmpSortColumn, label: t('emp.role') },
+                  { key: 'status' as EmpSortColumn, label: t('emp.status') },
+                  { key: 'stores' as EmpSortColumn, label: t('emp.assignedStores') },
+                  { key: 'schedule' as EmpSortColumn, label: 'Schedule' },
+                ]).map(({ key, label }) => (
+                  <th
+                    key={key}
+                    className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort(key)}
+                  >
+                    <div className="flex items-center gap-1">
+                      {label}
+                      {sortColumn === key && (
+                        sortDirection === 'asc'
+                          ? <ChevronUp className="w-3 h-3" />
+                          : <ChevronDown className="w-3 h-3" />
+                      )}
+                    </div>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">

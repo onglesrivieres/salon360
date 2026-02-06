@@ -1,4 +1,4 @@
-import { Ban, CheckCircle } from 'lucide-react';
+import { Ban, CheckCircle, ChevronUp, ChevronDown } from 'lucide-react';
 import { ClientWithStats } from '../../lib/supabase';
 import { formatPhoneNumber, maskPhoneNumber } from '../../lib/phoneUtils';
 
@@ -7,6 +7,9 @@ interface ClientsTableProps {
   isLoading: boolean;
   onViewDetails: (client: ClientWithStats) => void;
   canViewFullPhone?: boolean;
+  sortColumn?: string;
+  sortDirection?: 'asc' | 'desc';
+  onSort?: (column: string) => void;
 }
 
 export function ClientsTable({
@@ -14,6 +17,9 @@ export function ClientsTable({
   isLoading,
   onViewDetails,
   canViewFullPhone = false,
+  sortColumn,
+  sortDirection,
+  onSort,
 }: ClientsTableProps) {
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Never';
@@ -56,21 +62,28 @@ export function ClientsTable({
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Phone
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Last Visit
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Visits
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Status
-              </th>
+              {([
+                { key: 'name', label: 'Name' },
+                { key: 'phone_number', label: 'Phone' },
+                { key: 'last_visit', label: 'Last Visit' },
+                { key: 'total_visits', label: 'Visits' },
+                { key: 'status', label: 'Status' },
+              ] as const).map(({ key, label }) => (
+                <th
+                  key={key}
+                  className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => onSort?.(key)}
+                >
+                  <div className="flex items-center gap-1">
+                    {label}
+                    {sortColumn === key && (
+                      sortDirection === 'asc'
+                        ? <ChevronUp className="w-3 h-3" />
+                        : <ChevronDown className="w-3 h-3" />
+                    )}
+                  </div>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
