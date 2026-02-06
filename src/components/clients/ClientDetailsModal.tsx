@@ -56,7 +56,7 @@ export function ClientDetailsModal({
           ticket_items (
             id,
             custom_service_name,
-            price,
+            price_each,
             service:store_services!ticket_items_store_service_id_fkey(name),
             employee:employees!ticket_items_employee_id_fkey(display_name)
           )
@@ -97,7 +97,7 @@ export function ClientDetailsModal({
           id: item.id,
           name: item.service?.name || item.custom_service_name || 'Unknown Service',
           employee_name: item.employee?.display_name || 'Unknown',
-          price: item.price || 0,
+          price: item.price_each || 0,
         })),
         colors: colorMap.get(ticket.id) || [],
       }));
