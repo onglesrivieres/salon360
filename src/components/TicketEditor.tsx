@@ -2044,26 +2044,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
             </div>
           )}
 
-          {isApproved && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-green-900">
-                    {ticket?.approved_by ? 'Ticket Approved' : 'Auto-Approved by System'}
-                  </p>
-                  {ticket?.approved_at && (
-                    <p className="text-xs text-green-700 mt-1">
-                      {ticket.approved_by && (ticket as any).approver?.display_name
-                        ? `Approved by ${(ticket as any).approver.display_name} on ${formatDateTimeEST(ticket.approved_at)}`
-                        : `Auto-approved on ${formatDateTimeEST(ticket.approved_at)}`}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="border border-gray-200 rounded-lg p-2 bg-gray-50">
             {isEditingOpeningTime ? (
               <div className="space-y-2">
