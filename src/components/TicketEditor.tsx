@@ -1929,7 +1929,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
         className="fixed inset-0 bg-black bg-opacity-50 z-40"
         onClick={onClose}
       />
-      <div className="fixed inset-0 md:right-0 md:left-auto md:top-0 h-full w-full md:max-w-2xl bg-white shadow-xl z-50 overflow-y-auto">
+      <div className="fixed inset-0 md:right-0 md:left-auto md:top-0 h-full w-full md:max-w-2xl bg-white shadow-xl z-50 flex flex-col">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-3 md:px-4 py-3 md:py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -1956,7 +1956,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           </div>
         </div>
 
-        <div className="p-3 md:p-4 space-y-2 pb-20 md:pb-4">
+        <div className="p-3 md:p-4 space-y-2 pb-4 flex-1 overflow-y-auto min-h-0">
 
           {ticket?.approval_status === 'rejected' && ticket.requires_admin_review && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -2762,7 +2762,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
             />
           )}
 
-          <div className="flex justify-between items-center gap-1.5 pt-2 fixed md:static bottom-0 left-0 right-0 bg-white p-2 md:p-0 shadow-lg md:shadow-none z-10">
+        </div>
+        <div className="flex justify-between items-center gap-1.5 border-t border-gray-200 bg-white p-2 flex-shrink-0">
             <div className="flex gap-1.5">
               <button
                 onClick={onClose}
@@ -2848,7 +2849,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
               </button>
             )}
           </div>
-        </div>
       </div>
 
       <Modal

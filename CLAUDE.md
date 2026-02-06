@@ -1144,6 +1144,13 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: TicketEditor Flex Layout (No-Scroll Action Buttons)
+- Converted TicketEditor slide-in panel from single scrollable container to flex column layout
+- Header and action buttons are now always visible; only the middle content area scrolls
+- Outer container: `overflow-y-auto` → `flex flex-col`
+- Content area: added `flex-1 overflow-y-auto min-h-0`, removed mobile padding hack (`pb-20`)
+- Action buttons: moved outside content div as sibling, removed `fixed md:static` positioning, added `border-t border-gray-200 flex-shrink-0`
+
 ### 2026-02-06: Extend Payment Details Modal Height
 - Added optional `className` prop to shared `Modal` component (`src/components/ui/Modal.tsx`) for callers to override default styles
 - Payment Details modal in `TicketEditor.tsx` now uses `max-h-[98vh]` (up from default `90vh`) so Payment Summary and buttons are visible without scrolling
