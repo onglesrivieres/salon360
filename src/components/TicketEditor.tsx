@@ -960,26 +960,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     return totalPayments - totalDiscount + tips;
   }
 
-  function calculateTempCashCollected(): number {
-    const cash = parseFloat(tempPaymentData.payment_cash) || 0;
-    if (formData.payment_method === 'Cash') {
-      const discount = parseFloat(tempPaymentData.discount_amount_cash) || 0;
-      return cash - discount;
-    }
-    // For Mixed: no discount on cash portion
-    return cash;
-  }
-
-  function calculateTempCardCollected(): number {
-    const card = parseFloat(tempPaymentData.payment_card) || 0;
-    const discount = parseFloat(tempPaymentData.discount_amount) || 0;
-    const tipCard = parseFloat(tempPaymentData.tip_customer_card) || 0;
-    return card - discount + tipCard;
-  }
-
-  function calculateTempGiftCardCollected(): number {
-    return parseFloat(tempPaymentData.payment_gift_card) || 0;
-  }
 
   function calculateTempTotalCollected(): number {
     const servicePrice = calculateTotal();
@@ -3330,32 +3310,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
               </div>
             </div>
           )}
-
-          <div className="border-t border-gray-200 pt-4">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Collection Summary</h4>
-            <div className="space-y-2">
-              {(formData.payment_method === 'Cash' || formData.payment_method === 'Mixed') && (
-                <div className="flex justify-between items-center text-sm text-green-700">
-                  <span>Total Cash Collected:</span>
-                  <span className="font-semibold">${calculateTempCashCollected().toFixed(2)}</span>
-                </div>
-              )}
-
-              {(formData.payment_method === 'Card' || formData.payment_method === 'Mixed') && (
-                <div className="flex justify-between items-center text-sm text-blue-700">
-                  <span>Total Card Collected:</span>
-                  <span className="font-semibold">${calculateTempCardCollected().toFixed(2)}</span>
-                </div>
-              )}
-
-              {formData.payment_method === 'Mixed' && enableGiftCardPayments && (
-                <div className="flex justify-between items-center text-sm text-purple-700">
-                  <span>Gift Card Redeemed:</span>
-                  <span className="font-semibold">${calculateTempGiftCardCollected().toFixed(2)}</span>
-                </div>
-              )}
-            </div>
-          </div>
 
           <div className="border border-gray-200 rounded-lg p-2.5 bg-gray-50">
             <h4 className="text-xs font-semibold text-gray-700 mb-1.5">Payment Summary</h4>

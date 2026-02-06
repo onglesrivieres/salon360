@@ -1144,6 +1144,11 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Remove Collection Summary from Payment Details Modal
+- Removed the "Collection Summary" section (Total Cash Collected, Total Card Collected, Gift Card Redeemed) from the Payment Details modal in `TicketEditor.tsx`
+- Redundant with the "Payment Summary" block already in the same modal
+- Removed three dead helper functions: `calculateTempCashCollected()`, `calculateTempCardCollected()`, `calculateTempGiftCardCollected()`
+
 ### 2026-02-06: Move Payment Summary into Payment Details Modal
 - Moved the Payment Summary block (Total Payments, Total Discounts, Tips, Grand Total Collected) from inline in `TicketEditor.tsx` into the bottom of the Payment Details modal popup
 - Summary now appears above the Cancel/Save buttons inside the modal instead of below the payment method section
