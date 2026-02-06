@@ -1144,6 +1144,17 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Add Technician Filter to Tip Report Page
+- Added a Filter button next to Export/Print buttons on the Tip Report page header
+- Dropdown panel with technician select to filter the report by individual technician
+- Active filter badge (blue circle with count) shown on button when filter is active
+- Filter applies to daily detail view, weekly calendar view, empty state check, and CSV export
+- Active timer refresh stays on unfiltered `summaries` so timers keep ticking regardless of filter
+- Derived `technicians` list and `filteredSummaries` via `useMemo` for performance
+- Click-outside handler closes the filter panel (same pattern as view mode dropdown)
+- Reuses existing i18n keys: `tickets.filters`, `tickets.allTechnicians`, `tickets.clearAllFilters`
+- File modified: `src/pages/TipReportPage.tsx`
+
 ### 2026-02-06: Increase TicketEditor Action Button Size & Spacing
 - Enlarged all action buttons in the TicketEditor bottom bar for easier tapping/clicking
 - Outer container: `gap-1.5` → `gap-3`, `p-2` → `p-3` (more breathing room)

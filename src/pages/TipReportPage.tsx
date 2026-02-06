@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Download, Printer, ChevronLeft, ChevronRight, ChevronDown, Check, CheckCircle, X, Circle, Calendar, CalendarDays } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Download, Printer, ChevronLeft, ChevronRight, ChevronDown, Check, CheckCircle, X, Circle, Calendar, CalendarDays, Filter } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -85,6 +85,11 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   const { session, selectedStoreId, t } = useAuth();
   const isReceptionist = session?.role_permission === 'Receptionist' || session?.role_permission === 'Cashier';
 
+  // Technician filter state
+  const [technicianFilter, setTechnicianFilter] = useState<string>('all');
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const filterPanelRef = useRef<HTMLDivElement>(null);
+
   // State for responsive view mode dropdown
   const [isViewModeDropdownOpen, setIsViewModeDropdownOpen] = useState(false);
   const viewModeDropdownRef = useRef<HTMLDivElement>(null);
@@ -120,6 +125,40 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isViewModeDropdownOpen]);
+
+  // Click-outside handler for filter panel
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filterPanelRef.current && !filterPanelRef.current.contains(event.target as Node)) {
+        setIsFilterPanelOpen(false);
+      }
+    }
+    if (isFilterPanelOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isFilterPanelOpen]);
+
+  // Derive technician list from summaries for filter dropdown
+  const technicians = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const s of summaries) {
+      if (!seen.has(s.technician_id)) {
+        seen.set(s.technician_id, s.technician_name);
+      }
+    }
+    return Array.from(seen.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [summaries]);
+
+  // Filtered summaries based on technician filter
+  const filteredSummaries = useMemo(() => {
+    if (technicianFilter === 'all') return summaries;
+    return summaries.filter(s => s.technician_id === technicianFilter);
+  }, [summaries, technicianFilter]);
+
+  const activeFilterCount = technicianFilter !== 'all' ? 1 : 0;
 
   // Timer refresh effect - update every 30 seconds if there are active timers
   useEffect(() => {
@@ -742,7 +781,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       'Total Revenue',
     ];
 
-    const rows = summaries.map((s) => [
+    const rows = filteredSummaries.map((s) => [
       s.technician_name,
       s.services_count.toString(),
       s.service_revenue.toFixed(2),
@@ -902,6 +941,51 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
               </Button>
             </>
           )}
+          {/* Technician filter */}
+          <div className="relative" ref={filterPanelRef}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+              className="relative"
+            >
+              <Filter className="w-3 h-3 mr-1" />
+              {t('tickets.filters')}
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-blue-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </Button>
+            {isFilterPanelOpen && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 min-w-[220px]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-gray-900">{t('tickets.filters')}</span>
+                  {activeFilterCount > 0 && (
+                    <button
+                      onClick={() => { setTechnicianFilter('all'); }}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      {t('tickets.clearAllFilters')}
+                    </button>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Technician</label>
+                  <select
+                    value={technicianFilter}
+                    onChange={(e) => setTechnicianFilter(e.target.value)}
+                    className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">{t('tickets.allTechnicians')}</option>
+                    {technicians.map(tech => (
+                      <option key={tech.id} value={tech.id}>{tech.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1104,7 +1188,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           <div className="flex items-center justify-center h-32">
             <div className="text-sm text-gray-500">Loading...</div>
           </div>
-        ) : summaries.length === 0 ? (
+        ) : filteredSummaries.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-gray-500">No tips for this date</p>
           </div>
@@ -1113,7 +1197,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             <WeeklyCalendarView
               selectedDate={selectedDate}
               weeklyData={weeklyData}
-              summaries={summaries}
+              summaries={filteredSummaries}
               periodDates={getWeekDates(getWeekStartDate(selectedDate))}
               multiStoreEmployeeIds={multiStoreEmployeeIds}
             />
@@ -1121,7 +1205,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         ) : (
           <div className="p-1 md:p-2 overflow-x-auto">
             <div className="flex gap-1 md:gap-1.5 min-w-max">
-              {summaries.map((summary) => (
+              {filteredSummaries.map((summary) => (
                 <div
                   key={summary.technician_id}
                   className="flex-shrink-0 w-[140px] md:w-[10%] md:min-w-[110px] border border-gray-200 rounded-md bg-white shadow-sm"
