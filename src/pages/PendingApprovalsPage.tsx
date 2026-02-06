@@ -62,9 +62,17 @@ interface QueueRemovalRecord {
   has_cooldown: boolean;
 }
 
-export function PendingApprovalsPage() {
+interface PendingApprovalsPageProps {
+  selectedDate: string;
+  onSelectedDateChange: (date: string) => void;
+  queueHistoryStartDate: string;
+  onQueueHistoryStartDateChange: (date: string) => void;
+  queueHistoryEndDate: string;
+  onQueueHistoryEndDateChange: (date: string) => void;
+}
+
+export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queueHistoryStartDate, onQueueHistoryStartDateChange, queueHistoryEndDate, onQueueHistoryEndDateChange }: PendingApprovalsPageProps) {
   const [activeTab, setActiveTab] = useState<TabType>('tickets');
-  const [selectedDate, setSelectedDate] = useState<string>(getCurrentDateEST());
   const [tickets, setTickets] = useState<PendingApprovalTicket[]>([]);
   const [historicalManagerTickets, setHistoricalManagerTickets] = useState<HistoricalApprovalTicket[]>([]);
   const [historicalSupervisorTickets, setHistoricalSupervisorTickets] = useState<HistoricalApprovalTicket[]>([]);
@@ -94,8 +102,6 @@ export function PendingApprovalsPage() {
   const [violationStatusFilter, setViolationStatusFilter] = useState<string>('all');
   const [violationSearchTerm, setViolationSearchTerm] = useState('');
   const [queueRemovalRecords, setQueueRemovalRecords] = useState<QueueRemovalRecord[]>([]);
-  const [queueHistoryStartDate, setQueueHistoryStartDate] = useState<string>(getCurrentDateEST());
-  const [queueHistoryEndDate, setQueueHistoryEndDate] = useState<string>(getCurrentDateEST());
   const [queueHistoryLoading, setQueueHistoryLoading] = useState(false);
   const [transactionChangeProposals, setTransactionChangeProposals] = useState<PendingCashTransactionChangeProposal[]>([]);
   const [selectedTransactionChangeProposal, setSelectedTransactionChangeProposal] = useState<PendingCashTransactionChangeProposal | null>(null);
@@ -1462,7 +1468,7 @@ export function PendingApprovalsPage() {
   function navigateDay(direction: 'prev' | 'next') {
     const d = new Date(selectedDate + 'T00:00:00');
     d.setDate(d.getDate() + (direction === 'prev' ? -1 : 1));
-    setSelectedDate(formatDateISOEST(d));
+    onSelectedDateChange(formatDateISOEST(d));
   }
 
   function canNavigatePrev(): boolean {
@@ -1548,7 +1554,7 @@ export function PendingApprovalsPage() {
             <input
               type="date"
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={(e) => onSelectedDateChange(e.target.value)}
               min={getMinDate()}
               max={getMaxDate()}
               className="px-2 py-2 md:py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] md:min-h-0"
@@ -3183,7 +3189,7 @@ export function PendingApprovalsPage() {
                       <input
                         type="date"
                         value={queueHistoryStartDate}
-                        onChange={(e) => setQueueHistoryStartDate(e.target.value)}
+                        onChange={(e) => onQueueHistoryStartDateChange(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -3194,7 +3200,7 @@ export function PendingApprovalsPage() {
                       <input
                         type="date"
                         value={queueHistoryEndDate}
-                        onChange={(e) => setQueueHistoryEndDate(e.target.value)}
+                        onChange={(e) => onQueueHistoryEndDateChange(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>

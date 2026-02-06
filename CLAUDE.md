@@ -1144,6 +1144,15 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Independent Per-Page Date Navigation
+- Previously, 4 pages (Tickets, TipReport, EOD, SafeBalance) shared a single `selectedDate` in App.tsx — changing date on one page changed all of them
+- 3 additional pages (Attendance, Insights, PendingApprovals) had local date state that reset to today on every page switch (component unmount)
+- Replaced shared `selectedDate` with 10 per-page state variables in App.tsx: `ticketsDate`, `tipReportDate`, `eodDate`, `safeBalanceDate`, `attendanceDate`, `insightsFilter`, `insightsCustomDateRange`, `approvalsDate`, `approvalsQueueStartDate`, `approvalsQueueEndDate`
+- AttendancePage, InsightsPage, PendingApprovalsPage now receive date/filter state via props instead of local `useState`
+- Cashier/Receptionist date lock updated to reset all 4 string-date pages independently
+- Per-page `makeDateHandler` factory replaces single `handleDateChange`
+- Files modified: `App.tsx`, `AttendancePage.tsx`, `InsightsPage.tsx`, `PendingApprovalsPage.tsx`
+
 ### 2026-02-06: Fix `set_approval_deadline()` Non-Existent `store_settings` Table
 - Migration `20260206000004` referenced `public.store_settings` table which does not exist (PostgreSQL 42P01)
 - The `store_settings` lookup for configurable `approval_deadline_hours` was never part of the real schema

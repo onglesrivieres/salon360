@@ -73,8 +73,12 @@ function getStoreColor(storeCode: string): string {
   }
 }
 
-export function AttendancePage() {
-  const [currentDate, setCurrentDate] = useState(new Date());
+interface AttendancePageProps {
+  currentDate: Date;
+  onCurrentDateChange: (date: Date) => void;
+}
+
+export function AttendancePage({ currentDate, onCurrentDateChange }: AttendancePageProps) {
   const [attendanceData, setAttendanceData] = useState<StoreAttendance[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedAttendance, setSelectedAttendance] = useState<StoreAttendance | null>(null);
@@ -309,17 +313,17 @@ export function AttendancePage() {
   function navigatePrevious() {
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() - 14);
-    setCurrentDate(newDate);
+    onCurrentDateChange(newDate);
   }
 
   function navigateNext() {
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() + 14);
-    setCurrentDate(newDate);
+    onCurrentDateChange(newDate);
   }
 
   function navigateToday() {
-    setCurrentDate(new Date());
+    onCurrentDateChange(new Date());
   }
 
   function handleShiftClick(record: AttendanceSession, employeeId: string, employeeName: string, workDate: string, payType: string) {

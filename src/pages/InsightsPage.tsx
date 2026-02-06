@@ -10,12 +10,17 @@ import { TimeFilterType, DateRange, getDateRangeForFilter, getFilterLabel } from
 
 type InsightsTab = 'sales-overview' | 'sales-report' | 'payment-types' | 'employee-sales';
 
-export function InsightsPage() {
+interface InsightsPageProps {
+  selectedFilter: TimeFilterType;
+  onFilterChange: (filter: TimeFilterType) => void;
+  customDateRange: DateRange | undefined;
+  onCustomDateRangeChange: (range: DateRange | undefined) => void;
+}
+
+export function InsightsPage({ selectedFilter, onFilterChange, customDateRange, onCustomDateRangeChange }: InsightsPageProps) {
   const { t } = useAuth();
   const [activeTab, setActiveTab] = useState<InsightsTab>('sales-overview');
-  const [selectedFilter, setSelectedFilter] = useState<TimeFilterType>('today');
-  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
-  const [dateRange, setDateRange] = useState<DateRange>(() => getDateRangeForFilter('today'));
+  const [dateRange, setDateRange] = useState<DateRange>(() => getDateRangeForFilter(selectedFilter, customDateRange));
 
   const tabs = [
     { id: 'sales-overview' as const, label: t('insights.salesOverview'), icon: BarChart3 },
@@ -48,15 +53,15 @@ export function InsightsPage() {
   }, [selectedFilter, customDateRange]);
 
   const handleFilterChange = (filter: TimeFilterType) => {
-    setSelectedFilter(filter);
+    onFilterChange(filter);
     if (filter !== 'custom') {
-      setCustomDateRange(undefined);
+      onCustomDateRangeChange(undefined);
     }
   };
 
   const handleCustomDateApply = (range: DateRange) => {
-    setCustomDateRange(range);
-    setSelectedFilter('custom');
+    onCustomDateRangeChange(range);
+    onFilterChange('custom');
   };
 
   const customDateLabel = customDateRange ? getFilterLabel('custom', customDateRange) : undefined;

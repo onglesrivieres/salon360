@@ -19,6 +19,7 @@ import { CheckInRequiredModal } from './components/CheckInRequiredModal';
 import { useWorkingHoursCheck } from './hooks/useWorkingHoursCheck';
 import { useCheckInStatusCheck } from './hooks/useCheckInStatusCheck';
 import { usePendingApprovalsRedirect } from './hooks/usePendingApprovalsRedirect';
+import { TimeFilterType, DateRange } from './lib/timeFilters';
 
 function lazyWithReload<T extends React.ComponentType<any>>(
   factory: () => Promise<{ default: T }>
@@ -110,29 +111,40 @@ function AppContent() {
 
   // Set default page to tickets for all users
   const [currentPage, setCurrentPage] = useState<Page>('tickets');
-  const [selectedDate, setSelectedDate] = useState(
-    getCurrentDateEST()
-  );
+  // Per-page date state (persists across page switches)
+  const [ticketsDate, setTicketsDate] = useState(getCurrentDateEST());
+  const [tipReportDate, setTipReportDate] = useState(getCurrentDateEST());
+  const [eodDate, setEodDate] = useState(getCurrentDateEST());
+  const [safeBalanceDate, setSafeBalanceDate] = useState(getCurrentDateEST());
+  const [attendanceDate, setAttendanceDate] = useState(new Date());
+  const [insightsFilter, setInsightsFilter] = useState<TimeFilterType>('today');
+  const [insightsCustomDateRange, setInsightsCustomDateRange] = useState<DateRange | undefined>();
+  const [approvalsDate, setApprovalsDate] = useState(getCurrentDateEST());
+  const [approvalsQueueStartDate, setApprovalsQueueStartDate] = useState(getCurrentDateEST());
+  const [approvalsQueueEndDate, setApprovalsQueueEndDate] = useState(getCurrentDateEST());
+
   const [highlightedTicketId, setHighlightedTicketId] = useState<string | null>(null);
 
   // Lock Cashiers and Receptionists to today's date only
   useEffect(() => {
     if (session?.role_permission === 'Cashier' || session?.role_permission === 'Receptionist') {
       const today = getCurrentDateEST();
-      if (selectedDate !== today) {
-        setSelectedDate(today);
-      }
+      if (ticketsDate !== today) setTicketsDate(today);
+      if (tipReportDate !== today) setTipReportDate(today);
+      if (eodDate !== today) setEodDate(today);
+      if (safeBalanceDate !== today) setSafeBalanceDate(today);
     }
-  }, [session?.role_permission, selectedDate]);
+  }, [session?.role_permission, ticketsDate, tipReportDate, eodDate, safeBalanceDate]);
 
   // Handle date changes - prevent Cashiers and Receptionists from changing date
-  const handleDateChange = (newDate: string) => {
-    if (session?.role_permission === 'Cashier' || session?.role_permission === 'Receptionist') {
-      // Cashiers and Receptionists can only view today - ignore date changes
-      return;
-    }
-    setSelectedDate(newDate);
+  const makeDateHandler = (setter: (d: string) => void) => (newDate: string) => {
+    if (session?.role_permission === 'Cashier' || session?.role_permission === 'Receptionist') return;
+    setter(newDate);
   };
+  const handleTicketsDateChange = makeDateHandler(setTicketsDate);
+  const handleTipReportDateChange = makeDateHandler(setTipReportDate);
+  const handleEodDateChange = makeDateHandler(setEodDate);
+  const handleSafeBalanceDateChange = makeDateHandler(setSafeBalanceDate);
 
   // Listen for ticket navigation events from PendingApprovalsPage
   useEffect(() => {
@@ -155,7 +167,7 @@ function AppContent() {
 
       // Set the date (if allowed)
       if (!isDateRestricted) {
-        setSelectedDate(navState.ticketDate);
+        setTicketsDate(navState.ticketDate);
       }
 
       setHighlightedTicketId(navState.ticketId);
@@ -370,22 +382,38 @@ function AppContent() {
           }>
             {currentPage === 'tickets' && (
               <TicketsPage
-                selectedDate={selectedDate}
-                onDateChange={handleDateChange}
+                selectedDate={ticketsDate}
+                onDateChange={handleTicketsDateChange}
                 highlightedTicketId={highlightedTicketId}
                 onHighlightComplete={() => setHighlightedTicketId(null)}
               />
             )}
-            {currentPage === 'approvals' && <PendingApprovalsPage />}
-            {currentPage === 'tipreport' && <TipReportPage selectedDate={selectedDate} onDateChange={handleDateChange} />}
-            {currentPage === 'eod' && <EndOfDayPage selectedDate={selectedDate} onDateChange={handleDateChange} />}
-            {currentPage === 'safebalance' && <SafeBalancePage selectedDate={selectedDate} onDateChange={handleDateChange} />}
-            {currentPage === 'attendance' && <AttendancePage />}
+            {currentPage === 'approvals' && (
+              <PendingApprovalsPage
+                selectedDate={approvalsDate}
+                onSelectedDateChange={setApprovalsDate}
+                queueHistoryStartDate={approvalsQueueStartDate}
+                onQueueHistoryStartDateChange={setApprovalsQueueStartDate}
+                queueHistoryEndDate={approvalsQueueEndDate}
+                onQueueHistoryEndDateChange={setApprovalsQueueEndDate}
+              />
+            )}
+            {currentPage === 'tipreport' && <TipReportPage selectedDate={tipReportDate} onDateChange={handleTipReportDateChange} />}
+            {currentPage === 'eod' && <EndOfDayPage selectedDate={eodDate} onDateChange={handleEodDateChange} />}
+            {currentPage === 'safebalance' && <SafeBalancePage selectedDate={safeBalanceDate} onDateChange={handleSafeBalanceDateChange} />}
+            {currentPage === 'attendance' && <AttendancePage currentDate={attendanceDate} onCurrentDateChange={setAttendanceDate} />}
             {currentPage === 'technicians' && <EmployeesPage />}
             {currentPage === 'clients' && <ClientsPage />}
             {currentPage === 'inventory' && <InventoryPage />}
             {currentPage === 'services' && <ServicesPage />}
-            {currentPage === 'insights' && <InsightsPage />}
+            {currentPage === 'insights' && (
+              <InsightsPage
+                selectedFilter={insightsFilter}
+                onFilterChange={setInsightsFilter}
+                customDateRange={insightsCustomDateRange}
+                onCustomDateRangeChange={setInsightsCustomDateRange}
+              />
+            )}
             {currentPage === 'resources' && <ResourcesPage />}
             {currentPage === 'settings' && <SettingsPage />}
             {currentPage === 'configuration' && <ConfigurationPage />}
