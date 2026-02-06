@@ -524,7 +524,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 | Edit Tickets | ✓ | ✓ | ✓ | Own only | ✓ | ✓ | ✗ | ✗ |
 | Close Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
 | Delete Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
-| Approve Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
+| Approve Tickets | ✓ | ✓ | ✓ | Worked* | Worked† | ✗ | ✗ | ✗ |
 | Reopen Tickets | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
 | Request Reopen | ✗ | ✗ | ✗ | ✓ | ✓ | ✗ | ✗ | ✗ |
 | View Full Phone (Ticket) | ✓ | ✓ | ✓ | Masked | Masked | Masked | Masked | Masked |
@@ -566,6 +566,18 @@ When a user has multiple roles, the highest-ranking role determines their permis
 | **Queue** |
 | View All Queue | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
 | Remove from Queue | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
+
+\* **Supervisor**: Must have worked on the ticket. Cannot approve tickets at manager/owner level.
+† **Receptionist**: Must have worked on the ticket. Can only approve technician-level tickets (hidden for supervisor+ level).
+
+**Ticket Approval by `approval_required_level`**:
+
+| `approval_required_level` | Technician | Receptionist | Supervisor | Manager+ |
+|---|---|---|---|---|
+| `technician` | If worked on ticket | If worked on ticket | If worked on ticket | Yes |
+| `supervisor` | No | No (hidden) | If worked on ticket | Yes |
+| `manager` | No | No | No | Yes |
+| `owner` | No | No | No | Owner/Admin only |
 
 ---
 
@@ -647,7 +659,13 @@ When a user has multiple roles, the highest-ranking role determines their permis
 ### 6.1 Ticket Rules
 
 - **Minimum Requirements**: Tickets must have at least one item with payment method and amount
-- **Self-Service Tickets**: Technician/Trainee/Supervisor-created tickets require approval
+- **Self-Service Tickets**: Technician/Trainee/Supervisor/Receptionist-created tickets require approval
+- **Approval Level Routing** (`approval_required_level`):
+  - Receptionist performs + closes → `supervisor` level
+  - Supervisor performs + closes → `manager` level
+  - Manager performs + closes → `owner` level
+  - Tips > $20 → `manager` level
+  - Standard (different performer/closer) → `technician` level
 - **Auto-Approval**: After 24 hours (configurable), pending tickets auto-approve
 - **Edit Restrictions**:
   - Approved tickets: Only Admin/Owner can edit
@@ -1037,6 +1055,7 @@ stores
 - `opened_at`, `closed_at`, `completed_at`: Timestamps
 - `payment_method`: cash, card, mixed, gift_card
 - `approval_status`: pending_approval, approved, auto_approved, rejected
+- `approval_required_level`: technician, supervisor, manager, or owner — determines who can approve
 - `requires_admin_review`: Boolean flag for escalation
 
 **ticket_items**:
@@ -1123,6 +1142,13 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Fix Receptionist & Supervisor Ticket Approval Rules
+- Fixed `set_approval_deadline()` trigger bug: Receptionist self-service tickets (performs + closes) now correctly get `approval_required_level = 'supervisor'` instead of silently falling through to `'technician'` (dead-code dual-role conditions never matched since employees have one role)
+- Fixed `approve_ticket()` RPC: Receptionist can no longer approve supervisor-level tickets; Receptionist and Supervisor must have worked on ticket to approve technician-level tickets (same rule as Technician)
+- Added `approval_required_level` field to `SaleTicket` TypeScript interface
+- UI hides approve button for Receptionist on non-technician-level tickets
+- Updated 2026-02-04 Receptionist Ticket Approval entry below (rules tightened)
+
 ### 2026-02-06: Per-Service Requires Photos Flag
 - Services can now be flagged with `requires_photos` in ServicesPage (checkbox: "Require photos & notes")
 - New tickets containing any `requires_photos` service show the photo section immediately (before save)
@@ -1191,8 +1217,8 @@ Always filter by `store_id` when querying store-specific data:
 
 ### 2026-02-04: Receptionist Ticket Approval
 - Added Receptionist to `Permissions.tickets.canApprove` in `permissions.ts`
-- Updated `approve_ticket` RPC: Receptionist can approve technician-level tickets directly and supervisor-level tickets when they worked on the ticket (same rules as Supervisor)
-- No changes needed to TicketsPage or PendingApprovalsPage (existing logic derives behavior from permission check)
+- Updated `approve_ticket` RPC: Receptionist can approve technician-level tickets only if they worked on the ticket; cannot approve supervisor-level or higher tickets
+- **Updated 2026-02-06**: Rules tightened — see "Fix Receptionist & Supervisor Ticket Approval Rules" above
 
 ### 2026-02-03: Client Visit History Tab
 - Replaced "Color History" tab with "Visit History" in `ClientDetailsModal`
