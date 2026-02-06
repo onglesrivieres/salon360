@@ -1,14 +1,14 @@
 /*
-  # Fix set_approval_deadline() — replace broken status column reference
+  # Fix set_approval_deadline() — remove non-existent store_settings reference
 
-  Migration 20260206000003 introduced a bug: it references NEW.status / OLD.status
-  but sale_tickets has no `status` column. The correct condition uses closed_at.
+  Migration 20260206000004 references `public.store_settings` table which does not exist.
+  The original function in squash_08 used a hardcoded interval.
 
-  Error: record "new" has no field "status" (PostgreSQL 42703)
+  Error: relation "public.store_settings" does not exist (PostgreSQL 42P01)
 
   ## Change
-  - Line 52: `IF NEW.status = 'closed' AND (OLD.status IS DISTINCT FROM 'closed')`
-  - Fixed:   `IF NEW.closed_at IS NOT NULL AND OLD.closed_at IS NULL`
+  - Removed `v_deadline_hours` variable and `store_settings` query
+  - Hardcoded `INTERVAL '24 hours'` for approval deadline (matching intended default)
 */
 
 CREATE OR REPLACE FUNCTION public.set_approval_deadline()

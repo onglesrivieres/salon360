@@ -1144,6 +1144,13 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Fix `set_approval_deadline()` Non-Existent `store_settings` Table
+- Migration `20260206000004` referenced `public.store_settings` table which does not exist (PostgreSQL 42P01)
+- The `store_settings` lookup for configurable `approval_deadline_hours` was never part of the real schema
+- Replaced with hardcoded `INTERVAL '24 hours'` matching the intended default
+- Removed unused `v_deadline_hours` variable from DECLARE block
+- Migration `20260206000005_fix_set_approval_deadline_store_settings.sql` applied to both salon360qc and salon365
+
 ### 2026-02-06: Fix `set_approval_deadline()` Broken Status Column Reference
 - Migrations `20260206000002` and `20260206000003` recreated `set_approval_deadline()` with `IF NEW.status = 'closed'` but `sale_tickets` has no `status` column — caused PostgreSQL error 42703 when closing tickets
 - Fixed condition to `IF NEW.closed_at IS NOT NULL AND OLD.closed_at IS NULL` (matching original logic from `squash_08`)
