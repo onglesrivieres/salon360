@@ -8,6 +8,7 @@ interface ModalProps {
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   headerActions?: React.ReactNode;
+  className?: string;
   onConfirm?: () => void;
   confirmText?: string;
   confirmVariant?: 'default' | 'danger';
@@ -21,6 +22,7 @@ export function Modal({
   children,
   size = 'md',
   headerActions,
+  className,
   onConfirm,
   confirmText,
   confirmVariant = 'default',
@@ -44,7 +46,7 @@ export function Modal({
         onClick={onClose}
       />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className={`bg-white rounded-lg shadow-xl w-full ${sizeStyles[size]} max-h-[90vh] overflow-y-auto`}>
+        <div className={`bg-white rounded-lg shadow-xl w-full ${sizeStyles[size]} max-h-[90vh] overflow-y-auto ${className || ''}`}>
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-4">
             <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
             {headerActions && (

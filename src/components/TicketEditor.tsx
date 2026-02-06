@@ -3027,6 +3027,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
         onClose={handlePaymentModalCancel}
         title={`Payment Details - ${formData.payment_method}`}
         size="lg"
+        className="max-h-[98vh]"
       >
         <div className="space-y-4">
           {hasExistingPaymentData() && (

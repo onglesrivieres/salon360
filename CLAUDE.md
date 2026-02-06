@@ -1144,6 +1144,10 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Extend Payment Details Modal Height
+- Added optional `className` prop to shared `Modal` component (`src/components/ui/Modal.tsx`) for callers to override default styles
+- Payment Details modal in `TicketEditor.tsx` now uses `max-h-[98vh]` (up from default `90vh`) so Payment Summary and buttons are visible without scrolling
+
 ### 2026-02-06: Remove Collection Summary from Payment Details Modal
 - Removed the "Collection Summary" section (Total Cash Collected, Total Card Collected, Gift Card Redeemed) from the Payment Details modal in `TicketEditor.tsx`
 - Redundant with the "Payment Summary" block already in the same modal
