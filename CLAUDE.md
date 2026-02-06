@@ -1144,6 +1144,18 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Add "Today" Button to Date Navigation
+- Added a "Today" button to the left of the date navigation (`[< ] [date] [> ]`) on all 5 pages with date pickers
+- Button is hidden when already viewing today's date (no visual clutter)
+- Styled as small blue link-like button (`text-xs text-blue-600`) with mobile touch target (`min-h-[44px]`)
+- TicketsPage: only shown for non-Cashier/non-Receptionist (they're locked to today via `isLocalDateRole`)
+- TipReportPage: added in both mobile and desktop date nav blocks; only for non-Receptionist roles
+- EndOfDayPage: added `t` to `useAuth()` destructuring; button inside Manager/Supervisor branch
+- SafeBalancePage: replaced old "Go to Today" link (below date picker) with consistent button to the left
+- PendingApprovalsPage: button before ChevronLeft nav
+- Uses `t('common.today')` i18n key (already translated in all 4 languages) except SafeBalancePage (hardcoded, matching page convention)
+- Files modified: `TicketsPage.tsx`, `TipReportPage.tsx`, `EndOfDayPage.tsx`, `SafeBalancePage.tsx`, `PendingApprovalsPage.tsx`
+
 ### 2026-02-06: Add Technician Filter to Tip Report Page
 - Added a Filter button next to Export/Print buttons on the Tip Report page header
 - Dropdown panel with technician select to filter the report by individual technician

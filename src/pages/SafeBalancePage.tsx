@@ -342,6 +342,14 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
         <div className="flex items-center justify-between">
           <h2 className="text-base md:text-lg font-bold text-gray-900">Safe Balance</h2>
           <div className="flex items-center gap-2">
+            {!isToday && (
+              <button
+                onClick={goToToday}
+                className="px-2 py-1.5 md:py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[44px] md:min-h-[32px] flex items-center justify-center"
+              >
+                Today
+              </button>
+            )}
             <button
               onClick={goToPreviousDay}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -349,22 +357,12 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
             >
               <ChevronLeft className="w-5 h-5 text-gray-600" />
             </button>
-            <div className="flex flex-col items-center min-w-[140px]">
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => onDateChange(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {!isToday && (
-                <button
-                  onClick={goToToday}
-                  className="text-xs text-blue-600 hover:text-blue-700 mt-1 font-medium"
-                >
-                  Go to Today
-                </button>
-              )}
-            </div>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => onDateChange(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
             <button
               onClick={goToNextDay}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"

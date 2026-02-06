@@ -33,7 +33,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { showToast } = useToast();
-  const { session, selectedStoreId } = useAuth();
+  const { session, selectedStoreId, t } = useAuth();
 
   const [eodRecord, setEodRecord] = useState<EndOfDayRecord | null>(null);
   const [expectedCash, setExpectedCash] = useState(0);
@@ -882,6 +882,14 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
           {session?.role_permission !== 'Receptionist' && session?.role_permission !== 'Cashier' ? (
             <div className="flex items-center gap-2 flex-1 md:flex-initial">
+              {selectedDate !== getCurrentDateEST() && (
+                <button
+                  onClick={() => onDateChange(getCurrentDateEST())}
+                  className="px-2 py-1.5 md:py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[44px] md:min-h-[32px] flex items-center justify-center"
+                >
+                  {t('common.today')}
+                </button>
+              )}
               <button
                 onClick={() => navigateDay('prev')}
                 disabled={!canNavigatePrev()}

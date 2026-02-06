@@ -993,6 +993,14 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
           )}
           {viewMode !== 'period' && (
             <div className="flex items-center gap-2 flex-1 md:flex-initial">
+              {!isLocalDateRole && activeDate !== getCurrentDateEST() && (
+                <button
+                  onClick={() => activeDateChange(getCurrentDateEST())}
+                  className="px-2 py-1.5 md:py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[44px] md:min-h-[32px] flex items-center justify-center"
+                >
+                  {t('common.today')}
+                </button>
+              )}
               <button
                 onClick={() => navigateDay('prev')}
                 disabled={!canNavigatePrev()}

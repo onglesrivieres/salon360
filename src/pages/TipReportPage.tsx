@@ -1018,6 +1018,14 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
               <div className="flex items-center gap-1 md:hidden">
                 {!isReceptionist ? (
                   <>
+                    {selectedDate !== getCurrentDateEST() && (
+                      <button
+                        onClick={() => onDateChange(getCurrentDateEST())}
+                        className="px-2 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[44px] flex items-center justify-center"
+                      >
+                        {t('common.today')}
+                      </button>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"
@@ -1084,6 +1092,14 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
               <div className="hidden md:flex items-center gap-1">
                 {!isReceptionist ? (
                   <>
+                    {selectedDate !== getCurrentDateEST() && (
+                      <button
+                        onClick={() => onDateChange(getCurrentDateEST())}
+                        className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[32px] flex items-center justify-center"
+                      >
+                        {t('common.today')}
+                      </button>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"
