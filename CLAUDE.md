@@ -37,7 +37,7 @@ Salon360 is a multi-store salon management application built with React, TypeScr
 - **Styling**: Tailwind CSS
 - **Backend**: Supabase (PostgreSQL + Auth + Realtime)
 - **Icons**: lucide-react
-- **Internationalization**: en, fr, vi
+- **Internationalization**: en, fr, vi, km
 
 ---
 
@@ -332,6 +332,7 @@ Balanced = Variance < $0.01
 - Sorting and view modes (table/grid)
 - Category color customization
 - Average service duration calculation from past services
+- Per-service `requires_photos` flag (mandatory photos & notes on new tickets)
 - Service availability toggle
 
 ---
@@ -505,71 +506,72 @@ Balanced = Variance < $0.01
 4. Supervisor
 5. Receptionist
 6. Cashier
-7. Technician (most restricted)
+7. Technician
+8. Trainee   (most restricted, same permissions as Technician)
 ```
 
-When a user has multiple roles, the highest-ranking role determines their permission level.
+When a user has multiple roles, the highest-ranking role determines their permission level. Trainee maps to Technician-level permissions internally.
 
 ---
 
 ### 5.2 Permission Matrix
 
-| Feature | Admin | Owner | Manager | Supervisor | Receptionist | Cashier | Technician |
-|---------|:-----:|:-----:|:-------:|:----------:|:------------:|:-------:|:----------:|
+| Feature | Admin | Owner | Manager | Supervisor | Receptionist | Cashier | Technician | Trainee |
+|---------|:-----:|:-----:|:-------:|:----------:|:------------:|:-------:|:----------:|:-------:|
 | **Tickets** |
-| View All Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | Own only |
-| Create Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | Self-service |
-| Edit Tickets | ✓ | ✓ | ✓ | Own only | ✓ | ✓ | ✗ |
-| Close Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Delete Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Approve Tickets | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
-| Reopen Tickets | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
-| Request Reopen | ✗ | ✗ | ✗ | ✓ | ✓ | ✗ | ✗ |
-| View Full Phone (Ticket) | ✓ | ✓ | ✓ | Masked | Masked | Masked | Masked |
+| View All Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | Own only | Own only |
+| Create Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | Self-service | Self-service |
+| Edit Tickets | ✓ | ✓ | ✓ | Own only | ✓ | ✓ | ✗ | ✗ |
+| Close Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Delete Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Approve Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
+| Reopen Tickets | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Request Reopen | ✗ | ✗ | ✗ | ✓ | ✓ | ✗ | ✗ | ✗ |
+| View Full Phone (Ticket) | ✓ | ✓ | ✓ | Masked | Masked | Masked | Masked | Masked |
 | **Financial** |
-| View EOD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Edit EOD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
-| View Safe Balance | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
-| View Insights | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| View EOD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Edit EOD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| View Safe Balance | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| View Insights | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
 | **Tips** |
-| View All Tips | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | Own only |
-| Export Tips | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| View All Tips | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | Own only | Own only |
+| Export Tips | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
 | **Employees** |
-| View Employees | ✓ | ✓ | Limited | ✗ | ✗ | ✗ | ✗ |
-| Create Employees | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
-| Edit Employees | All | Non-Admin | Non-Mgmt | ✗ | ✗ | ✗ | ✗ |
-| Delete Employees | All | Non-Admin | Non-Mgmt | ✗ | ✗ | ✗ | ✗ |
-| Reset PIN | All | Non-Admin | Non-Mgmt | ✗ | ✗ | ✗ | ✗ |
+| View Employees | ✓ | ✓ | Limited | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Create Employees | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Edit Employees | All | Non-Admin | Non-Mgmt | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Delete Employees | All | Non-Admin | Non-Mgmt | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Reset PIN | All | Non-Admin | Non-Mgmt | ✗ | ✗ | ✗ | ✗ | ✗ |
 | **Inventory** |
-| View Inventory | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
-| Create Items | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
-| Create Transactions | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
-| Approve Transactions | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
-| Distribute Inventory | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
-| View Own Inventory | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✓ |
+| View Inventory | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
+| Create Items | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Create Transactions | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
+| Approve Transactions | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Distribute Inventory | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| View Own Inventory | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✓ | ✓ |
 | **Clients** |
-| View Clients | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Create Clients | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Edit Clients | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
-| Delete Clients | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
-| Blacklist Clients | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
-| View Full Phone | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
+| View Clients | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Create Clients | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Edit Clients | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
+| Delete Clients | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Blacklist Clients | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| View Full Phone | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
 | **Services** |
-| View Services | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
-| Create Services | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
-| Delete Services | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| View Services | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| Create Services | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| Delete Services | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
 | **Configuration** |
-| View Configuration | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| Edit Configuration | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| View Configuration | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Edit Configuration | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
 | **Queue** |
-| View All Queue | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
-| Remove from Queue | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
+| View All Queue | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
+| Remove from Queue | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
 
 ---
 
 ### 5.3 Time-Based Access Restrictions
 
-**Affected Roles**: Technician, Cashier, Receptionist, Supervisor
+**Affected Roles**: Technician, Trainee, Cashier, Receptionist, Supervisor
 
 **Access Window**: 8:45 AM to 30 minutes after store closing time
 
@@ -595,7 +597,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 
 ### 5.5 Check-In Requirements
 
-**Affected Roles**: Receptionist, Supervisor, Technician
+**Affected Roles**: Receptionist, Supervisor, Technician, Trainee
 
 **Requirement**: Must check in at a store before accessing the application
 
@@ -614,7 +616,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 
 **Store Switching**:
 - Allowed if employee is not checked in
-- **Blocked** if Receptionist, Supervisor, or Technician is currently checked in
+- **Blocked** if Receptionist, Supervisor, Technician, or Trainee is currently checked in
 
 ---
 
@@ -636,7 +638,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 |------------|------------|
 | Admin | All employees (no restrictions) |
 | Owner | Everyone except Admin |
-| Manager | Supervisor, Receptionist, Cashier, Technician only |
+| Manager | Supervisor, Receptionist, Cashier, Technician, Trainee only |
 
 ---
 
@@ -645,7 +647,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 ### 6.1 Ticket Rules
 
 - **Minimum Requirements**: Tickets must have at least one item with payment method and amount
-- **Self-Service Tickets**: Technician/Supervisor-created tickets require approval
+- **Self-Service Tickets**: Technician/Trainee/Supervisor-created tickets require approval
 - **Auto-Approval**: After 24 hours (configurable), pending tickets auto-approve
 - **Edit Restrictions**:
   - Approved tickets: Only Admin/Owner can edit
@@ -723,14 +725,18 @@ When a user has multiple roles, the highest-ranking role determines their permis
 
 ### 6.7 Queue Rules
 
-- **Ready Queue**: Technicians mark themselves ready for next service
+- **Ready Queue**: Technicians/Trainees mark themselves ready for next service
 - **Queue Statuses**: ready, busy, neutral, small_service
-- **Skip Turn**: Technician can skip their turn, moving to end of queue (resets `ready_at` to `NOW()`)
+- **Queue Priority**: `queue_priority` column (0=normal, 1=low). Trainees-only get low priority (positioned after Technicians). Ordering is `(queue_priority, ready_at)`
+- **Skip Turn**: Technician can skip their turn with a reason (Too difficult, Health, Lunch, Washroom, Others). Moves to end of queue within same priority group. Logged in `queue_skip_log` table
+- **Leave Queue**: All queue-eligible roles can leave with a reason (Tired, Cannot perform service, Other). Logged in `queue_leave_log` table
 - **Cooldown**: After removal, cooldown period before rejoining
 - **Auto Status**:
   - Opens ticket → status = busy
   - Completes service < 15 min → status = small_service
 - **Timeout**: Auto-removed after 30 minutes of inactivity
+- **Cashier Blocked**: Cashiers cannot join the ready queue (guarded in frontend PIN flow and `join_ready_queue_with_checkin` RPC)
+- **skip_queue_on_checkin**: Employee-level flag; when true, employee checks in without joining the queue. Returns `SKIP_QUEUE_ENABLED` error if they try to join manually
 
 ---
 
@@ -963,8 +969,10 @@ CAN_REJOIN
 | `client_color_history` | Color preference tracking |
 | `store_services` | Service catalog per store |
 | `service_categories` | Service category definitions |
-| `technician_ready_queue` | Queue status tracking |
+| `technician_ready_queue` | Queue status tracking (includes `queue_priority` column) |
 | `queue_removal_history` | Queue removal audit |
+| `queue_leave_log` | Voluntary queue departures with reason/notes |
+| `queue_skip_log` | Skip turn actions with reason/notes |
 | `violation_reports` | Employee violation tracking |
 
 ---
@@ -1036,6 +1044,9 @@ stores
 - `tip_customer_cash`, `tip_customer_card`: Customer tips
 - `tip_receptionist`: Paired receptionist tip
 - `payment_cash`, `payment_card`, `payment_gift_card`: Payment split
+
+**store_services**:
+- `requires_photos`: Boolean flag; when true, new tickets with this service require min 2 photos + notes
 
 **inventory_purchase_lots**:
 - `lot_number`: Auto-generated (e.g., OM-2026-00001)
@@ -1112,12 +1123,62 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Per-Service Requires Photos Flag
+- Services can now be flagged with `requires_photos` in ServicesPage (checkbox: "Require photos & notes")
+- New tickets containing any `requires_photos` service show the photo section immediately (before save)
+- Validation enforces minimum 2 photos + non-empty notes before saving new tickets
+- Existing ticket edits are not affected by the validation
+- Photos uploaded with the newly created ticket ID after insertion (`uploadPendingPhotos(overrideTicketId)`)
+- Added `requires_photos` boolean column to `store_services` table
+- Updated `get_services_by_popularity` RPC to include `requires_photos` in return type
+- Fixed `canEditNotes` returning null on new tickets (short-circuited when `ticket` was null)
+- `TicketPhotosSection` and `useTicketPhotos` now accept `ticketId: string | null` for pre-save rendering
+- Added `pendingCount` to `TicketPhotosSectionRef` for validation checks
+
+### 2026-02-05: PIN Authentication Error Logging
+- Added differentiated error logging in `authenticateWithPIN()` (`src/lib/auth.ts`)
+- RPC errors logged with `console.error` (message + code); no-match cases logged with `console.warn`
+- Helps debug login issues without code changes
+
+### 2026-02-05: Queue Skip Turn Reason Modal
+- Skip Turn now requires a reason selection (Too difficult, Health, Lunch, Washroom, Others)
+- "Others" requires mandatory notes
+- Created `queue_skip_log` table to record skip actions with reason/notes
+- `QueueReasonModal` shared component used for both skip and leave actions
+
+### 2026-02-05: Trainee Role
+- Added 8th role: Trainee (identical permissions to Technician)
+- Trainee maps to Technician permission level via `getRolePermission()`
+- Queue priority: Trainees positioned AFTER Technicians (`queue_priority=1` vs `0`)
+- Added `queue_priority` column to `technician_ready_queue`; all queue RPCs updated for priority-aware ordering
+- Added DB constraints for Trainee in `employees` role and `role_permissions` valid roles
+- Added Trainee translations to all 4 languages
+
+### 2026-02-05: Block skip_queue_on_checkin from Ready Queue
+- Employees with `skip_queue_on_checkin=true` cannot manually join the ready queue
+- Three-layer guard: frontend check, RPC server-side check (`SKIP_QUEUE_ENABLED`), UI message
+
+### 2026-02-05: Fix Ticket Photos Infinite Loading (ERR_INSUFFICIENT_RESOURCES)
+- Fixed infinite fetch loop in `useTicketPhotos.ts` that exhausted browser connection pool
+- Root cause: `getStorageConfig()` returned a new object every render → `useMemo([storageConfig])` re-created `storage` → `useCallback([storage])` re-created `fetchPhotos` → `useEffect([fetchPhotos])` fired every render → infinite loop
+- Symptoms: photos never loading (infinite spinner), uploads failing, `ERR_INSUFFICIENT_RESOURCES` in console
+- Fix: replaced unstable `[storageConfig]` object dependency with stable primitives `[storeId, storagePublicUrl]`
+- Also passed `storageConfig` directly to `useTicketPhotos` hook instead of calling `getStorageConfig()` internally
+
+### 2026-02-04: Block Cashiers from Ready Queue
+- Cashiers clicking "Ready" on HomePage now get "Your role does not have access to the ready queue" error
+- Three-layer guard: PIN submission (early reject), store selection (defense in depth), RPC error handler (`ROLE_NOT_ELIGIBLE`)
+- Added Cashier role check to `join_ready_queue_with_checkin` RPC (server-side guard)
+- Added `queueNotAvailableForRole` translation key to all 4 languages (en, fr, vi, km)
+- Added `role` field to `authenticatedSession` state in HomePage for role checks after PIN auth
+
 ### 2026-02-04: Skip Turn in Queue
 - Added yellow "Skip Turn" button next to red "Leave Queue" button in technician queue modal
-- Moves technician to end of queue by resetting `ready_at` to `NOW()` (no confirmation needed)
+- Moves technician to end of queue by resetting `ready_at` to `NOW()`
 - Created `skip_queue_turn` RPC function accepting `p_employee_id` and `p_store_id`
 - Both buttons disable each other while either action is in progress
 - Added `skipTurn` and `skippingTurn` translation keys to all 4 languages (en, fr, vi, km)
+- **Updated 2026-02-05**: Now requires reason selection via `QueueReasonModal` (see above)
 
 ### 2026-02-04: Leave Queue with Reason (All Roles)
 - Changed `allowLeaveQueue` from Technician-only to all queue-eligible roles in `Layout.tsx`
@@ -1155,7 +1216,7 @@ Always filter by `store_id` when querying store-specific data:
 ### 2026-01-23: Documentation Update
 - Added comprehensive CLAUDE.md with full documentation of:
   - All 15 pages and their functionality
-  - Complete permission matrix for 7 roles
+  - Complete permission matrix for 8 roles
   - Business rules for all features
   - Workflow diagrams for core processes
   - Database schema reference
