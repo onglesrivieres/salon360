@@ -1144,6 +1144,13 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-06: Fix Clients Page Sorting & Batch Query Optimization
+- Clients page was showing alphabetical order (A-names first) instead of sorting by most recent visit because `useClients.ts` fetched only the first 50 clients alphabetically from the DB, then client-side sort only operated within that subset
+- Removed DB-level pagination (`limit`/`offset`/`.range()`) — all clients for the store are now fetched so `ClientsPage.tsx` client-side sort by `last_visit` DESC works correctly across the full dataset
+- Replaced N+1 query pattern (~200 queries for 50 clients) with 3 batch queries using `.in('client_id', clientIds)`: one for visit stats (`sale_tickets`), one for last color (`client_color_history`), one for blacklisted-by names (`employees`). Total: 4 queries instead of ~200
+- Added missing `store_id` filter to `sale_tickets` query so visit stats are per-store
+- File modified: `src/hooks/useClients.ts`
+
 ### 2026-02-06: Remove New Ticket Button from End of Day Page
 - Removed the "New Ticket" button from the End of Day (Cash Balance) page header
 - Removed the `openNewTicket()` function that was only used by that button
