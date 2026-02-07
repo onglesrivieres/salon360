@@ -178,6 +178,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   const [voidError, setVoidError] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showAddServicePicker, setShowAddServicePicker] = useState(false);
 
   // Client lookup state
   const [showQuickAddClient, setShowQuickAddClient] = useState(false);
@@ -2696,34 +2697,116 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                 ))}
 
                 {canEditServices && !isVoided && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const employeeId = selectedTechnicianId || lastUsedEmployeeId;
-                      if (!employeeId) {
-                        showToast('Please select a technician first', 'error');
-                        return;
-                      }
-                      setItems([
-                        ...items,
-                        {
-                          service_id: '',
-                          employee_id: employeeId,
-                          qty: '1',
-                          price_each: '0',
-                          tip_customer: '0',
-                          tip_receptionist: '0',
-                          addon_details: '',
-                          addon_price: '0',
-                          is_custom: false,
+                  showAddServicePicker ? (
+                    <div className="border border-gray-200 rounded-lg p-3 bg-white">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-gray-600">Select a Service</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddServicePicker(false)}
+                          className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      {/* Category Filter Pills */}
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {categoryOptions.map((category) => (
+                          <button
+                            key={category}
+                            type="button"
+                            onClick={() => setSelectedCategory(category)}
+                            className={`px-3 py-1.5 text-xs rounded-full font-medium transition-colors ${
+                              selectedCategory === category
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {category === 'all' ? 'Popular' : category}
+                          </button>
+                        ))}
+                      </div>
+                      {/* Service Buttons */}
+                      <div className="flex flex-wrap gap-2">
+                        {services
+                          .filter(service => selectedCategory === 'all' || service.category === selectedCategory)
+                          .filter(service => canEmployeePerformService(selectedTechnicianId || lastUsedEmployeeId, service.service_id))
+                          .slice(0, selectedCategory === 'all' ? 10 : undefined)
+                          .map((service) => (
+                            <button
+                              key={service.store_service_id}
+                              type="button"
+                              onClick={() => {
+                                const employeeId = selectedTechnicianId || lastUsedEmployeeId;
+                                if (!employeeId) {
+                                  showToast('Please select a technician first', 'error');
+                                  return;
+                                }
+                                setItems([...items, {
+                                  service_id: service.service_id,
+                                  employee_id: employeeId,
+                                  qty: '1',
+                                  price_each: service.price.toString(),
+                                  tip_customer: '0',
+                                  tip_receptionist: '0',
+                                  addon_details: '',
+                                  addon_price: '0',
+                                  service: service as any,
+                                  is_custom: false,
+                                }]);
+                                setShowAddServicePicker(false);
+                              }}
+                              className={`py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${getServiceColor(service.category)}`}
+                            >
+                              {service.code}
+                            </button>
+                          ))}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const employeeId = selectedTechnicianId || lastUsedEmployeeId;
+                            if (!employeeId) {
+                              showToast('Please select a technician first', 'error');
+                              return;
+                            }
+                            setItems([...items, {
+                              service_id: '',
+                              employee_id: employeeId,
+                              qty: '1',
+                              price_each: '0',
+                              tip_customer: '0',
+                              tip_receptionist: '0',
+                              addon_details: '',
+                              addon_price: '0',
+                              is_custom: true,
+                              custom_service_name: '',
+                            }]);
+                            setShowAddServicePicker(false);
+                          }}
+                          className="py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 bg-gray-100 text-gray-800 hover:bg-gray-200 border-2 border-gray-300"
+                        >
+                          CUSTOM
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const employeeId = selectedTechnicianId || lastUsedEmployeeId;
+                        if (!employeeId) {
+                          showToast('Please select a technician first', 'error');
+                          return;
                         }
-                      ]);
-                    }}
-                    className="w-full py-3 md:py-2 px-4 text-sm font-medium text-blue-700 bg-blue-50 border-2 border-blue-300 border-dashed rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Another Service
-                  </button>
+                        setSelectedCategory('all');
+                        setShowAddServicePicker(true);
+                      }}
+                      className="w-full py-3 md:py-2 px-4 text-sm font-medium text-blue-700 bg-blue-50 border-2 border-blue-300 border-dashed rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Another Service
+                    </button>
+                  )
                 )}
               </div>
             )}

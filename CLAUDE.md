@@ -1154,6 +1154,16 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-07: Use Service Button Grid for "Add Another Service"
+- Previously, clicking "Add Another Service" on an existing ticket appended an empty item that rendered as a `<Select>` dropdown — inconsistent with the new-ticket UI
+- Replaced with the same service picker grid used for new tickets: category filter pills, colored service code buttons, and CUSTOM button
+- Clicking "Add Another Service" now toggles a picker panel below existing items; selecting a service appends a fully-populated item (with `service_id`, `price_each`, `service` object) and collapses the picker
+- CUSTOM button appends a custom service item (same as new-ticket flow)
+- X close button dismisses the picker without adding any item
+- Added `showAddServicePicker` state variable to control picker visibility
+- New-ticket UI (items.length === 0) unchanged; existing item rendering unchanged
+- File modified: `TicketEditor.tsx`
+
 ### 2026-02-07: Block All Input Fields on Voided Tickets
 - Voided tickets are open (`closed_at = null`) so many input fields used `isTicketClosed` to disable themselves — these remained interactive on voided tickets despite `isReadOnly = true`
 - Added `!isVoided` or `|| isVoided` guards to 9 input areas in `TicketEditor.tsx`:
