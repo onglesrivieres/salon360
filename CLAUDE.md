@@ -1144,6 +1144,15 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-07: Fix Auto Check-Out Firing 1 Hour Early During EST (Winter)
+- Two pg_cron jobs handle daylight saving: `auto-checkout-2200-edt` at 2:00 UTC and `auto-checkout-2200-est` at 3:00 UTC
+- During winter (EST), the EDT job fires at 9 PM EST — 1 hour early — and `auto_checkout_employees_by_context()` had no time guard, so it checked out all employees prematurely
+- Added time guard at top of function: `IF v_eastern_time::time < '22:00'::time THEN RETURN; END IF;`
+- This makes the wrong-season cron job a true no-op (returns immediately if Eastern time is before 10 PM)
+- During summer (EDT), the EST job fires at 11 PM EDT — harmless since employees are already checked out
+- Migration applied to both salon360qc and salon365 databases
+- File added: `supabase/migrations/20260207020702_fix_auto_checkout_early_trigger_est.sql`
+
 ### 2026-02-07: Enforce `requires_photos` Validation When Closing Tickets
 - Previously, `requires_photos` validation only ran for brand-new unsaved tickets (`!ticketId` guard) — existing tickets could be closed with 0 photos and empty notes
 - Added photo/notes validation to `handleCloseTicket()`: requires non-empty notes and at least 1 photo (uploaded + pending) when any service has `requires_photos` flag
