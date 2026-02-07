@@ -1144,6 +1144,15 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-07: Fix Queue Join Timezone Regression
+- Fixed `join_ready_queue_with_checkin` RPC using `CURRENT_DATE` (UTC) instead of store-timezone-aware date
+- After 7 PM EST (when UTC rolls to the next day), employees got false "must check in" errors when tapping "Ready"
+- Root cause: the original timezone fix (Jan 5) was carried into squash_07 but regressed when later migrations (Feb 4) rewrote the function with `CURRENT_DATE`
+- Fix: replaced `v_today := CURRENT_DATE` with `v_store_timezone := public.get_store_timezone(p_store_id); v_today := (CURRENT_TIMESTAMP AT TIME ZONE v_store_timezone)::date`
+- Matches the pattern used by `check_in_employee` and the original Jan 5 fix
+- Migration applied to both salon360qc and salon365 databases
+- File added: `supabase/migrations/20260207004350_fix_join_queue_timezone_regression.sql`
+
 ### 2026-02-07: Multi-Select Technician Filter on Tip Report Page
 - Replaced single-select `<select>` dropdown with a scrollable checkbox list for multi-technician filtering
 - State changed from `useState<string>('all')` to `useState<string[]>([])` — empty array means show all
