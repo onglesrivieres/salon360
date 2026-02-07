@@ -104,6 +104,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
       ticket.created_by
     );
 
+  const canVoid = session && session.role_permission && Permissions.tickets.canVoid(session.role_permission);
+
+  const isVoided = !!ticket?.voided_at;
+
   const isReadOnly = ticket && session && session.role_permission && (
     isVoided ||
     !Permissions.tickets.canEdit(
@@ -137,10 +141,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   const canRequestChanges = session && session.role_permission && Permissions.tickets.canRequestChanges(session.role_permission);
 
   const canDelete = session && session.role_permission && Permissions.tickets.canDelete(session.role_permission);
-
-  const canVoid = session && session.role_permission && Permissions.tickets.canVoid(session.role_permission);
-
-  const isVoided = !!ticket?.voided_at;
 
   // Permission checks for Today's Color and Services (Technician can edit until completed)
   const isTicketCompleted = !!ticket?.completed_at;

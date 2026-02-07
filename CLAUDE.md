@@ -1154,6 +1154,13 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-07: Fix TicketEditor Crash (Temporal Dead Zone in Void Feature)
+- TicketEditor crashed on every render with `ReferenceError` — `isVoided` was referenced by `isReadOnly` (line 108) but declared later (line 143)
+- `const` temporal dead zone meant `isVoided` was hoisted but inaccessible before its declaration
+- `ChunkErrorBoundary` caught the error and showed "Something went wrong loading this page" for all tickets
+- Fix: moved `isVoided` and `canVoid` declarations above `isReadOnly` so the dependency is satisfied
+- File modified: `TicketEditor.tsx`
+
 ### 2026-02-07: Restrict Delete to Admin-Only & Add Void Ticket Feature
 - **Delete** now restricted to Admin only (was available to Admin/Owner/Manager/Supervisor/Receptionist/Cashier)
 - **Void** added as a new soft-delete action for Owner/Manager/Supervisor/Receptionist/Cashier (Admin sees Delete instead)
