@@ -928,6 +928,7 @@ export interface PendingTicketReopenRequest {
   created_by_name: string;
   created_by_id: string;
   created_at: string;
+  created_by_roles?: string[];
 }
 
 export type ViolationReportStatus = 'collecting_responses' | 'pending_approval' | 'approved' | 'rejected' | 'expired';

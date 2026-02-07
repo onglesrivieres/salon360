@@ -3388,6 +3388,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           total: ticket.total || 0,
           ticket_date: ticket.ticket_date,
         } : null}
+        currentRole={session?.role_permission}
       />
 
       {/* Quick Add Client Modal */}

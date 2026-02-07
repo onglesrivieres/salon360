@@ -477,7 +477,7 @@ Balanced = Variance < $0.01
 
 8. **Ticket Changes Tab**
    - Ticket reopen requests
-   - Admin/Manager review
+   - Admin/Manager/Supervisor review (Supervisor: Receptionist/Cashier requests only)
 
 ---
 
@@ -526,7 +526,8 @@ When a user has multiple roles, the highest-ranking role determines their permis
 | Delete Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
 | Approve Tickets | ✓ | ✓ | ✓ | Worked* | Worked† | ✗ | ✗ | ✗ |
 | Reopen Tickets | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| Request Reopen | ✗ | ✗ | ✗ | ✓ | ✓ | ✗ | ✗ | ✗ |
+| Request Reopen | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Review Reopen Requests | ✓ | ✓ | ✓ | R/C only‡ | ✗ | ✗ | ✗ | ✗ |
 | View Full Phone (Ticket) | ✓ | ✓ | ✓ | Masked | Masked | Masked | Masked | Masked |
 | **Financial** |
 | View EOD | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
@@ -569,6 +570,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 
 \* **Supervisor**: Must have worked on the ticket. Cannot approve tickets at manager/owner level.
 † **Receptionist**: Must have worked on the ticket. Can only approve technician-level tickets (hidden for supervisor+ level).
+‡ **Supervisor**: Can only review reopen requests from Receptionists and Cashiers. Cannot review own requests or other Supervisors' requests.
 
 **Ticket Approval by `approval_required_level`**:
 
@@ -1143,6 +1145,21 @@ Always filter by `store_id` when querying store-specific data:
 ---
 
 ## Recent Changes
+
+### 2026-02-07: Allow Supervisors to Review Ticket Reopen Requests
+- Supervisors can now see and approve/reject ticket reopen requests from Receptionists and Cashiers on the PendingApprovalsPage "Ticket Changes" tab
+- Supervisor-created requests remain Manager+ only (Supervisors cannot see or act on them)
+- Self-approval/rejection blocked at DB level (cannot review own request)
+- DB: Updated `approve_ticket_reopen_request` and `reject_ticket_reopen_request` RPCs to allow Supervisor with hierarchy guards
+- DB: Recreated `get_pending_ticket_reopen_requests` with new `created_by_roles text[]` column for frontend filtering
+- DB: Updated `get_pending_ticket_reopen_requests_count` with optional `p_reviewer_employee_id` for Supervisor-aware counting
+- Frontend: Added Supervisor to `canReviewReopenRequests` permission, updated `canViewTab()` to show ticket-changes tab
+- Frontend: Supervisor filtering in `fetchTicketReopenRequests()` and `fetchAllTabCounts()` to show only Receptionist/Cashier requests
+- Frontend: Layout badge count now includes ticket reopen requests for Supervisor-only users
+- Frontend: TicketReopenRequestModal info text updated — Receptionist/Cashier see "Supervisor, Manager, Owner, or Admin" as reviewers
+- Migration applied to both salon360qc and salon365 databases
+- Files modified: `permissions.ts`, `supabase.ts`, `PendingApprovalsPage.tsx`, `Layout.tsx`, `TicketReopenRequestModal.tsx`, `TicketEditor.tsx`
+- File added: `supabase/migrations/20260207220816_allow_supervisor_review_reopen_requests.sql`
 
 ### 2026-02-07: Fix TicketEditor Infinite Reopen After Change Request Navigation
 - When approving a ticket change request on PendingApprovalsPage, user is navigated to TicketsPage and TicketEditor auto-opens via highlight effect

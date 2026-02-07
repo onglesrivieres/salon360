@@ -15,6 +15,7 @@ interface TicketReopenRequestModalProps {
   onClose: () => void;
   onSubmit: (data: { reason_comment: string; requested_changes_description: string }) => Promise<void>;
   ticket: TicketInfo | null;
+  currentRole?: string;
 }
 
 export function TicketReopenRequestModal({
@@ -22,6 +23,7 @@ export function TicketReopenRequestModal({
   onClose,
   onSubmit,
   ticket,
+  currentRole,
 }: TicketReopenRequestModalProps) {
   const [requestedChanges, setRequestedChanges] = useState('');
   const [reasonComment, setReasonComment] = useState('');
@@ -108,7 +110,7 @@ export function TicketReopenRequestModal({
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
           <p className="text-sm text-amber-800">
             This ticket is closed. Since you don't have permission to reopen it directly,
-            you can request a Manager, Owner, or Admin to review and reopen it for you.
+            you can request {currentRole === 'Supervisor' ? 'a Manager, Owner, or Admin' : 'a Supervisor, Manager, Owner, or Admin'} to review and reopen it for you.
           </p>
         </div>
 

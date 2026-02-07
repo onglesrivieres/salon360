@@ -342,9 +342,36 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     try {
       const userRoles = session?.role || [];
       const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
+      const isSupervisorOnly = userRoles.some(role => role === 'Supervisor') && !isManagement;
 
-      if (!isManagement) {
+      if (!isManagement && !isSupervisorOnly) {
         setPendingApprovalsCount(0);
+        return;
+      }
+
+      // Supervisor only sees cash transactions + ticket reopen requests
+      if (isSupervisorOnly) {
+        let cashTransactionCount = 0;
+        let ticketReopenCount = 0;
+
+        const { data: cashData, error: cashError } = await supabase.rpc('get_pending_cash_transaction_approvals', {
+          p_store_id: selectedStoreId,
+        });
+
+        if (!cashError) {
+          cashTransactionCount = cashData?.length || 0;
+        }
+
+        const { data: ticketReopenData, error: ticketReopenError } = await supabase.rpc('get_pending_ticket_reopen_requests_count', {
+          p_store_id: selectedStoreId,
+          p_reviewer_employee_id: session.employee_id,
+        });
+
+        if (!ticketReopenError) {
+          ticketReopenCount = ticketReopenData || 0;
+        }
+
+        setPendingApprovalsCount(cashTransactionCount + ticketReopenCount);
         return;
       }
 

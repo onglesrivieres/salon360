@@ -101,8 +101,8 @@ export const Permissions = {
       return hasAnyRole(roles, ['Receptionist', 'Supervisor', 'Cashier']);
     },
     canReviewReopenRequests: (roles: Role[] | RolePermission): boolean => {
-      // Same roles that can reopen tickets
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      // Manager+ can review all; Supervisor can review Receptionist/Cashier requests (filtered in UI)
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner', 'Supervisor']);
     },
     canApprove: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Technician', 'Trainee', 'Supervisor', 'Receptionist', 'Owner', 'Manager']);

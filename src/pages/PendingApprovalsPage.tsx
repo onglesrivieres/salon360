@@ -150,8 +150,8 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
   // Helper function to determine which tabs each role can see
   function canViewTab(tabKey: TabType): boolean {
-    // Supervisor: only Cash tab (existing behavior)
-    if (isSupervisor) return tabKey === 'cash';
+    // Supervisor: Cash tab + ticket-changes (for Receptionist/Cashier requests)
+    if (isSupervisor) return tabKey === 'cash' || (tabKey === 'ticket-changes' && !!canReviewReopenRequests);
 
     // Management and Receptionist: all tabs (with existing permission checks)
     if (canViewAllRecords) {
@@ -235,10 +235,16 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
   useEffect(() => {
     if (!hasPageAccess || !session?.employee_id || !selectedStoreId || initialTabSet) return;
 
-    // Supervisors can only see cash tab, so navigate there directly
+    // Supervisors: navigate to first tab with items (cash or ticket-changes)
     if (isSupervisor) {
-      handleTabChange('cash');
-      setInitialTabSet(true);
+      fetchAllTabCounts().then(counts => {
+        if (counts && counts.ticketChanges > 0) {
+          handleTabChange('ticket-changes');
+        } else {
+          handleTabChange('cash');
+        }
+        setInitialTabSet(true);
+      });
       return;
     }
 
@@ -409,6 +415,15 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         cashCount = (cashRes.data || []).filter((t: { created_by_id?: string }) => t.created_by_id === session.employee_id).length;
       }
 
+      // Apply Supervisor filter to ticket changes count
+      let ticketChangesCount = ticketChangesRes.data?.length || 0;
+      const isUpperManagementForCount = userRoles.some(role => ['Admin', 'Owner', 'Manager'].includes(role));
+      if (isSupervisor && !isUpperManagementForCount) {
+        ticketChangesCount = (ticketChangesRes.data || []).filter(
+          (r: { created_by_roles?: string[] }) => r.created_by_roles?.some(role => ['Receptionist', 'Cashier'].includes(role))
+        ).length;
+      }
+
       const counts = {
         tickets: ticketCount,
         inventory: inventoryRes.data?.length || 0,
@@ -416,7 +431,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         transactionChanges: transactionChangesRes.data?.length || 0,
         attendance: attendanceRes.data?.length || 0,
         violations: violationsRes.data?.length || 0,
-        ticketChanges: ticketChangesRes.data?.length || 0,
+        ticketChanges: ticketChangesCount,
       };
 
       setTabCounts(counts);
@@ -791,6 +806,14 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         filteredData = filteredData.filter((request: { created_by_id?: string; technician_ids?: string[] }) =>
           request.created_by_id === session.employee_id ||
           request.technician_ids?.includes(session.employee_id)
+        );
+      }
+
+      // Supervisor (without Manager+): only show requests from Receptionist/Cashier
+      const isUpperManagement = userRoles.some(role => ['Admin', 'Owner', 'Manager'].includes(role));
+      if (isSupervisor && !isUpperManagement) {
+        filteredData = filteredData.filter((request: { created_by_roles?: string[] }) =>
+          request.created_by_roles?.some(role => ['Receptionist', 'Cashier'].includes(role))
         );
       }
 
@@ -3091,7 +3114,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Pending Ticket Change Requests</h3>
               <p className="text-sm text-gray-600 mb-4">
-                Review requests from Receptionists and Supervisors to reopen closed tickets for changes.
+                Review requests to reopen closed tickets for changes.
               </p>
               {ticketReopenRequests.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
