@@ -1154,6 +1154,14 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-07: Fix PostgREST Stale Schema Cache After Void Migration
+- After applying the void ticket migration (`20260207230000_add_void_ticket_feature.sql`), PostgREST on both salon365 and salon360qc still had old schema cached
+- PATCH requests with `void_reason` column returned `400 PGRST204: Could not find the 'void_reason' column of 'sale_tickets' in the schema cache`
+- The DB columns (`voided_at`, `voided_by`, `void_reason`) existed but PostgREST hadn't refreshed
+- Fix: sent `NOTIFY pgrst, 'reload schema'` to both salon365 and salon360qc databases
+- Both tenants verified working (PATCH returns 204 instead of 400)
+- **Lesson**: After any DDL migration (`ALTER TABLE ADD COLUMN`), always run `NOTIFY pgrst, 'reload schema'` or restart the PostgREST container
+
 ### 2026-02-07: Fix TicketEditor Crash (Temporal Dead Zone in Void Feature)
 - TicketEditor crashed on every render with `ReferenceError` — `isVoided` was referenced by `isReadOnly` (line 108) but declared later (line 143)
 - `const` temporal dead zone meant `isVoided` was hoisted but inaccessible before its declaration
