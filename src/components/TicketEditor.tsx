@@ -2330,7 +2330,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                         )}
                       </div>
                       {/* Client status indicator - hidden for restricted roles and masked phone */}
-                      {!isRestrictedCustomerInfoRole && !shouldMaskPhone && showCustomerPhone && hasEnoughDigitsForLookup(formData.customer_phone) && !clientLookup.isLoading && !isTicketClosed && (
+                      {!isRestrictedCustomerInfoRole && !shouldMaskPhone && showCustomerPhone && hasEnoughDigitsForLookup(formData.customer_phone) && !clientLookup.isLoading && !isTicketClosed && !isVoided && (
                         <div className="mt-1">
                           {linkedClient ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
@@ -2378,7 +2378,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                         type="text"
                         value={formData.todays_color}
                         onChange={(e) => setFormData({ ...formData, todays_color: e.target.value })}
-                        disabled={!canEditTodaysColor}
+                        disabled={!canEditTodaysColor || isVoided}
                         placeholder="Enter color"
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                       />
@@ -2395,7 +2395,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                 )}
 
                 {/* Last Color Used - hidden for restricted roles */}
-                {!isRestrictedCustomerInfoRole && linkedClient && clientLookup.lastColor && !isTicketClosed && (
+                {!isRestrictedCustomerInfoRole && linkedClient && clientLookup.lastColor && !isTicketClosed && !isVoided && (
                   <ColorDisplay
                     colorHistory={clientLookup.lastColor}
                     compact={true}
@@ -2410,7 +2410,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
               Technician <span className="text-red-600">*</span>
             </label>
 
-            {employees.length === 0 && !isTicketClosed && (
+            {employees.length === 0 && !isTicketClosed && !isVoided && (
               <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="text-xs text-amber-800">
                   No employees scheduled for {getFullDayName(getDayOfWeek(selectedDate))}. Please update employee schedules.
@@ -2418,7 +2418,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
               </div>
             )}
 
-            {!isTicketClosed ? (
+            {!isTicketClosed && !isVoided ? (
               <TechnicianQueue
                 sortedTechnicians={
                   session?.role && Permissions.tickets.canViewAllTechniciansInEditor(session.role)
@@ -2455,7 +2455,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
             </label>
             {items.length === 0 ? (
               <div className="border border-gray-200 rounded-lg p-3 bg-white">
-                {!isTicketClosed && services.length > 0 && (
+                {!isTicketClosed && !isVoided && services.length > 0 && (
                   <>
                     {/* Category Filter Pills */}
                     <div className="flex flex-wrap gap-2 mb-3">
@@ -2594,7 +2594,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                               }}
                               className="w-full px-3 py-3 md:py-1.5 text-base md:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px] md:min-h-0"
                               placeholder="Enter custom service name"
-                              disabled={!canEditServices || isTicketClosed}
+                              disabled={!canEditServices || isTicketClosed || isVoided}
                             />
                           </div>
                         ) : (
@@ -2602,7 +2602,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                             label="Service"
                             value={item.service_id}
                             onChange={(e) => updateItem(index, 'service_id', e.target.value)}
-                            disabled={!canEditServices}
+                            disabled={!canEditServices || isVoided}
                           >
                             <option value="">-- Select Service --</option>
                             {categoryOptions
@@ -2695,7 +2695,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                   </div>
                 ))}
 
-                {canEditServices && (
+                {canEditServices && !isVoided && (
                   <button
                     type="button"
                     onClick={() => {

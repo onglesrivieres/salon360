@@ -1154,6 +1154,21 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-07: Block All Input Fields on Voided Tickets
+- Voided tickets are open (`closed_at = null`) so many input fields used `isTicketClosed` to disable themselves — these remained interactive on voided tickets despite `isReadOnly = true`
+- Added `!isVoided` or `|| isVoided` guards to 9 input areas in `TicketEditor.tsx`:
+  1. Client status indicator / "Add New Client" button — hidden
+  2. Today's Color input — disabled
+  3. Last Color Used display — hidden
+  4. "No employees scheduled" warning — hidden
+  5. Technician selection — shows static display instead of interactive queue
+  6. Service category pills + service grid — hidden
+  7. Custom service name input — disabled
+  8. Service select dropdown — disabled
+  9. "Add Another Service" button — hidden
+- Fields already blocked via `isReadOnly` (customer type buttons, phone, name, price, add-on, payment fields, photos, save/complete/close) unchanged
+- File modified: `TicketEditor.tsx`
+
 ### 2026-02-07: Show Delete Button on Voided Tickets for Admin
 - Admin could hard-delete open tickets but not voided tickets — Delete button was hidden by `!isVoided` condition
 - Since `isReadOnly` is `true` for voided tickets, the `!isReadOnly` guard also blocked it
