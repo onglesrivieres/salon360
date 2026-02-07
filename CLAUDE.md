@@ -1144,6 +1144,14 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-07: Multi-Select Technician Filter on Tip Report Page
+- Replaced single-select `<select>` dropdown with a scrollable checkbox list for multi-technician filtering
+- State changed from `useState<string>('all')` to `useState<string[]>([])` — empty array means show all
+- Filter badge now shows count of selected technicians (was always 1 when active)
+- Checkbox list styled with blue filled squares and `Check` icon; scrollable at `max-h-[200px]`
+- Clear button resets to empty array; filter logic uses `.includes()` for multi-match
+- File modified: `src/pages/TipReportPage.tsx`
+
 ### 2026-02-06: Add Clickable Column Sorting to Clients and Employees Pages
 - Clients page: added sort state (`sortColumn`/`sortDirection`) defaulting to `last_visit` DESC (preserves existing behavior)
 - Replaced hardcoded `last_visit` sort with dynamic comparator supporting 5 columns: name, phone, last visit, total visits, status
@@ -1192,6 +1200,7 @@ Always filter by `store_id` when querying store-specific data:
 ### 2026-02-06: Add Technician Filter to Tip Report Page
 - Added a Filter button next to Export/Print buttons on the Tip Report page header
 - Dropdown panel with technician select to filter the report by individual technician
+- **Updated 2026-02-07**: Replaced single-select dropdown with multi-select checkbox list (see above)
 - Active filter badge (blue circle with count) shown on button when filter is active
 - Filter applies to daily detail view, weekly calendar view, empty state check, and CSV export
 - Active timer refresh stays on unfiltered `summaries` so timers keep ticking regardless of filter

@@ -86,7 +86,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   const isReceptionist = session?.role_permission === 'Receptionist' || session?.role_permission === 'Cashier';
 
   // Technician filter state
-  const [technicianFilter, setTechnicianFilter] = useState<string>('all');
+  const [technicianFilter, setTechnicianFilter] = useState<string[]>([]);
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const filterPanelRef = useRef<HTMLDivElement>(null);
 
@@ -154,11 +154,11 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
   // Filtered summaries based on technician filter
   const filteredSummaries = useMemo(() => {
-    if (technicianFilter === 'all') return summaries;
-    return summaries.filter(s => s.technician_id === technicianFilter);
+    if (technicianFilter.length === 0) return summaries;
+    return summaries.filter(s => technicianFilter.includes(s.technician_id));
   }, [summaries, technicianFilter]);
 
-  const activeFilterCount = technicianFilter !== 'all' ? 1 : 0;
+  const activeFilterCount = technicianFilter.length;
 
   // Timer refresh effect - update every 30 seconds if there are active timers
   useEffect(() => {
@@ -963,7 +963,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                   <span className="text-sm font-semibold text-gray-900">{t('tickets.filters')}</span>
                   {activeFilterCount > 0 && (
                     <button
-                      onClick={() => { setTechnicianFilter('all'); }}
+                      onClick={() => { setTechnicianFilter([]); }}
                       className="text-xs text-blue-600 hover:text-blue-800"
                     >
                       {t('tickets.clearAllFilters')}
@@ -972,16 +972,31 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Technician</label>
-                  <select
-                    value={technicianFilter}
-                    onChange={(e) => setTechnicianFilter(e.target.value)}
-                    className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">{t('tickets.allTechnicians')}</option>
-                    {technicians.map(tech => (
-                      <option key={tech.id} value={tech.id}>{tech.name}</option>
-                    ))}
-                  </select>
+                  <div className="max-h-[200px] overflow-y-auto border border-gray-200 rounded-lg">
+                    {technicians.map(tech => {
+                      const isChecked = technicianFilter.includes(tech.id);
+                      return (
+                        <button
+                          key={tech.id}
+                          type="button"
+                          onClick={() => setTechnicianFilter(prev =>
+                            prev.includes(tech.id)
+                              ? prev.filter(id => id !== tech.id)
+                              : [...prev, tech.id]
+                          )}
+                          className="flex items-center gap-2 w-full px-2 py-1.5 text-sm text-left hover:bg-gray-50"
+                        >
+                          <span className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center ${isChecked ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
+                            {isChecked && <Check className="w-3 h-3 text-white" />}
+                          </span>
+                          <span className="truncate">{tech.name}</span>
+                        </button>
+                      );
+                    })}
+                    {technicians.length === 0 && (
+                      <div className="px-2 py-1.5 text-sm text-gray-400">{t('tickets.allTechnicians')}</div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
