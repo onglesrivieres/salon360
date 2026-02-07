@@ -17,6 +17,7 @@ export interface TicketPhotosSectionRef {
   uploadPendingPhotos: (overrideTicketId?: string) => Promise<boolean>;
   hasPendingChanges: boolean;
   pendingCount: number;
+  totalPhotoCount: number;
 }
 
 const MAX_PHOTOS = 5;
@@ -58,7 +59,8 @@ export const TicketPhotosSection = forwardRef<TicketPhotosSectionRef, TicketPhot
     uploadPendingPhotos,
     hasPendingChanges,
     pendingCount: pendingPhotos.length,
-  }), [uploadPendingPhotos, hasPendingChanges, pendingPhotos.length]);
+    totalPhotoCount: photos.length + pendingPhotos.length,
+  }), [uploadPendingPhotos, hasPendingChanges, pendingPhotos.length, photos.length]);
 
   const canUpload = !readOnly && !!effectiveRole && Permissions.photos.canUploadTicketPhotos(effectiveRole);
   const canDelete = !!effectiveRole && Permissions.photos.canDeleteTicketPhotos(effectiveRole);

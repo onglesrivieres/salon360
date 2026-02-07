@@ -1144,6 +1144,13 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-07: Enforce `requires_photos` Validation When Closing Tickets
+- Previously, `requires_photos` validation only ran for brand-new unsaved tickets (`!ticketId` guard) — existing tickets could be closed with 0 photos and empty notes
+- Added photo/notes validation to `handleCloseTicket()`: requires non-empty notes and at least 1 photo (uploaded + pending) when any service has `requires_photos` flag
+- Exposed `totalPhotoCount` on `TicketPhotosSectionRef` (uploaded + pending count) so parent can check total photos
+- Lowered new-ticket photo threshold from 2 to 1 to match close-ticket validation
+- Files modified: `TicketEditor.tsx`, `TicketPhotosSection.tsx`
+
 ### 2026-02-07: Fix Queue Join Timezone Regression
 - Fixed `join_ready_queue_with_checkin` RPC using `CURRENT_DATE` (UTC) instead of store-timezone-aware date
 - After 7 PM EST (when UTC rolls to the next day), employees got false "must check in" errors when tapping "Ready"

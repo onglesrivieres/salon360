@@ -1245,8 +1245,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
         return;
       }
       const pendingCount = photosSectionRef.current?.pendingCount ?? 0;
-      if (pendingCount < 2) {
-        showToast('At least 2 photos are required for this service', 'error');
+      if (pendingCount < 1) {
+        showToast('At least 1 photo is required for this service', 'error');
         return;
       }
     }
@@ -1586,6 +1586,19 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     if (total < 0) {
       showToast('Cannot close ticket with negative total', 'error');
       return;
+    }
+
+    // Validate photos and notes for tickets with requires_photos services
+    if (hasRequiresPhotosService) {
+      if (!formData.notes || formData.notes.trim() === '') {
+        showToast('Notes are required for this service', 'error');
+        return;
+      }
+      const totalPhotos = photosSectionRef.current?.totalPhotoCount ?? 0;
+      if (totalPhotos < 1) {
+        showToast('At least 1 photo is required for this service', 'error');
+        return;
+      }
     }
 
     try {
