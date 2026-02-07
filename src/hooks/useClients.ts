@@ -97,6 +97,7 @@ export function useClients(
           .from('sale_tickets')
           .select('client_id, ticket_date')
           .eq('store_id', storeId)
+          .is('voided_at', null)
           .in('client_id', ids),
         clientIds
       );

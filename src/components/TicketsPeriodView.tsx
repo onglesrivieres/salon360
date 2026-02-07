@@ -219,6 +219,8 @@ export function TicketsPeriodView({ selectedDate, onDateChange, isCommissionEmpl
       query = query.eq('ticket_items.employee_id', session.employee_id);
     }
 
+    query = query.is('voided_at', null);
+
     const { data: tickets, error: ticketsError } = await query;
 
     if (ticketsError) throw ticketsError;

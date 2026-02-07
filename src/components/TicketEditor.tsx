@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, Trash2, Banknote, CreditCard, Clock, Award, Lock, CheckCircle, AlertCircle, Edit2, Gift, UserPlus, User, Eye } from 'lucide-react';
+import { X, Plus, Trash2, Banknote, CreditCard, Clock, Award, Lock, CheckCircle, AlertCircle, Edit2, Gift, UserPlus, User, Eye, XCircle } from 'lucide-react';
 import {
   supabase,
   SaleTicket,
@@ -105,6 +105,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     );
 
   const isReadOnly = ticket && session && session.role_permission && (
+    isVoided ||
     !Permissions.tickets.canEdit(
       session.role_permission,
       !!ticket.closed_at,
@@ -137,6 +138,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
   const canDelete = session && session.role_permission && Permissions.tickets.canDelete(session.role_permission);
 
+  const canVoid = session && session.role_permission && Permissions.tickets.canVoid(session.role_permission);
+
+  const isVoided = !!ticket?.voided_at;
+
   // Permission checks for Today's Color and Services (Technician can edit until completed)
   const isTicketCompleted = !!ticket?.completed_at;
   const isTicketClosed = !!ticket?.closed_at;
@@ -168,6 +173,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>('');
   const [showCustomService, setShowCustomService] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showVoidConfirm, setShowVoidConfirm] = useState(false);
+  const [voidReason, setVoidReason] = useState('');
+  const [voidError, setVoidError] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
@@ -1839,6 +1847,64 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     }
   }
 
+  async function handleVoidTicket() {
+    if (!canVoid) {
+      showToast('You do not have permission to void tickets', 'error');
+      return;
+    }
+
+    if (!ticketId || !ticket) {
+      showToast('No ticket to void', 'error');
+      return;
+    }
+
+    if (ticket.closed_at) {
+      showToast('Cannot void closed tickets', 'error');
+      return;
+    }
+
+    if (ticket.voided_at) {
+      showToast('This ticket is already voided', 'error');
+      return;
+    }
+
+    if (!voidReason.trim()) {
+      setVoidError('Please provide a reason for voiding this ticket');
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const { error } = await supabase
+        .from('sale_tickets')
+        .update({
+          voided_at: new Date().toISOString(),
+          voided_by: session?.employee_id,
+          void_reason: voidReason.trim(),
+        })
+        .eq('id', ticketId);
+
+      if (error) throw error;
+
+      await logActivity(ticketId, 'voided', `${session?.display_name} voided ticket`, {
+        ticket_no: ticket.ticket_no,
+        void_reason: voidReason.trim(),
+      });
+
+      showToast('Ticket voided successfully', 'success');
+      onClose();
+    } catch (error) {
+      console.error('Error voiding ticket:', error);
+      showToast('Failed to void ticket', 'error');
+    } finally {
+      setSaving(false);
+      setShowVoidConfirm(false);
+      setVoidReason('');
+      setVoidError('');
+    }
+  }
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
@@ -1982,6 +2048,23 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                   </p>
                   <p className="text-xs text-red-600 mt-1 font-medium">
                     This ticket requires admin review before any changes can be made.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isVoided && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <XCircle className="w-4 h-4 text-amber-600 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-amber-900">This ticket has been voided</p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    Reason: {ticket?.void_reason || 'No reason provided'}
+                  </p>
+                  <p className="text-xs text-amber-600 mt-1">
+                    Voided on {ticket?.voided_at ? formatDateTimeEST(ticket.voided_at) : 'Unknown'}
                   </p>
                 </div>
               </div>
@@ -2784,7 +2867,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
               >
                 Close
               </button>
-              {!isTicketClosed && !isReadOnly && canDelete && ticketId && (
+              {!isTicketClosed && !isVoided && !isReadOnly && canDelete && ticketId && (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={saving}
@@ -2792,6 +2875,16 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                 >
                   <Trash2 className="w-4 h-4" />
                   Delete
+                </button>
+              )}
+              {!isTicketClosed && !isVoided && !isReadOnly && canVoid && !canDelete && ticketId && (
+                <button
+                  onClick={() => { setShowVoidConfirm(true); setVoidReason(''); setVoidError(''); }}
+                  disabled={saving}
+                  className="px-3 py-2 text-sm bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-medium min-h-[44px] md:min-h-0"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Void
                 </button>
               )}
               {!isTicketClosed && !isReadOnly && (
@@ -3030,6 +3123,81 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
               className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm"
             >
               {saving ? 'Deleting...' : 'Delete Ticket'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showVoidConfirm}
+        onClose={() => { setShowVoidConfirm(false); setVoidReason(''); setVoidError(''); }}
+        title="Void Ticket"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <XCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-900 mb-1">
+                Warning: This ticket will be voided
+              </p>
+              <p className="text-sm text-amber-700">
+                The ticket will be marked as voided and excluded from all financial reports. This action can only be reversed by an administrator.
+              </p>
+            </div>
+          </div>
+
+          {ticket && (
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Ticket Number:</span>
+                <span className="font-medium text-gray-900">{ticket.ticket_no}</span>
+              </div>
+              {formData.customer_name && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Customer:</span>
+                  <span className="font-medium text-gray-900">{formData.customer_name}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Total Amount:</span>
+                <span className="font-medium text-gray-900">${calculateTotal().toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Reason for voiding <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={voidReason}
+              onChange={(e) => { setVoidReason(e.target.value); setVoidError(''); }}
+              placeholder="Please explain why you are voiding this ticket..."
+              className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                voidError ? 'border-red-300' : 'border-gray-300'
+              }`}
+              rows={3}
+            />
+            {voidError && (
+              <p className="text-xs text-red-600 mt-1">{voidError}</p>
+            )}
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="ghost"
+              onClick={() => { setShowVoidConfirm(false); setVoidReason(''); setVoidError(''); }}
+              disabled={saving}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <button
+              onClick={handleVoidTicket}
+              disabled={saving}
+              className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm"
+            >
+              {saving ? 'Voiding...' : 'Void Ticket'}
             </button>
           </div>
         </div>

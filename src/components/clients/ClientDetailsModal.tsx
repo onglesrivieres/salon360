@@ -59,6 +59,7 @@ export function ClientDetailsModal({
           )
         `)
         .eq('client_id', client.id)
+        .is('voided_at', null)
         .order('ticket_date', { ascending: false })
         .limit(20);
 

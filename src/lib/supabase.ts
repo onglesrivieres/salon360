@@ -169,6 +169,9 @@ export interface SaleTicket {
   approval_required_level?: string | null;
   opened_by_role?: string;
   reviewed_by_receptionist?: boolean;
+  voided_at?: string | null;
+  voided_by?: string | null;
+  void_reason?: string | null;
   created_at: string;
   updated_at: string;
   // Optional: populated when ticket_photos is included in query
@@ -218,7 +221,7 @@ export interface TicketActivityLog {
   id: string;
   ticket_id: string;
   employee_id?: string;
-  action: 'created' | 'updated' | 'closed' | 'reopened' | 'approved' | 'status_corrected' | 'deleted';
+  action: 'created' | 'updated' | 'closed' | 'reopened' | 'approved' | 'status_corrected' | 'deleted' | 'voided';
   description: string;
   changes?: Record<string, any>;
   created_at: string;

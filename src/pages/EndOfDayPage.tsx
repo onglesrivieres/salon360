@@ -214,7 +214,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         )
         .eq('ticket_date', selectedDate)
         .eq('store_id', selectedStoreId)
-        .not('closed_at', 'is', null);
+        .not('closed_at', 'is', null)
+        .is('voided_at', null);
 
       if (ticketsError) throw ticketsError;
 

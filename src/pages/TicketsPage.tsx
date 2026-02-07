@@ -371,6 +371,15 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   }
 
   function getApprovalStatusBadge(ticket: SaleTicket) {
+    if (ticket.voided_at) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+          <XCircle className="w-3 h-3 mr-1" />
+          {t('tickets.voided')}
+        </span>
+      );
+    }
+
     if (!ticket.approval_status) {
       if (ticket.closed_at) {
         return <Badge variant="success">{t('tickets.closed')}</Badge>;
@@ -449,6 +458,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
         if (approvalFilter === 'approved') return ticket.approval_status === 'approved';
         if (approvalFilter === 'auto_approved') return ticket.approval_status === 'auto_approved';
         if (approvalFilter === 'rejected') return ticket.approval_status === 'rejected';
+        if (approvalFilter === 'voided') return !!ticket.voided_at;
         return true;
       });
     }
@@ -941,6 +951,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                         <option value="approved">{t('tickets.approved')}</option>
                         <option value="auto_approved">{t('tickets.autoApproved')}</option>
                         <option value="rejected">{t('tickets.rejected')}</option>
+                        <option value="voided">{t('tickets.voided')}</option>
                       </select>
                     </div>
 
@@ -1112,6 +1123,8 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                 );
                 const canView = session && session.role_permission && Permissions.tickets.canView(session.role_permission);
 
+                const isTicketVoided = !!ticket.voided_at;
+
                 const isSelfServiceTicket =
                   ticket.opened_by_role &&
                   ['Technician', 'Trainee', 'Supervisor'].includes(ticket.opened_by_role) &&
@@ -1122,7 +1135,9 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                 const isClosedTicket = !!ticket.closed_at;
 
                 let rowBackgroundClass = 'bg-gray-100 hover:bg-gray-200';
-                if (isSelfServiceTicket) {
+                if (isTicketVoided) {
+                  rowBackgroundClass = 'bg-gray-200 hover:bg-gray-300 opacity-60';
+                } else if (isSelfServiceTicket) {
                   rowBackgroundClass = 'bg-green-50 hover:bg-green-100';
                 } else if (isUnclosedTicket) {
                   rowBackgroundClass = 'bg-yellow-50 hover:bg-yellow-100 animate-pulse';
@@ -1285,6 +1300,8 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
           const canView = session && Permissions.tickets.canView(session.role_permission);
           const showApprovalButtons = canApproveTicket(ticket);
 
+          const isTicketVoided = !!ticket.voided_at;
+
           const isSelfServiceTicket =
             ticket.opened_by_role &&
             ['Technician', 'Trainee', 'Supervisor'].includes(ticket.opened_by_role) &&
@@ -1298,7 +1315,10 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
           let cardBackgroundClass = 'bg-gray-100';
           let cardHoverClass = 'active:bg-gray-200';
 
-          if (isSelfServiceTicket) {
+          if (isTicketVoided) {
+            cardBackgroundClass = 'bg-gray-200 opacity-60';
+            cardHoverClass = 'active:bg-gray-300';
+          } else if (isSelfServiceTicket) {
             cardBackgroundClass = 'bg-green-50';
             cardHoverClass = 'active:bg-green-100';
           } else if (isUnclosedTicket) {

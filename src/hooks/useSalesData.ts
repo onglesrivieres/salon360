@@ -90,14 +90,16 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
             .eq('store_id', storeId)
             .gte('ticket_date', dateRange.startDate)
             .lte('ticket_date', dateRange.endDate)
-            .not('closed_at', 'is', null),
+            .not('closed_at', 'is', null)
+            .is('voided_at', null),
           supabase
             .from('sale_tickets')
             .select('id, total, tax, discount, closed_at')
             .eq('store_id', storeId)
             .gte('ticket_date', previousRange.startDate)
             .lte('ticket_date', previousRange.endDate)
-            .not('closed_at', 'is', null),
+            .not('closed_at', 'is', null)
+            .is('voided_at', null),
           supabase
             .from('ticket_items')
             .select('sale_ticket_id, payment_cash, payment_card, payment_gift_card, tip_customer_cash, tip_customer_card, tip_receptionist')
@@ -109,7 +111,7 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
                 .eq('store_id', storeId)
                 .gte('ticket_date', dateRange.startDate)
                 .lte('ticket_date', dateRange.endDate)
-                .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
+                .not('closed_at', 'is', null).is('voided_at', null)).data?.map((t) => t.id) || []
             ),
           supabase
             .from('ticket_items')
@@ -122,7 +124,7 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
                 .eq('store_id', storeId)
                 .gte('ticket_date', previousRange.startDate)
                 .lte('ticket_date', previousRange.endDate)
-                .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
+                .not('closed_at', 'is', null).is('voided_at', null)).data?.map((t) => t.id) || []
             ),
         ]);
 
@@ -315,14 +317,16 @@ export function useSalesChartData(dateRange: DateRange, storeId: string | null):
             .eq('store_id', storeId)
             .gte('ticket_date', dateRange.startDate)
             .lte('ticket_date', dateRange.endDate)
-            .not('closed_at', 'is', null),
+            .not('closed_at', 'is', null)
+            .is('voided_at', null),
           supabase
             .from('sale_tickets')
             .select('id, ticket_date, closed_at, total')
             .eq('store_id', storeId)
             .gte('ticket_date', previousRange.startDate)
             .lte('ticket_date', previousRange.endDate)
-            .not('closed_at', 'is', null),
+            .not('closed_at', 'is', null)
+            .is('voided_at', null),
           supabase
             .from('ticket_items')
             .select('sale_ticket_id, payment_cash, payment_card, payment_gift_card')
@@ -334,7 +338,7 @@ export function useSalesChartData(dateRange: DateRange, storeId: string | null):
                 .eq('store_id', storeId)
                 .gte('ticket_date', dateRange.startDate)
                 .lte('ticket_date', dateRange.endDate)
-                .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
+                .not('closed_at', 'is', null).is('voided_at', null)).data?.map((t) => t.id) || []
             ),
           supabase
             .from('ticket_items')
@@ -347,7 +351,7 @@ export function useSalesChartData(dateRange: DateRange, storeId: string | null):
                 .eq('store_id', storeId)
                 .gte('ticket_date', previousRange.startDate)
                 .lte('ticket_date', previousRange.endDate)
-                .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
+                .not('closed_at', 'is', null).is('voided_at', null)).data?.map((t) => t.id) || []
             ),
         ]);
 
@@ -491,7 +495,8 @@ export function usePaymentBreakdown(dateRange: DateRange, storeId: string | null
             .eq('store_id', storeId)
             .gte('ticket_date', dateRange.startDate)
             .lte('ticket_date', dateRange.endDate)
-            .not('closed_at', 'is', null),
+            .not('closed_at', 'is', null)
+            .is('voided_at', null),
           supabase
             .from('ticket_items')
             .select('sale_ticket_id, payment_cash, payment_card, payment_gift_card')
@@ -503,7 +508,7 @@ export function usePaymentBreakdown(dateRange: DateRange, storeId: string | null
                 .eq('store_id', storeId)
                 .gte('ticket_date', dateRange.startDate)
                 .lte('ticket_date', dateRange.endDate)
-                .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
+                .not('closed_at', 'is', null).is('voided_at', null)).data?.map((t) => t.id) || []
             ),
         ]);
 
@@ -631,7 +636,8 @@ export function useSalesReportData(dateRange: DateRange, storeId: string | null)
             .eq('store_id', storeId)
             .gte('ticket_date', dateRange.startDate)
             .lte('ticket_date', dateRange.endDate)
-            .not('closed_at', 'is', null),
+            .not('closed_at', 'is', null)
+            .is('voided_at', null),
           supabase
             .from('ticket_items')
             .select('sale_ticket_id, payment_cash, payment_card, payment_gift_card')
@@ -645,6 +651,7 @@ export function useSalesReportData(dateRange: DateRange, storeId: string | null)
                   .gte('ticket_date', dateRange.startDate)
                   .lte('ticket_date', dateRange.endDate)
                   .not('closed_at', 'is', null)
+                  .is('voided_at', null)
               ).data?.map((t) => t.id) || []
             ),
         ]);
@@ -757,7 +764,8 @@ export function useSalesBreakdownData(dateRange: DateRange, viewBy: ViewByType, 
             .eq('store_id', storeId)
             .gte('ticket_date', dateRange.startDate)
             .lte('ticket_date', dateRange.endDate)
-            .not('closed_at', 'is', null),
+            .not('closed_at', 'is', null)
+            .is('voided_at', null),
           supabase
             .from('ticket_items')
             .select('sale_ticket_id, payment_cash, payment_card, payment_gift_card')
@@ -769,7 +777,7 @@ export function useSalesBreakdownData(dateRange: DateRange, viewBy: ViewByType, 
                 .eq('store_id', storeId)
                 .gte('ticket_date', dateRange.startDate)
                 .lte('ticket_date', dateRange.endDate)
-                .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
+                .not('closed_at', 'is', null).is('voided_at', null)).data?.map((t) => t.id) || []
             ),
         ]);
 
@@ -877,7 +885,8 @@ export function useTenderTypesData(dateRange: DateRange, storeId: string | null)
             .eq('store_id', storeId)
             .gte('ticket_date', dateRange.startDate)
             .lte('ticket_date', dateRange.endDate)
-            .not('closed_at', 'is', null),
+            .not('closed_at', 'is', null)
+            .is('voided_at', null),
           supabase
             .from('ticket_items')
             .select('sale_ticket_id, payment_cash, payment_card, payment_gift_card')
@@ -889,7 +898,7 @@ export function useTenderTypesData(dateRange: DateRange, storeId: string | null)
                 .eq('store_id', storeId)
                 .gte('ticket_date', dateRange.startDate)
                 .lte('ticket_date', dateRange.endDate)
-                .not('closed_at', 'is', null)).data?.map((t) => t.id) || []
+                .not('closed_at', 'is', null).is('voided_at', null)).data?.map((t) => t.id) || []
             ),
         ]);
 
@@ -1025,7 +1034,8 @@ export function useCardPaymentAnalysis(dateRange: DateRange, storeId: string | n
           .eq('store_id', storeId)
           .gte('ticket_date', dateRange.startDate)
           .lte('ticket_date', dateRange.endDate)
-          .not('closed_at', 'is', null);
+          .not('closed_at', 'is', null)
+          .is('voided_at', null);
 
         if (cancelled) return;
 
@@ -1232,7 +1242,8 @@ export function useEmployeeSalesData(dateRange: DateRange, storeId: string | nul
           .eq('store_id', storeId)
           .gte('ticket_date', dateRange.startDate)
           .lte('ticket_date', dateRange.endDate)
-          .not('closed_at', 'is', null);
+          .not('closed_at', 'is', null)
+          .is('voided_at', null);
 
         if (cancelled) return;
 

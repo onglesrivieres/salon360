@@ -75,6 +75,9 @@ export const Permissions = {
       return false;
     },
     canDelete: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin']);
+    },
+    canVoid: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
     },
     canViewAll: (roles: Role[] | RolePermission): boolean => {

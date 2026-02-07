@@ -523,7 +523,8 @@ When a user has multiple roles, the highest-ranking role determines their permis
 | Create Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | Self-service | Self-service |
 | Edit Tickets | ✓ | ✓ | ✓ | Own only | ✓ | ✓ | ✗ | ✗ |
 | Close Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
-| Delete Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Delete Tickets | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| Void Tickets | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
 | Approve Tickets | ✓ | ✓ | ✓ | Worked* | Worked† | ✗ | ✗ | ✗ |
 | Reopen Tickets | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
 | Request Reopen | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ | ✗ | ✗ |
@@ -676,6 +677,8 @@ When a user has multiple roles, the highest-ranking role determines their permis
   - Supervisor: Can edit only their own self-service tickets
 - **Approval Hierarchy**: Self-service tickets require review by someone higher in hierarchy
 - **Rejection**: Rejected tickets can be reopened for editing (Manager+ only)
+- **Delete**: Admin only — permanently removes the ticket from the database
+- **Void**: Owner/Manager/Supervisor/Receptionist/Cashier — soft-deletes the ticket with a required reason. Voided tickets remain visible in the ticket list (grayed out, amber "Voided" badge) but are excluded from all financial reports (Tip Report, EOD, Insights, client visit stats). Voided tickets are read-only. Admin sees Delete instead of Void.
 
 ---
 
@@ -774,20 +777,22 @@ When a user has multiple roles, the highest-ranking role determines their permis
 
 ```
 CREATE ──→ OPEN ──→ SERVICES_IN_PROGRESS ──→ READY_FOR_CLOSING ──→ CLOSED
-                                                                       │
-                                                                       ▼
-                                                            PENDING_APPROVAL
-                                                                       │
-                                               ┌───────────────────────┼───────────────────────┐
-                                               ▼                       ▼                       ▼
-                                           APPROVED              AUTO_APPROVED             REJECTED
-                                                                                              │
-                                                                                              ▼
-                                                                                          REOPENED
-                                                                                              │
-                                                                                              ▼
-                                                                                            OPEN
-                                                                                           (loop)
+               │                                                       │
+               │                                                       ▼
+               │                                            PENDING_APPROVAL
+               │                                                       │
+               │                               ┌───────────────────────┼───────────────────────┐
+               │                               ▼                       ▼                       ▼
+               │                           APPROVED              AUTO_APPROVED             REJECTED
+               │                                                                              │
+               │                                                                              ▼
+               │                                                                          REOPENED
+               │                                                                              │
+               │                                                                              ▼
+               │                                                                            OPEN
+               │                                                                           (loop)
+               ▼
+            VOIDED (soft-delete, excluded from reports)
 ```
 
 **Step Details**:
@@ -1059,6 +1064,9 @@ stores
 - `approval_status`: pending_approval, approved, auto_approved, rejected
 - `approval_required_level`: technician, supervisor, manager, or owner — determines who can approve
 - `requires_admin_review`: Boolean flag for escalation
+- `voided_at`: Timestamp when ticket was voided (null = not voided)
+- `voided_by`: Employee UUID who voided the ticket
+- `void_reason`: Required text reason for voiding
 
 **ticket_items**:
 - `started_at`, `timer_stopped_at`, `completed_at`: Service timer
@@ -1145,6 +1153,21 @@ Always filter by `store_id` when querying store-specific data:
 ---
 
 ## Recent Changes
+
+### 2026-02-07: Restrict Delete to Admin-Only & Add Void Ticket Feature
+- **Delete** now restricted to Admin only (was available to Admin/Owner/Manager/Supervisor/Receptionist/Cashier)
+- **Void** added as a new soft-delete action for Owner/Manager/Supervisor/Receptionist/Cashier (Admin sees Delete instead)
+- Void requires a mandatory reason; sets `voided_at`, `voided_by`, `void_reason` on `sale_tickets`
+- Voided tickets: remain visible in ticket list with amber "Voided" badge, grayed-out row styling (`bg-gray-200 opacity-60`), read-only in editor with amber info banner
+- Voided tickets excluded from all financial reports via `.is('voided_at', null)` filter: Tip Report (3 views), EOD, Insights (all hooks), client visit stats, client visit history
+- "Voided" filter option added to TicketsPage approval filter dropdown
+- Activity log records `'voided'` action; updated `ticket_activity_log_action_check` constraint
+- DB: Added 3 columns (`voided_at`, `voided_by`, `void_reason`) + index to `sale_tickets`
+- Added `canVoid` permission to `Permissions.tickets`; `canDelete` restricted to `['Admin']`
+- i18n: Added void-related keys to all 4 languages (en, fr, vi, km)
+- Migration applied to both salon360qc and salon365 databases
+- Files modified: `permissions.ts`, `supabase.ts`, `TicketEditor.tsx`, `TicketsPage.tsx`, `TipReportPage.tsx`, `TipReportDetailView.tsx`, `TipReportWeeklyView.tsx`, `EndOfDayPage.tsx`, `TicketsDetailView.tsx`, `TicketsPeriodView.tsx`, `useSalesData.ts`, `useClients.ts`, `useClientLookup.ts`, `ClientDetailsModal.tsx`, `i18n.ts`
+- File added: `supabase/migrations/20260207230000_add_void_ticket_feature.sql`
 
 ### 2026-02-07: Allow Supervisors to Review Ticket Reopen Requests
 - Supervisors can now see and approve/reject ticket reopen requests from Receptionists and Cashiers on the PendingApprovalsPage "Ticket Changes" tab

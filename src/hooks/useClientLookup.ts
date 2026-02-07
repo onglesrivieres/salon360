@@ -89,6 +89,7 @@ export function useClientLookup(
         .from('sale_tickets')
         .select('id, ticket_date')
         .eq('client_id', clientData.id)
+        .is('voided_at', null)
         .order('ticket_date', { ascending: false });
 
       if (!visitError && visitData) {
