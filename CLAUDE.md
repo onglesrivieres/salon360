@@ -1154,6 +1154,14 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-07: Show Delete Button on Voided Tickets for Admin
+- Admin could hard-delete open tickets but not voided tickets — Delete button was hidden by `!isVoided` condition
+- Since `isReadOnly` is `true` for voided tickets, the `!isReadOnly` guard also blocked it
+- Fix: changed Delete button condition from `!isTicketClosed && !isVoided && !isReadOnly && canDelete` to `!isTicketClosed && (!isReadOnly || isVoided) && canDelete`
+- Voided tickets now pass via the `isVoided` branch of the OR; `canDelete` remains Admin-only so non-Admin users are unaffected
+- No backend changes needed — voided tickets have `closed_at = null` so `handleDeleteTicket()` works as-is
+- File modified: `TicketEditor.tsx`
+
 ### 2026-02-07: Fix PostgREST Stale Schema Cache After Void Migration
 - After applying the void ticket migration (`20260207230000_add_void_ticket_feature.sql`), PostgREST on both salon365 and salon360qc still had old schema cached
 - PATCH requests with `void_reason` column returned `400 PGRST204: Could not find the 'void_reason' column of 'sale_tickets' in the schema cache`

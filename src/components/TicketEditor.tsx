@@ -2867,7 +2867,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
               >
                 Close
               </button>
-              {!isTicketClosed && !isVoided && !isReadOnly && canDelete && ticketId && (
+              {!isTicketClosed && (!isReadOnly || isVoided) && canDelete && ticketId && (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={saving}
