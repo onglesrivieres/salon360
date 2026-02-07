@@ -1144,6 +1144,14 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-07: Fix TicketEditor Infinite Reopen After Change Request Navigation
+- When approving a ticket change request on PendingApprovalsPage, user is navigated to TicketsPage and TicketEditor auto-opens via highlight effect
+- After closing the editor, it kept reopening infinitely — user could not dismiss it
+- Root cause: highlight effect dependencies (`tickets`, `loading`) change when `fetchTickets()` runs after closing editor; since `highlightedTicketId` was still set, the effect re-opened the editor in a loop; the 5-second cleanup timer never fired because the effect's own cleanup cancelled it on each re-trigger
+- Fix: added `onHighlightComplete?.()` call in `closeEditor()` to clear `highlightedTicketId` immediately when the editor is dismissed, preventing the highlight effect from re-triggering
+- No-op in normal (non-navigated) scenarios since `highlightedTicketId` is already null
+- File modified: `src/pages/TicketsPage.tsx`
+
 ### 2026-02-07: Fix Missing `ticket_reopen_requests` Table on salon365
 - Receptionist/Supervisor/Cashier "Request Changes" on closed tickets failed with 404 on salon365 (`relation "public.ticket_reopen_requests" does not exist`)
 - Table and 6 RPC functions were defined in squash_08 but never applied to the salon365 database

@@ -288,6 +288,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   function closeEditor() {
     setIsEditorOpen(false);
     setEditingTicketId(null);
+    onHighlightComplete?.();
     fetchTickets();
   }
 
