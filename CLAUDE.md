@@ -1154,6 +1154,13 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-07: Show Trash Button on Single Service Items
+- Previously, the Trash2 delete button on service items in TicketEditor only appeared when `items.length > 1` — a ticket with a single service had no way to remove it
+- Removed the `items.length > 1` guard so the delete button is always visible when `canEditServices` is true
+- Deleting the last remaining service item returns `items` to `[]`, which naturally shows the service picker grid
+- Closed/voided tickets unaffected (`canEditServices` is false)
+- File modified: `TicketEditor.tsx`
+
 ### 2026-02-07: Use Service Button Grid for "Add Another Service"
 - Previously, clicking "Add Another Service" on an existing ticket appended an empty item that rendered as a `<Select>` dropdown — inconsistent with the new-ticket UI
 - Replaced with the same service picker grid used for new tickets: category filter pills, colored service code buttons, and CUSTOM button

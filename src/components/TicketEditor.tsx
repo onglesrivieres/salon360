@@ -2548,7 +2548,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                       <span className="text-xs font-semibold text-gray-600">
                         Service {items.length > 1 ? `#${index + 1}` : ''}
                       </span>
-                      {canEditServices && items.length > 1 && (
+                      {canEditServices && (
                         <button
                           onClick={() => removeItem(index)}
                           className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
