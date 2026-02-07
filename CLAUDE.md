@@ -1144,6 +1144,15 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-07: Fix Missing `ticket_reopen_requests` Table on salon365
+- Receptionist/Supervisor/Cashier "Request Changes" on closed tickets failed with 404 on salon365 (`relation "public.ticket_reopen_requests" does not exist`)
+- Table and 6 RPC functions were defined in squash_08 but never applied to the salon365 database
+- Created idempotent migration with: table (12 columns, 3 indexes, RLS), and 6 functions (`create_ticket_reopen_request`, `approve_ticket_reopen_request`, `reject_ticket_reopen_request`, `get_pending_ticket_reopen_requests`, `get_pending_ticket_reopen_requests_count`, `has_pending_ticket_reopen_request`)
+- Uses latest function versions with `role` array checks (not old `role_permission`) and includes Cashier
+- Migration applied to both salon365 (primary fix) and salon360qc (idempotent safety run)
+- No frontend changes needed — existing RPC calls in TicketEditor, Layout, and PendingApprovalsPage already correct
+- File added: `supabase/migrations/20260207_fix_missing_ticket_reopen_requests_salon365.sql`
+
 ### 2026-02-07: Fix Auto Check-Out Firing 1 Hour Early During EST (Winter)
 - Two pg_cron jobs handle daylight saving: `auto-checkout-2200-edt` at 2:00 UTC and `auto-checkout-2200-est` at 3:00 UTC
 - During winter (EST), the EDT job fires at 9 PM EST — 1 hour early — and `auto_checkout_employees_by_context()` had no time guard, so it checked out all employees prematurely
