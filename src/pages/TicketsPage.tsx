@@ -1111,6 +1111,9 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                   {t('tickets.time')}
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {t('tickets.customer')}
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('tickets.service')}
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1188,6 +1191,9 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                   >
                     <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600">
                       {time}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
+                      {ticket.customer_name || '-'}
                     </td>
                     <td className="px-3 py-2 text-xs">
                       <div className="flex flex-wrap gap-1">
@@ -1371,6 +1377,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                   }}
                 >
                   <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-semibold text-gray-900">{ticket.customer_name || '-'}</span>
                     <span className="text-xs text-gray-500">{time}</span>
                   </div>
                   <div className="text-xs text-gray-600 flex flex-wrap items-center gap-1">
