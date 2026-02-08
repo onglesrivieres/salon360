@@ -479,6 +479,7 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes
 
 ### 2026-02-08
+- **Remove customer_type from tickets**: Removed `customer_type` field (Appointment/Assigned/Requested) from TicketEditor UI, form state, validation, save/update payloads, Tickets table (desktop + mobile), PendingApprovals rejected view, `SaleTicket` interface, and i18n keys. DB migration drops column and recreates `get_rejected_tickets_for_admin` RPC without it. Files: `TicketEditor.tsx`, `TicketsPage.tsx`, `PendingApprovalsPage.tsx`, `supabase.ts`, `i18n.ts` + migration
 - **Remove service item delete buttons**: Removed Trash2 delete buttons from individual service item rows in TicketEditor (both general and custom service single-item). Removed dead `removeItem` function. Footer Delete ticket button unchanged. Files: `TicketEditor.tsx`
 - **Small service button styling in TicketEditor**: Services below `small_service_threshold` (default $30) render with italic text and `rounded-full` (pill shape). Category services sorted by price DESC (Popular tab keeps usage-count order). Files: `TicketEditor.tsx`
 - **Color-coded service badges in Tickets table**: Replaced plain text service codes with colored badges matching category colors (pink/blue/purple/green/yellow). Fetches `categoryColors` from `store_service_categories`. Files: `TicketsPage.tsx`

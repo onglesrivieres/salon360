@@ -264,7 +264,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   };
 
   const [formData, setFormData] = useState({
-    customer_type: 'Assigned' as '' | 'Appointment' | 'Requested' | 'Assigned',
     customer_name: '',
     customer_phone: '',
     todays_color: '',
@@ -594,7 +593,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
         const firstItem = ticketItems[0];
 
         setFormData({
-          customer_type: ticketData.customer_type || '',
           customer_name: ticketData.customer_name,
           customer_phone: ticketData.customer_phone || '',
           todays_color: (ticketData as any).todays_color || '',
@@ -1141,11 +1139,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
       return;
     }
 
-    if (!formData.customer_type) {
-      showToast('Customer Type is required', 'error');
-      return;
-    }
-
     // Customer info validation - only when settings require them
     if (requireCustomerName && showCustomerName && (!formData.customer_name || formData.customer_name.trim() === '')) {
       showToast('Customer name is required', 'error');
@@ -1256,7 +1249,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
       if (ticketId && ticket) {
         const updateData: any = {
-          customer_type: formData.customer_type || null,
           customer_name: formData.customer_name,
           customer_phone: formData.customer_phone,
           client_id: linkedClient?.id || null,
@@ -1388,7 +1380,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
         const newTicketData: any = {
           ticket_no: ticketNo,
           ticket_date: selectedDate,
-          customer_type: formData.customer_type || null,
           customer_name: formData.customer_name,
           customer_phone: formData.customer_phone,
           client_id: linkedClient?.id || null,
@@ -2211,48 +2202,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           </div>
 
           <div className="border border-gray-200 rounded-lg p-2 bg-purple-50">
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Customer Type <span className="text-red-600">*</span>
-            </label>
-            <div className="flex gap-2 mb-2">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, customer_type: 'Appointment' })}
-                className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
-                  formData.customer_type === 'Appointment'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
-                }`}
-                disabled={isTicketClosed || isReadOnly}
-              >
-                Appointment
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, customer_type: 'Assigned' })}
-                className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
-                  formData.customer_type === 'Assigned'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
-                }`}
-                disabled={isTicketClosed || isReadOnly}
-              >
-                Assigned
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, customer_type: 'Requested' })}
-                className={`flex-1 py-3 md:py-1.5 px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${
-                  formData.customer_type === 'Requested'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-600'
-                }`}
-                disabled={isTicketClosed || isReadOnly}
-              >
-                Requested
-              </button>
-            </div>
-
             {/* Customer Info Fields */}
             {(showCustomerName || showCustomerPhone || showTodaysColor) && (
               <div className="space-y-2 mt-2">
@@ -2918,7 +2867,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex-1 px-3 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-center min-h-[44px] md:min-h-0"
+                    className="flex-1 px-3 py-2 text-sm bg-amber-500 text-white rounded hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-center min-h-[44px] md:min-h-0"
                   >
                     {saving ? 'Saving...' : 'Save'}
                   </button>

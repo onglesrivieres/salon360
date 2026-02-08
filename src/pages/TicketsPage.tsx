@@ -355,10 +355,6 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     return employee ? employee.display_name : '-';
   }
 
-  function getCustomerType(ticket: any): string {
-    return ticket.customer_type || '-';
-  }
-
   function getSubtotal(ticket: any): number {
     // Calculate from ticket_items: price_each + addon_price for all items
     return ticket.ticket_items?.reduce(
@@ -1115,9 +1111,6 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                   {t('tickets.time')}
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('tickets.customer')}
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('tickets.service')}
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1146,7 +1139,6 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                 const tipCustomer = getTipCustomer(ticket);
                 const tipReceptionist = getTipReceptionist(ticket);
                 const technicianName = getTechnicianName(ticket);
-                const customerType = getCustomerType(ticket);
                 const time = formatTimeEST(ticket.opened_at);
 
                 const isApproved = ticket.approval_status === 'approved' || ticket.approval_status === 'auto_approved';
@@ -1196,9 +1188,6 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                   >
                     <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600">
                       {time}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600">
-                      {customerType}
                     </td>
                     <td className="px-3 py-2 text-xs">
                       <div className="flex flex-wrap gap-1">
@@ -1323,7 +1312,6 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
           const tipReceptionist = getTipReceptionist(ticket);
           const totalTips = getTotalTips(ticket);
           const technicianName = getTechnicianName(ticket);
-          const customerType = getCustomerType(ticket);
           const time = formatTimeEST(ticket.opened_at);
 
           const isApproved = ticket.approval_status === 'approved' || ticket.approval_status === 'auto_approved';
@@ -1383,7 +1371,6 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                   }}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-semibold text-gray-900">{customerType}</span>
                     <span className="text-xs text-gray-500">{time}</span>
                   </div>
                   <div className="text-xs text-gray-600 flex flex-wrap items-center gap-1">

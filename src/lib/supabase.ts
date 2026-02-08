@@ -151,7 +151,7 @@ export interface SaleTicket {
   completed_by?: string | null;
   customer_name: string;
   customer_phone: string;
-  customer_type?: string;
+
   payment_method: 'Cash' | 'Card' | 'Mixed' | 'Other';
   total: number;
   location: string;

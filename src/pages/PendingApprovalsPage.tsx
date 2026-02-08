@@ -1989,9 +1989,6 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                 #{ticket.ticket_no}
                               </span>
                               <Badge variant="error">REJECTED</Badge>
-                              <span className="text-sm text-gray-600">
-                                {ticket.customer_type}
-                              </span>
                             </div>
                             <p className="text-sm text-gray-700">
                               {ticket.service_name} {ticket.technician_name && `• ${ticket.technician_name}`}
