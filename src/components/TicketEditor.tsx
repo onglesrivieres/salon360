@@ -2026,11 +2026,20 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
             </div>
             <div className="flex items-center gap-2">
               {getApprovalStatusBadge()}
+              {ticketId && activityLogs.length > 0 && (
+                <button
+                  onClick={() => setShowActivityModal(true)}
+                  className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors flex items-center gap-1 font-medium min-h-[44px] md:min-h-0"
+                >
+                  <Clock className="w-4 h-4" />
+                  Activity
+                </button>
+              )}
               <button
-                onClick={handleClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-2 -mr-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                onClick={onClose}
+                className="px-3 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors font-medium min-h-[44px] md:min-h-0"
               >
-                <X className="w-6 h-6 md:w-5 md:h-5" />
+                Close
               </button>
             </div>
           </div>
@@ -2943,18 +2952,12 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
         </div>
         <div className="flex justify-between items-center gap-3 border-t border-gray-200 bg-white p-3 flex-shrink-0">
-            <div className="flex gap-2.5">
-              <button
-                onClick={onClose}
-                className="px-3 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[44px] md:min-h-0"
-              >
-                Close
-              </button>
+            <div className="flex gap-2.5 flex-1">
               {!isTicketClosed && (!isReadOnly || isVoided) && canDelete && ticketId && (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={saving}
-                  className="px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-medium min-h-[44px] md:min-h-0"
+                  className="flex-1 px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1 font-medium min-h-[44px] md:min-h-0"
                 >
                   <Trash2 className="w-4 h-4" />
                   Delete
@@ -2964,7 +2967,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                 <button
                   onClick={() => { setShowVoidConfirm(true); setVoidReason(''); setVoidError(''); }}
                   disabled={saving}
-                  className="px-3 py-2 text-sm bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-medium min-h-[44px] md:min-h-0"
+                  className="flex-1 px-3 py-2 text-sm bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1 font-medium min-h-[44px] md:min-h-0"
                 >
                   <XCircle className="w-4 h-4" />
                   Void
@@ -2975,7 +2978,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[44px] md:min-h-0"
+                    className="flex-1 px-3 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-center min-h-[44px] md:min-h-0"
                   >
                     {saving ? 'Saving...' : 'Save'}
                   </button>
@@ -2983,7 +2986,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                     <button
                       onClick={handleMarkCompleted}
                       disabled={saving}
-                      className="px-3 py-2 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1 font-medium min-h-[44px] md:min-h-0"
+                      className="flex-1 px-3 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1 font-medium min-h-[44px] md:min-h-0"
                     >
                       <CheckCircle className="w-4 h-4" />
                       Complete
@@ -2993,7 +2996,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                     <button
                       onClick={handleCloseTicket}
                       disabled={saving}
-                      className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[44px] md:min-h-0"
+                      className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-center min-h-[44px] md:min-h-0"
                     >
                       Close Ticket
                     </button>
@@ -3004,7 +3007,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                 <button
                   onClick={handleReopenTicket}
                   disabled={saving}
-                  className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[44px] md:min-h-0"
+                  className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-center min-h-[44px] md:min-h-0"
                 >
                   {saving ? 'Reopening...' : 'Reopen Ticket'}
                 </button>
@@ -3013,7 +3016,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                 <button
                   onClick={() => setShowRequestChangesModal(true)}
                   disabled={saving || hasPendingReopenRequest}
-                  className="px-3 py-2 text-sm bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[44px] md:min-h-0"
+                  className="flex-1 px-3 py-2 text-sm bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-center min-h-[44px] md:min-h-0"
                 >
                   {hasPendingReopenRequest ? 'Request Pending' : 'Request Changes'}
                 </button>
@@ -3022,21 +3025,12 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                 <button
                   onClick={handleSaveComment}
                   disabled={saving}
-                  className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-h-[44px] md:min-h-0"
+                  className="flex-1 px-3 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-center min-h-[44px] md:min-h-0"
                 >
                   {saving ? 'Saving...' : 'Save Comment'}
                 </button>
               )}
             </div>
-            {ticketId && activityLogs.length > 0 && (
-              <button
-                onClick={() => setShowActivityModal(true)}
-                className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors flex items-center gap-1 font-medium min-h-[44px] md:min-h-0"
-              >
-                <Clock className="w-4 h-4" />
-                Activity
-              </button>
-            )}
           </div>
       </div>
 

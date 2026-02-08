@@ -1154,6 +1154,20 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-08: Restyle TicketEditor Footer Buttons — Even Spacing & Distinct Colors
+- Changed footer action buttons from left-grouped to evenly spaced across full footer width
+- Inner container gets `flex-1`; every button gets `flex-1` + centered text/icons (`justify-center` or `text-center`)
+- Recolored buttons for quick visual identification:
+  - Delete: red (unchanged)
+  - Void: amber → yellow (`bg-yellow-500`)
+  - Save / Save Comment: blue → white/gray outline (`bg-white border border-gray-300 text-gray-700`)
+  - Complete: gray → green (`bg-green-600`)
+  - Close Ticket: blue (unchanged)
+  - Reopen Ticket: blue (unchanged)
+  - Request Changes: amber (unchanged)
+- Mobile touch targets (`min-h-[44px]`) and disabled states preserved
+- File modified: `TicketEditor.tsx`
+
 ### 2026-02-07: Show Trash Button on Single Service Items
 - Previously, the Trash2 delete button on service items in TicketEditor only appeared when `items.length > 1` — a ticket with a single service had no way to remove it
 - Removed the `items.length > 1` guard so the delete button is always visible when `canEditServices` is true
