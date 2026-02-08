@@ -1154,6 +1154,15 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-08: Add Today Button to TipReport Weekly View
+- Weekly view had prev/next week navigation arrows but no way to quickly jump back to the current week
+- Added "Today" button before the week navigation arrows in both mobile and desktop nav sections
+- Button shown only when viewing a week other than the current week (`getWeekStartDate` comparison)
+- Clicking jumps to today's date via `onDateChange(getCurrentDateEST())`; button then hides
+- No role restriction — matches existing weekly nav arrows behavior (all roles can navigate weeks)
+- Styled consistently with detail view Today button: blue link (`text-blue-600`), `min-h-[44px]` mobile / `min-h-[32px]` desktop
+- File modified: `TipReportPage.tsx`
+
 ### 2026-02-08: Restyle TicketEditor Footer Buttons — Even Spacing & Distinct Colors
 - Changed footer action buttons from left-grouped to evenly spaced across full footer width
 - Inner container gets `flex-1`; every button gets `flex-1` + centered text/icons (`justify-center` or `text-center`)

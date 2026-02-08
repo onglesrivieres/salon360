@@ -1012,6 +1012,14 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             <h3 className="text-base font-semibold text-gray-900">Technician Tips</h3>
             {viewMode === 'weekly' && (
               <div className="flex items-center gap-2 md:hidden">
+                {getWeekStartDate(selectedDate) !== getWeekStartDate(getCurrentDateEST()) && (
+                  <button
+                    onClick={() => onDateChange(getCurrentDateEST())}
+                    className="px-2 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[44px] flex items-center justify-center"
+                  >
+                    {t('common.today')}
+                  </button>
+                )}
                 <Button
                   size="sm"
                   variant="ghost"
@@ -1086,6 +1094,14 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           <div className="flex gap-2 items-center w-full md:w-auto justify-between">
             {viewMode === 'weekly' && (
               <div className="hidden md:flex items-center gap-2">
+                {getWeekStartDate(selectedDate) !== getWeekStartDate(getCurrentDateEST()) && (
+                  <button
+                    onClick={() => onDateChange(getCurrentDateEST())}
+                    className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[32px] flex items-center justify-center"
+                  >
+                    {t('common.today')}
+                  </button>
+                )}
                 <Button
                   size="sm"
                   variant="ghost"
