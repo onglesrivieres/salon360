@@ -3459,35 +3459,44 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
             </div>
           )}
 
+          {(() => {
+            const tempTotalPayments = (parseFloat(tempPaymentData.payment_cash) || 0) + (parseFloat(tempPaymentData.payment_card) || 0) + (parseFloat(tempPaymentData.payment_gift_card) || 0);
+            const tempTotalDiscount = formData.payment_method === 'Cash' ? (parseFloat(tempPaymentData.discount_amount_cash) || 0) : (formData.payment_method === 'Card' || formData.payment_method === 'Mixed') ? (parseFloat(tempPaymentData.discount_amount) || 0) : 0;
+            const tempTotalTipsClient = parseFloat(tempPaymentData.tip_customer_card) || 0;
+            const tempTotalCollected = tempTotalPayments - tempTotalDiscount + tempTotalTipsClient;
+            const tempTipReceptionist = parseFloat(tempPaymentData.tip_receptionist) || 0;
+            return (
           <div className="border border-gray-200 rounded-lg p-2.5 bg-gray-50">
             <h4 className="text-xs font-semibold text-gray-700 mb-1.5">Payment Summary</h4>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Total Payments:</span>
-                <span className="font-semibold text-gray-900">${calculateTotalPayments().toFixed(2)}</span>
+                <span className="font-semibold text-gray-900">${tempTotalPayments.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-red-600">
                 <span>Total Discounts:</span>
-                <span className="font-semibold">-${calculateTotalDiscount().toFixed(2)}</span>
+                <span className="font-semibold">-${tempTotalDiscount.toFixed(2)}</span>
               </div>
               {!hideTips && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Total Tips Given by Clients:</span>
-                  <span className="font-semibold text-gray-900">${calculateTipsExcludingReceptionist().toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900">${tempTotalTipsClient.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between items-center text-base font-bold text-blue-700 pt-2 border-t border-gray-300 mt-2">
                 <span>Grand Total Collected:</span>
-                <span>${calculateTotalCollected().toFixed(2)}</span>
+                <span>${tempTotalCollected.toFixed(2)}</span>
               </div>
               {!hideTips && (
                 <div className="flex justify-between text-gray-600 text-sm">
                   <span>Total Tips Paired by Receptionist:</span>
-                  <span className="font-semibold">${(parseFloat(formData.tip_receptionist) || 0).toFixed(2)}</span>
+                  <span className="font-semibold">${tempTipReceptionist.toFixed(2)}</span>
                 </div>
               )}
             </div>
           </div>
+            );
+          })()}
 
           <div className="flex gap-3 pt-4">
             <Button
