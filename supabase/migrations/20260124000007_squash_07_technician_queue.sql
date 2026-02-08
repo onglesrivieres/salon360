@@ -228,7 +228,7 @@ CREATE OR REPLACE FUNCTION public.mark_technician_busy_smart(p_employee_id uuid,
 RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
-DECLARE v_store_id uuid; v_threshold numeric; v_ticket_total numeric; v_is_last boolean; v_current_status text; v_new_status text;
+DECLARE v_store_id uuid; v_threshold numeric; v_ticket_total numeric; v_current_status text; v_new_status text;
 BEGIN
   SELECT store_id INTO v_store_id FROM public.sale_tickets WHERE id = p_ticket_id;
   IF v_store_id IS NULL THEN RETURN; END IF;
@@ -242,9 +242,8 @@ BEGIN
 
   v_ticket_total := public.calculate_ticket_total(p_ticket_id);
   v_threshold := public.get_small_service_threshold(v_store_id);
-  IF v_current_status = 'ready' THEN v_is_last := public.is_last_in_ready_queue(p_employee_id, v_store_id); ELSE v_is_last := false; END IF;
 
-  IF v_ticket_total < v_threshold AND v_is_last THEN v_new_status := 'small_service'; ELSE v_new_status := 'busy'; END IF;
+  IF v_ticket_total < v_threshold THEN v_new_status := 'small_service'; ELSE v_new_status := 'busy'; END IF;
   IF v_current_status = 'small_service' AND v_ticket_total >= v_threshold THEN v_new_status := 'busy'; END IF;
 
   UPDATE public.technician_ready_queue SET status = v_new_status, current_open_ticket_id = p_ticket_id, updated_at = now()
@@ -362,11 +361,10 @@ CREATE TRIGGER ticket_items_mark_busy
   AFTER INSERT ON public.ticket_items FOR EACH ROW EXECUTE FUNCTION public.trigger_mark_technician_busy();
 
 CREATE OR REPLACE FUNCTION public.trigger_mark_technicians_available()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public', 'pg_temp' AS $$
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 BEGIN
-  IF (OLD.completed_at IS NULL AND NEW.completed_at IS NOT NULL) THEN
-    DELETE FROM public.technician_ready_queue WHERE employee_id IN (
-      SELECT ti.employee_id FROM public.ticket_items ti WHERE ti.sale_ticket_id = NEW.id);
+  IF OLD.completed_at IS NULL AND NEW.completed_at IS NOT NULL THEN
+    PERFORM public.handle_ticket_close_smart(NEW.id);
   END IF;
   RETURN NEW;
 END;

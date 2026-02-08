@@ -317,7 +317,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 - **Skip Turn**: Requires reason (Too difficult, Health, Lunch, Washroom, Others). Moves to end within priority group. Logged in `queue_skip_log`
 - **Leave Queue**: All queue-eligible roles, requires reason (Tired, Cannot perform service, Other). Logged in `queue_leave_log`
 - **Cooldown**: After removal, wait period before rejoining
-- **Auto Status**: Opens ticket → busy; Completes service < 15 min → small_service
+- **Auto Status**: Opens ticket below threshold → small_service (yellow, stays in queue); above threshold → busy (red). Completing ticket returns small_service to ready; removes busy
 - **Timeout**: Auto-removed after 30 min inactivity
 - **Cashier Blocked**: Cannot join ready queue (frontend + RPC guard)
 - **skip_queue_on_checkin**: Employee flag; checks in without joining queue, blocks manual join
@@ -479,6 +479,7 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes
 
 ### 2026-02-08
+- **Fix small service queue bugs**: Fixed two bugs preventing small_service (yellow) queue status. Bug 1: `mark_technician_busy_smart()` required technician to be last in queue (`is_last_in_ready_queue` gate) — removed, now any technician below threshold gets `small_service`. Bug 2: `trigger_mark_technicians_available()` was regressed to blanket DELETE instead of calling `handle_ticket_close_smart()` — fixed so small_service technicians return to `ready` at same queue position on ticket completion. Files: migration + updated squash/source migrations
 - **Delete icon on all service items in TicketEditor**: Trash2 icon on every service item header row, allowing users to remove any individual service. Shown when `canEditServices` and ticket is not closed/voided. Files: `TicketEditor.tsx`
 - **Live Payment Summary in Payment Details modal**: Payment Summary now reads from `tempPaymentData` (temporary input state) instead of `formData` (saved state), so all 5 summary values (Total Payments, Total Discounts, Total Tips, Grand Total Collected, Tips Paired by Receptionist) update in real time as the user types. Files: `TicketEditor.tsx`
 - **Customer name column in Tickets table**: Added customer name column to both desktop table view (between Time and Service columns) and mobile card view (bold name before time). Displays `customer_name` or '-' if empty. Files: `TicketsPage.tsx`
