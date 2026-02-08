@@ -1154,6 +1154,14 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-08: Italic Small Services & Price-Sorted Categories in Service Picker
+- Services priced below the store's `small_service_threshold` setting (default $30) now render with italic text on their buttons in the TicketEditor service picker grid
+- Added `getSettingNumber` to `useSettings()` destructure; derived `smallServiceThreshold` constant
+- When viewing a specific category (not "Popular"), services are now sorted from most expensive to least expensive (`.sort()` by `b.price - a.price`)
+- "Popular" tab preserves existing sort order (by usage count DESC) — sort comparator returns `0`
+- Both service grids updated: new-ticket picker and add-another-service picker
+- File modified: `TicketEditor.tsx`
+
 ### 2026-02-08: Color-Coded Service Badges in Tickets Table
 - Tickets tab previously showed service codes as plain gray pipe-separated text (`SVC1 | SVC2`)
 - Replaced with colored badges matching the TicketEditor's category color system (pink, blue, purple, green, yellow)

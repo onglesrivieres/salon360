@@ -74,9 +74,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   const [showActivityModal, setShowActivityModal] = useState(false);
   const { showToast } = useToast();
   const { session, selectedStoreId } = useAuth();
-  const { getSettingBoolean } = useSettings();
+  const { getSettingBoolean, getSettingNumber } = useSettings();
   const photosSectionRef = useRef<TicketPhotosSectionRef>(null);
 
+  const smallServiceThreshold = getSettingNumber('small_service_threshold', 30);
   const enableCashPayments = getSettingBoolean('enable_cash_payments', true);
   const enableCardPayments = getSettingBoolean('enable_card_payments', true);
   const enableGiftCardPayments = getSettingBoolean('enable_gift_card_payments', true);
@@ -2490,6 +2491,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                       {services
                         .filter(service => selectedCategory === 'all' || service.category === selectedCategory)
                         .filter(service => canEmployeePerformService(selectedTechnicianId || lastUsedEmployeeId, service.service_id))
+                        .sort((a, b) => selectedCategory === 'all' ? 0 : b.price - a.price)
                         .slice(0, selectedCategory === 'all' ? 10 : undefined)
                         .map((service) => (
                       <button
@@ -2514,7 +2516,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                             is_custom: false,
                           }]);
                         }}
-                        className={`py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${getServiceColor(service.category)}`}
+                        className={`py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${getServiceColor(service.category)}${service.price < smallServiceThreshold ? ' italic' : ''}`}
                       >
                         {service.code}
                       </button>
@@ -2740,6 +2742,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                         {services
                           .filter(service => selectedCategory === 'all' || service.category === selectedCategory)
                           .filter(service => canEmployeePerformService(selectedTechnicianId || lastUsedEmployeeId, service.service_id))
+                          .sort((a, b) => selectedCategory === 'all' ? 0 : b.price - a.price)
                           .slice(0, selectedCategory === 'all' ? 10 : undefined)
                           .map((service) => (
                             <button
@@ -2765,7 +2768,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                                 }]);
                                 setShowAddServicePicker(false);
                               }}
-                              className={`py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${getServiceColor(service.category)}`}
+                              className={`py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${getServiceColor(service.category)}${service.price < smallServiceThreshold ? ' italic' : ''}`}
                             >
                               {service.code}
                             </button>

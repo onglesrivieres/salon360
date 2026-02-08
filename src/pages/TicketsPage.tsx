@@ -1208,11 +1208,11 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                     <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
                       {technicianName}
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
+                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 italic">
                       ${getSubtotal(ticket).toFixed(2)}
                     </td>
                     {canViewTotalColumn() && (
-                      <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
+                      <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 font-bold">
                         ${getGrandTotalCollected(ticket).toFixed(2)}
                       </td>
                     )}
@@ -1440,12 +1440,12 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <div>
                     <div className="text-xs text-gray-500">{t('tickets.subtotal')}</div>
-                    <div className="text-sm font-semibold text-gray-900">${getSubtotal(ticket).toFixed(2)}</div>
+                    <div className="text-sm font-semibold text-gray-900 italic">${getSubtotal(ticket).toFixed(2)}</div>
                   </div>
                   {canViewTotalColumn() && (
                     <div>
                       <div className="text-xs text-gray-500">{t('tickets.total')}</div>
-                      <div className="text-sm font-semibold text-gray-900">${getGrandTotalCollected(ticket).toFixed(2)}</div>
+                      <div className="text-sm font-bold text-gray-900">${getGrandTotalCollected(ticket).toFixed(2)}</div>
                     </div>
                   )}
                   {isClosedTicket && !shouldHideTips && (
