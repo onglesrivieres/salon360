@@ -2516,7 +2516,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                             is_custom: false,
                           }]);
                         }}
-                        className={`py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${getServiceColor(service.category)}${service.price < smallServiceThreshold ? ' italic' : ''}`}
+                        className={`py-3 md:py-1.5 px-4 md:px-3 text-sm ${service.price < smallServiceThreshold ? 'rounded-full italic' : 'rounded-lg'} font-medium transition-colors min-h-[48px] md:min-h-0 ${getServiceColor(service.category)}`}
                       >
                         {service.code}
                       </button>
@@ -2768,7 +2768,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                                 }]);
                                 setShowAddServicePicker(false);
                               }}
-                              className={`py-3 md:py-1.5 px-4 md:px-3 text-sm rounded-lg font-medium transition-colors min-h-[48px] md:min-h-0 ${getServiceColor(service.category)}${service.price < smallServiceThreshold ? ' italic' : ''}`}
+                              className={`py-3 md:py-1.5 px-4 md:px-3 text-sm ${service.price < smallServiceThreshold ? 'rounded-full italic' : 'rounded-lg'} font-medium transition-colors min-h-[48px] md:min-h-0 ${getServiceColor(service.category)}`}
                             >
                               {service.code}
                             </button>

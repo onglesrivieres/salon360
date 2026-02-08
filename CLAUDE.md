@@ -1154,6 +1154,13 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-08: Rounded Small Service Buttons in Service Picker
+- Small service buttons (price < `small_service_threshold`) now use `rounded-full` (pill shape) instead of `rounded-lg` to further distinguish them visually
+- Combined with existing italic text styling for small services
+- Regular-priced services retain `rounded-lg` border radius
+- Both service grids updated: new-ticket picker and add-another-service picker
+- File modified: `TicketEditor.tsx`
+
 ### 2026-02-08: Italic Small Services & Price-Sorted Categories in Service Picker
 - Services priced below the store's `small_service_threshold` setting (default $30) now render with italic text on their buttons in the TicketEditor service picker grid
 - Added `getSettingNumber` to `useSettings()` destructure; derived `smallServiceThreshold` constant
