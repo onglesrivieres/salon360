@@ -1154,6 +1154,18 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-08: Color-Coded Service Badges in Tickets Table
+- Tickets tab previously showed service codes as plain gray pipe-separated text (`SVC1 | SVC2`)
+- Replaced with colored badges matching the TicketEditor's category color system (pink, blue, purple, green, yellow)
+- Added `categoryColors` state fetched from `store_service_categories` on store change
+- Added `category` to the `store_services` subquery in `fetchTickets()`
+- New `renderServiceBadges(ticket)` function renders each service as a compact badge using `getCategoryBadgeClasses()`
+- Custom services (no category) get the gray fallback color
+- Desktop table: badges in a flex-wrap container (removed `whitespace-nowrap` to allow wrapping)
+- Mobile card: badges appear inline before technician name with bullet separator
+- Removed dead `getServiceName()` function and `serviceName` local variables
+- File modified: `TicketsPage.tsx`
+
 ### 2026-02-08: Add Today Button to TipReport Weekly View
 - Weekly view had prev/next week navigation arrows but no way to quickly jump back to the current week
 - Added "Today" button before the week navigation arrows in both mobile and desktop nav sections

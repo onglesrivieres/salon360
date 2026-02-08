@@ -11,6 +11,7 @@ import { TicketsPeriodView } from '../components/TicketsPeriodView';
 import { useAuth } from '../contexts/AuthContext';
 import { Permissions } from '../lib/permissions';
 import { formatTimeEST, getCurrentDateEST } from '../lib/timezone';
+import { getCategoryBadgeClasses } from '../lib/category-colors';
 
 interface TicketsPageProps {
   selectedDate: string;
@@ -52,6 +53,9 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   const [isViewModeDropdownOpen, setIsViewModeDropdownOpen] = useState(false);
   const viewModeDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Category colors for service badges
+  const [categoryColors, setCategoryColors] = useState<Record<string, string>>({});
+
   // Check if user is a commission employee
   const [isCommissionEmployee, setIsCommissionEmployee] = useState(false);
 
@@ -68,6 +72,26 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     }
     checkPayType();
   }, [session?.employee_id]);
+
+  // Fetch category colors for service badges
+  useEffect(() => {
+    async function fetchCategoryColors() {
+      if (!selectedStoreId) return;
+      const { data } = await supabase
+        .from('store_service_categories')
+        .select('name, color')
+        .eq('store_id', selectedStoreId)
+        .eq('is_active', true);
+      if (data) {
+        const colorMap: Record<string, string> = {};
+        data.forEach((cat: { name: string; color: string }) => {
+          colorMap[cat.name] = cat.color;
+        });
+        setCategoryColors(colorMap);
+      }
+    }
+    fetchCategoryColors();
+  }, [selectedStoreId]);
 
   // Management roles can always see tips regardless of pay type
   const MANAGEMENT_ROLES = ['Admin', 'Manager', 'Owner', 'Supervisor'] as const;
@@ -214,7 +238,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
             custom_service_name,
             started_at,
             completed_at,
-            service:store_services!ticket_items_store_service_id_fkey(code, name, duration_min),
+            service:store_services!ticket_items_store_service_id_fkey(code, name, duration_min, category),
             employee:employees!ticket_items_employee_id_fkey(display_name)
           ),
           ticket_photos (id)
@@ -303,15 +327,26 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     return ticket.ticket_items[0]?.tip_receptionist || 0;
   }
 
-  function getServiceName(ticket: any): string {
-    if (!ticket.ticket_items || ticket.ticket_items.length === 0) return '-';
-    const serviceNames = ticket.ticket_items
-      .map((item: any) => {
-        if (item?.custom_service_name) return item.custom_service_name;
-        return item?.service?.code || null;
+  function renderServiceBadges(ticket: any): React.ReactNode {
+    if (!ticket.ticket_items || ticket.ticket_items.length === 0) return <span>-</span>;
+    const badges = ticket.ticket_items
+      .map((item: any, idx: number) => {
+        const label = item?.custom_service_name || item?.service?.code;
+        if (!label) return null;
+        const category = item?.service?.category;
+        const colorKey = category ? categoryColors[category] : undefined;
+        const colorClasses = getCategoryBadgeClasses(colorKey || '');
+        return (
+          <span
+            key={item.id || idx}
+            className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium ${colorClasses}`}
+          >
+            {label}
+          </span>
+        );
       })
-      .filter((name: string | null) => name !== null);
-    return serviceNames.length > 0 ? serviceNames.join(' | ') : '-';
+      .filter(Boolean);
+    return badges.length > 0 ? badges : <span>-</span>;
   }
 
   function getTechnicianName(ticket: any): string {
@@ -1110,7 +1145,6 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
               {filteredTickets.map((ticket) => {
                 const tipCustomer = getTipCustomer(ticket);
                 const tipReceptionist = getTipReceptionist(ticket);
-                const serviceName = getServiceName(ticket);
                 const technicianName = getTechnicianName(ticket);
                 const customerType = getCustomerType(ticket);
                 const time = formatTimeEST(ticket.opened_at);
@@ -1166,8 +1200,10 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                     <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600">
                       {customerType}
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                      {serviceName}
+                    <td className="px-3 py-2 text-xs">
+                      <div className="flex flex-wrap gap-1">
+                        {renderServiceBadges(ticket)}
+                      </div>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
                       {technicianName}
@@ -1286,7 +1322,6 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
           const tipCustomer = getTipCustomer(ticket);
           const tipReceptionist = getTipReceptionist(ticket);
           const totalTips = getTotalTips(ticket);
-          const serviceName = getServiceName(ticket);
           const technicianName = getTechnicianName(ticket);
           const customerType = getCustomerType(ticket);
           const time = formatTimeEST(ticket.opened_at);
@@ -1351,8 +1386,10 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                     <span className="text-sm font-semibold text-gray-900">{customerType}</span>
                     <span className="text-xs text-gray-500">{time}</span>
                   </div>
-                  <div className="text-xs text-gray-600">
-                    {serviceName} • {technicianName}
+                  <div className="text-xs text-gray-600 flex flex-wrap items-center gap-1">
+                    {renderServiceBadges(ticket)}
+                    <span>•</span>
+                    <span>{technicianName}</span>
                   </div>
                 </div>
                 <div className="text-right flex flex-col gap-1 items-end">
