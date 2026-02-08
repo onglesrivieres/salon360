@@ -748,48 +748,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     ]);
   }
 
-  async function removeItem(index: number) {
-    const itemToRemove = items[index];
-    const isActiveTimer = itemToRemove.started_at &&
-                         !(itemToRemove as any).timer_stopped_at &&
-                         !(itemToRemove as any).completed_at;
-
-    const newItems = items.filter((_, i) => i !== index);
-    setItems(newItems);
-
-    // If we removed the active timer and there are other services, reactivate previous timer
-    if (ticketId && isActiveTimer && newItems.length > 0) {
-      const stoppedItems = newItems
-        .filter((item: any) => item.timer_stopped_at)
-        .sort((a: any, b: any) =>
-          new Date(b.timer_stopped_at!).getTime() - new Date(a.timer_stopped_at!).getTime()
-        );
-
-      if (stoppedItems.length > 0 && (stoppedItems[0] as any).id) {
-        const { error } = await supabase
-          .from('ticket_items')
-          .update({ timer_stopped_at: null, updated_at: new Date().toISOString() })
-          .eq('id', (stoppedItems[0] as any).id);
-
-        if (error) {
-          console.error('Error reactivating timer:', error);
-        }
-      }
-    }
-
-    // Delete from database if exists
-    if ((itemToRemove as any).id) {
-      const { error } = await supabase
-        .from('ticket_items')
-        .delete()
-        .eq('id', (itemToRemove as any).id);
-
-      if (error) {
-        console.error('Error deleting item:', error);
-      }
-    }
-  }
-
   function updateItem(index: number, field: keyof TicketItemForm, value: string) {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
@@ -2559,14 +2517,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                       <span className="text-xs font-semibold text-gray-600">
                         Service {items.length > 1 ? `#${index + 1}` : ''}
                       </span>
-                      {canEditServices && (
-                        <button
-                          onClick={() => removeItem(index)}
-                          className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
                     </div>
 
                     {/* Service Timer Display */}
@@ -2656,19 +2606,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                           />
                         </div>
                       </div>
-                      {canEditServices && items.length === 1 && (
-                        <div className="flex items-end">
-                          <button
-                            onClick={() => {
-                              setItems([]);
-                              setShowCustomService(false);
-                            }}
-                            className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
                     </div>
 
                     <div className="flex items-end gap-2">
