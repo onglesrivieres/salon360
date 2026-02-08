@@ -479,6 +479,7 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes
 
 ### 2026-02-08
+- **Delete icon on first service item in TicketEditor**: Restored Trash2 icon on the first service item header row only, allowing users to clear a selected service and return to the service picker. Shown only when `index === 0`, `canEditServices`, and ticket is not closed/voided. Files: `TicketEditor.tsx`
 - **Live Payment Summary in Payment Details modal**: Payment Summary now reads from `tempPaymentData` (temporary input state) instead of `formData` (saved state), so all 5 summary values (Total Payments, Total Discounts, Total Tips, Grand Total Collected, Tips Paired by Receptionist) update in real time as the user types. Files: `TicketEditor.tsx`
 - **Customer name column in Tickets table**: Added customer name column to both desktop table view (between Time and Service columns) and mobile card view (bold name before time). Displays `customer_name` or '-' if empty. Files: `TicketsPage.tsx`
 - **Remove customer_type from tickets**: Removed `customer_type` field (Appointment/Assigned/Requested) from TicketEditor UI, form state, validation, save/update payloads, Tickets table (desktop + mobile), PendingApprovals rejected view, `SaleTicket` interface, and i18n keys. DB migration drops column and recreates `get_rejected_tickets_for_admin` RPC without it. Files: `TicketEditor.tsx`, `TicketsPage.tsx`, `PendingApprovalsPage.tsx`, `supabase.ts`, `i18n.ts` + migration

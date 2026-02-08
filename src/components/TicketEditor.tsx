@@ -2466,6 +2466,15 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
                       <span className="text-xs font-semibold text-gray-600">
                         Service {items.length > 1 ? `#${index + 1}` : ''}
                       </span>
+                      {index === 0 && canEditServices && !isTicketClosed && !isVoided && (
+                        <button
+                          type="button"
+                          onClick={() => setItems(items.filter((_, i) => i !== 0))}
+                          className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
 
                     {/* Service Timer Display */}
