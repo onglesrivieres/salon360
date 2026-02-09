@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense, Component, type ReactNode } from 'react';
+import { useState, useEffect, lazy, Suspense, Component, type ReactNode } from 'react';
 import { Layout } from './components/Layout';
 import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -18,7 +18,7 @@ import { CheckInOutModal } from './components/CheckInOutModal';
 import { CheckInRequiredModal } from './components/CheckInRequiredModal';
 import { useWorkingHoursCheck } from './hooks/useWorkingHoursCheck';
 import { useCheckInStatusCheck } from './hooks/useCheckInStatusCheck';
-import { usePendingApprovalsRedirect } from './hooks/usePendingApprovalsRedirect';
+
 import { TimeFilterType, DateRange } from './lib/timeFilters';
 
 function lazyWithReload<T extends React.ComponentType<any>>(
@@ -213,45 +213,6 @@ function AppContent() {
     !checkInStatus.isLoading &&
     !checkInStatus.isCheckedIn &&
     !showStoreModal; // Don't show while store selection is open
-
-  // Check for pending approvals redirect
-  const isReadyForRedirectCheck =
-    isAuthenticated &&
-    !!selectedStoreId &&
-    !showWelcome &&
-    !showStoreModal &&
-    !shouldShowCheckInRequiredModal &&
-    !workingHoursCheck.isLoading &&
-    workingHoursCheck.isWithinWorkingHours;
-
-  const pendingApprovalsRedirect = usePendingApprovalsRedirect(
-    session?.employee_id,
-    selectedStoreId,
-    session?.role,
-    session?.role_permission,
-    isReadyForRedirectCheck
-  );
-
-  // Track if we've already done the initial redirect for this session
-  const hasRedirectedToApprovals = useRef(false);
-
-  // Reset redirect flag when store changes (to allow redirect for new store)
-  useEffect(() => {
-    hasRedirectedToApprovals.current = false;
-  }, [selectedStoreId]);
-
-  // Auto-redirect to approvals page if there are pending items (only once per store)
-  useEffect(() => {
-    if (
-      pendingApprovalsRedirect.hasChecked &&
-      pendingApprovalsRedirect.shouldRedirect &&
-      !hasRedirectedToApprovals.current &&
-      currentPage !== 'approvals'
-    ) {
-      hasRedirectedToApprovals.current = true;
-      setCurrentPage('approvals');
-    }
-  }, [pendingApprovalsRedirect.hasChecked, pendingApprovalsRedirect.shouldRedirect, currentPage]);
 
   useEffect(() => {
     if (isAuthenticated && !selectedStoreId && session?.employee_id && !showWelcome) {
