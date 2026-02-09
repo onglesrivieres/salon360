@@ -10,8 +10,6 @@ import { useServiceWorkerUpdate } from '../hooks/useServiceWorkerUpdate';
 import { Modal } from './ui/Modal';
 import { TechnicianQueue } from './TechnicianQueue';
 import { getCurrentDateEST } from '../lib/timezone';
-import { ViewAsSelector } from './ViewAsSelector';
-import { ViewAsBanner } from './ViewAsBanner';
 import { RemoveTechnicianModal } from './RemoveTechnicianModal';
 import { QueueReasonModal } from './QueueReasonModal';
 import { ViolationReportModal } from './ViolationReportModal';
@@ -26,7 +24,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
-  const { session, selectedStoreId, selectStore, logout, t, viewingAsRole, startViewingAs, stopViewingAs, isViewingAs, effectiveRole } = useAuth();
+  const { session, selectedStoreId, selectStore, logout, t, effectiveRole } = useAuth();
   const { getSettingBoolean } = useSettings();
   const [currentStore, setCurrentStore] = useState<Store | null>(null);
   const [allStores, setAllStores] = useState<Store[]>([]);
@@ -876,13 +874,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   <span className="text-xs font-medium text-gray-700">{googleRating.rating} ({googleRating.reviews})</span>
                 </div>
               )}
-              {session && session.role && (session.role.includes('Admin') || session.role.includes('Owner')) && (
-                <ViewAsSelector
-                  currentRole={viewingAsRole}
-                  onSelectRole={startViewingAs}
-                  isViewingAs={isViewingAs}
-                />
-              )}
               {session && effectiveRole && canAccessPage('settings', effectiveRole) && (
                 <button
                   onClick={() => onNavigate('settings')}
@@ -905,10 +896,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           </div>
         </div>
       </header>
-
-      {isViewingAs && viewingAsRole && (
-        <ViewAsBanner role={viewingAsRole} onExit={stopViewingAs} />
-      )}
 
       {shouldShowOpeningCashBanner && (
         <div className="bg-amber-500 text-white px-3 py-2 md:px-4 md:py-3 border-b border-amber-600">

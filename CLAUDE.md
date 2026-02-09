@@ -96,7 +96,7 @@ node scripts/migrations/apply_<migration_name>.mjs
 │   ├── inventory/             # Inventory modals and components
 │   └── tickets/               # Ticket editor, service timer components
 ├── contexts/
-│   ├── AuthContext.tsx        # Authentication, store selection, locale, "view as"
+│   ├── AuthContext.tsx        # Authentication, store selection, locale
 │   ├── SettingsContext.tsx    # App settings per store
 │   ├── PermissionsContext.tsx # Role-based permission checking
 │   ├── PermissionsCacheContext.tsx # Permission caching (5-min TTL)
@@ -252,7 +252,6 @@ When a user has multiple roles, the highest-ranking role determines their permis
 - **Date Lock**: Cashier/Receptionist locked to today's date on Tickets, Tip Report, EOD, Safe Balance pages.
 - **Check-In Required**: Receptionist, Supervisor, Technician, Trainee must check in before accessing the app.
 - **Multi-Store**: Admin/Manager/Owner access all stores. Others access only assigned stores via `employee_stores`. Store switching blocked while checked in (for Receptionist/Supervisor/Technician/Trainee).
-- **View As** (Role Impersonation): Admin/Owner only. All permissions checked against impersonated role.
 - **Employee Management**: Admin manages all; Owner manages everyone except Admin; Manager manages Supervisor and below.
 
 ---
@@ -462,7 +461,7 @@ if (userRole === 'Admin' || userRole === 'Manager') { ... }
 Access contexts via hooks in components:
 
 ```typescript
-const { selectedStoreId, user, effectiveRole } = useAuth();
+const { selectedStoreId, session, effectiveRole } = useAuth();
 const { settings } = useSettings();
 const { checkPermission } = usePermissions();
 ```
@@ -484,6 +483,7 @@ Always filter by `store_id` when querying store-specific data:
 - **Fix voided tickets blocking new ticket creation**: Updated `check_previous_unclosed_tickets()` and `validate_no_previous_unclosed_tickets()` to exclude voided tickets (`AND voided_at IS NULL`). Voided tickets have `closed_at` still NULL, so the unclosed-ticket trigger was incorrectly counting them. Files: migration
 - **Auto-show Technician Queue modal on login**: Queue modal automatically opens after login for users currently in the ready queue (ready, busy, or small_service status). Uses a ref (`hasAutoShownQueueModal`) to fire once per login session. Respects `enable_ready_queue` feature flag. Files: `Layout.tsx`
 - **Restore approvals badge on sidebar nav item**: Re-added pending approvals count badge to the Approvals sidebar nav item so the badge appears in both the header (next to store name) and the sidebar navigation. Files: `Layout.tsx`
+- **Remove "View As" role impersonation feature**: Removed the View As selector and banner that allowed Admin/Owner to impersonate other roles. Removed `viewingAsRole`, `startViewingAs`, `stopViewingAs`, `isViewingAs` from AuthContext. Simplified `effectiveRole` to `session?.role || null`. Deleted `ViewAsSelector.tsx` and `ViewAsBanner.tsx`. Files: `AuthContext.tsx`, `Layout.tsx`
 
 ### 2026-02-08
 - **Fix small service queue bugs**: Fixed two bugs preventing small_service (yellow) queue status. Bug 1: `mark_technician_busy_smart()` required technician to be last in queue (`is_last_in_ready_queue` gate) — removed, now any technician below threshold gets `small_service`. Bug 2: `trigger_mark_technicians_available()` was regressed to blanket DELETE instead of calling `handle_ticket_close_smart()` — fixed so small_service technicians return to `ready` at same queue position on ticket completion. Files: migration + updated squash/source migrations
