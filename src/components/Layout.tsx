@@ -31,6 +31,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
+  const [perStoreApprovalsCount, setPerStoreApprovalsCount] = useState<Record<string, number>>({});
   const { hasNewVersion, handleUpdate } = useServiceWorkerUpdate();
   const [isOpeningCashMissing, setIsOpeningCashMissing] = useState(false);
   const [showQueueModal, setShowQueueModal] = useState(false);
@@ -92,8 +93,9 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     }
     if (session?.employee_id && effectiveRole && Permissions.tickets.canViewPendingApprovals(effectiveRole)) {
       fetchPendingApprovalsCount();
+      fetchAllStoresApprovalsCount();
     }
-  }, [selectedStoreId, session, effectiveRole]);
+  }, [selectedStoreId, session, effectiveRole, allStores.length]);
 
   useEffect(() => {
     if (!session?.employee_id || !effectiveRole || !Permissions.tickets.canViewPendingApprovals(effectiveRole) || !selectedStoreId) return;
@@ -101,6 +103,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     // Poll every 30 seconds for pending approvals
     const interval = setInterval(() => {
       fetchPendingApprovalsCount();
+      if (allStores.length > 1) fetchAllStoresApprovalsCount();
     }, 30000);
 
     // Subscribe to real-time changes on sale_tickets table
@@ -118,6 +121,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           // Refresh count when tickets are closed, approved, or updated
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             fetchPendingApprovalsCount();
+            if (allStores.length > 1) fetchAllStoresApprovalsCount();
           }
         }
       )
@@ -133,6 +137,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           // Refresh count when inventory transactions are updated
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             fetchPendingApprovalsCount();
+            if (allStores.length > 1) fetchAllStoresApprovalsCount();
           }
         }
       )
@@ -148,6 +153,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           // Refresh count when cash transactions are updated
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             fetchPendingApprovalsCount();
+            if (allStores.length > 1) fetchAllStoresApprovalsCount();
           }
         }
       )
@@ -415,6 +421,80 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       setPendingApprovalsCount(totalCount);
     } catch (error) {
       console.error('Error fetching pending approvals count:', error);
+    }
+  }
+
+  async function fetchAllStoresApprovalsCount() {
+    if (!session?.employee_id || allStores.length <= 1) return;
+
+    const userRoles = session?.role || [];
+    const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
+    const isSupervisorOnly = userRoles.some(role => role === 'Supervisor') && !isManagement;
+
+    if (!isManagement && !isSupervisorOnly) {
+      setPerStoreApprovalsCount({});
+      return;
+    }
+
+    try {
+      const counts: Record<string, number> = {};
+
+      await Promise.all(allStores.map(async (store) => {
+        try {
+          if (isSupervisorOnly) {
+            let cashTransactionCount = 0;
+            let ticketReopenCount = 0;
+
+            const { data: cashData, error: cashError } = await supabase.rpc('get_pending_cash_transaction_approvals', {
+              p_store_id: store.id,
+            });
+            if (!cashError) cashTransactionCount = cashData?.length || 0;
+
+            const { data: ticketReopenData, error: ticketReopenError } = await supabase.rpc('get_pending_ticket_reopen_requests_count', {
+              p_store_id: store.id,
+              p_reviewer_employee_id: session.employee_id,
+            });
+            if (!ticketReopenError) ticketReopenCount = ticketReopenData || 0;
+
+            counts[store.id] = cashTransactionCount + ticketReopenCount;
+          } else {
+            let ticketCount = 0;
+            let inventoryCount = 0;
+            let cashTransactionCount = 0;
+            let ticketReopenCount = 0;
+
+            const { data, error } = await supabase.rpc('get_pending_approvals_for_management', {
+              p_store_id: store.id,
+            });
+            if (!error) ticketCount = data?.length || 0;
+
+            const { data: inventoryData, error: inventoryError } = await supabase.rpc('get_pending_inventory_approvals', {
+              p_employee_id: session.employee_id,
+              p_store_id: store.id,
+            });
+            if (!inventoryError) inventoryCount = inventoryData?.length || 0;
+
+            const { data: cashData, error: cashError } = await supabase.rpc('get_pending_cash_transaction_approvals', {
+              p_store_id: store.id,
+            });
+            if (!cashError) cashTransactionCount = cashData?.length || 0;
+
+            const { data: ticketReopenData, error: ticketReopenError } = await supabase.rpc('get_pending_ticket_reopen_requests_count', {
+              p_store_id: store.id,
+            });
+            if (!ticketReopenError) ticketReopenCount = ticketReopenData || 0;
+
+            counts[store.id] = ticketCount + inventoryCount + cashTransactionCount + ticketReopenCount;
+          }
+        } catch (err) {
+          console.error(`Error fetching approvals for store ${store.id}:`, err);
+          counts[store.id] = 0;
+        }
+      }));
+
+      setPerStoreApprovalsCount(counts);
+    } catch (error) {
+      console.error('Error fetching all stores approvals count:', error);
     }
   }
 
@@ -828,6 +908,11 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                         >
                           <StoreIcon className="w-3 h-3" />
                           {store.name}
+                          {showPendingApprovalBadge && (perStoreApprovalsCount[store.id] || 0) > 0 && (
+                            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-600 rounded-full ml-auto">
+                              {(perStoreApprovalsCount[store.id] || 0) > 9 ? '9+' : perStoreApprovalsCount[store.id]}
+                            </span>
+                          )}
                         </button>
                       ))}
                     </div>

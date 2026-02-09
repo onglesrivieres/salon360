@@ -478,6 +478,7 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes
 
 ### 2026-02-09
+- **Per-store pending approvals badge in store dropdown**: Each store in the header store dropdown now shows its own red pending approvals count badge. Uses `fetchAllStoresApprovalsCount()` which fetches counts for all stores in parallel via `Promise.all`. Badges update on 30-second polling and realtime changes. Only shown when user has multiple stores and approval permissions. Files: `Layout.tsx`
 - **Remove auto-redirect to Approvals page on login**: Removed `usePendingApprovalsRedirect` hook and all related logic. Users now always land on Tickets page after login regardless of pending approvals. Deleted `usePendingApprovalsRedirect.ts`. Files: `App.tsx`, `AuthContext.tsx`
 - **Allow Supervisors to approve Cashier cash transactions**: Updated Pending Approvals Cash Transactions filter so Supervisors see transactions created by both Receptionists and Cashiers (previously only Receptionists). Client-side filter only, no DB migration needed. Files: `PendingApprovalsPage.tsx`
 - **Fix voided tickets blocking new ticket creation**: Updated `check_previous_unclosed_tickets()` and `validate_no_previous_unclosed_tickets()` to exclude voided tickets (`AND voided_at IS NULL`). Voided tickets have `closed_at` still NULL, so the unclosed-ticket trigger was incorrectly counting them. Files: migration
