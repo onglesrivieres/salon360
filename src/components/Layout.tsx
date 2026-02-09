@@ -815,7 +815,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                     onClick={() => setIsStoreDropdownOpen(!isStoreDropdownOpen)}
                     className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
                   >
-                    <StoreIcon className="w-4 h-4" />
                     {currentStore.name}
                     <ChevronDown className="w-4 h-4" />
                   </button>
@@ -838,10 +837,14 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                 </div>
               ) : currentStore ? (
                 <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
-                  <StoreIcon className="w-4 h-4" />
                   {currentStore.name}
                 </span>
               ) : null}
+              {showPendingApprovalBadge && pendingApprovalsCount > 0 && (
+                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-600 rounded-full">
+                  {pendingApprovalsCount > 9 ? '9+' : pendingApprovalsCount}
+                </span>
+              )}
               {session && effectiveRole && canAccessPage('tickets', effectiveRole) && shouldShowQueueButton && (
                 <button
                   onClick={handleOpenQueueModal}
