@@ -57,6 +57,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [minVotesRequired, setMinVotesRequired] = useState(3);
   const [employeePayType, setEmployeePayType] = useState<'hourly' | 'daily' | 'commission' | undefined>(undefined);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const hasAutoShownQueueModal = useRef(false);
 
   const { showToast } = useToast();
 
@@ -663,6 +664,20 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       setUserQueueStatus('neutral');
     }
   }, [sortedTechnicians, session?.employee_id]);
+
+  // Auto-show queue modal on login if user is in the queue
+  useEffect(() => {
+    if (hasAutoShownQueueModal.current) return;
+    if (sortedTechnicians.length === 0) return;
+    if (!getSettingBoolean('enable_ready_queue', true)) return;
+
+    if (userQueueStatus !== 'neutral') {
+      hasAutoShownQueueModal.current = true;
+      setShowQueueModal(true);
+    } else {
+      hasAutoShownQueueModal.current = true;
+    }
+  }, [userQueueStatus, sortedTechnicians.length, getSettingBoolean]);
 
   useEffect(() => {
     // Fetch initial queue status on mount
