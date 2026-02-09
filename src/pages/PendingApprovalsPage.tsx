@@ -567,10 +567,10 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
       if (error) throw error;
 
-      // Filter for Supervisors: only show Receptionist-created transactions
+      // Filter for Supervisors: only show Receptionist/Cashier-created transactions
       let filteredData = data || [];
       if (isSupervisor) {
-        filteredData = filteredData.filter(approval => approval.created_by_role === 'Receptionist');
+        filteredData = filteredData.filter(approval => approval.created_by_role === 'Receptionist' || approval.created_by_role === 'Cashier');
       }
 
       // Filter for Receptionist/Cashier: only show their own transactions

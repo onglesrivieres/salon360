@@ -479,6 +479,7 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes
 
 ### 2026-02-09
+- **Allow Supervisors to approve Cashier cash transactions**: Updated Pending Approvals Cash Transactions filter so Supervisors see transactions created by both Receptionists and Cashiers (previously only Receptionists). Client-side filter only, no DB migration needed. Files: `PendingApprovalsPage.tsx`
 - **Fix voided tickets blocking new ticket creation**: Updated `check_previous_unclosed_tickets()` and `validate_no_previous_unclosed_tickets()` to exclude voided tickets (`AND voided_at IS NULL`). Voided tickets have `closed_at` still NULL, so the unclosed-ticket trigger was incorrectly counting them. Files: migration
 
 ### 2026-02-08
