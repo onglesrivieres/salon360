@@ -923,11 +923,6 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   {currentStore.name}
                 </span>
               ) : null}
-              {showPendingApprovalBadge && pendingApprovalsCount > 0 && (
-                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-600 rounded-full">
-                  {pendingApprovalsCount > 9 ? '9+' : pendingApprovalsCount}
-                </span>
-              )}
               {session && effectiveRole && canAccessPage('tickets', effectiveRole) && shouldShowQueueButton && (
                 <button
                   onClick={handleOpenQueueModal}
