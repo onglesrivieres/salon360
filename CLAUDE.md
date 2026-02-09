@@ -478,6 +478,9 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-09
+- **Fix voided tickets blocking new ticket creation**: Updated `check_previous_unclosed_tickets()` and `validate_no_previous_unclosed_tickets()` to exclude voided tickets (`AND voided_at IS NULL`). Voided tickets have `closed_at` still NULL, so the unclosed-ticket trigger was incorrectly counting them. Files: migration
+
 ### 2026-02-08
 - **Fix small service queue bugs**: Fixed two bugs preventing small_service (yellow) queue status. Bug 1: `mark_technician_busy_smart()` required technician to be last in queue (`is_last_in_ready_queue` gate) — removed, now any technician below threshold gets `small_service`. Bug 2: `trigger_mark_technicians_available()` was regressed to blanket DELETE instead of calling `handle_ticket_close_smart()` — fixed so small_service technicians return to `ready` at same queue position on ticket completion. Files: migration + updated squash/source migrations
 - **Delete icon on all service items in TicketEditor**: Trash2 icon on every service item header row, allowing users to remove any individual service. Shown when `canEditServices` and ticket is not closed/voided. Files: `TicketEditor.tsx`
