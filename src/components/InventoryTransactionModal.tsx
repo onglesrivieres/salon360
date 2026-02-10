@@ -1168,16 +1168,13 @@ export function InventoryTransactionModal({
               const itemPurchaseUnits = invItem?.id ? purchaseUnits[invItem.id] || [] : [];
               const selectedPurchaseUnit = itemPurchaseUnits.find(u => u.id === item.purchase_unit_id);
 
-              const selectedSupplier = suppliers.find(s => s.id === supplierId);
-              // Filter out master items (they can't have transactions) and optionally filter by supplier
+              // "In": sub-items only (purchase variants); "Out"/"Transfer": master items only (store-level inventory)
               const filteredInventoryItems = inventoryItems.filter(invItem => {
-                // Exclude master items - only sub-items and standalone items can have transactions
-                if (invItem.is_master_item) return false;
-                // For 'in' transactions with selected supplier, filter by supplier
-                if (transactionType === 'in' && selectedSupplier) {
-                  return invItem.supplier?.toLowerCase() === selectedSupplier.name.toLowerCase();
+                if (transactionType === 'in') {
+                  return !invItem.is_master_item && invItem.parent_id;
+                } else {
+                  return invItem.is_master_item;
                 }
-                return true;
               });
 
               return (

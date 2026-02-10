@@ -482,13 +482,11 @@ export function InventoryPage() {
   // Build hierarchical items with sub-items attached
   const hierarchicalItems: InventoryItemWithHierarchy[] = masterItems.map(master => {
     const children = subItems.filter(sub => sub.parent_id === master.id);
-    const totalQty = children.reduce((sum, sub) => sum + sub.quantity_on_hand, 0);
-    const hasLowStock = children.some(sub => sub.quantity_on_hand <= sub.reorder_level);
     return {
       ...master,
       sub_items: children,
-      total_sub_item_quantity: totalQty,
-      has_low_stock_sub_items: hasLowStock,
+      total_sub_item_quantity: master.quantity_on_hand,
+      has_low_stock_sub_items: master.quantity_on_hand <= master.reorder_level,
     };
   });
 
@@ -504,10 +502,8 @@ export function InventoryPage() {
     const matchesSupplier = !supplierFilter || item.supplier === supplierFilter;
     const matchesBrand = !brandFilter || item.brand === brandFilter;
 
-    // Low stock filter - for master items, check if any sub-item is low
-    const isLowStock = item.is_master_item
-      ? item.has_low_stock_sub_items
-      : item.quantity_on_hand <= item.reorder_level;
+    // Low stock filter - all items use own quantity_on_hand
+    const isLowStock = item.quantity_on_hand <= item.reorder_level;
     const matchesLowStock = !showLowStockOnly || isLowStock;
 
     return matchesSearch && matchesCategory && matchesSupplier && matchesBrand && matchesLowStock;
@@ -1311,9 +1307,7 @@ export function InventoryPage() {
                     const hierarchyItem = item as InventoryItemWithHierarchy;
                     const isMasterItem = item.is_master_item;
                     const isExpanded = expandedMasterItems.has(item.id);
-                    const isLowStock = isMasterItem
-                      ? hierarchyItem.has_low_stock_sub_items
-                      : item.quantity_on_hand <= item.reorder_level;
+                    const isLowStock = item.quantity_on_hand <= item.reorder_level;
 
                     // For master items, use aggregated values
                     const displayQty = isMasterItem
@@ -1369,7 +1363,7 @@ export function InventoryPage() {
                             {lotQty ? `${lotQty} ${defaultUnit?.unit_name || ''}` : '-'}
                           </td>
                           <td className="px-4 py-3 text-sm text-right text-gray-900">
-                            {isMasterItem ? '-' : item.reorder_level + ' ' + item.unit}
+                            {item.reorder_level} {item.unit}
                           </td>
                           <td className="px-4 py-3 text-sm text-right text-gray-900">
                             ${item.unit_cost.toFixed(2)}
@@ -1390,17 +1384,10 @@ export function InventoryPage() {
                         </tr>
                         {/* Sub-items for expanded master items */}
                         {isMasterItem && isExpanded && hierarchyItem.sub_items?.map((subItem) => {
-                          const subIsLowStock = subItem.quantity_on_hand <= subItem.reorder_level;
-                          const subTotalValue = subItem.quantity_on_hand * subItem.unit_cost;
-                          const subDefaultUnit = purchaseUnits[subItem.id];
-                          const subLotQty = subDefaultUnit
-                            ? (subItem.quantity_on_hand / subDefaultUnit.multiplier).toFixed(1)
-                            : null;
-
                           return (
                             <tr
                               key={subItem.id}
-                              className={`bg-gray-50/50 hover:bg-gray-100 ${subIsLowStock ? 'bg-amber-50/50' : ''}`}
+                              className="bg-gray-50/50 hover:bg-gray-100"
                             >
                               <td className="px-4 py-2 text-sm text-gray-700 pl-10">
                                 <div className="flex items-center gap-2">
@@ -1414,21 +1401,13 @@ export function InventoryPage() {
                               <td className="px-4 py-2 text-sm text-gray-600">{subItem.supplier}</td>
                               <td className="px-4 py-2 text-sm text-gray-600">{subItem.brand || '-'}</td>
                               <td className="px-4 py-2 text-sm text-gray-500 max-w-xs truncate">{subItem.description || '-'}</td>
-                              <td className={`px-4 py-2 text-sm text-right font-medium ${subIsLowStock ? 'text-amber-600' : 'text-gray-700'}`}>
-                                {subItem.quantity_on_hand} {subItem.unit}
-                              </td>
-                              <td className="px-4 py-2 text-sm text-right text-gray-500">
-                                {subLotQty ? `${subLotQty} ${subDefaultUnit?.unit_name || ''}` : '-'}
-                              </td>
-                              <td className="px-4 py-2 text-sm text-right text-gray-600">
-                                {subItem.reorder_level} {subItem.unit}
-                              </td>
+                              <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
+                              <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
+                              <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
                               <td className="px-4 py-2 text-sm text-right text-gray-600">
                                 ${subItem.unit_cost.toFixed(2)}
                               </td>
-                              <td className="px-4 py-2 text-sm text-right font-medium text-gray-700">
-                                ${subTotalValue.toFixed(2)}
-                              </td>
+                              <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
                               <td className="px-4 py-2 text-sm text-center">
                                 {canEditItems && (
                                   <button
