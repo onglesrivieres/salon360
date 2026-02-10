@@ -18,7 +18,7 @@ interface HomePageProps {
 
 export function HomePage({ onActionSelected }: HomePageProps) {
   const { logout, t } = useAuth();
-  const { getAppName, getAppLogoUrl } = useSettings();
+  const { getAppName, getAppSlogan, getAppLogoUrl } = useSettings();
   const [selectedAction, setSelectedAction] = useState<'checkin' | 'checkout' | 'ready' | 'report' | null>(null);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -557,7 +557,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-2 sm:mb-3">{getAppName()}</h1>
 
           <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-lg mx-auto px-2">
-            {t('home.subtitle')}
+            {getAppSlogan()}
           </p>
         </div>
 

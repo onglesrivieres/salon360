@@ -741,6 +741,16 @@ export function ConfigurationPage() {
                               placeholder="Enter app name"
                               disabled={!canManageSettings}
                             />
+                          ) : setting.setting_key === 'app_slogan' ? (
+                            <input
+                              type="text"
+                              value={setting.setting_value as string}
+                              onChange={(e) => handleGlobalStringChange(setting, e.target.value)}
+                              maxLength={100}
+                              className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                              placeholder="Enter app slogan"
+                              disabled={!canManageSettings}
+                            />
                           ) : setting.setting_key === 'app_logo_url' ? (
                             <LogoUploadField
                               currentLogoUrl={setting.setting_value as string}

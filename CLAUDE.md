@@ -477,6 +477,9 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-10
+- **Configurable app slogan setting**: Added `app_slogan` to `app_global_settings` (Branding category), configurable from Configuration page. HomePage subtitle now reads from this setting instead of hardcoded `t('home.subtitle')`. Text input with 100-char max. Files: `SettingsContext.tsx`, `ConfigurationPage.tsx`, `HomePage.tsx` + migration
+
 ### 2026-02-09
 - **Remove header pending approvals badge**: Removed the standalone red pending approvals count badge next to the store name in the header. Redundant now that per-store badges exist in the store dropdown. Sidebar nav badge and per-store dropdown badges remain. Files: `Layout.tsx`
 - **Per-store pending approvals badge in store dropdown**: Each store in the header store dropdown now shows its own red pending approvals count badge. Uses `fetchAllStoresApprovalsCount()` which fetches counts for all stores in parallel via `Promise.all`. Badges update on 30-second polling and realtime changes. Only shown when user has multiple stores and approval permissions. Files: `Layout.tsx`

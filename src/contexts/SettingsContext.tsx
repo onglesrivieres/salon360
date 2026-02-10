@@ -17,6 +17,7 @@ interface SettingsContextType {
   getSettingString: (key: string, defaultValue?: string) => string;
   getGlobalSettingString: (key: string, defaultValue?: string) => string;
   getAppName: () => string;
+  getAppSlogan: () => string;
   getAppLogoUrl: () => string;
   getR2PublicUrl: () => string;
   isR2Configured: () => boolean;
@@ -225,6 +226,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     return getGlobalSettingString('app_name', 'Salon360');
   }
 
+  function getAppSlogan(): string {
+    return getGlobalSettingString('app_slogan', 'Complete salon management system for tracking and reporting');
+  }
+
   function getAppLogoUrl(): string {
     return getGlobalSettingString('app_logo_url', '');
   }
@@ -286,6 +291,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         getSettingString,
         getGlobalSettingString,
         getAppName,
+        getAppSlogan,
         getAppLogoUrl,
         getR2PublicUrl,
         isR2Configured,
