@@ -135,12 +135,10 @@ export const Permissions = {
       isClosed: boolean,
       isApproved?: boolean
     ): boolean => {
-      // Technician can edit until completed (and not closed)
       if (hasAnyRole(roles, ['Technician', 'Trainee'])) {
-        return !isCompleted && !isClosed;
+        return !isCompleted;
       }
-      // Other roles follow normal canEdit logic
-      return Permissions.tickets.canEdit(roles, isClosed, isApproved);
+      return !isClosed;
     },
     canViewFullPhoneWhenClosed: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);

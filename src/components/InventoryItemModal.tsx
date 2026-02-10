@@ -5,6 +5,7 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { NumericInput } from './ui/NumericInput';
 import { Select } from './ui/Select';
+import { SearchableSelect } from './ui/SearchableSelect';
 import { useToast } from './ui/Toast';
 import { supabase, InventoryItem, Supplier } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,7 +38,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
     category: '',
     reorder_level: '0',
     size: '',
-    color_code: '',
   });
   const [itemType, setItemType] = useState<'standalone' | 'master' | 'sub'>('standalone');
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
@@ -96,7 +96,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         category: item.category,
         reorder_level: item.reorder_level.toString(),
         size: item.size || '',
-        color_code: item.color_code || '',
       });
       // Set item type based on existing item
       if (item.is_master_item) {
@@ -118,7 +117,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         category: '',
         reorder_level: '0',
         size: '',
-        color_code: '',
       });
       setItemType('standalone');
       setSelectedParentId(null);
@@ -218,7 +216,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             brand: formData.brand.trim() || null,
             supplier: isMasterItem ? '' : formData.supplier,
             size: formData.size.trim() || null,
-            color_code: formData.color_code.trim() || null,
             is_master_item: isMasterItem,
             parent_id: isSubItem ? selectedParentId : null,
             updated_at: new Date().toISOString(),
@@ -253,7 +250,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           brand: formData.brand.trim() || null,
           supplier: isMasterItem ? '' : formData.supplier,
           size: formData.size.trim() || null,
-          color_code: formData.color_code.trim() || null,
           is_master_item: isMasterItem,
           parent_id: isSubItem ? selectedParentId : null,
         };
@@ -302,6 +298,19 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
 
   const isEditingExistingItem = !!item;
 
+  const masterItemOptions = masterItems.map(master => ({
+    value: master.id,
+    label: master.name,
+  }));
+
+  function handleParentSelect(value: string) {
+    setSelectedParentId(value || null);
+    const parent = masterItems.find(m => m.id === value);
+    if (parent) {
+      setFormData(prev => ({ ...prev, category: parent.category }));
+    }
+  }
+
   const canCreateSupplier = session ? Permissions.suppliers.canCreate(session.role) : false;
 
   return (
@@ -311,6 +320,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         onClose={onClose}
         title={item ? 'Edit Item' : 'Add Item'}
         size="lg"
+        className="!max-h-[calc(100vh-2rem)]"
         headerActions={
           item ? (
             <Button
@@ -384,18 +394,13 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Parent Master Item <span className="text-red-500">*</span>
                   </label>
-                  <Select
+                  <SearchableSelect
+                    options={masterItemOptions}
                     value={selectedParentId || ''}
-                    onChange={(e) => setSelectedParentId(e.target.value || null)}
+                    onChange={handleParentSelect}
+                    placeholder="Search master items..."
                     required
-                  >
-                    <option value="">Select Master Item</option>
-                    {masterItems.map(master => (
-                      <option key={master.id} value={master.id}>
-                        {master.name}
-                      </option>
-                    ))}
-                  </Select>
+                  />
                 </div>
               )}
             </div>
@@ -459,29 +464,17 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             />
           </div>
 
-          {/* Size and Color Code - only for sub-items */}
+          {/* Size - only for sub-items */}
           {itemType === 'sub' && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Color/Code
-                </label>
-                <Input
-                  value={formData.color_code}
-                  onChange={(e) => setFormData({ ...formData, color_code: e.target.value })}
-                  placeholder="e.g., 66, 67, Red"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Size
-                </label>
-                <Input
-                  value={formData.size}
-                  onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-                  placeholder="e.g., Small, Medium, Large"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Size
+              </label>
+              <Input
+                value={formData.size}
+                onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                placeholder="e.g., Small, Medium, Large"
+              />
             </div>
           )}
 

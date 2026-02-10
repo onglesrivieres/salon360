@@ -478,6 +478,8 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes
 
 ### 2026-02-10
+- **Searchable parent item dropdown in Inventory**: Replaced plain `<Select>` with `<SearchableSelect>` for the Parent Master Item field when creating sub-items. Auto-fills category from selected parent (still editable). Modal uses full viewport height. Files: `InventoryItemModal.tsx`
+- **Simplify ticket service edit permissions**: Technicians/Trainees can edit services until completed (removed closed check). Other roles can edit services until ticket is closed (removed approval check). Files: `permissions.ts`
 - **Configurable app slogan setting**: Added `app_slogan` to `app_global_settings` (Branding category), configurable from Configuration page. HomePage subtitle now reads from this setting instead of hardcoded `t('home.subtitle')`. Text input with 100-char max. Files: `SettingsContext.tsx`, `ConfigurationPage.tsx`, `HomePage.tsx` + migration
 
 ### 2026-02-09
