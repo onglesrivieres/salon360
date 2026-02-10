@@ -7,14 +7,22 @@ interface DrawerProps {
   title: string;
   children: React.ReactNode;
   position?: 'left' | 'right';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   headerActions?: React.ReactNode;
 }
 
-export function Drawer({ isOpen, onClose, title, children, position = 'right', headerActions }: DrawerProps) {
+const sizeClasses = {
+  sm: 'md:w-80',
+  md: 'md:w-96',
+  lg: 'md:w-[32rem]',
+  xl: 'md:w-[56rem]',
+};
+
+export function Drawer({ isOpen, onClose, title, children, position = 'right', size = 'md', headerActions }: DrawerProps) {
   if (!isOpen) return null;
 
   const positionStyles = position === 'right' ? 'right-0' : 'left-0';
-  const slideAnimation = position === 'right' ? 'slide-in-right' : 'slide-in-left';
+  const slideAnimation = position === 'right' ? 'animate-slide-in-right' : 'animate-slide-in-left';
 
   return (
     <>
@@ -23,7 +31,7 @@ export function Drawer({ isOpen, onClose, title, children, position = 'right', h
         onClick={onClose}
       />
       <div
-        className={`fixed top-0 ${positionStyles} h-full w-full md:w-96 bg-white shadow-xl z-50 overflow-y-auto ${slideAnimation}`}
+        className={`fixed top-0 ${positionStyles} h-full w-full ${sizeClasses[size]} bg-white shadow-xl z-50 overflow-y-auto ${slideAnimation}`}
       >
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">{title}</h2>

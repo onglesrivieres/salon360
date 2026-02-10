@@ -478,6 +478,7 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes
 
 ### 2026-02-10
+- **Inventory Transaction form as right-side panel**: Converted "New Inventory Transaction" from centered `Modal` to full-height right-side `Drawer` panel (`size="xl"`, 896px). Added `size` prop to `Drawer` component (`sm`/`md`/`lg`/`xl`) with `md` as default (no breaking change). Fixed Drawer animation class to use correct `animate-slide-in-right`. Files: `Drawer.tsx`, `InventoryTransactionModal.tsx`
 - **Searchable parent item dropdown in Inventory**: Replaced plain `<Select>` with `<SearchableSelect>` for the Parent Master Item field when creating sub-items. Auto-fills category from selected parent (still editable). Modal uses full viewport height. Files: `InventoryItemModal.tsx`
 - **Simplify ticket service edit permissions**: Technicians/Trainees can edit services until completed (removed closed check). Other roles can edit services until ticket is closed (removed approval check). Files: `permissions.ts`
 - **Configurable app slogan setting**: Added `app_slogan` to `app_global_settings` (Branding category), configurable from Configuration page. HomePage subtitle now reads from this setting instead of hardcoded `t('home.subtitle')`. Text input with 100-char max. Files: `SettingsContext.tsx`, `ConfigurationPage.tsx`, `HomePage.tsx` + migration
