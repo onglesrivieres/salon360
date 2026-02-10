@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowUpDown, Info } from 'lucide-react';
-import { Modal } from './ui/Modal';
+import { Drawer } from './ui/Drawer';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { NumericInput } from './ui/NumericInput';
@@ -315,12 +315,11 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
 
   return (
     <>
-      <Modal
+      <Drawer
         isOpen={isOpen}
         onClose={onClose}
         title={item ? 'Edit Item' : 'Add Item'}
         size="lg"
-        className="!max-h-[calc(100vh-2rem)]"
         headerActions={
           item ? (
             <Button
@@ -341,8 +340,18 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             </Button>
           ) : undefined
         }
+        footer={
+          <div className="flex gap-3">
+            <Button type="submit" form="inventory-item-form" disabled={saving} className="flex-1">
+              {saving ? 'Saving...' : item ? 'Update' : 'Create Item'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
+              Cancel
+            </Button>
+          </div>
+        }
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="inventory-item-form" onSubmit={handleSubmit} className="space-y-4">
           {/* Item Type Selection - only for new items */}
           {!item && (
             <div className="space-y-3">
@@ -552,16 +561,8 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           </>
         )}
 
-        <div className="flex gap-3 pt-4">
-          <Button type="submit" disabled={saving} className="flex-1">
-            {saving ? 'Saving...' : item ? 'Update' : 'Create Item'}
-          </Button>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
-        </div>
       </form>
-    </Modal>
+    </Drawer>
 
       <SupplierModal
         isOpen={showSupplierModal}

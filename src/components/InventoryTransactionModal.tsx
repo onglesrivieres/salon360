@@ -10,6 +10,7 @@ import { useToast } from './ui/Toast';
 import { supabase, InventoryItem, Technician, PurchaseUnit, Supplier, Store } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { InventoryItemModal } from './InventoryItemModal';
+import { SupplierModal } from './SupplierModal';
 import { UNITS } from '../lib/inventory-constants';
 import { Permissions } from '../lib/permissions';
 
@@ -85,6 +86,7 @@ export function InventoryTransactionModal({
   const [purchaseUnits, setPurchaseUnits] = useState<Record<string, PurchaseUnit[]>>({});
   const [pendingPurchaseUnits, setPendingPurchaseUnits] = useState<PendingPurchaseUnit[]>([]);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
 
   // Create a map of master items for grouping sub-items
   const masterItemsMap = useMemo(() => {
@@ -290,6 +292,19 @@ export function InventoryTransactionModal({
       console.error('Error fetching last used purchase unit:', error);
       return null;
     }
+  }
+
+  function handleSupplierDropdownChange(value: string) {
+    if (value === '__add_new__') {
+      setShowSupplierModal(true);
+    } else {
+      setSupplierId(value);
+    }
+  }
+
+  function handleSupplierAdded() {
+    fetchSuppliers();
+    setShowSupplierModal(false);
   }
 
   function handleItemDropdownChange(index: number, value: string) {
@@ -1066,9 +1081,15 @@ export function InventoryTransactionModal({
               </label>
               <Select
                 value={supplierId}
-                onChange={(e) => setSupplierId(e.target.value)}
+                onChange={(e) => handleSupplierDropdownChange(e.target.value)}
               >
                 <option value="">Select Supplier (Optional)</option>
+                <option value="__add_new__" className="text-blue-600 font-medium">
+                  + Add New Supplier
+                </option>
+                {suppliers.length > 0 && (
+                  <option disabled>──────────</option>
+                )}
                 {suppliers.map((supplier) => (
                   <option key={supplier.id} value={supplier.id}>
                     {supplier.name}
@@ -1117,20 +1138,20 @@ export function InventoryTransactionModal({
               </Select>
             </div>
           )}
-        </div>
 
-        {transactionType === 'in' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Invoice/PO Reference
-            </label>
-            <Input
-              value={invoiceReference}
-              onChange={(e) => setInvoiceReference(e.target.value)}
-              placeholder="e.g., INV-2024-001 or PO-1234"
-            />
-          </div>
-        )}
+          {transactionType === 'in' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Invoice/PO Reference
+              </label>
+              <Input
+                value={invoiceReference}
+                onChange={(e) => setInvoiceReference(e.target.value)}
+                placeholder="e.g., INV-2024-001 or PO-1234"
+              />
+            </div>
+          )}
+        </div>
 
         <div className="border-t border-gray-200 pt-4">
           <div className="flex justify-between items-center mb-3">
@@ -1415,6 +1436,12 @@ export function InventoryTransactionModal({
       isOpen={showAddItemModal}
       onClose={() => setShowAddItemModal(false)}
       onSuccess={handleItemAdded}
+    />
+
+    <SupplierModal
+      isOpen={showSupplierModal}
+      onClose={() => setShowSupplierModal(false)}
+      onSuccess={handleSupplierAdded}
     />
     </>
   );
