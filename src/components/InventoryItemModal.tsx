@@ -225,7 +225,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         if (updateError) throw updateError;
 
         // Per-store reorder_level goes to store_inventory_levels
-        if (!isMasterItem) {
+        if (!isSubItem) {
           const { error: levelError } = await supabase
             .from('store_inventory_levels')
             .update({
@@ -263,7 +263,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         if (insertError) throw insertError;
 
         // Update the reorder_level for the current store (trigger created levels with 0)
-        if (!isMasterItem && insertedItem) {
+        if (!isSubItem && insertedItem) {
           const reorderLevel = parseFloat(formData.reorder_level) || 0;
           if (reorderLevel > 0) {
             await supabase
@@ -307,7 +307,14 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
     setSelectedParentId(value || null);
     const parent = masterItems.find(m => m.id === value);
     if (parent) {
-      setFormData(prev => ({ ...prev, category: parent.category }));
+      setFormData(prev => ({
+        ...prev,
+        brand: parent.brand || '',
+        name: parent.name,
+        size: parent.size || '',
+        category: parent.category,
+        description: parent.description || '',
+      }));
     }
   }
 
@@ -446,8 +453,8 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             </div>
             )}
 
-            {/* Brand - shown for standalone and sub-items */}
-            {itemType !== 'master' && (
+            {/* Brand */}
+            {(
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Brand
@@ -473,8 +480,8 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             />
           </div>
 
-          {/* Size - only for sub-items */}
-          {itemType === 'sub' && (
+          {/* Size - for master and sub-items */}
+          {itemType !== 'standalone' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Size
@@ -516,8 +523,8 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           />
         </div>
 
-        {/* Reorder Level - not for master items */}
-        {itemType !== 'master' && (
+        {/* Reorder Level - not for sub-items */}
+        {itemType !== 'sub' && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Reorder Level (Purchase Units)
