@@ -1006,8 +1006,26 @@ export function InventoryTransactionModal({
       onClose={onClose}
       title="New Inventory Transaction"
       size="xl"
+      footer={
+        <>
+          <div className="flex gap-3">
+            <Button type="submit" form="inventory-transaction-form" disabled={saving} className="flex-1">
+              {saving ? 'Creating...' : 'Create Transaction'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
+              Cancel
+            </Button>
+          </div>
+          <p className="text-xs text-gray-500 text-center mt-3">
+            {transactionType === 'transfer'
+              ? 'This transfer will require approval from the destination store manager'
+              : <>This transaction will require manager approval{transactionType === 'out' && ' and recipient approval'} before inventory is updated.</>
+            }
+          </p>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="inventory-transaction-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           {!initialTransactionType && (
             <div>
@@ -1392,21 +1410,6 @@ export function InventoryTransactionModal({
           />
         </div>
 
-        <div className="flex gap-3 pt-4">
-          <Button type="submit" disabled={saving} className="flex-1">
-            {saving ? 'Creating...' : 'Create Transaction'}
-          </Button>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
-        </div>
-
-        <p className="text-xs text-gray-500 text-center">
-          {transactionType === 'transfer'
-            ? 'This transfer will require approval from the destination store manager'
-            : <>This transaction will require manager approval{transactionType === 'out' && ' and recipient approval'} before inventory is updated.</>
-          }
-        </p>
       </form>
     </Drawer>
 

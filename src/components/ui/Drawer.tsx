@@ -9,6 +9,7 @@ interface DrawerProps {
   position?: 'left' | 'right';
   size?: 'sm' | 'md' | 'lg' | 'xl';
   headerActions?: React.ReactNode;
+  footer?: React.ReactNode;
 }
 
 const sizeClasses = {
@@ -18,7 +19,7 @@ const sizeClasses = {
   xl: 'md:w-[56rem]',
 };
 
-export function Drawer({ isOpen, onClose, title, children, position = 'right', size = 'md', headerActions }: DrawerProps) {
+export function Drawer({ isOpen, onClose, title, children, position = 'right', size = 'md', headerActions, footer }: DrawerProps) {
   if (!isOpen) return null;
 
   const positionStyles = position === 'right' ? 'right-0' : 'left-0';
@@ -31,9 +32,9 @@ export function Drawer({ isOpen, onClose, title, children, position = 'right', s
         onClick={onClose}
       />
       <div
-        className={`fixed top-0 ${positionStyles} h-full w-full ${sizeClasses[size]} bg-white shadow-xl z-50 overflow-y-auto ${slideAnimation}`}
+        className={`fixed top-0 ${positionStyles} h-full w-full ${sizeClasses[size]} bg-white shadow-xl z-50 flex flex-col ${slideAnimation}`}
       >
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
           <div className="flex items-center gap-2">
             {headerActions}
@@ -45,9 +46,14 @@ export function Drawer({ isOpen, onClose, title, children, position = 'right', s
             </button>
           </div>
         </div>
-        <div className="px-6 py-4">
+        <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4">
           {children}
         </div>
+        {footer && (
+          <div className="flex-shrink-0 border-t border-gray-200 bg-white px-6 py-4">
+            {footer}
+          </div>
+        )}
       </div>
     </>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PackagePlus, AlertCircle } from 'lucide-react';
-import { Modal } from './ui/Modal';
+import { Drawer } from './ui/Drawer';
 import { Button } from './ui/Button';
 import { NumericInput } from './ui/NumericInput';
 import { Select } from './ui/Select';
@@ -204,13 +204,29 @@ export function EmployeeDistributionModal({
   }, [inventoryItems, masterItemsMap]);
 
   return (
-    <Modal
+    <Drawer
       isOpen={isOpen}
       onClose={onClose}
       title="Distribute to Employee"
       size="lg"
+      footer={
+        <>
+          <div className="flex gap-3">
+            <Button type="submit" form="distribution-form" disabled={saving} className="flex-1">
+              <PackagePlus className="w-4 h-4 mr-2" />
+              {saving ? 'Distributing...' : 'Distribute to Employee'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
+              Cancel
+            </Button>
+          </div>
+          <p className="text-xs text-gray-500 text-center mt-3">
+            Distribution creates an audit trail and updates employee inventory
+          </p>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="distribution-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
           <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-blue-800">
@@ -288,20 +304,7 @@ export function EmployeeDistributionModal({
           />
         </div>
 
-        <div className="flex gap-3 pt-4">
-          <Button type="submit" disabled={saving} className="flex-1">
-            <PackagePlus className="w-4 h-4 mr-2" />
-            {saving ? 'Distributing...' : 'Distribute to Employee'}
-          </Button>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
-        </div>
-
-        <p className="text-xs text-gray-500 text-center">
-          Distribution creates an audit trail and updates employee inventory
-        </p>
       </form>
-    </Modal>
+    </Drawer>
   );
 }
