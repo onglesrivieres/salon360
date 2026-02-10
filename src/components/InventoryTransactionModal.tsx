@@ -1008,6 +1008,22 @@ export function InventoryTransactionModal({
       size="xl"
       footer={
         <>
+          <div className="flex justify-between items-center text-sm font-semibold mb-3">
+            <span>Total Transaction Value:</span>
+            <span className="text-lg text-blue-600">${calculateTotalValue().toFixed(2)}</span>
+          </div>
+
+          <div className="mb-3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional transaction notes"
+              rows={1}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
           <div className="flex gap-3">
             <Button type="submit" form="inventory-transaction-form" disabled={saving} className="flex-1">
               {saving ? 'Creating...' : 'Create Transaction'}
@@ -1125,7 +1141,7 @@ export function InventoryTransactionModal({
             </Button>
           </div>
 
-          <div className="space-y-3 max-h-96 overflow-y-auto">
+          <div className="space-y-3">
             {items.map((item, index) => {
               const invItem = inventoryItems.find(i => i.id === item.item_id);
               const itemPurchaseUnits = invItem?.id ? purchaseUnits[invItem.id] || [] : [];
@@ -1390,24 +1406,6 @@ export function InventoryTransactionModal({
               );
             })}
           </div>
-        </div>
-
-        <div className="border-t border-gray-200 pt-4">
-          <div className="flex justify-between items-center text-sm font-semibold">
-            <span>Total Transaction Value:</span>
-            <span className="text-lg text-blue-600">${calculateTotalValue().toFixed(2)}</span>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Optional transaction notes"
-            rows={1}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
         </div>
 
       </form>
