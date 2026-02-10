@@ -145,7 +145,7 @@ ToastProvider → AuthProvider → PermissionsProvider → PermissionsCacheProvi
 
 **ClientsPage** (`ClientsPage.tsx`): Client CRUD with blacklist support. Visit stats (count, last visit, total spending). Phone visibility role-based. Clickable column sorting. `batchIn()` helper for chunked queries (50 IDs per batch).
 
-**InventoryPage** (`InventoryPage.tsx`): 5 tabs — Items (CRUD, low stock alerts, master/sub hierarchies), Transactions (stock in/out, approval workflow), Lots (purchase tracking, statuses: active/depleted/expired/archived), Distributions (pending→acknowledged→in-use→returned/consumed), Suppliers (master data).
+**InventoryPage** (`InventoryPage.tsx`): 5 tabs — Items (CRUD, low stock alerts, master/sub hierarchies), Transactions (stock in, store-to-store transfers, approval workflow), Lots (purchase tracking, statuses: active/depleted/expired/archived), Distributions (pending→acknowledged→in-use→returned/consumed), Suppliers (master data).
 
 **InsightsPage** (`InsightsPage.tsx`): 4 tabs — Sales Overview, Sales Report, Payment Types, Employee Sales. Time filters: today, week, month, 30 days, custom range.
 
@@ -301,6 +301,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 - **Distribution Workflow**: pending → acknowledged → in-use → returned/consumed
 - **Low Stock Alerts**: quantity < reorder level
 - **Transaction Approval**: Manager required; only Admin can self-approve
+- **Store-to-Store Transfers**: `transaction_type = 'transfer'`, requires destination manager approval. Partial receipt supported (`received_quantity` per item). Stock moves atomically on approval: deducted from source, added to destination. Transaction numbers prefixed `XFER-`. Items are global catalog (`inventory_items`), per-store stock in `store_inventory_levels`
 
 ### 6.6 Employee Management Rules
 
@@ -343,7 +344,7 @@ Enter opening cash (or auto-fill from previous day) → Record transactions thro
 
 ### 7.3 Inventory Workflow
 
-Purchase lot created → Available → Distributed or Used in service. Distribution: pending → acknowledged → in-use → returned/consumed. Transactions: created → pending → manager review → approved/rejected.
+Purchase lot created → Available → Distributed or Used in service. Distribution: pending → acknowledged → in-use → returned/consumed. Transactions: created → pending → manager review → approved/rejected. Store-to-store transfers: created at source → pending → destination manager reviews (can adjust received qty for partial receipt) → approved (stock moves) / rejected (no change).
 
 ### 7.4 Attendance Workflow
 
@@ -405,6 +406,10 @@ Technician ready → In queue → (skip turn → back to end of queue) → Assig
 **store_services**: `requires_photos` — when true, tickets with this service require min 1 photo + notes
 
 **inventory_purchase_lots**: `lot_number` (auto-generated, e.g. OM-2026-00001), `quantity_received`/`quantity_remaining`, `status` (active/depleted/expired/archived)
+
+**inventory_transactions**: `transaction_type` (in/out/transfer), `destination_store_id` (for transfers), `transaction_number` (prefixed IN-/OUT-/XFER-)
+
+**inventory_transaction_items**: `received_quantity` (nullable, set by destination manager for partial receipt on transfers)
 
 **inventory_distributions**: `status` (pending/acknowledged/in_use/returned/consumed/cancelled)
 
@@ -478,6 +483,7 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes
 
 ### 2026-02-10
+- **Store-to-store inventory transfers**: Replaced "Inventory Out" button with purple "Store-to-Store" transfer button. Transfers move inventory between stores with destination manager approval and partial receipt support. New `transfer` transaction type, `destination_store_id` on `inventory_transactions`, `received_quantity` on `inventory_transaction_items`. Transfer approval modal shows each item with editable received qty. Stock moves atomically on approval via trigger (deduct from source, add to destination using `COALESCE(received_quantity, quantity)`). New `approve_inventory_transfer` RPC. Updated `get_pending_inventory_approvals` to include transfers where destination is current store. Transaction numbers prefixed `XFER-YYYYMMDD-NNNN`. Files: `InventoryPage.tsx`, `InventoryTransactionModal.tsx`, `PendingApprovalsPage.tsx`, `supabase.ts`, `i18n.ts` + migration
 - **Inventory Transaction form as right-side panel**: Converted "New Inventory Transaction" from centered `Modal` to full-height right-side `Drawer` panel (`size="xl"`, 896px). Added `size` prop to `Drawer` component (`sm`/`md`/`lg`/`xl`) with `md` as default (no breaking change). Fixed Drawer animation class to use correct `animate-slide-in-right`. Files: `Drawer.tsx`, `InventoryTransactionModal.tsx`
 - **Searchable parent item dropdown in Inventory**: Replaced plain `<Select>` with `<SearchableSelect>` for the Parent Master Item field when creating sub-items. Auto-fills category from selected parent (still editable). Modal uses full viewport height. Files: `InventoryItemModal.tsx`
 - **Simplify ticket service edit permissions**: Technicians/Trainees can edit services until completed (removed closed check). Other roles can edit services until ticket is closed (removed approval check). Files: `permissions.ts`

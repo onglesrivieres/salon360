@@ -7,7 +7,7 @@ import { Select } from './ui/Select';
 import { NumericInput } from './ui/NumericInput';
 import { SearchableSelect, SearchableSelectOption } from './ui/SearchableSelect';
 import { useToast } from './ui/Toast';
-import { supabase, InventoryItem, Technician, PurchaseUnit, Supplier } from '../lib/supabase';
+import { supabase, InventoryItem, Technician, PurchaseUnit, Supplier, Store } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { InventoryItemModal } from './InventoryItemModal';
 import { UNITS } from '../lib/inventory-constants';
@@ -17,7 +17,7 @@ interface InventoryTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  initialTransactionType?: 'in' | 'out';
+  initialTransactionType?: 'in' | 'out' | 'transfer';
 }
 
 interface TransactionItemForm {
@@ -55,9 +55,11 @@ export function InventoryTransactionModal({
   const { showToast } = useToast();
   const { selectedStoreId, session } = useAuth();
   const [saving, setSaving] = useState(false);
-  const [transactionType, setTransactionType] = useState<'in' | 'out'>(initialTransactionType || 'in');
+  const [transactionType, setTransactionType] = useState<'in' | 'out' | 'transfer'>(initialTransactionType || 'in');
   const [supplierId, setSupplierId] = useState('');
   const [recipientId, setRecipientId] = useState('');
+  const [destinationStoreId, setDestinationStoreId] = useState('');
+  const [availableStores, setAvailableStores] = useState<Store[]>([]);
   const [invoiceReference, setInvoiceReference] = useState('');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<TransactionItemForm[]>([
@@ -100,6 +102,7 @@ export function InventoryTransactionModal({
       fetchInventoryItems();
       fetchEmployees();
       fetchSuppliers();
+      fetchAvailableStores();
     }
   }, [isOpen, selectedStoreId]);
 
@@ -120,6 +123,7 @@ export function InventoryTransactionModal({
       customPurchaseUnitName: ''
     }]);
     setRecipientId('');
+    setDestinationStoreId('');
     setSupplierId('');
     setInvoiceReference('');
     setNotes('');
@@ -200,6 +204,53 @@ export function InventoryTransactionModal({
       setSuppliers(data || []);
     } catch (error) {
       console.error('Error fetching suppliers:', error);
+    }
+  }
+
+  async function fetchAvailableStores() {
+    if (!selectedStoreId || !session?.employee_id) return;
+
+    try {
+      // Fetch stores the user has access to
+      const isAdminOrManagerOrOwner = session.role &&
+        (session.role.includes('Admin') || session.role.includes('Manager') || session.role.includes('Owner'));
+
+      let storesData: Store[];
+      if (isAdminOrManagerOrOwner) {
+        const { data, error } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('active', true)
+          .order('name');
+        if (error) throw error;
+        storesData = data || [];
+      } else {
+        const { data: empStores, error: empError } = await supabase
+          .from('employee_stores')
+          .select('store_id')
+          .eq('employee_id', session.employee_id);
+        if (empError) throw empError;
+
+        const storeIds = (empStores || []).map(es => es.store_id);
+        if (storeIds.length === 0) {
+          setAvailableStores([]);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('active', true)
+          .in('id', storeIds)
+          .order('name');
+        if (error) throw error;
+        storesData = data || [];
+      }
+
+      // Exclude current store
+      setAvailableStores(storesData.filter(s => s.id !== selectedStoreId));
+    } catch (error) {
+      console.error('Error fetching stores:', error);
     }
   }
 
@@ -598,6 +649,7 @@ export function InventoryTransactionModal({
         p_notes: notes.trim(),
         p_requires_manager_approval: !canSelfApprove,  // Admin doesn't require approval
         p_requires_recipient_approval: transactionType === 'out',
+        p_destination_store_id: transactionType === 'transfer' ? destinationStoreId : null,
       }
     );
 
@@ -649,7 +701,9 @@ export function InventoryTransactionModal({
       throw new Error(itemsResult?.[0]?.message || 'Failed to insert transaction items');
     }
 
-    if (transactionType === 'in' && session?.employee_id) {
+    if (transactionType === 'transfer') {
+      // Skip purchase unit preference updates for transfers
+    } else if (transactionType === 'in' && session?.employee_id) {
       for (const item of validItems) {
         const inventoryItem = inventoryItems.find((i) => i.id === item.item_id);
         if (item.purchase_unit_id && inventoryItem?.id) {
@@ -680,6 +734,11 @@ export function InventoryTransactionModal({
 
     if (transactionType === 'out' && !recipientId) {
       showToast('Please select a recipient for OUT transaction', 'error');
+      return;
+    }
+
+    if (transactionType === 'transfer' && !destinationStoreId) {
+      showToast('Please select a destination store', 'error');
       return;
     }
 
@@ -895,7 +954,7 @@ export function InventoryTransactionModal({
       return;
     }
 
-    if (transactionType === 'out') {
+    if (transactionType === 'out' || transactionType === 'transfer') {
       for (const item of validItems) {
         const inventoryItem = inventoryItems.find((i) => i.id === item.item_id);
         if (inventoryItem && parseFloat(item.quantity) > inventoryItem.quantity_on_hand) {
@@ -957,10 +1016,11 @@ export function InventoryTransactionModal({
               </label>
               <Select
                 value={transactionType}
-                onChange={(e) => setTransactionType(e.target.value as 'in' | 'out')}
+                onChange={(e) => setTransactionType(e.target.value as 'in' | 'out' | 'transfer')}
               >
                 <option value="in">IN - Receiving Items</option>
                 <option value="out">OUT - Giving to Employee</option>
+                <option value="transfer">TRANSFER - Store-to-Store</option>
               </Select>
             </div>
           )}
@@ -998,6 +1058,26 @@ export function InventoryTransactionModal({
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
                     {emp.display_name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+
+          {transactionType === 'transfer' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Destination Store <span className="text-red-500">*</span>
+              </label>
+              <Select
+                value={destinationStoreId}
+                onChange={(e) => setDestinationStoreId(e.target.value)}
+                required
+              >
+                <option value="">Select Store</option>
+                {availableStores.map((store) => (
+                  <option key={store.id} value={store.id}>
+                    {store.name}
                   </option>
                 ))}
               </Select>
@@ -1071,7 +1151,7 @@ export function InventoryTransactionModal({
                           groupLabel: invItem.parent_id ? masterItemsMap.get(invItem.parent_id)?.name : undefined,
                         }))}
                       />
-                      {item.item_id && transactionType === 'out' && (
+                      {item.item_id && (transactionType === 'out' || transactionType === 'transfer') && (
                         <p className="text-xs text-gray-500 mt-1">
                           Available: {getAvailableStock(item.item_id)}
                         </p>
@@ -1230,7 +1310,7 @@ export function InventoryTransactionModal({
                       </div>
                     )}
 
-                    {transactionType === 'out' && (
+                    {(transactionType === 'out' || transactionType === 'transfer') && (
                       <div className="col-span-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Quantity {index === 0 && <span className="text-red-500">*</span>}
@@ -1322,8 +1402,10 @@ export function InventoryTransactionModal({
         </div>
 
         <p className="text-xs text-gray-500 text-center">
-          This transaction will require manager approval
-          {transactionType === 'out' && ' and recipient approval'} before inventory is updated.
+          {transactionType === 'transfer'
+            ? 'This transfer will require approval from the destination store manager'
+            : <>This transaction will require manager approval{transactionType === 'out' && ' and recipient approval'} before inventory is updated.</>
+          }
         </p>
       </form>
     </Drawer>

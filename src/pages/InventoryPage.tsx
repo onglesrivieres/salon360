@@ -6,6 +6,7 @@ import {
   Search,
   AlertTriangle,
   ArrowUpDown,
+  ArrowLeftRight,
   PackagePlus,
   PackageMinus,
   CheckCircle,
@@ -67,7 +68,7 @@ export function InventoryPage() {
   const [showDistributionModal, setShowDistributionModal] = useState(false);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [showTransactionDetailModal, setShowTransactionDetailModal] = useState(false);
-  const [transactionType, setTransactionType] = useState<'in' | 'out' | undefined>(undefined);
+  const [transactionType, setTransactionType] = useState<'in' | 'out' | 'transfer' | undefined>(undefined);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
@@ -245,7 +246,8 @@ export function InventoryPage() {
           `
           *,
           requested_by:employees!inventory_transactions_requested_by_id_fkey(display_name),
-          recipient:employees!inventory_transactions_recipient_id_fkey(display_name)
+          recipient:employees!inventory_transactions_recipient_id_fkey(display_name),
+          destination_store:stores!inventory_transactions_destination_store_id_fkey(name)
         `
         )
         .eq('store_id', selectedStoreId)
@@ -258,6 +260,7 @@ export function InventoryPage() {
         ...t,
         requested_by_name: t.requested_by?.display_name || '',
         recipient_name: t.recipient?.display_name || '',
+        destination_store_name: t.destination_store?.name || '',
       }));
 
       setTransactions(transactionsWithDetails);
@@ -432,8 +435,8 @@ export function InventoryPage() {
     setShowTransactionModal(true);
   }
 
-  function handleOpenInventoryOut() {
-    setTransactionType('out');
+  function handleOpenTransfer() {
+    setTransactionType('transfer');
     setShowTransactionModal(true);
   }
 
@@ -1527,11 +1530,11 @@ export function InventoryPage() {
                   Inventory In
                 </Button>
                 <Button
-                  onClick={handleOpenInventoryOut}
-                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  onClick={handleOpenTransfer}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
                 >
-                  <PackageMinus className="w-4 h-4 mr-2" />
-                  Inventory Out
+                  <ArrowLeftRight className="w-4 h-4 mr-2" />
+                  {t('inventory.storeToStore')}
                 </Button>
                 {canDistribute && (
                   <Button
@@ -1567,6 +1570,10 @@ export function InventoryPage() {
                         <div className="p-2 bg-green-50 rounded-lg">
                           <PackagePlus className="w-5 h-5 text-green-600" />
                         </div>
+                      ) : transaction.transaction_type === 'transfer' ? (
+                        <div className="p-2 bg-purple-50 rounded-lg">
+                          <ArrowLeftRight className="w-5 h-5 text-purple-600" />
+                        </div>
                       ) : (
                         <div className="p-2 bg-orange-50 rounded-lg">
                           <PackageMinus className="w-5 h-5 text-orange-600" />
@@ -1579,15 +1586,25 @@ export function InventoryPage() {
                           </span>
                           <Badge
                             variant={
-                              transaction.transaction_type === 'in' ? 'success' : 'default'
+                              transaction.transaction_type === 'in' ? 'success' :
+                              transaction.transaction_type === 'transfer' ? 'info' : 'default'
                             }
                           >
-                            {transaction.transaction_type.toUpperCase()}
+                            {transaction.transaction_type === 'transfer' ? t('inventory.transfer').toUpperCase() : transaction.transaction_type.toUpperCase()}
                           </Badge>
                         </div>
                         <p className="text-sm text-gray-600">
-                          Requested by {transaction.requested_by_name}
-                          {transaction.recipient_name && ` → ${transaction.recipient_name}`}
+                          {transaction.transaction_type === 'transfer' ? (
+                            <>
+                              {t('inventory.fromStore')}: {transaction.requested_by_name}
+                              {transaction.destination_store_name && ` → ${t('inventory.toStore')}: ${transaction.destination_store_name}`}
+                            </>
+                          ) : (
+                            <>
+                              Requested by {transaction.requested_by_name}
+                              {transaction.recipient_name && ` → ${transaction.recipient_name}`}
+                            </>
+                          )}
                         </p>
                       </div>
                     </div>

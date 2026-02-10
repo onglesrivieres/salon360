@@ -470,10 +470,11 @@ export interface InventoryItemWithHierarchy extends InventoryItem {
 export interface InventoryTransaction {
   id: string;
   store_id: string;
-  transaction_type: 'in' | 'out';
+  transaction_type: 'in' | 'out' | 'transfer';
   transaction_number: string;
   requested_by_id: string;
   recipient_id?: string;
+  destination_store_id?: string;
   notes: string;
   status: 'pending' | 'approved' | 'rejected';
   requires_recipient_approval: boolean;
@@ -495,6 +496,7 @@ export interface InventoryTransactionItem {
   item_id: string;
   quantity: number;
   unit_cost: number;
+  received_quantity?: number;
   notes: string;
   created_at: string;
 }
@@ -502,6 +504,7 @@ export interface InventoryTransactionItem {
 export interface InventoryTransactionWithDetails extends InventoryTransaction {
   requested_by_name?: string;
   recipient_name?: string;
+  destination_store_name?: string;
   items?: InventoryTransactionItemWithDetails[];
 }
 
@@ -516,7 +519,7 @@ export interface InventoryTransactionItemWithDetails extends InventoryTransactio
 export interface ItemTransactionHistory {
   transaction_id: string;
   transaction_number: string;
-  transaction_type: 'in' | 'out';
+  transaction_type: 'in' | 'out' | 'transfer';
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   purchase_unit_name: string;
@@ -530,7 +533,7 @@ export interface ItemTransactionHistory {
 export interface TransactionDetail {
   id: string;
   transaction_number: string;
-  transaction_type: 'in' | 'out';
+  transaction_type: 'in' | 'out' | 'transfer';
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   requested_by_id: string;
@@ -568,7 +571,7 @@ export interface TransactionDetailItem {
 export interface PendingInventoryApproval {
   id: string;
   transaction_number: string;
-  transaction_type: 'in' | 'out';
+  transaction_type: 'in' | 'out' | 'transfer';
   requested_by_id: string;
   requested_by_name: string;
   recipient_id: string | null;
@@ -582,6 +585,9 @@ export interface PendingInventoryApproval {
   created_at: string;
   item_count: number;
   total_value: number;
+  destination_store_id?: string;
+  destination_store_name?: string;
+  source_store_name?: string;
 }
 
 export interface InventoryPurchaseLot {

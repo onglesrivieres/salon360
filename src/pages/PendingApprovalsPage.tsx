@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight, ChevronDown, Bell, User, Calendar, History, Download, Eye, RotateCcw } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowLeftRight, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight, ChevronDown, Bell, User, Calendar, History, Download, Eye, RotateCcw } from 'lucide-react';
 import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, PendingCashTransactionChangeProposal, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket, AttendanceChangeProposalWithDetails, PendingTicketReopenRequest } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -88,6 +88,8 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
   const [selectedViolationReport, setSelectedViolationReport] = useState<ViolationReportForApproval | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showInventoryRejectModal, setShowInventoryRejectModal] = useState(false);
+  const [showTransferApprovalModal, setShowTransferApprovalModal] = useState(false);
+  const [transferApprovalItems, setTransferApprovalItems] = useState<{item_id: string; item_name: string; sent_quantity: number; received_quantity: string}[]>([]);
   const [showCashTransactionRejectModal, setShowCashTransactionRejectModal] = useState(false);
   const [showViolationDecisionModal, setShowViolationDecisionModal] = useState(false);
   const [violationDecision, setViolationDecision] = useState<ViolationDecision>('violation_confirmed');
@@ -1123,6 +1125,92 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     }
   }
 
+  async function handleOpenTransferApproval(approval: PendingInventoryApproval) {
+    if (!session?.employee_id) return;
+
+    if (approval.requested_by_id === session.employee_id) {
+      showToast('You cannot approve transfers you created', 'error');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      // Fetch the transaction items for this transfer
+      const { data: items, error } = await supabase
+        .from('inventory_transaction_items')
+        .select('item_id, quantity, inventory_items!inner(name)')
+        .eq('transaction_id', approval.id);
+
+      if (error) throw error;
+
+      const transferItems = (items || []).map((item: any) => ({
+        item_id: item.item_id,
+        item_name: item.inventory_items?.name || 'Unknown',
+        sent_quantity: item.quantity,
+        received_quantity: item.quantity.toString(),
+      }));
+
+      setTransferApprovalItems(transferItems);
+      setSelectedInventory(approval);
+      setShowTransferApprovalModal(true);
+    } catch (error: any) {
+      showToast(error.message || 'Failed to load transfer items', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function handleApproveTransfer() {
+    if (!selectedInventory || !session?.employee_id) return;
+
+    try {
+      setProcessing(true);
+
+      const receivedItems = transferApprovalItems.map(item => ({
+        item_id: item.item_id,
+        received_quantity: parseFloat(item.received_quantity) || 0,
+      }));
+
+      // Validate received quantities
+      for (const item of transferApprovalItems) {
+        const received = parseFloat(item.received_quantity) || 0;
+        if (received < 0) {
+          showToast(`Received quantity cannot be negative for ${item.item_name}`, 'error');
+          return;
+        }
+        if (received > item.sent_quantity) {
+          showToast(`Received quantity cannot exceed sent quantity for ${item.item_name}`, 'error');
+          return;
+        }
+      }
+
+      const { error } = await supabase.rpc('approve_inventory_transfer', {
+        p_transaction_id: selectedInventory.id,
+        p_employee_id: session.employee_id,
+        p_received_items: receivedItems,
+      });
+
+      if (error) throw error;
+
+      const isPartial = transferApprovalItems.some(
+        item => parseFloat(item.received_quantity) < item.sent_quantity
+      );
+
+      showToast(
+        isPartial ? t('inventory.partialReceiptRecorded') : t('inventory.transferApproved'),
+        'success'
+      );
+      setShowTransferApprovalModal(false);
+      setSelectedInventory(null);
+      setTransferApprovalItems([]);
+      fetchInventoryApprovals();
+    } catch (error: any) {
+      showToast(error.message || 'Failed to approve transfer', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
   async function handleApproveCashTransaction(approval: PendingCashTransactionApproval) {
     if (!session?.employee_id) {
       showToast('Session expired. Please log in again.', 'error');
@@ -2038,29 +2126,45 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                   {inventoryApprovals.map((approval) => (
                     <div
                       key={approval.id}
-                      className="bg-white rounded-lg border-2 border-blue-200 p-4"
+                      className={`bg-white rounded-lg border-2 p-4 ${
+                        approval.transaction_type === 'transfer' ? 'border-purple-200' : 'border-blue-200'
+                      }`}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             {approval.transaction_type === 'in' ? (
                               <PackagePlus className="w-5 h-5 text-green-600" />
+                            ) : approval.transaction_type === 'transfer' ? (
+                              <ArrowLeftRight className="w-5 h-5 text-purple-600" />
                             ) : (
                               <PackageMinus className="w-5 h-5 text-orange-600" />
                             )}
                             <span className="font-semibold text-gray-900">
                               {approval.transaction_number}
                             </span>
-                            <Badge variant={approval.transaction_type === 'in' ? 'success' : 'default'}>
-                              {approval.transaction_type.toUpperCase()}
+                            <Badge variant={
+                              approval.transaction_type === 'in' ? 'success' :
+                              approval.transaction_type === 'transfer' ? 'info' : 'default'
+                            }>
+                              {approval.transaction_type === 'transfer' ? t('inventory.transfer').toUpperCase() : approval.transaction_type.toUpperCase()}
                             </Badge>
                           </div>
-                          <p className="text-sm text-gray-600">
-                            Requested by: <span className="font-medium">{approval.requested_by_name}</span>
-                            {approval.recipient_name && (
-                              <span> → Recipient: <span className="font-medium">{approval.recipient_name}</span></span>
-                            )}
-                          </p>
+                          {approval.transaction_type === 'transfer' ? (
+                            <p className="text-sm text-gray-600">
+                              {t('inventory.fromStore')}: <span className="font-medium">{approval.source_store_name}</span>
+                              {approval.destination_store_name && (
+                                <span> → {t('inventory.toStore')}: <span className="font-medium">{approval.destination_store_name}</span></span>
+                              )}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-gray-600">
+                              Requested by: <span className="font-medium">{approval.requested_by_name}</span>
+                              {approval.recipient_name && (
+                                <span> → Recipient: <span className="font-medium">{approval.recipient_name}</span></span>
+                              )}
+                            </p>
+                          )}
                           <p className="text-sm text-gray-600">
                             {approval.item_count} item{approval.item_count !== 1 ? 's' : ''} • Total value: ${approval.total_value?.toFixed(2) || '0.00'}
                           </p>
@@ -2070,14 +2174,25 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                         </div>
                         {canTakeActions ? (
                           <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleApproveInventory(approval)}
-                              disabled={processing}
-                            >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Approve
-                            </Button>
+                            {approval.transaction_type === 'transfer' ? (
+                              <Button
+                                size="sm"
+                                onClick={() => handleOpenTransferApproval(approval)}
+                                disabled={processing}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                Review
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() => handleApproveInventory(approval)}
+                                disabled={processing}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                Approve
+                              </Button>
+                            )}
                             <Button
                               size="sm"
                               variant="secondary"
@@ -3408,6 +3523,65 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                 disabled={processing}
               />
             </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={showTransferApprovalModal}
+        onClose={() => !processing && setShowTransferApprovalModal(false)}
+        title={`${t('inventory.transfer')} - ${selectedInventory?.transaction_number || ''}`}
+        onConfirm={handleApproveTransfer}
+        confirmText={processing ? 'Approving...' : 'Approve Transfer'}
+        cancelText="Cancel"
+      >
+        {selectedInventory && (
+          <div>
+            <div className="mb-4 p-3 bg-purple-50 rounded-lg">
+              <p className="text-sm text-gray-700">
+                <span className="font-medium">{t('inventory.fromStore')}:</span> {selectedInventory.source_store_name}
+                <span className="mx-2">→</span>
+                <span className="font-medium">{t('inventory.toStore')}:</span> {selectedInventory.destination_store_name}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                Requested by: {selectedInventory.requested_by_name}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-gray-700">
+                Review quantities received. Adjust if partial receipt:
+              </p>
+              {transferApprovalItems.map((item, index) => (
+                <div key={item.item_id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">{item.item_name}</p>
+                    <p className="text-xs text-gray-500">{t('inventory.sentQty')}: {item.sent_quantity}</p>
+                  </div>
+                  <div className="w-28">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">{t('inventory.receivedQty')}</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max={item.sent_quantity}
+                      value={item.received_quantity}
+                      onChange={(e) => {
+                        const updated = [...transferApprovalItems];
+                        updated[index].received_quantity = e.target.value;
+                        setTransferApprovalItems(updated);
+                      }}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      disabled={processing}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {selectedInventory.notes && (
+              <p className="text-sm text-gray-600 mt-3 italic">Notes: {selectedInventory.notes}</p>
+            )}
           </div>
         )}
       </Modal>
