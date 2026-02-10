@@ -235,6 +235,7 @@ $$;
 -- ============================================================================
 -- 7. Update get_pending_inventory_approvals() RPC
 -- ============================================================================
+DROP FUNCTION IF EXISTS public.get_pending_inventory_approvals(uuid, uuid);
 CREATE OR REPLACE FUNCTION public.get_pending_inventory_approvals(
   p_employee_id uuid,
   p_store_id uuid
