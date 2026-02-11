@@ -39,7 +39,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
     reorder_level: '0',
     size: '',
   });
-  const [itemType, setItemType] = useState<'standalone' | 'master' | 'sub'>('standalone');
+  const [itemType, setItemType] = useState<'master' | 'sub'>('master');
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [masterItems, setMasterItems] = useState<InventoryItem[]>([]);
   const [transactionCount, setTransactionCount] = useState<number>(0);
@@ -105,7 +105,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         setItemType('sub');
         setSelectedParentId(item.parent_id);
       } else {
-        setItemType('standalone');
+        setItemType('master');
         setSelectedParentId(null);
       }
     } else {
@@ -118,7 +118,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         reorder_level: '0',
         size: '',
       });
-      setItemType('standalone');
+      setItemType('master');
       setSelectedParentId(null);
     }
     setTransactionCount(0);
@@ -370,19 +370,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
                   <input
                     type="radio"
                     name="item_type"
-                    checked={itemType === 'standalone'}
-                    onChange={() => {
-                      setItemType('standalone');
-                      setSelectedParentId(null);
-                    }}
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span className="text-sm">Standalone Item</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="item_type"
                     checked={itemType === 'master'}
                     onChange={() => {
                       setItemType('master');
@@ -480,8 +467,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             />
           </div>
 
-          {/* Size - for master and sub-items */}
-          {itemType !== 'standalone' && (
+          {/* Size */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Size
@@ -492,7 +478,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
                 placeholder="e.g., Small, Medium, Large"
               />
             </div>
-          )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">

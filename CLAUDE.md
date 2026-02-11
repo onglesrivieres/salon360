@@ -482,6 +482,9 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-11
+- **Remove Standalone item type from inventory**: Removed Standalone Item radio option from InventoryItemModal; only Master Item (Group) and Sub-Item (Variation) remain, with Master as default. Existing standalone items (no parent, not master) treated as master on edit. Size field now always visible. Removed `standaloneItems` filter from InventoryPage display logic. Migration converts all existing standalone items to master items. Files: `InventoryItemModal.tsx`, `InventoryPage.tsx` + migration
+
 ### 2026-02-10
 - **Master-item-level inventory for out/transfer transactions**: Stock is now tracked at the master item level. "In" transactions select sub-items (purchase variants) but approval routes stock to the parent master item. "Out" and "Transfer" dropdowns show master items only. InventoryPage reads master item's own `quantity_on_hand` instead of aggregating children. Sub-item expanded rows show dashes for quantity/reorder/value columns. Data migration aggregates existing sub-item stock to master items and zeros sub-item levels. Updated `update_inventory_on_transaction_approval()` trigger to resolve `parent_id` on "in" approval. Files: `InventoryTransactionModal.tsx`, `InventoryPage.tsx` + migration
 - **Add Brand/Size/Reorder Level to master items & auto-fill sub-item fields**: Master items now show Brand, Size, and Reorder Level fields (previously hidden). Sub-items no longer show Reorder Level. Selecting a parent master item when creating a sub-item now auto-fills Brand, Item Name, Size, Category, and Description from the parent. Updated reorder level save logic to persist for master items instead of skipping them. Files: `InventoryItemModal.tsx`
