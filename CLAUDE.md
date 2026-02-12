@@ -483,6 +483,7 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes
 
 ### 2026-02-12
+- **Fix lot/transaction number regex for backslash escaping**: Replaced `'\d+$'` and `'\\d+$'` regex patterns with POSIX `'[0-9]+$'` in `generate_lot_number()` and `create_inventory_transaction_atomic()`. The `\d` shorthand behaves differently depending on `standard_conforming_strings` setting; `[0-9]` works identically regardless. Prevents `MAX()` returning NULL and sequence resetting to 1 on every approval. Files: migration only
 - **Fix duplicate lot number on inventory transaction approval**: Fixed `generate_lot_number()` regression from January 2026 migration squash. Three bugs: (1) missing `pg_advisory_xact_lock` allowed concurrent approvals to generate duplicate lot numbers, (2) store-scoped `WHERE store_id = p_store_id` conflicted with global UNIQUE constraint on `lot_number`, (3) missing `p_offset` parameter (Salon365 had old 2-param signature while `create_lots_from_approved_transaction` passes 3 args). Restored proven fix from archived migration `20260123160544`. Files: migration only
 
 ### 2026-02-11
