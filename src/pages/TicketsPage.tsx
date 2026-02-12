@@ -1276,9 +1276,17 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                       </div>
                     </td>
                     <td className="px-3 py-2 text-center">
-                      {ticket.ticket_photos && ticket.ticket_photos.length > 0 && (
-                        <ImageIcon className="w-4 h-4 text-blue-500 inline-block" />
-                      )}
+                      <div className="flex items-center justify-center gap-1">
+                        {!shouldHideTips && getTipReceptionist(ticket) > 0 && (
+                          <DollarSign className="w-4 h-4 text-green-500 inline-block" />
+                        )}
+                        {ticket.notes && ticket.notes.trim() !== '' && (
+                          <FileText className="w-4 h-4 text-amber-500 inline-block" />
+                        )}
+                        {ticket.ticket_photos && ticket.ticket_photos.length > 0 && (
+                          <ImageIcon className="w-4 h-4 text-blue-500 inline-block" />
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -1424,6 +1432,12 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                   )}
                   <div className="flex items-center gap-1">
                     {getApprovalStatusBadge(ticket)}
+                    {!shouldHideTips && getTipReceptionist(ticket) > 0 && (
+                      <DollarSign className="w-4 h-4 text-green-500" />
+                    )}
+                    {ticket.notes && ticket.notes.trim() !== '' && (
+                      <FileText className="w-4 h-4 text-amber-500" />
+                    )}
                     {ticket.ticket_photos && ticket.ticket_photos.length > 0 && (
                       <ImageIcon className="w-4 h-4 text-blue-500" />
                     )}
