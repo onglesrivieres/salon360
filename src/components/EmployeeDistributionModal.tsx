@@ -8,6 +8,7 @@ import { SearchableSelect, SearchableSelectOption } from './ui/SearchableSelect'
 import { useToast } from './ui/Toast';
 import { supabase, InventoryItem, Technician } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { getCurrentDateEST } from '../lib/timezone';
 
 interface EmployeeDistributionModalProps {
   isOpen: boolean;
@@ -107,8 +108,21 @@ export function EmployeeDistributionModal({
         employeeStoresData?.map((es) => es.employee_id) || []
       );
 
+      const today = getCurrentDateEST();
+      const { data: attendanceData, error: attendanceError } = await supabase
+        .from('attendance_records')
+        .select('employee_id')
+        .eq('store_id', selectedStoreId)
+        .eq('work_date', today);
+
+      if (attendanceError) throw attendanceError;
+
+      const checkedInEmployeeIds = new Set(
+        attendanceData?.map((rec: any) => rec.employee_id) || []
+      );
+
       const filteredEmployees = (employeesData || []).filter((emp: Technician) =>
-        employeeIdsInStore.has(emp.id)
+        employeeIdsInStore.has(emp.id) && checkedInEmployeeIds.has(emp.id)
       );
 
       setEmployees(filteredEmployees);
