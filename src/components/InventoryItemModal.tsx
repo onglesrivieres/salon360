@@ -7,13 +7,11 @@ import { NumericInput } from './ui/NumericInput';
 import { Select } from './ui/Select';
 import { SearchableSelect } from './ui/SearchableSelect';
 import { useToast } from './ui/Toast';
-import { supabase, InventoryItem, Supplier } from '../lib/supabase';
+import { supabase, InventoryItem } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { SupplierModal } from './SupplierModal';
 import { PurchaseUnitManager } from './PurchaseUnitManager';
 import { ItemTransactionHistoryModal } from './ItemTransactionHistoryModal';
 import { TransactionDetailModal } from './TransactionDetailModal';
-import { Permissions } from '../lib/permissions';
 import { CATEGORIES } from '../lib/inventory-constants';
 
 interface InventoryItemModalProps {
@@ -25,13 +23,9 @@ interface InventoryItemModalProps {
 
 export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: InventoryItemModalProps) {
   const { showToast } = useToast();
-  const { selectedStoreId, session } = useAuth();
+  const { selectedStoreId } = useAuth();
   const [saving, setSaving] = useState(false);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [loadingSuppliers, setLoadingSuppliers] = useState(false);
-  const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [formData, setFormData] = useState({
-    supplier: '',
     brand: '',
     name: '',
     description: '',
@@ -49,7 +43,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
 
   useEffect(() => {
     if (isOpen) {
-      fetchSuppliers();
       fetchMasterItems();
       if (item) {
         fetchTransactionCount();
@@ -89,7 +82,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
   useEffect(() => {
     if (item) {
       setFormData({
-        supplier: item.supplier || '',
         brand: item.brand || '',
         name: item.name,
         description: item.description || '',
@@ -110,7 +102,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
       }
     } else {
       setFormData({
-        supplier: '',
         brand: '',
         name: '',
         description: '',
@@ -123,25 +114,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
     }
     setTransactionCount(0);
   }, [item, isOpen]);
-
-  async function fetchSuppliers() {
-    try {
-      setLoadingSuppliers(true);
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
-
-      if (error) throw error;
-      setSuppliers(data || []);
-    } catch (error) {
-      console.error('Error fetching suppliers:', error);
-      showToast('Failed to load suppliers', 'error');
-    } finally {
-      setLoadingSuppliers(false);
-    }
-  }
 
   async function fetchTransactionCount() {
     if (!item?.id) return;
@@ -162,19 +134,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
     }
   }
 
-  function handleSupplierDropdownChange(value: string) {
-    if (value === '__add_new__') {
-      setShowSupplierModal(true);
-    } else {
-      setFormData({ ...formData, supplier: value });
-    }
-  }
-
-  function handleSupplierAdded() {
-    fetchSuppliers();
-    setShowSupplierModal(false);
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -183,14 +142,8 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
       return;
     }
 
-    // Validation - master items don't need supplier, sub-items need parent
     const isMasterItem = itemType === 'master';
     const isSubItem = itemType === 'sub';
-
-    if (!isMasterItem && !formData.supplier) {
-      showToast('Please select a supplier', 'error');
-      return;
-    }
 
     if (!formData.name || !formData.category) {
       showToast('Please fill in all required fields', 'error');
@@ -214,7 +167,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             description: formData.description.trim(),
             category: formData.category,
             brand: formData.brand.trim() || null,
-            supplier: isMasterItem ? '' : formData.supplier,
             size: formData.size.trim() || null,
             is_master_item: isMasterItem,
             parent_id: isSubItem ? selectedParentId : null,
@@ -248,7 +200,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
           category: formData.category,
           unit: 'piece',
           brand: formData.brand.trim() || null,
-          supplier: isMasterItem ? '' : formData.supplier,
           size: formData.size.trim() || null,
           is_master_item: isMasterItem,
           parent_id: isSubItem ? selectedParentId : null,
@@ -296,8 +247,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
     }
   }
 
-  const isEditingExistingItem = !!item;
-
   const masterItemOptions = masterItems.map(master => ({
     value: master.id,
     label: master.name,
@@ -317,8 +266,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
       }));
     }
   }
-
-  const canCreateSupplier = session ? Permissions.suppliers.canCreate(session.role) : false;
 
   return (
     <>
@@ -409,50 +356,16 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            {/* Supplier - not required for master items */}
-            {itemType !== 'master' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Supplier <span className="text-red-500">*</span>
-              </label>
-              <Select
-                value={formData.supplier}
-                onChange={(e) => handleSupplierDropdownChange(e.target.value)}
-                required
-                disabled={isEditingExistingItem || loadingSuppliers}
-              >
-                <option value="">Select Supplier</option>
-                {!isEditingExistingItem && canCreateSupplier && (
-                  <option value="__add_new__" className="text-blue-600 font-medium">
-                    + Add New Supplier
-                  </option>
-                )}
-                {suppliers.length > 0 && !isEditingExistingItem && canCreateSupplier && (
-                  <option disabled>──────────</option>
-                )}
-                {suppliers.map((supplier) => (
-                  <option key={supplier.id} value={supplier.name}>
-                    {supplier.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            )}
-
-            {/* Brand */}
-            {(
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Brand
-              </label>
-              <Input
-                value={formData.brand}
-                onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                placeholder="e.g., OPI"
-              />
-            </div>
-            )}
+          {/* Brand */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Brand
+            </label>
+            <Input
+              value={formData.brand}
+              onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+              placeholder="e.g., OPI"
+            />
           </div>
 
           <div>
@@ -555,12 +468,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
 
       </form>
     </Drawer>
-
-      <SupplierModal
-        isOpen={showSupplierModal}
-        onClose={() => setShowSupplierModal(false)}
-        onSuccess={handleSupplierAdded}
-      />
 
       {item && (
         <>
