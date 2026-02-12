@@ -75,6 +75,7 @@ export function InventoryPage() {
   const [expandedMasterItems, setExpandedMasterItems] = useState<Set<string>>(new Set());
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [purchaseUnits, setPurchaseUnits] = useState<Record<string, { unit_name: string; multiplier: number }>>({});
+  const [subItemLotsMap, setSubItemLotsMap] = useState<Record<string, Array<{ id: string; lot_number: string; supplier_name: string | null; quantity_remaining: number }>>>({});
 
   // State for responsive tab dropdown
   const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
@@ -178,8 +179,8 @@ export function InventoryPage() {
     try {
       setLoading(true);
 
-      // Fetch items via store_inventory_levels JOIN inventory_items, and default purchase units in parallel
-      const [levelsResult, purchaseUnitsResult] = await Promise.all([
+      // Fetch items via store_inventory_levels JOIN inventory_items, default purchase units, and lots in parallel
+      const [levelsResult, purchaseUnitsResult, lotsResult] = await Promise.all([
         supabase
           .from('store_inventory_levels')
           .select('*, item:inventory_items!inner(*)')
@@ -190,7 +191,13 @@ export function InventoryPage() {
           .from('store_product_purchase_units')
           .select('item_id, unit_name, multiplier')
           .eq('store_id', selectedStoreId)
-          .eq('is_default', true)
+          .eq('is_default', true),
+        supabase
+          .from('inventory_purchase_lots')
+          .select('id, lot_number, item_id, quantity_remaining, suppliers(name)')
+          .eq('store_id', selectedStoreId)
+          .in('status', ['active', 'expired', 'archived'])
+          .order('purchase_date', { ascending: false })
       ]);
 
       if (levelsResult.error) throw levelsResult.error;
@@ -203,6 +210,24 @@ export function InventoryPage() {
         }
       }
       setPurchaseUnits(unitsLookup);
+
+      // Build lots lookup by item_id (for sub-item lot display)
+      const lotsLookup: Record<string, Array<{ id: string; lot_number: string; supplier_name: string | null; quantity_remaining: number }>> = {};
+      if (lotsResult.data) {
+        for (const lot of lotsResult.data as any[]) {
+          const entry = {
+            id: lot.id,
+            lot_number: lot.lot_number,
+            supplier_name: lot.suppliers?.name || null,
+            quantity_remaining: lot.quantity_remaining,
+          };
+          if (!lotsLookup[lot.item_id]) {
+            lotsLookup[lot.item_id] = [];
+          }
+          lotsLookup[lot.item_id].push(entry);
+        }
+      }
+      setSubItemLotsMap(lotsLookup);
 
       // Flatten store_inventory_levels + inventory_items into InventoryItem shape
       const flatItems = (levelsResult.data || []).map((level: any) => ({
@@ -1382,41 +1407,62 @@ export function InventoryPage() {
                         </tr>
                         {/* Sub-items for expanded master items */}
                         {isMasterItem && isExpanded && hierarchyItem.sub_items?.map((subItem) => {
+                          const subItemLots = subItemLotsMap[subItem.id] || [];
                           return (
-                            <tr
-                              key={subItem.id}
-                              className="bg-gray-50/50 hover:bg-gray-100"
-                            >
-                              <td className="px-4 py-2 text-sm text-gray-700 pl-10">
-                                <div className="flex items-center gap-2">
-                                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
-                                  {subItem.color_code && <span className="font-medium">{subItem.color_code}</span>}
-                                  {subItem.size && <span className="text-gray-500">({subItem.size})</span>}
-                                  {!subItem.color_code && !subItem.size && <span>{subItem.name}</span>}
-                                </div>
-                              </td>
-                              <td className="px-4 py-2 text-sm text-center text-gray-500">-</td>
-                              <td className="px-4 py-2 text-sm text-gray-600">{subItem.supplier}</td>
-                              <td className="px-4 py-2 text-sm text-gray-600">{subItem.brand || '-'}</td>
-                              <td className="px-4 py-2 text-sm text-gray-500 max-w-xs truncate">{subItem.description || '-'}</td>
-                              <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
-                              <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
-                              <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
-                              <td className="px-4 py-2 text-sm text-right text-gray-600">
-                                ${subItem.unit_cost.toFixed(2)}
-                              </td>
-                              <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
-                              <td className="px-4 py-2 text-sm text-center">
-                                {canEditItems && (
-                                  <button
-                                    onClick={() => handleEditItem(subItem)}
-                                    className="text-blue-600 hover:text-blue-800"
-                                  >
-                                    <Edit2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
+                            <React.Fragment key={subItem.id}>
+                              <tr
+                                className="bg-gray-50/50 hover:bg-gray-100"
+                              >
+                                <td className="px-4 py-2 text-sm text-gray-700 pl-10">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+                                    {subItem.color_code && <span className="font-medium">{subItem.color_code}</span>}
+                                    {subItem.size && <span className="text-gray-500">({subItem.size})</span>}
+                                    {!subItem.color_code && !subItem.size && <span>{subItem.name}</span>}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-2 text-sm text-center text-gray-500">-</td>
+                                <td className="px-4 py-2 text-sm text-gray-600">{subItem.supplier}</td>
+                                <td className="px-4 py-2 text-sm text-gray-600">{subItem.brand || '-'}</td>
+                                <td className="px-4 py-2 text-sm text-gray-500 max-w-xs truncate">{subItem.description || '-'}</td>
+                                <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
+                                <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
+                                <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
+                                <td className="px-4 py-2 text-sm text-right text-gray-600">
+                                  ${subItem.unit_cost.toFixed(2)}
+                                </td>
+                                <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
+                                <td className="px-4 py-2 text-sm text-center">
+                                  {canEditItems && (
+                                    <button
+                                      onClick={() => handleEditItem(subItem)}
+                                      className="text-blue-600 hover:text-blue-800"
+                                    >
+                                      <Edit2 className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                              {subItemLots.map((lot) => (
+                                <tr key={lot.id} className="bg-blue-50/30">
+                                  <td colSpan={2} className="pl-16 pr-4 py-1.5 text-xs text-blue-700">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="w-1 h-1 bg-blue-400 rounded-full" />
+                                      <span className="font-mono">{lot.lot_number}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-1.5 text-xs text-gray-500">{lot.supplier_name || '-'}</td>
+                                  <td className="px-4 py-1.5"></td>
+                                  <td className="px-4 py-1.5"></td>
+                                  <td className="px-4 py-1.5 text-xs text-right text-blue-700 font-medium">{lot.quantity_remaining}</td>
+                                  <td className="px-4 py-1.5"></td>
+                                  <td className="px-4 py-1.5"></td>
+                                  <td className="px-4 py-1.5"></td>
+                                  <td className="px-4 py-1.5"></td>
+                                  <td className="px-4 py-1.5"></td>
+                                </tr>
+                              ))}
+                            </React.Fragment>
                           );
                         })}
                       </React.Fragment>
