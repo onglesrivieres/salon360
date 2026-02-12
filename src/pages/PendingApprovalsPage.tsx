@@ -872,6 +872,14 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         return;
       }
 
+      // Stop any service timers that were implicitly stopped by ticket.completed_at
+      await supabase
+        .from('ticket_items')
+        .update({ timer_stopped_at: new Date().toISOString() })
+        .eq('sale_ticket_id', request.ticket_id)
+        .not('started_at', 'is', null)
+        .is('timer_stopped_at', null);
+
       showToast('Request approved and ticket reopened', 'success');
       fetchTicketReopenRequests();
 

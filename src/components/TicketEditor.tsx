@@ -1650,6 +1650,14 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
         throw error;
       }
 
+      // Stop any service timers that were implicitly stopped by ticket.completed_at
+      await supabase
+        .from('ticket_items')
+        .update({ timer_stopped_at: new Date().toISOString() })
+        .eq('sale_ticket_id', ticketId)
+        .not('started_at', 'is', null)
+        .is('timer_stopped_at', null);
+
       await logActivity(ticketId, 'updated', `${session?.display_name} reopened ticket`, {
         reopened: true,
       });
