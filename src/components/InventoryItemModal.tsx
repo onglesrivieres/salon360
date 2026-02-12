@@ -19,9 +19,10 @@ interface InventoryItemModalProps {
   onClose: () => void;
   item?: InventoryItem | null;
   onSuccess: () => void;
+  defaultItemType?: 'master' | 'sub';
 }
 
-export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: InventoryItemModalProps) {
+export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultItemType }: InventoryItemModalProps) {
   const { showToast } = useToast();
   const { selectedStoreId } = useAuth();
   const [saving, setSaving] = useState(false);
@@ -109,11 +110,11 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess }: Invento
         reorder_level: '0',
         size: '',
       });
-      setItemType('master');
+      setItemType(defaultItemType ?? 'master');
       setSelectedParentId(null);
     }
     setTransactionCount(0);
-  }, [item, isOpen]);
+  }, [item, isOpen, defaultItemType]);
 
   async function fetchTransactionCount() {
     if (!item?.id) return;

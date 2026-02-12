@@ -1433,6 +1433,7 @@ export function InventoryTransactionModal({
       isOpen={showAddItemModal}
       onClose={() => setShowAddItemModal(false)}
       onSuccess={handleItemAdded}
+      defaultItemType="sub"
     />
 
     <SupplierModal
