@@ -476,7 +476,7 @@ export interface InventoryTransaction {
   recipient_id?: string;
   destination_store_id?: string;
   notes: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'draft' | 'pending' | 'approved' | 'rejected';
   requires_recipient_approval: boolean;
   requires_manager_approval: boolean;
   recipient_approved: boolean;
@@ -520,7 +520,7 @@ export interface ItemTransactionHistory {
   transaction_id: string;
   transaction_number: string;
   transaction_type: 'in' | 'out' | 'transfer';
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'draft' | 'pending' | 'approved' | 'rejected';
   created_at: string;
   purchase_unit_name: string;
   purchase_quantity: number;
@@ -534,7 +534,7 @@ export interface TransactionDetail {
   id: string;
   transaction_number: string;
   transaction_type: 'in' | 'out' | 'transfer';
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'draft' | 'pending' | 'approved' | 'rejected';
   created_at: string;
   requested_by_id: string;
   requested_by_name: string;

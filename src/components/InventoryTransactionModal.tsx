@@ -14,11 +14,31 @@ import { SupplierModal } from './SupplierModal';
 import { UNITS } from '../lib/inventory-constants';
 import { Permissions } from '../lib/permissions';
 
+interface DraftTransaction {
+  id: string;
+  transaction_type: 'in' | 'out' | 'transfer';
+  supplier_id?: string;
+  recipient_id?: string;
+  destination_store_id?: string;
+  invoice_reference?: string;
+  notes: string;
+  items: Array<{
+    item_id: string;
+    purchase_unit_id?: string;
+    purchase_quantity?: number;
+    purchase_unit_price?: number;
+    quantity: number;
+    unit_cost: number;
+    notes: string;
+  }>;
+}
+
 interface InventoryTransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   initialTransactionType?: 'in' | 'out' | 'transfer';
+  draftTransaction?: DraftTransaction;
 }
 
 interface TransactionItemForm {
@@ -52,10 +72,13 @@ export function InventoryTransactionModal({
   onClose,
   onSuccess,
   initialTransactionType,
+  draftTransaction,
 }: InventoryTransactionModalProps) {
   const { showToast } = useToast();
   const { selectedStoreId, session } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [draftId, setDraftId] = useState<string | null>(null);
   const [transactionType, setTransactionType] = useState<'in' | 'out' | 'transfer'>(initialTransactionType || 'in');
   const [supplierId, setSupplierId] = useState('');
   const [recipientId, setRecipientId] = useState('');
@@ -109,29 +132,73 @@ export function InventoryTransactionModal({
   }, [isOpen, selectedStoreId]);
 
   useEffect(() => {
-    setItems([{
-      item_id: '',
-      purchase_unit_id: '',
-      purchase_quantity: '',
-      purchase_unit_price: '',
-      quantity: '',
-      total_cost: '',
-      unit_cost: '',
-      notes: '',
-      isAddingPurchaseUnit: false,
-      newPurchaseUnitName: '',
-      newPurchaseUnitMultiplier: '',
-      isCustomPurchaseUnit: false,
-      customPurchaseUnitName: ''
-    }]);
-    setRecipientId('');
-    setDestinationStoreId('');
-    setSupplierId('');
-    setInvoiceReference('');
-    setNotes('');
-    setPendingPurchaseUnits([]);  // Clear pending purchase units on modal open/close
-    setTransactionType(initialTransactionType || 'in');
-  }, [isOpen, initialTransactionType]);
+    if (draftTransaction) {
+      // Populate form from draft
+      setDraftId(draftTransaction.id);
+      setTransactionType(draftTransaction.transaction_type);
+      setSupplierId(draftTransaction.supplier_id || '');
+      setRecipientId(draftTransaction.recipient_id || '');
+      setDestinationStoreId(draftTransaction.destination_store_id || '');
+      setInvoiceReference(draftTransaction.invoice_reference || '');
+      setNotes(draftTransaction.notes || '');
+      setPendingPurchaseUnits([]);
+
+      if (draftTransaction.items.length > 0) {
+        setItems(draftTransaction.items.map(item => ({
+          item_id: item.item_id,
+          purchase_unit_id: item.purchase_unit_id || '',
+          purchase_quantity: item.purchase_quantity?.toString() || '',
+          purchase_unit_price: item.purchase_unit_price?.toString() || '',
+          quantity: item.quantity.toString(),
+          total_cost: '',
+          unit_cost: item.unit_cost.toString(),
+          notes: item.notes || '',
+          isAddingPurchaseUnit: false,
+          newPurchaseUnitName: '',
+          newPurchaseUnitMultiplier: '',
+          isCustomPurchaseUnit: false,
+          customPurchaseUnitName: '',
+        })));
+      } else {
+        setItems([{
+          item_id: '', purchase_unit_id: '', purchase_quantity: '', purchase_unit_price: '',
+          quantity: '', total_cost: '', unit_cost: '', notes: '',
+          isAddingPurchaseUnit: false, newPurchaseUnitName: '', newPurchaseUnitMultiplier: '',
+          isCustomPurchaseUnit: false, customPurchaseUnitName: '',
+        }]);
+      }
+    } else {
+      // Reset form
+      setDraftId(null);
+      setItems([{
+        item_id: '', purchase_unit_id: '', purchase_quantity: '', purchase_unit_price: '',
+        quantity: '', total_cost: '', unit_cost: '', notes: '',
+        isAddingPurchaseUnit: false, newPurchaseUnitName: '', newPurchaseUnitMultiplier: '',
+        isCustomPurchaseUnit: false, customPurchaseUnitName: '',
+      }]);
+      setRecipientId('');
+      setDestinationStoreId('');
+      setSupplierId('');
+      setInvoiceReference('');
+      setNotes('');
+      setPendingPurchaseUnits([]);
+      setTransactionType(initialTransactionType || 'in');
+    }
+  }, [isOpen, initialTransactionType, draftTransaction]);
+
+  // Fetch purchase units for draft items when inventory items are loaded
+  useEffect(() => {
+    if (draftTransaction && inventoryItems.length > 0) {
+      const itemIds = new Set(draftTransaction.items.map(i => i.item_id).filter(Boolean));
+      itemIds.forEach(async (itemId) => {
+        const invItem = inventoryItems.find(i => i.id === itemId);
+        if (invItem?.id) {
+          const units = await fetchPurchaseUnitsForItem(invItem.id);
+          setPurchaseUnits(prev => ({ ...prev, [invItem.id!]: units }));
+        }
+      });
+    }
+  }, [draftTransaction, inventoryItems]);
 
   async function fetchInventoryItems() {
     if (!selectedStoreId) return;
@@ -739,6 +806,187 @@ export function InventoryTransactionModal({
     );
   }
 
+  async function handleSaveDraft() {
+    if (!selectedStoreId || !session?.employee_id) {
+      showToast('Missing required data', 'error');
+      return;
+    }
+
+    setSavingDraft(true);
+
+    try {
+      // Save any pending purchase units first (same logic as handleSubmit)
+      let updatedItems = [...items];
+      if (pendingPurchaseUnits.length > 0 && transactionType === 'in') {
+        for (const pendingUnit of pendingPurchaseUnits) {
+          const existingUnits = purchaseUnits[pendingUnit.itemId] || [];
+          const duplicateUnit = existingUnits.find(
+            u => u.unit_name.toLowerCase() === pendingUnit.unitName.toLowerCase()
+          );
+
+          let realId: string;
+          if (duplicateUnit) {
+            realId = duplicateUnit.id;
+          } else {
+            const isFirstUnit = existingUnits.length === 0;
+            const { data, error } = await supabase
+              .from('store_product_purchase_units')
+              .insert({
+                store_id: selectedStoreId,
+                item_id: pendingUnit.itemId,
+                unit_name: pendingUnit.unitName,
+                multiplier: pendingUnit.multiplier,
+                is_default: isFirstUnit,
+                display_order: existingUnits.length,
+              })
+              .select()
+              .single();
+
+            if (error) {
+              if (error.code === '23505') {
+                const { data: existingUnit } = await supabase
+                  .from('store_product_purchase_units')
+                  .select('*')
+                  .eq('store_id', selectedStoreId)
+                  .eq('item_id', pendingUnit.itemId)
+                  .ilike('unit_name', pendingUnit.unitName)
+                  .maybeSingle();
+                if (existingUnit) {
+                  realId = existingUnit.id;
+                } else {
+                  showToast(`Failed to create purchase unit: ${pendingUnit.unitName}`, 'error');
+                  setSavingDraft(false);
+                  return;
+                }
+              } else {
+                showToast(`Failed to create purchase unit: ${pendingUnit.unitName}`, 'error');
+                setSavingDraft(false);
+                return;
+              }
+            } else {
+              realId = data.id;
+              const updatedUnits = await fetchPurchaseUnitsForItem(pendingUnit.itemId);
+              setPurchaseUnits(prev => ({ ...prev, [pendingUnit.itemId]: updatedUnits }));
+            }
+          }
+
+          updatedItems = updatedItems.map(item => {
+            if (item.purchase_unit_id === pendingUnit.tempId) {
+              return { ...item, purchase_unit_id: realId };
+            }
+            return item;
+          });
+        }
+        setPendingPurchaseUnits([]);
+        setItems(updatedItems);
+      }
+
+      const validItems = updatedItems.filter(item => item.item_id);
+
+      const canSelfApprove = session.role && Permissions.inventory.canSelfApprove(session.role);
+
+      if (draftId) {
+        // Update existing draft
+        const { error: updateError } = await supabase.rpc('update_draft_transaction', {
+          p_transaction_id: draftId,
+          p_transaction_type: transactionType,
+          p_recipient_id: transactionType === 'out' ? recipientId || null : null,
+          p_supplier_id: transactionType === 'in' && supplierId ? supplierId : null,
+          p_invoice_reference: transactionType === 'in' && invoiceReference ? invoiceReference.trim() : null,
+          p_notes: notes.trim(),
+          p_destination_store_id: transactionType === 'transfer' ? destinationStoreId || null : null,
+        });
+
+        if (updateError) throw updateError;
+
+        // Delete existing items and re-insert
+        const { error: deleteItemsError } = await supabase
+          .from('inventory_transaction_items')
+          .delete()
+          .eq('transaction_id', draftId);
+
+        if (deleteItemsError) throw deleteItemsError;
+
+        if (validItems.length > 0) {
+          const itemsData = validItems.map(item => ({
+            item_id: item.item_id,
+            quantity: parseFloat(item.quantity) || 0,
+            unit_cost: parseFloat(item.unit_cost) || 0,
+            purchase_unit_id: transactionType === 'in' ? item.purchase_unit_id || null : null,
+            purchase_quantity: transactionType === 'in' && item.purchase_quantity ? parseFloat(item.purchase_quantity) : null,
+            purchase_unit_price: transactionType === 'in' && item.purchase_unit_price ? parseFloat(item.purchase_unit_price) : null,
+            purchase_unit_multiplier: null,
+            notes: item.notes.trim(),
+          }));
+
+          const { error: insertError } = await supabase.rpc('insert_transaction_items_batch', {
+            p_transaction_id: draftId,
+            p_items: itemsData,
+          });
+
+          if (insertError) throw insertError;
+        }
+
+        showToast('Draft updated', 'success');
+      } else {
+        // Create new draft
+        const { data: transactionResult, error: transactionError } = await supabase.rpc(
+          'create_inventory_transaction_atomic',
+          {
+            p_store_id: selectedStoreId,
+            p_transaction_type: transactionType,
+            p_requested_by_id: session.employee_id,
+            p_recipient_id: transactionType === 'out' ? recipientId || null : null,
+            p_supplier_id: transactionType === 'in' && supplierId ? supplierId : null,
+            p_invoice_reference: transactionType === 'in' && invoiceReference ? invoiceReference.trim() : null,
+            p_notes: notes.trim(),
+            p_requires_manager_approval: !canSelfApprove,
+            p_requires_recipient_approval: transactionType === 'out',
+            p_destination_store_id: transactionType === 'transfer' ? destinationStoreId || null : null,
+            p_status: 'draft',
+          }
+        );
+
+        if (transactionError) throw transactionError;
+        if (!transactionResult || transactionResult.length === 0) {
+          throw new Error('Failed to create draft transaction');
+        }
+
+        const newDraftId = transactionResult[0].id;
+        setDraftId(newDraftId);
+
+        if (validItems.length > 0) {
+          const itemsData = validItems.map(item => ({
+            item_id: item.item_id,
+            quantity: parseFloat(item.quantity) || 0,
+            unit_cost: parseFloat(item.unit_cost) || 0,
+            purchase_unit_id: transactionType === 'in' ? item.purchase_unit_id || null : null,
+            purchase_quantity: transactionType === 'in' && item.purchase_quantity ? parseFloat(item.purchase_quantity) : null,
+            purchase_unit_price: transactionType === 'in' && item.purchase_unit_price ? parseFloat(item.purchase_unit_price) : null,
+            purchase_unit_multiplier: null,
+            notes: item.notes.trim(),
+          }));
+
+          const { error: insertError } = await supabase.rpc('insert_transaction_items_batch', {
+            p_transaction_id: newDraftId,
+            p_items: itemsData,
+          });
+
+          if (insertError) throw insertError;
+        }
+
+        showToast('Draft saved', 'success');
+      }
+
+      onSuccess(); // Refresh the list
+    } catch (error: any) {
+      console.error('Error saving draft:', error);
+      showToast(`Failed to save draft: ${error.message || 'Unknown error'}`, 'error');
+    } finally {
+      setSavingDraft(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -985,7 +1233,89 @@ export function InventoryTransactionModal({
     try {
       setSaving(true);
 
-      await createTransaction();
+      if (draftId) {
+        // Draft-to-pending flow: update header, re-insert items, then submit
+        const canSelfApprove = session.role && Permissions.inventory.canSelfApprove(session.role);
+
+        // 1. Update header fields
+        const { error: updateError } = await supabase.rpc('update_draft_transaction', {
+          p_transaction_id: draftId,
+          p_transaction_type: transactionType,
+          p_recipient_id: transactionType === 'out' ? recipientId || null : null,
+          p_supplier_id: transactionType === 'in' && supplierId ? supplierId : null,
+          p_invoice_reference: transactionType === 'in' && invoiceReference ? invoiceReference.trim() : null,
+          p_notes: notes.trim(),
+          p_destination_store_id: transactionType === 'transfer' ? destinationStoreId || null : null,
+        });
+        if (updateError) throw updateError;
+
+        // 2. Delete existing items and re-insert
+        const { error: deleteItemsError } = await supabase
+          .from('inventory_transaction_items')
+          .delete()
+          .eq('transaction_id', draftId);
+        if (deleteItemsError) throw deleteItemsError;
+
+        const itemsData = validItems.map(item => {
+          const originalIndex = updatedItems.findIndex(i => i === item);
+          let purchaseUnit = null;
+          if (item.purchase_unit_id) {
+            const savedUnit = savedPurchaseUnits.get(originalIndex);
+            if (savedUnit && savedUnit.id === item.purchase_unit_id) {
+              purchaseUnit = savedUnit;
+            } else {
+              purchaseUnit = Object.values(purchaseUnits).flat().find(u => u.id === item.purchase_unit_id);
+            }
+          }
+          return {
+            item_id: item.item_id,
+            quantity: parseFloat(item.quantity),
+            unit_cost: parseFloat(item.unit_cost) || 0,
+            purchase_unit_id: transactionType === 'in' ? item.purchase_unit_id || null : null,
+            purchase_quantity: transactionType === 'in' && item.purchase_quantity ? parseFloat(item.purchase_quantity) : null,
+            purchase_unit_price: transactionType === 'in' && item.purchase_unit_price ? parseFloat(item.purchase_unit_price) : null,
+            purchase_unit_multiplier: transactionType === 'in' && purchaseUnit ? purchaseUnit.multiplier : null,
+            notes: item.notes.trim(),
+          };
+        });
+
+        const { error: insertError } = await supabase.rpc('insert_transaction_items_batch', {
+          p_transaction_id: draftId,
+          p_items: itemsData,
+        });
+        if (insertError) throw insertError;
+
+        // 3. Submit the draft (transitions to pending with real transaction number)
+        const { data: submitResult, error: submitError } = await supabase.rpc('submit_draft_transaction', {
+          p_transaction_id: draftId,
+          p_requires_manager_approval: !canSelfApprove,
+          p_requires_recipient_approval: transactionType === 'out',
+        });
+        if (submitError) throw submitError;
+
+        const realTxnNumber = submitResult?.[0]?.transaction_number || 'Unknown';
+
+        // Update purchase unit preferences for IN transactions
+        if (transactionType === 'in' && session?.employee_id) {
+          for (const item of validItems) {
+            const inventoryItem = inventoryItems.find(i => i.id === item.item_id);
+            if (item.purchase_unit_id && inventoryItem?.id) {
+              await supabase.rpc('update_product_preference', {
+                p_store_id: selectedStoreId,
+                p_item_id: inventoryItem.id,
+                p_purchase_unit_id: item.purchase_unit_id,
+                p_unit_cost: parseFloat(item.unit_cost) || 0,
+                p_employee_id: session.employee_id,
+              });
+            }
+          }
+        }
+
+        showToast(`Transaction ${realTxnNumber} submitted for approval`, 'success');
+      } else {
+        await createTransaction();
+      }
+
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -1019,7 +1349,7 @@ export function InventoryTransactionModal({
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
-      title="New Inventory Transaction"
+      title={draftId ? 'Edit Draft Transaction' : 'New Inventory Transaction'}
       size="xl"
       footer={
         <>
@@ -1040,10 +1370,13 @@ export function InventoryTransactionModal({
           </div>
 
           <div className="flex gap-3">
-            <Button type="submit" form="inventory-transaction-form" disabled={saving} className="flex-1">
-              {saving ? 'Creating...' : 'Create Transaction'}
+            <Button type="submit" form="inventory-transaction-form" disabled={saving || savingDraft} className="flex-1">
+              {saving ? 'Submitting...' : draftId ? 'Submit for Approval' : 'Create Transaction'}
             </Button>
-            <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
+            <Button type="button" variant="secondary" onClick={handleSaveDraft} disabled={saving || savingDraft}>
+              {savingDraft ? 'Saving...' : 'Save Draft'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onClose} disabled={saving || savingDraft}>
               Cancel
             </Button>
           </div>

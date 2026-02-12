@@ -24,6 +24,8 @@ import {
   PowerOff,
   Eye,
   Calendar,
+  FileEdit,
+  Trash2,
 } from 'lucide-react';
 import { supabase, InventoryItem, InventoryItemWithHierarchy, InventoryTransactionWithDetails, Supplier, InventoryPurchaseLotWithDetails, InventoryDistributionWithDetails } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
@@ -74,6 +76,7 @@ export function InventoryPage() {
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [expandedMasterItems, setExpandedMasterItems] = useState<Set<string>>(new Set());
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+  const [draftToEdit, setDraftToEdit] = useState<any>(null);
   const [purchaseUnits, setPurchaseUnits] = useState<Record<string, { unit_name: string; multiplier: number }>>({});
   const [subItemLotsMap, setSubItemLotsMap] = useState<Record<string, Array<{ id: string; lot_number: string; supplier_name: string | null; quantity_remaining: number }>>>({});
 
@@ -453,6 +456,7 @@ export function InventoryPage() {
   function handleTransactionSuccess() {
     fetchTransactions();
     fetchItems();
+    setDraftToEdit(null);
   }
 
   function handleOpenInventoryIn() {
@@ -468,6 +472,7 @@ export function InventoryPage() {
   function handleTransactionModalClose() {
     setShowTransactionModal(false);
     setTransactionType(undefined);
+    setDraftToEdit(null);
   }
 
   function toggleViewMode(mode: ViewMode) {
@@ -1524,6 +1529,7 @@ export function InventoryPage() {
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="">All Status</option>
+                          <option value="draft">Draft</option>
                           <option value="pending">Pending</option>
                           <option value="approved">Approved</option>
                           <option value="rejected">Rejected</option>
@@ -1581,9 +1587,46 @@ export function InventoryPage() {
               {filteredTransactions.map((transaction) => (
                 <div
                   key={transaction.id}
-                  onClick={() => {
-                    setSelectedTransactionId(transaction.id);
-                    setShowTransactionDetailModal(true);
+                  onClick={async () => {
+                    if (transaction.status === 'draft') {
+                      // Fetch full draft data (header + items) and open in edit mode
+                      try {
+                        const { data: itemsData, error: itemsError } = await supabase
+                          .from('inventory_transaction_items')
+                          .select('*')
+                          .eq('transaction_id', transaction.id);
+
+                        if (itemsError) throw itemsError;
+
+                        const txn = transaction as any;
+                        setDraftToEdit({
+                          id: transaction.id,
+                          transaction_type: transaction.transaction_type,
+                          supplier_id: txn.supplier_id || undefined,
+                          recipient_id: transaction.recipient_id || undefined,
+                          destination_store_id: transaction.destination_store_id || undefined,
+                          invoice_reference: txn.invoice_reference || undefined,
+                          notes: transaction.notes || '',
+                          items: (itemsData || []).map((item: any) => ({
+                            item_id: item.item_id,
+                            purchase_unit_id: item.purchase_unit_id || undefined,
+                            purchase_quantity: item.purchase_quantity || undefined,
+                            purchase_unit_price: item.purchase_unit_price || undefined,
+                            quantity: item.quantity,
+                            unit_cost: item.unit_cost,
+                            notes: item.notes || '',
+                          })),
+                        });
+                        setTransactionType(transaction.transaction_type);
+                        setShowTransactionModal(true);
+                      } catch (error) {
+                        console.error('Error loading draft:', error);
+                        showToast('Failed to load draft', 'error');
+                      }
+                    } else {
+                      setSelectedTransactionId(transaction.id);
+                      setShowTransactionDetailModal(true);
+                    }
                   }}
                   className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
                 >
@@ -1605,7 +1648,9 @@ export function InventoryPage() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-gray-900">
-                            {transaction.transaction_number}
+                            {transaction.status === 'draft'
+                              ? 'Draft'
+                              : transaction.transaction_number}
                           </span>
                           <Badge
                             variant={
@@ -1633,6 +1678,12 @@ export function InventoryPage() {
                     </div>
 
                     <div className="flex items-center gap-2 sm:ml-auto">
+                      {transaction.status === 'draft' && (
+                        <Badge variant="default" className="flex items-center gap-1">
+                          <FileEdit className="w-3 h-3" />
+                          Draft
+                        </Badge>
+                      )}
                       {transaction.status === 'pending' && (
                         <Badge variant="warning" className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
@@ -1650,6 +1701,30 @@ export function InventoryPage() {
                           <XCircle className="w-3 h-3" />
                           Rejected
                         </Badge>
+                      )}
+                      {transaction.status === 'draft' && transaction.requested_by_id === session?.employee_id && (
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (!confirm('Delete this draft?')) return;
+                            try {
+                              const { error } = await supabase.rpc('delete_draft_transaction', {
+                                p_transaction_id: transaction.id,
+                                p_employee_id: session?.employee_id,
+                              });
+                              if (error) throw error;
+                              showToast('Draft deleted', 'success');
+                              fetchTransactions();
+                            } catch (error: any) {
+                              console.error('Error deleting draft:', error);
+                              showToast('Failed to delete draft', 'error');
+                            }
+                          }}
+                          className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                          title="Delete draft"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       )}
                       <span className="text-sm text-gray-500">
                         {formatDateTimeEST(transaction.created_at)}
@@ -2602,6 +2677,7 @@ export function InventoryPage() {
         onClose={handleTransactionModalClose}
         onSuccess={handleTransactionSuccess}
         initialTransactionType={transactionType}
+        draftTransaction={draftToEdit}
       />
 
       <EmployeeDistributionModal

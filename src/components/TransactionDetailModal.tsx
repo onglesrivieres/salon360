@@ -117,8 +117,10 @@ export function TransactionDetailModal({ isOpen, onClose, transactionId }: Trans
     }
   }
 
-  function getStatusBadgeVariant(status: string): 'warning' | 'success' | 'danger' {
+  function getStatusBadgeVariant(status: string): 'default' | 'warning' | 'success' | 'danger' {
     switch (status) {
+      case 'draft':
+        return 'default';
       case 'pending':
         return 'warning';
       case 'approved':
