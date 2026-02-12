@@ -507,6 +507,7 @@ export function InventoryPage() {
   // Organize items into hierarchy
   const masterItems = items.filter(item => item.is_master_item);
   const subItems = items.filter(item => item.parent_id);
+  const standaloneItems = items.filter(item => !item.is_master_item && !item.parent_id);
 
   // Build hierarchical items with sub-items attached
   const hierarchicalItems: InventoryItemWithHierarchy[] = masterItems.map(master => {
@@ -519,7 +520,15 @@ export function InventoryPage() {
     };
   });
 
-  const displayItems: InventoryItemWithHierarchy[] = [...hierarchicalItems];
+  // Standalone items displayed as flat rows (no hierarchy)
+  const standaloneDisplayItems: InventoryItemWithHierarchy[] = standaloneItems.map(item => ({
+    ...item,
+    sub_items: [],
+    total_sub_item_quantity: item.quantity_on_hand,
+    has_low_stock_sub_items: item.quantity_on_hand <= item.reorder_level,
+  }));
+
+  const displayItems: InventoryItemWithHierarchy[] = [...hierarchicalItems, ...standaloneDisplayItems];
 
   const filteredItems = displayItems.filter((item) => {
     const matchesSearch =

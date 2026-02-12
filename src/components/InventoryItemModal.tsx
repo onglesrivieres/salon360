@@ -19,7 +19,7 @@ interface InventoryItemModalProps {
   onClose: () => void;
   item?: InventoryItem | null;
   onSuccess: () => void;
-  defaultItemType?: 'master' | 'sub';
+  defaultItemType?: 'master' | 'sub' | 'standalone';
 }
 
 export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultItemType }: InventoryItemModalProps) {
@@ -34,7 +34,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
     reorder_level: '0',
     size: '',
   });
-  const [itemType, setItemType] = useState<'master' | 'sub'>('master');
+  const [itemType, setItemType] = useState<'master' | 'sub' | 'standalone'>('standalone');
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [masterItems, setMasterItems] = useState<InventoryItem[]>([]);
   const [transactionCount, setTransactionCount] = useState<number>(0);
@@ -98,7 +98,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
         setItemType('sub');
         setSelectedParentId(item.parent_id);
       } else {
-        setItemType('master');
+        setItemType('standalone');
         setSelectedParentId(null);
       }
     } else {
@@ -110,7 +110,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
         reorder_level: '0',
         size: '',
       });
-      setItemType(defaultItemType ?? 'master');
+      setItemType(defaultItemType ?? 'standalone');
       setSelectedParentId(null);
     }
     setTransactionCount(0);
@@ -226,7 +226,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
           }
         }
 
-        showToast(`${isMasterItem ? 'Master item' : 'Item'} created successfully`, 'success');
+        showToast('Item created successfully', 'success');
       }
 
       onSuccess();
@@ -314,6 +314,19 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
                 Item Type <span className="text-red-500">*</span>
               </label>
               <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="item_type"
+                    checked={itemType === 'standalone'}
+                    onChange={() => {
+                      setItemType('standalone');
+                      setSelectedParentId(null);
+                    }}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <span className="text-sm">Standalone Item</span>
+                </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"

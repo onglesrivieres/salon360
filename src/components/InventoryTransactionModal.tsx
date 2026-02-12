@@ -1501,12 +1501,13 @@ export function InventoryTransactionModal({
               const itemPurchaseUnits = invItem?.id ? purchaseUnits[invItem.id] || [] : [];
               const selectedPurchaseUnit = itemPurchaseUnits.find(u => u.id === item.purchase_unit_id);
 
-              // "In": sub-items only (purchase variants); "Out"/"Transfer": master items only (store-level inventory)
+              // "In": sub-items + standalone items (receive stock directly); "Out"/"Transfer": master + standalone items (hold their own stock)
               const filteredInventoryItems = inventoryItems.filter(invItem => {
+                const isStandalone = !invItem.is_master_item && !invItem.parent_id;
                 if (transactionType === 'in') {
-                  return !invItem.is_master_item && invItem.parent_id;
+                  return (!invItem.is_master_item && invItem.parent_id) || isStandalone;
                 } else {
-                  return invItem.is_master_item;
+                  return invItem.is_master_item || isStandalone;
                 }
               });
 
