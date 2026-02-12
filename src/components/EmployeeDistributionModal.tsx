@@ -194,7 +194,6 @@ export function EmployeeDistributionModal({
   // Filter and transform items for searchable select
   const itemOptions: SearchableSelectOption[] = useMemo(() => {
     return inventoryItems
-      .filter(item => !item.is_master_item)
       .map(item => ({
         value: item.id,
         label: item.name,
