@@ -482,6 +482,9 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-12
+- **Fix duplicate lot number on inventory transaction approval**: Fixed `generate_lot_number()` regression from January 2026 migration squash. Three bugs: (1) missing `pg_advisory_xact_lock` allowed concurrent approvals to generate duplicate lot numbers, (2) store-scoped `WHERE store_id = p_store_id` conflicted with global UNIQUE constraint on `lot_number`, (3) missing `p_offset` parameter (Salon365 had old 2-param signature while `create_lots_from_approved_transaction` passes 3 args). Restored proven fix from archived migration `20260123160544`. Files: migration only
+
 ### 2026-02-11
 - **Remove Standalone item type from inventory**: Removed Standalone Item radio option from InventoryItemModal; only Master Item (Group) and Sub-Item (Variation) remain, with Master as default. Existing standalone items (no parent, not master) treated as master on edit. Size field now always visible. Removed `standaloneItems` filter from InventoryPage display logic. Migration converts all existing standalone items to master items. Files: `InventoryItemModal.tsx`, `InventoryPage.tsx` + migration
 
