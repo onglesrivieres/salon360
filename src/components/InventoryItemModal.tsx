@@ -226,6 +226,19 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
             if (!existingItem) throw insertError;
             itemId = existingItem.id;
 
+            // Update the existing item's type/hierarchy to match user's intent
+            await supabase
+              .from('inventory_items')
+              .update({
+                is_master_item: isMasterItem,
+                parent_id: isSubItem ? selectedParentId : null,
+                category: formData.category,
+                brand: formData.brand.trim() || null,
+                size: formData.size.trim() || null,
+                description: formData.description.trim(),
+              })
+              .eq('id', itemId);
+
             // Ensure store_inventory_levels row exists for this store
             await supabase
               .from('store_inventory_levels')
