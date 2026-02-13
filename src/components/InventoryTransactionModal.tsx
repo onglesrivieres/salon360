@@ -2184,7 +2184,7 @@ export function InventoryTransactionModal({
                     )}
 
                     {transactionType === 'in' && item.item_id && (
-                      <div className="col-span-2">
+                      <div className="col-span-3">
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Purchase Unit {index === 0 && <span className="text-red-500">*</span>}
                           {itemPurchaseUnits.length > 0 && (
@@ -2320,7 +2320,7 @@ export function InventoryTransactionModal({
                     )}
 
                     {transactionType === 'in' && item.item_id && (
-                      <div className="col-span-2">
+                      <div className="col-span-1">
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Price ($)
                         </label>
