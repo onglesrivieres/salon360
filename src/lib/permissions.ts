@@ -303,7 +303,7 @@ export const Permissions = {
       return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
     },
     canDistribute: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Cashier', 'Supervisor', 'Manager', 'Owner']);
     },
     canViewEmployeeInventory: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);

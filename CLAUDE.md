@@ -213,7 +213,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 | Create Items | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
 | Create Transactions | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
 | Approve Transactions | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| Distribute Inventory | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| Distribute Inventory | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
 | View Own Inventory | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✓ | ✓ |
 | **Clients** |
 | View Clients | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
@@ -481,6 +481,9 @@ Always filter by `store_id` when querying store-specific data:
 ---
 
 ## Recent Changes
+
+### 2026-02-13
+- **Grant Receptionist & Cashier permission to distribute inventory**: Added `'Receptionist'` and `'Cashier'` to the `canDistribute` role array in `permissions.ts`. This unlocks the "Distribute to Employee" button, Lots tab, and Distributions tab on the Inventory page for both roles. No DB migration needed — the `distribute_to_employee` RPC has no server-side role check. Files: `permissions.ts`
 
 ### 2026-02-12
 - **Distribution approval workflow**: Added two post-facto confirmations for inventory distributions: (1) employee acknowledgment — recipient sees distribution in Approvals → Inventory tab and clicks "Acknowledge" (`pending` → `acknowledged`), (2) management approval — upper management (role outranking creator) clicks "Approve" (`manager_approved = true`). Stock still moves immediately (current behavior); both confirmations are post-facto. New columns on `inventory_distributions`: `distribution_batch_id`, `manager_approved`, `manager_approved_by_id`, `manager_approved_at`, `distributed_by_role`. Updated `distribute_to_employee` RPC to generate batch IDs, track creator role, auto-approve Admin distributions. New RPCs: `get_pending_distribution_approvals`, `acknowledge_distribution`, `approve_distribution_by_manager`. Self-approval blocked at DB level. Role hierarchy check: Admin auto-approved, Owner needs Admin, Manager needs Owner/Admin, Supervisor needs Manager+. Badge counts updated for all roles including Technician/Trainee (distribution-only). Supervisor can now see Inventory tab in Approvals. Realtime subscription on `inventory_distributions` for live badge updates. Existing distributions backfilled as approved. Files: `PendingApprovalsPage.tsx`, `Layout.tsx`, `supabase.ts` + migration
