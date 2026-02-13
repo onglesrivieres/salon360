@@ -6,9 +6,16 @@ import { NumericInput } from './ui/NumericInput';
 import { Select } from './ui/Select';
 import { SearchableSelect, SearchableSelectOption } from './ui/SearchableSelect';
 import { useToast } from './ui/Toast';
-import { supabase, InventoryItem, Technician } from '../lib/supabase';
+import { supabase, InventoryItem } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentDateEST } from '../lib/timezone';
+
+interface EmployeeListItem {
+  id: string;
+  display_name: string;
+  role: string[];
+  status: string;
+}
 
 interface EmployeeDistributionModalProps {
   isOpen: boolean;
@@ -29,7 +36,7 @@ export function EmployeeDistributionModal({
   const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [employees, setEmployees] = useState<Technician[]>([]);
+  const [employees, setEmployees] = useState<EmployeeListItem[]>([]);
   const [availableQuantity, setAvailableQuantity] = useState(0);
 
   useEffect(() => {
@@ -121,7 +128,7 @@ export function EmployeeDistributionModal({
         attendanceData?.map((rec: any) => rec.employee_id) || []
       );
 
-      const filteredEmployees = (employeesData || []).filter((emp: Technician) =>
+      const filteredEmployees = (employeesData || []).filter((emp: EmployeeListItem) =>
         employeeIdsInStore.has(emp.id) && checkedInEmployeeIds.has(emp.id)
       );
 

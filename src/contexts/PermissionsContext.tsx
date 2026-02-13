@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { Role } from '../lib/permissions';
@@ -33,7 +33,7 @@ interface PermissionsProviderProps {
 }
 
 export function PermissionsProvider({ children }: PermissionsProviderProps) {
-  const { employee, storeId } = useAuth();
+  const { session, selectedStoreId: storeId } = useAuth();
   const [permissions, setPermissions] = useState<Map<string, Map<string, boolean>>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -150,7 +150,7 @@ export function PermissionsProvider({ children }: PermissionsProviderProps) {
   };
 
   useEffect(() => {
-    if (!employee || !storeId) {
+    if (!session || !storeId) {
       setIsLoading(false);
       return;
     }
@@ -162,7 +162,7 @@ export function PermissionsProvider({ children }: PermissionsProviderProps) {
     } else {
       refreshPermissions();
     }
-  }, [employee?.id, storeId]);
+  }, [session?.employee_id, storeId]);
 
   return (
     <PermissionsContext.Provider

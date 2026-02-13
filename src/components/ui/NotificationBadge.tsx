@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface NotificationBadgeProps {
   count: number;
   className?: string;

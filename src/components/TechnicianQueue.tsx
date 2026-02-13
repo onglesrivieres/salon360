@@ -1,4 +1,3 @@
-import React from 'react';
 import { Award, Lock, Clock, XCircle } from 'lucide-react';
 import { TechnicianWithQueue } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';

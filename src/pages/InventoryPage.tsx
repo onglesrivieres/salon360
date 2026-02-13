@@ -584,7 +584,6 @@ export function InventoryPage() {
   function handleTransactionSuccess() {
     fetchTransactions();
     fetchItems();
-    setDraftToEdit(null);
   }
 
   function handleDownloadTransactionTemplate() {

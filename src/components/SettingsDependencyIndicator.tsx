@@ -1,4 +1,3 @@
-import React from 'react';
 import { AlertCircle, ArrowRight, Link2, AlertTriangle } from 'lucide-react';
 
 interface Dependency {

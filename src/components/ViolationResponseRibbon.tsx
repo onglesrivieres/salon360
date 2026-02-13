@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronUp, Clock } from 'lucide-react';
-import { Button } from './ui/Button';
 import { PendingViolationResponse } from '../lib/supabase';
 import { formatDateOnly, formatDateTimeEST } from '../lib/timezone';
 

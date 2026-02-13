@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { History, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { History } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { supabase } from '../lib/supabase';

@@ -487,7 +487,7 @@ export function ServicesPage() {
     if (averageDuration?.average_duration) {
       setFormData((prev) => ({
         ...prev,
-        duration_min: averageDuration.average_duration.toString(),
+        duration_min: String(averageDuration.average_duration || 0),
       }));
       showToast('Duration updated to suggested value', 'success');
     }

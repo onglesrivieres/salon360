@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Clock, Save, Loader2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useToast } from './ui/Toast';

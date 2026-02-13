@@ -48,7 +48,7 @@ export function ClientsPage() {
     blacklistedOnly: filterTab === 'blacklisted',
   });
 
-  const { blacklistClient, unblacklistClient, deleteClient, isLoading: mutating } = useClientMutations();
+  const { deleteClient, isLoading: _mutating } = useClientMutations();
 
   const canCreate = session?.role_permission && Permissions.clients.canCreate(session.role_permission);
   const canBlacklist = session?.role_permission && Permissions.clients.canBlacklist(session.role_permission);
@@ -127,32 +127,6 @@ export function ClientsPage() {
   const handleViewDetails = (client: ClientWithStats) => {
     setSelectedClient(client);
     setShowDetailsModal(true);
-  };
-
-  const handleBlacklistToggle = async (client: ClientWithStats, reason?: string) => {
-    if (!session?.employee_id) return;
-
-    if (client.is_blacklisted) {
-      const result = await unblacklistClient(client.id);
-      if (result.success) {
-        showToast(t('clients.clientUnblacklisted'), 'success');
-        refetch();
-      } else {
-        showToast(result.error || t('clients.failedToUpdate'), 'error');
-      }
-    } else {
-      if (!reason) return;
-      const result = await blacklistClient(client.id, {
-        reason,
-        blacklisted_by: session.employee_id,
-      });
-      if (result.success) {
-        showToast(t('clients.clientBlacklisted'), 'success');
-        refetch();
-      } else {
-        showToast(result.error || t('clients.failedToBlacklist'), 'error');
-      }
-    }
   };
 
   const handleDeleteClient = async (client: ClientWithStats) => {

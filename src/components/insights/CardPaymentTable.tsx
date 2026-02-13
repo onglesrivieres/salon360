@@ -8,7 +8,7 @@ interface CardPaymentTableProps {
   showTips: boolean;
 }
 
-export function CardPaymentTable({ data, showTips }: CardPaymentTableProps) {
+export function CardPaymentTable({ data, showTips: _showTips }: CardPaymentTableProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(['root', 'credit', 'debit'])
   );
@@ -47,7 +47,9 @@ export function CardPaymentTable({ data, showTips }: CardPaymentTableProps) {
   }
 
   const InfoTooltip = ({ text }: { text: string }) => (
-    <Info className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" title={text} />
+    <span title={text}>
+      <Info className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+    </span>
   );
 
   return (

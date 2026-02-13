@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Download, Printer, Plus, Save, DollarSign, AlertCircle, AlertTriangle, CheckCircle, Edit, ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Eye, Vault } from 'lucide-react';
-import { supabase, EndOfDayRecord, CashTransaction, PendingCashTransactionApproval, CashTransactionType } from '../lib/supabase';
+import { supabase, EndOfDayRecord, CashTransaction, CashTransactionType } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { TicketEditor } from '../components/TicketEditor';
@@ -569,8 +569,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   }
 
   function exportCSV() {
-    const headers = ['Description', 'Amount'];
     const rows = [
+      ['Description', 'Amount'],
       ['Opening Cash', openingCashTotal.toFixed(2)],
       ['  $100 Bills', `${openingDenominations.bill_100} x $100`],
       ['  $50 Bills', `${openingDenominations.bill_50} x $50`],
@@ -678,11 +678,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
   function canNavigateNext(): boolean {
     return selectedDate < getMaxDate();
-  }
-
-  function openEditor(ticketId: string) {
-    setEditingTicketId(ticketId);
-    setIsEditorOpen(true);
   }
 
   function closeEditor() {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowLeftRight, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight, ChevronDown, Bell, User, Calendar, History, Download, Eye, RotateCcw } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowLeftRight, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, FileText, Timer, ChevronLeft, ChevronRight, ChevronDown, Bell, User, Calendar, History, Download, Eye, RotateCcw } from 'lucide-react';
 import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, PendingCashTransactionChangeProposal, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket, AttendanceChangeProposalWithDetails, PendingTicketReopenRequest, PendingDistributionApproval } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -103,7 +103,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
   const [processing, setProcessing] = useState(false);
   const [approvalStats, setApprovalStats] = useState<ApprovalStatistics | null>(null);
   const [violationStatusFilter, setViolationStatusFilter] = useState<string>('all');
-  const [violationSearchTerm, setViolationSearchTerm] = useState('');
+  const [violationSearchTerm] = useState('');
   const [queueRemovalRecords, setQueueRemovalRecords] = useState<QueueRemovalRecord[]>([]);
   const [queueHistoryLoading, setQueueHistoryLoading] = useState(false);
   const [transactionChangeProposals, setTransactionChangeProposals] = useState<PendingCashTransactionChangeProposal[]>([]);
@@ -211,18 +211,6 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
   // Determine if individual vote details (who voted Yes/No) should be visible
   function canSeeVoteDetails(): boolean {
     return userRoles.some(role => ['Owner', 'Admin', 'Manager'].includes(role));
-  }
-
-  // Get the current user's vote on a violation report
-  function getUserVoteOnReport(report: ViolationHistoryReport): boolean | null {
-    if (!session?.employee_id || !report.responses) return null;
-
-    const userVote = report.responses?.find(
-      (v: any) => v.responder_employee_id === session.employee_id
-    );
-
-    if (!userVote) return null;
-    return userVote.vote === 'violation'; // true = yes, false = no
   }
 
   useEffect(() => {
@@ -605,7 +593,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
     try {
       setProcessing(true);
-      const { data, error } = await supabase.rpc('acknowledge_distribution', {
+      const { error } = await supabase.rpc('acknowledge_distribution', {
         p_batch_id: approval.batch_id,
         p_employee_id: session.employee_id,
       });
@@ -631,7 +619,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
     try {
       setProcessing(true);
-      const { data, error } = await supabase.rpc('approve_distribution_by_manager', {
+      const { error } = await supabase.rpc('approve_distribution_by_manager', {
         p_batch_id: approval.batch_id,
         p_employee_id: session.employee_id,
       });
@@ -661,12 +649,12 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       // Filter for Supervisors: only show Receptionist/Cashier-created transactions
       let filteredData = data || [];
       if (isSupervisor) {
-        filteredData = filteredData.filter(approval => approval.created_by_role === 'Receptionist' || approval.created_by_role === 'Cashier');
+        filteredData = filteredData.filter((approval: PendingCashTransactionApproval) => approval.created_by_role === 'Receptionist' || approval.created_by_role === 'Cashier');
       }
 
       // Filter for Receptionist/Cashier: only show their own transactions
       if ((isReceptionist || isCashier) && session?.employee_id) {
-        filteredData = filteredData.filter(approval => approval.created_by_id === session.employee_id);
+        filteredData = filteredData.filter((approval: PendingCashTransactionApproval) => approval.created_by_id === session.employee_id);
       }
 
       setCashTransactionApprovals(filteredData);
@@ -1409,7 +1397,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     try {
       setProcessing(true);
 
-      const { data, error } = await supabase.rpc('approve_violation_report', {
+      const { error } = await supabase.rpc('approve_violation_report', {
         p_violation_report_id: selectedViolationReport.report_id,
         p_reviewer_employee_id: session.employee_id,
         p_decision: violationDecision,
@@ -1950,7 +1938,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <Badge variant={urgency === 'urgent' ? 'error' : urgency === 'warning' ? 'warning' : 'default'}>
+                              <Badge variant={urgency === 'urgent' ? 'danger' : urgency === 'warning' ? 'warning' : 'default'}>
                                 {urgency === 'urgent' && <AlertTriangle className="w-3 h-3 mr-1" />}
                                 {urgency === 'warning' && <Clock className="w-3 h-3 mr-1" />}
                                 {timeRemaining}
@@ -1962,7 +1950,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                 </Badge>
                               )}
                               {isHighTip && (
-                                <Badge variant="error" className="bg-orange-100 text-orange-800 border-orange-300">
+                                <Badge variant="danger" className="bg-orange-100 text-orange-800 border-orange-300">
                                   <DollarSign className="w-3 h-3 mr-1" />
                                   High Tips: ${totalTips.toFixed(2)}
                                 </Badge>
@@ -2081,7 +2069,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                   <span className="text-sm font-medium text-gray-900">
                                     Ticket #{ticket.ticket_number}
                                   </span>
-                                  <Badge variant={ticket.approval_status === 'approved' ? 'success' : 'error'}>
+                                  <Badge variant={ticket.approval_status === 'approved' ? 'success' : 'danger'}>
                                     {ticket.approval_status.toUpperCase()}
                                   </Badge>
                                 </div>
@@ -2127,7 +2115,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                   <span className="text-sm font-medium text-gray-900">
                                     Ticket #{ticket.ticket_number}
                                   </span>
-                                  <Badge variant={ticket.approval_status === 'approved' ? 'success' : 'error'}>
+                                  <Badge variant={ticket.approval_status === 'approved' ? 'success' : 'danger'}>
                                     {ticket.approval_status.toUpperCase()}
                                   </Badge>
                                 </div>
@@ -2173,7 +2161,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                               <span className="font-semibold text-gray-900">
                                 #{ticket.ticket_no}
                               </span>
-                              <Badge variant="error">REJECTED</Badge>
+                              <Badge variant="danger">REJECTED</Badge>
                             </div>
                             <p className="text-sm text-gray-700">
                               {ticket.service_name} {ticket.technician_name && `• ${ticket.technician_name}`}
@@ -2414,7 +2402,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                             <span className="font-semibold text-gray-900">
                               ${approval.amount.toFixed(2)}
                             </span>
-                            <Badge variant={approval.transaction_type === 'cash_in' ? 'success' : 'error'}>
+                            <Badge variant={approval.transaction_type === 'cash_in' ? 'success' : 'danger'}>
                               {approval.transaction_type === 'cash_in' ? 'CASH IN' : 'CASH OUT'}
                             </Badge>
                           </div>
@@ -2941,11 +2929,10 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                   </div>
                   <div className="space-y-3 mb-6">
                     {violationReports.map((report) => {
-                      const votesFor = report.votes_for_violation || 0;
-                      const votesAgainst = report.votes_against_violation || 0;
-                      const totalVotes = votesFor + votesAgainst;
-                      const percentageFor = totalVotes > 0 ? Math.round((votesFor / totalVotes) * 100) : 0;
                       const isExpired = report.status === 'expired';
+                      const totalVotes = report.votes_for_violation + report.votes_against_violation;
+                      const votesFor = report.votes_for_violation;
+                      const votesAgainst = report.votes_against_violation;
 
                       return (
                         <div
@@ -2964,7 +2951,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                 {isExpired ? (
                                   <Badge variant="warning">EXPIRED</Badge>
                                 ) : (
-                                  <Badge variant="error">PENDING REVIEW</Badge>
+                                  <Badge variant="danger">PENDING REVIEW</Badge>
                                 )}
                                 {report.threshold_met ? (
                                   <Badge className="bg-green-100 text-green-700">Threshold Met</Badge>
@@ -3216,16 +3203,16 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
                     if (report.status === 'collecting_responses') {
                       borderColor = 'border-gray-400';
-                      statusBadge = <Badge variant="secondary">Collecting Votes</Badge>;
+                      statusBadge = <Badge variant="default">Collecting Votes</Badge>;
                     } else if (report.status === 'pending_approval') {
                       borderColor = 'border-red-500';
-                      statusBadge = <Badge variant="error">Needs Decision</Badge>;
+                      statusBadge = <Badge variant="danger">Needs Decision</Badge>;
                     } else if (report.status === 'approved') {
                       borderColor = 'border-green-500';
                       statusBadge = <Badge variant="success">APPROVED</Badge>;
                     } else if (report.status === 'rejected') {
                       borderColor = 'border-gray-400';
-                      statusBadge = <Badge variant="secondary">NO VIOLATION</Badge>;
+                      statusBadge = <Badge variant="default">NO VIOLATION</Badge>;
                     } else if (report.status === 'expired') {
                       borderColor = 'border-orange-400';
                       statusBadge = <Badge className="bg-orange-100 text-orange-800 border-orange-300">EXPIRED</Badge>;

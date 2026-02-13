@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
@@ -41,7 +41,6 @@ export function CriticalSettingConfirmationModal({
 
   const isBoolean = typeof currentValue === 'boolean' && typeof newValue === 'boolean';
   const action = isBoolean ? (newValue ? 'enable' : 'disable') : 'change';
-  const actionPast = isBoolean ? (newValue ? 'enabled' : 'disabled') : 'changed';
 
   function formatValue(value: boolean | string | number): string {
     if (typeof value === 'boolean') {

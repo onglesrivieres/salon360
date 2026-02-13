@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { NumericInput } from './ui/NumericInput';

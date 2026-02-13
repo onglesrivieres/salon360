@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package, List, RefreshCw, Circle, TrendingUp, Vault, Flag, UserCircle, FolderOpen } from 'lucide-react';
+import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package, RefreshCw, Circle, TrendingUp, Vault, Flag, UserCircle, FolderOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { canAccessPage, Permissions } from '../lib/permissions';
 import { supabase, Store, TechnicianWithQueue, WorkingEmployee, PendingViolationResponse } from '../lib/supabase';
-import { NotificationBadge } from './ui/NotificationBadge';
 import { VersionNotification } from './VersionNotification';
 import { useServiceWorkerUpdate } from '../hooks/useServiceWorkerUpdate';
 import { Modal } from './ui/Modal';
@@ -717,7 +716,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     if (!session?.employee_id || !selectedStoreId) return;
 
     try {
-      const { data: result, error } = await supabase.rpc('create_queue_violation_report', {
+      const { data: _result, error } = await supabase.rpc('create_queue_violation_report', {
         p_reported_employee_id: data.reportedEmployeeId,
         p_reporter_employee_id: session.employee_id,
         p_store_id: selectedStoreId,
@@ -744,7 +743,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     if (!session?.employee_id) return;
 
     try {
-      const { data, error } = await supabase.rpc('submit_violation_response', {
+      const { data: _data, error } = await supabase.rpc('submit_violation_response', {
         p_violation_report_id: reportId,
         p_employee_id: session.employee_id,
         p_response: response,
@@ -1118,7 +1117,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               allowSkipTurn={true}
               onSkipTurn={handleSkipTurn}
               skippingTurnEmployeeId={skippingTurnEmployeeId}
-              canRemoveTechnicians={canRemoveTechnicians}
+              canRemoveTechnicians={canRemoveTechnicians ?? undefined}
               onRemoveTechnician={handleRemoveTechnician}
               removingTechnicianId={removingTechnicianId}
             />
@@ -1150,7 +1149,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         workingEmployees={workingEmployees}
         loadingEmployees={loadingWorkingEmployees}
         currentEmployeeId={session?.employee_id || ''}
-        currentEmployeeName={session?.name || ''}
+        currentEmployeeName={session?.display_name || ''}
         storeId={selectedStoreId || ''}
         minVotesRequired={minVotesRequired}
         onSubmit={handleSubmitViolationReport}

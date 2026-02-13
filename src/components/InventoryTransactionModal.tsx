@@ -7,7 +7,7 @@ import { Select } from './ui/Select';
 import { NumericInput } from './ui/NumericInput';
 import { SearchableSelect, SearchableSelectOption } from './ui/SearchableSelect';
 import { useToast } from './ui/Toast';
-import { supabase, InventoryItem, Technician, PurchaseUnit, Supplier, Store } from '../lib/supabase';
+import { supabase, InventoryItem, PurchaseUnit, Supplier, Store } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { InventoryItemModal } from './InventoryItemModal';
 import { SupplierModal } from './SupplierModal';
@@ -58,6 +58,13 @@ interface TransactionItemForm {
   newPurchaseUnitMultiplier: string;
   isCustomPurchaseUnit: boolean;
   customPurchaseUnitName: string;
+}
+
+interface EmployeeListItem {
+  id: string;
+  display_name: string;
+  role: string[];
+  status: string;
 }
 
 // Interface for pending purchase units that will be created on submit
@@ -154,6 +161,8 @@ export function InventoryTransactionModal({
   const [items, setItems] = useState<TransactionItemForm[]>([
     {
       item_id: '',
+      brand: '',
+      isAddingNewBrand: false,
       purchase_unit_id: '',
       purchase_quantity: '',
       purchase_unit_price: '',
@@ -169,7 +178,7 @@ export function InventoryTransactionModal({
     },
   ]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [employees, setEmployees] = useState<Technician[]>([]);
+  const [employees, setEmployees] = useState<EmployeeListItem[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [purchaseUnits, setPurchaseUnits] = useState<Record<string, PurchaseUnit[]>>({});
   const [pendingPurchaseUnits, setPendingPurchaseUnits] = useState<PendingPurchaseUnit[]>([]);
@@ -331,7 +340,7 @@ export function InventoryTransactionModal({
         employeeStoresData?.map((es) => es.employee_id) || []
       );
 
-      const filteredEmployees = (employeesData || []).filter((emp: Technician) =>
+      const filteredEmployees = (employeesData || []).filter((emp: EmployeeListItem) =>
         employeeIdsInStore.has(emp.id)
       );
 
@@ -856,7 +865,7 @@ export function InventoryTransactionModal({
         }
 
         // Build a minimal InventoryItem to add to lookup
-        const newItem: InventoryItem = {
+        const newItem = {
           id: newItemId,
           name: row.itemName.trim(),
           category: parent.category,
@@ -865,13 +874,15 @@ export function InventoryTransactionModal({
           is_master_item: false,
           parent_id: parent.id,
           description: '',
-          size: null,
+          size: undefined,
           store_id: selectedStoreId!,
           quantity_on_hand: 0,
           unit_cost: 0,
           reorder_level: 0,
           is_active: true,
           created_at: new Date().toISOString(),
+          supplier: '',
+          updated_at: new Date().toISOString(),
         } as InventoryItem;
 
         itemLookup.set(row.itemName.toLowerCase(), newItem);
@@ -1009,7 +1020,7 @@ export function InventoryTransactionModal({
 
   async function handleItemChange(index: number, field: keyof TransactionItemForm, value: string) {
     const newItems = [...items];
-    newItems[index][field] = value;
+    (newItems[index] as any)[field] = value;
 
     if (field === 'item_id' && value) {
       const item = inventoryItems.find((i) => i.id === value);
@@ -1178,7 +1189,6 @@ export function InventoryTransactionModal({
     const validItems = items.filter((item) => item.item_id && parseFloat(item.quantity) > 0);
 
     const itemsData = validItems.map((item) => {
-      const inventoryItem = inventoryItems.find((i) => i.id === item.item_id);
       const originalIndex = items.findIndex(i => i === item);
 
       let purchaseUnit = null;
@@ -1598,12 +1608,10 @@ export function InventoryTransactionModal({
           );
 
           let realId: string;
-          let realMultiplier: number;
 
           if (duplicateUnit) {
             // Unit already exists - use it
             realId = duplicateUnit.id;
-            realMultiplier = duplicateUnit.multiplier;
           } else {
             // Create the unit in database
             const isFirstUnit = existingUnits.length === 0;
@@ -1634,7 +1642,6 @@ export function InventoryTransactionModal({
 
                 if (existingUnit) {
                   realId = existingUnit.id;
-                  realMultiplier = existingUnit.multiplier;
                 } else {
                   showToast(`Failed to create purchase unit: ${pendingUnit.unitName}`, 'error');
                   setSaving(false);
@@ -1648,7 +1655,6 @@ export function InventoryTransactionModal({
               }
             } else {
               realId = data.id;
-              realMultiplier = data.multiplier;
 
               // Update purchase units cache
               const updatedUnits = await fetchPurchaseUnitsForItem(pendingUnit.itemId);

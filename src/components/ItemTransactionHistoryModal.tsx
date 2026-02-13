@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Filter, ArrowUpDown, ArrowUp, ArrowDown, Search } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Filter, ArrowUp, ArrowDown, Search } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Select } from './ui/Select';
@@ -194,14 +194,14 @@ export function ItemTransactionHistoryModal({
     .filter((t) => t.transaction_type === 'out')
     .reduce((sum, t) => sum + t.quantity, 0);
 
-  function getStatusBadgeVariant(status: string): 'warning' | 'success' | 'error' {
+  function getStatusBadgeVariant(status: string): 'warning' | 'success' | 'danger' {
     switch (status) {
       case 'pending':
         return 'warning';
       case 'approved':
         return 'success';
       case 'rejected':
-        return 'error';
+        return 'danger';
       default:
         return 'warning';
     }

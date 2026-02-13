@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Info } from 'lucide-react';
 
 type WeeklyDataTips = Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>>;
@@ -45,7 +45,7 @@ function formatDateHeader(dateStr: string): { day: string; date: string } {
   return { day, date };
 }
 
-export function WeeklyCalendarView({ selectedDate, weeklyData, summaries, periodDates, mode = 'tips', multiStoreEmployeeIds = new Set() }: WeeklyCalendarViewProps) {
+export function WeeklyCalendarView({ selectedDate: _selectedDate, weeklyData, summaries, periodDates, mode = 'tips', multiStoreEmployeeIds = new Set() }: WeeklyCalendarViewProps) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   return (

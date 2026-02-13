@@ -46,7 +46,7 @@ export function OutsideWorkingHoursPage({
         </p>
 
         <Button
-          variant="outline"
+          variant="secondary"
           onClick={onGoHome}
         >
           <Home className="w-4 h-4 mr-2" />

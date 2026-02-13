@@ -133,7 +133,7 @@ export const Permissions = {
       roles: Role[] | RolePermission,
       isCompleted: boolean,
       isClosed: boolean,
-      isApproved?: boolean
+      _isApproved?: boolean
     ): boolean => {
       if (hasAnyRole(roles, ['Technician', 'Trainee'])) {
         return !isCompleted;
@@ -258,13 +258,13 @@ export const Permissions = {
   },
 
   profile: {
-    canChangePIN: (roles: Role[] | RolePermission): boolean => {
+    canChangePIN: (_roles: Role[] | RolePermission): boolean => {
       return true;
     },
   },
 
   attendance: {
-    canView: (roles: Role[] | RolePermission, payType?: 'hourly' | 'daily' | 'commission'): boolean => {
+    canView: (roles: Role[] | RolePermission, _payType?: 'hourly' | 'daily' | 'commission'): boolean => {
       // Management roles can always view attendance
       if (hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier'])) {
         return true;
@@ -469,11 +469,13 @@ export function getPermissionMessage(
 }
 
 export function canAccessPage(
-  page: 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'settings' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'configuration' | 'safebalance' | 'queue-removal-history' | 'clients' | 'resources',
+  page: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'settings' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'configuration' | 'safebalance' | 'queue-removal-history' | 'clients' | 'resources',
   roles: Role[] | RolePermission,
   payType?: 'hourly' | 'daily' | 'commission'
 ): boolean {
   switch (page) {
+    case 'home':
+      return true;
     case 'tickets':
       return Permissions.tickets.canView(roles);
     case 'eod':

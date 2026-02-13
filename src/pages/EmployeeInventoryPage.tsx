@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Package, User, DollarSign, Calendar, Search, TrendingDown, ChevronRight } from 'lucide-react';
-import { supabase, EmployeeInventoryWithDetails, Technician, EmployeeInventoryLotDetail } from '../lib/supabase';
+import { Package, User, DollarSign, Search, TrendingDown, ChevronRight } from 'lucide-react';
+import { supabase, EmployeeInventoryWithDetails, EmployeeInventoryLotDetail } from '../lib/supabase';
 import { Badge } from '../components/ui/Badge';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
@@ -11,7 +11,7 @@ import { formatDateTimeEST, formatDateEST } from '../lib/timezone';
 
 export function EmployeeInventoryPage() {
   const [inventory, setInventory] = useState<EmployeeInventoryWithDetails[]>([]);
-  const [employees, setEmployees] = useState<Technician[]>([]);
+  const [employees, setEmployees] = useState<{ id: string; display_name: string; role: string[]; status: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
@@ -65,7 +65,7 @@ export function EmployeeInventoryPage() {
         employeeStoresData?.map((es) => es.employee_id) || []
       );
 
-      const filteredEmployees = (employeesData || []).filter((emp: Technician) =>
+      const filteredEmployees = (employeesData || []).filter((emp) =>
         employeeIdsInStore.has(emp.id)
       );
 
@@ -136,7 +136,7 @@ export function EmployeeInventoryPage() {
 
       const enrichedInventory = inventoryData.map((item: EmployeeInventoryWithDetails) => ({
         ...item,
-        lots: lotsMap.get(item.item_id || item.master_item_id) || [],
+        lots: lotsMap.get(item.item_id || item.master_item_id || '') || [],
       }));
 
       setInventory(enrichedInventory);
@@ -360,14 +360,14 @@ export function EmployeeInventoryPage() {
                                 <p className="text-xs text-gray-500">{item.item_code}</p>
                               </div>
                               {item.lot_count && item.lot_count > 0 && (
-                                <Badge variant="secondary" className="text-xs">
+                                <Badge variant="default" className="text-xs">
                                   {item.lot_count} {item.lot_count === 1 ? 'lot' : 'lots'}
                                 </Badge>
                               )}
                             </div>
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <Badge variant="secondary">{item.category}</Badge>
+                            <Badge variant="default">{item.category}</Badge>
                           </td>
                           <td className="px-4 py-3 text-right text-sm text-gray-900">
                             {item.quantity_on_hand?.toFixed(2)} {item.item_unit}
@@ -471,7 +471,7 @@ export function EmployeeInventoryPage() {
                                               </td>
                                               <td className="px-3 py-2 text-center">
                                                 <Badge
-                                                  variant={lot.status === 'active' ? 'success' : 'secondary'}
+                                                  variant={lot.status === 'active' ? 'success' : 'default'}
                                                   className="text-xs"
                                                 >
                                                   {lot.status}

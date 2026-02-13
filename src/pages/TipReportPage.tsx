@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Download, Printer, ChevronLeft, ChevronRight, ChevronDown, Check, CheckCircle, X, Circle, Calendar, CalendarDays, Filter } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
@@ -94,7 +94,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   const [isViewModeDropdownOpen, setIsViewModeDropdownOpen] = useState(false);
   const viewModeDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [totals, setTotals] = useState({
+  const [_totals, setTotals] = useState({
     tips: 0,
     tips_cash: 0,
     tips_card: 0,
@@ -643,6 +643,9 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           technician_name: techName,
           services_count: 0,
           revenue: 0,
+          service_revenue: 0,
+          addon_revenue: 0,
+          total_revenue: 0,
           tips_customer: totalCustomer,
           tips_receptionist: totalReceptionist,
           tips_total: totalCustomer + totalReceptionist,

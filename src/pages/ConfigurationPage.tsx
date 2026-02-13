@@ -843,9 +843,9 @@ export function ConfigurationPage() {
                               </p>
                             )}
                             <SettingsDependencyIndicator
-                              dependencies={setting.dependencies || []}
-                              allSettings={settingsMap}
-                              isEnabled={setting.setting_value}
+                              dependencies={(setting.dependencies || []) as Array<{ key: string; type: 'requires' | 'affects' | 'conflicts'; label: string }>}
+                              allSettings={settingsMap as Map<string, { display_name: string; setting_value: boolean }>}
+                              isEnabled={Boolean(setting.setting_value)}
                             />
                           </div>
                           {setting.setting_key === 'customer_fields' ? (

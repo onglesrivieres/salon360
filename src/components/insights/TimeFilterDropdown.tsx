@@ -141,7 +141,7 @@ export function TimeFilterDropdown({
 
               <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   onClick={handleCancelCustomRange}
                   className="flex-1"
                 >

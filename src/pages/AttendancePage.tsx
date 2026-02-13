@@ -427,8 +427,6 @@ export function AttendancePage({ currentDate, onCurrentDateChange }: AttendanceP
   const isRestrictedRole = session?.role_permission === 'Technician' ||
     session?.role_permission === 'Receptionist' ||
     session?.role_permission === 'Cashier';
-  const isManagement = session?.role && Permissions.endOfDay.canView(session.role);
-
   if (session && session.role && !Permissions.attendance.canView(session.role, employeePayType || undefined)) {
     return (
       <div className="max-w-7xl mx-auto">

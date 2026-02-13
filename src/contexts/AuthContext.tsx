@@ -4,9 +4,6 @@ import { Locale, getDeviceLocale, translations, SUPPORTED_LOCALES } from '../lib
 import { Role } from '../lib/permissions';
 
 
-type TranslationKey = keyof typeof translations.en;
-type NestedTranslation = typeof translations.en[TranslationKey];
-
 interface AuthContextType {
   session: AuthSession | null;
   selectedStoreId: string | null;

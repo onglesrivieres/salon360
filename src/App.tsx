@@ -84,7 +84,7 @@ const InsightsPage = lazyWithReload(() => import('./pages/InsightsPage').then(m 
 const ClientsPage = lazyWithReload(() => import('./pages/ClientsPage').then(m => ({ default: m.ClientsPage })));
 const ResourcesPage = lazyWithReload(() => import('./pages/ResourcesPage').then(m => ({ default: m.ResourcesPage })));
 
-type Page = 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'configuration' | 'approvals' | 'inventory' | 'insights' | 'clients' | 'resources';
+type Page = 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'attendance' | 'technicians' | 'services' | 'settings' | 'configuration' | 'approvals' | 'inventory' | 'insights' | 'clients' | 'resources' | 'home';
 
 function AppContent() {
   const { isAuthenticated, selectedStoreId, selectStore, session, login, logout } = useAuth();
@@ -227,7 +227,7 @@ function AppContent() {
 
     let availableStores: any[] = [];
 
-    if (session.role_permission === 'Admin' || session.role_permission === 'Manager' || session.role_permission === 'Owner') {
+    if (session.role_permission === 'Admin') {
       const { data: stores } = await supabase
         .from('stores')
         .select('*')

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Printer, Download, MoreVertical, ChevronDown, ChevronLeft, ChevronRight, Info, ArrowUpDown } from 'lucide-react';
 import { DateRange } from '../../lib/timeFilters';
 import { useEmployeeSalesData } from '../../hooks/useSalesData';
-import { formatCurrency, formatNumber } from '../../lib/formatters';
+import { formatCurrency } from '../../lib/formatters';
 import { getCurrentDateEST } from '../../lib/timezone';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -106,7 +106,9 @@ export function EmployeeSales({ dateRange }: EmployeeSalesProps) {
   const isToday = dateRange.startDate === getCurrentDateEST();
 
   const InfoTooltip = ({ text }: { text: string }) => (
-    <Info className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" title={text} />
+    <span title={text}>
+      <Info className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+    </span>
   );
 
   return (

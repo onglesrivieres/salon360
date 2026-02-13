@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Search, RefreshCw, AlertCircle, ChevronUp, ChevronDown } from 'lucide-react';
-import { supabase, Employee, Store, WeeklySchedule } from '../lib/supabase';
+import { Plus, Search, AlertCircle, ChevronUp, ChevronDown } from 'lucide-react';
+import { supabase, Employee, Store } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
@@ -347,7 +347,7 @@ export function EmployeesPage() {
     try {
       const result = await resetPIN(employee.id);
       if (result.success) {
-        setTempPIN(result.tempPIN);
+        setTempPIN(result.tempPIN || '');
         setResetEmployee(employee);
         setResetModalOpen(true);
         showToast(t('emp.pinReset'), 'success');

@@ -40,7 +40,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
   const [availableStoreIds, setAvailableStoreIds] = useState<string[]>([]);
   const [storeSelectionContext, setStoreSelectionContext] = useState<'checkin' | 'checkout' | 'ready' | 'general'>('general');
   const [pendingEmployeeId, setPendingEmployeeId] = useState<string | null>(null);
-  const [selectedStoreName, setSelectedStoreName] = useState<string>('');
+  const [_selectedStoreName, setSelectedStoreName] = useState<string>('');
 
   const handleActionClick = (action: 'checkin' | 'checkout' | 'ready' | 'report') => {
     setSelectedAction(action);
@@ -65,7 +65,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
       let hasMultipleStores = false;
       let storeId: string | undefined;
 
-      if (session.role_permission === 'Admin' || session.role_permission === 'Manager' || session.role_permission === 'Owner') {
+      if (session.role_permission === 'Admin') {
         const { data: allStores, error: allStoresError } = await supabase
           .from('stores')
           .select('id')
@@ -126,7 +126,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
 
       setAuthenticatedSession({
         employee_id: session.employee_id,
-        store_id: storeId,
+        store_id: storeId || '',
         display_name: displayName,
         pay_type: payType,
         role: roleArray
@@ -142,7 +142,7 @@ export function HomePage({ onActionSelected }: HomePageProps) {
           setPendingEmployeeId(session.employee_id);
           setShowStoreSelection(true);
         } else {
-          await handleCheckInOut(session.employee_id, storeId, displayName, payType, selectedAction);
+          await handleCheckInOut(session.employee_id, storeId || '', displayName, payType, selectedAction);
         }
       } else if (selectedAction === 'ready') {
         // Block Cashiers from joining the ready queue

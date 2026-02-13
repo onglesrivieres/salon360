@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { AlertTriangle, User, MessageSquare, RefreshCw } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
@@ -26,8 +26,8 @@ export function ViolationReportModal({
   workingEmployees,
   loadingEmployees,
   currentEmployeeId,
-  currentEmployeeName,
-  storeId,
+  currentEmployeeName: _currentEmployeeName,
+  storeId: _storeId,
   minVotesRequired = 3,
   onSubmit,
 }: ViolationReportModalProps) {

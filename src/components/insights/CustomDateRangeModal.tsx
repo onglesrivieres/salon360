@@ -89,7 +89,7 @@ export function CustomDateRangeModal({ isOpen, onClose, onApply, initialDateRang
         )}
 
         <div className="flex justify-end gap-3 pt-4">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
           <Button onClick={handleApply}>

@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, Trash2, Banknote, CreditCard, Clock, Award, Lock, CheckCircle, AlertCircle, Edit2, Gift, UserPlus, User, Eye, XCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Plus, Trash2, Banknote, CreditCard, Clock, CheckCircle, AlertCircle, Edit2, Gift, UserPlus, User, Eye, XCircle } from 'lucide-react';
 import {
   supabase,
   SaleTicket,
-  TicketItemWithDetails,
   Service,
   StoreServiceWithDetails,
   Technician,
@@ -84,7 +83,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   const enableMixedPayments = getSettingBoolean('enable_mixed_payment_methods', true);
   const requireCustomerName = getSettingBoolean('require_customer_name_on_tickets', false);
   const requireCustomerPhone = getSettingBoolean('require_customer_phone_on_tickets', false);
-  const requireEmployeeCheckin = getSettingBoolean('require_employee_checkin_before_tickets', true);
   const requireOpeningCashValidation = getSettingBoolean('require_opening_cash_validation', false);
   const showCustomerName = getSettingBoolean('show_customer_name_field', true);
   const showCustomerPhone = getSettingBoolean('show_customer_phone_field', true);
@@ -109,7 +107,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
   const isVoided = !!ticket?.voided_at;
 
-  const isReadOnly = ticket && session && session.role_permission && (
+  const isReadOnly = !!(ticket && session && session.role_permission && (
     isVoided ||
     !Permissions.tickets.canEdit(
       session.role_permission,
@@ -120,7 +118,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
       ticket.created_by === session.employee_id &&
       !canEditAsSelfService
     )
-  );
+  ));
 
   const canEditNotes = session && session.role_permission && (
     !ticketId || (ticket && Permissions.tickets.canEditNotes(
@@ -172,7 +170,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   const shouldMaskPhone = isTicketClosed && !canViewFullPhoneWhenClosed;
 
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>('');
-  const [showCustomService, setShowCustomService] = useState(false);
+  const [_showCustomService, setShowCustomService] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showVoidConfirm, setShowVoidConfirm] = useState(false);
   const [voidReason, setVoidReason] = useState('');
@@ -186,74 +184,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   const [linkedClient, setLinkedClient] = useState<Client | null>(null);
   const [blacklistedByName, setBlacklistedByName] = useState<string>('');
 
-  const calculateTimeRemaining = (tech: TechnicianWithQueue): string => {
-    if (!tech.ticket_start_time || !tech.estimated_duration_min) {
-      return '';
-    }
-
-    const startTime = new Date(tech.ticket_start_time);
-    const elapsedMinutes = Math.floor((currentTime.getTime() - startTime.getTime()) / (1000 * 60));
-    const remainingMinutes = Math.max(0, tech.estimated_duration_min - elapsedMinutes);
-
-    if (remainingMinutes === 0) {
-      return 'Finishing soon';
-    }
-
-    if (remainingMinutes < 60) {
-      return `~${remainingMinutes}min`;
-    }
-
-    const hours = Math.floor(remainingMinutes / 60);
-    const mins = remainingMinutes % 60;
-    return mins > 0 ? `~${hours}h ${mins}min` : `~${hours}h`;
-  };
-
-  const calculateCompletionDuration = (): number => {
-    if (!ticket?.opened_at || !ticket?.completed_at) return 0;
-
-    const opened = new Date(ticket.opened_at);
-    const completed = new Date(ticket.completed_at);
-    const durationMinutes = Math.floor((completed.getTime() - opened.getTime()) / (1000 * 60));
-
-    return Math.max(0, durationMinutes);
-  };
-
-  const formatCompletionDuration = (minutes: number): string => {
-    if (minutes === 0) return '0 min';
-
-    if (minutes < 60) {
-      return `${minutes} min`;
-    }
-
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
-  };
-
-  const getServiceDuration = (): number => {
-    if (!ticket || !items.length) return 0;
-    const firstItem = items[0];
-    if (!firstItem?.service) return 0;
-    return firstItem.service.duration_min || 0;
-  };
-
-  const getCompletionTimeStatus = (): 'on_time' | 'moderate_deviation' | 'extreme_deviation' | 'unknown' => {
-    const serviceDuration = getServiceDuration();
-    if (serviceDuration === 0 || !ticket?.completed_at) return 'unknown';
-
-    const actualDuration = calculateCompletionDuration();
-    if (actualDuration === 0) return 'unknown';
-
-    const percentage = (actualDuration / serviceDuration) * 100;
-
-    if (percentage < 70) return 'extreme_deviation';
-    if (percentage < 90) return 'moderate_deviation';
-    if (percentage <= 110) return 'on_time';
-    if (percentage <= 130) return 'moderate_deviation';
-    return 'extreme_deviation';
-  };
-
-  const canEmployeePerformService = (employeeId: string, serviceId: string): boolean => {
+  const canEmployeePerformService = (_employeeId: string, _serviceId: string): boolean => {
     // All service performers (Technician, Supervisor, Manager, Owner) can perform all services
     return true;
   };
@@ -728,24 +659,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     }
   }
 
-  function addItem() {
-    const defaultService = services[0];
-    setItems([
-      ...items,
-      {
-        service_id: defaultService?.id || '',
-        employee_id: lastUsedEmployeeId,
-        qty: '1',
-        price_each: defaultService?.price.toString() || '0',
-        tip_customer: '0',
-        tip_receptionist: '0',
-        addon_details: '',
-        addon_price: '0',
-        service: defaultService,
-      },
-    ]);
-  }
-
   function updateItem(index: number, field: keyof TicketItemForm, value: string) {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
@@ -860,44 +773,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     );
   }
 
-  function calculateTotalTips(): number {
-    return (
-      (parseFloat(formData.tip_customer_cash) || 0) +
-      (parseFloat(formData.tip_customer_card) || 0) +
-      (parseFloat(formData.tip_receptionist) || 0)
-    );
-  }
-
-  function calculateTipsExcludingReceptionist(): number {
-    return parseFloat(formData.tip_customer_card) || 0;
-  }
-
-  function calculateCashTips(): number {
-    return parseFloat(formData.tip_customer_cash) || 0;
-  }
-
-  function calculateCardTips(): number {
-    return parseFloat(formData.tip_customer_card) || 0;
-  }
-
-  function calculateTotalCashCollected(): number {
-    return (
-      (parseFloat(formData.payment_cash) || 0) +
-      calculateCashTips()
-    );
-  }
-
-  function calculateTotalCardCollected(): number {
-    return (
-      (parseFloat(formData.payment_card) || 0) +
-      calculateCardTips()
-    );
-  }
-
-  function calculateTotalGiftCardCollected(): number {
-    return parseFloat(formData.payment_gift_card) || 0;
-  }
-
   function calculateTotalDiscount(): number {
     const cashDiscountAmount = parseFloat(formData.discount_amount_cash) || 0;
     const cardDiscountAmount = parseFloat(formData.discount_amount) || 0;
@@ -911,48 +786,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     }
 
     return 0;
-  }
-
-  function calculateTotalCashPayment(): number {
-    const paymentCash = parseFloat(tempPaymentData.payment_cash) || 0;
-    const discountAmountCash = parseFloat(tempPaymentData.discount_amount_cash) || 0;
-    return Math.max(0, paymentCash - discountAmountCash);
-  }
-
-  function calculateTotalCollected(): number {
-    const totalPayments = calculateTotalPayments();
-    const totalDiscount = calculateTotalDiscount();
-    const tips = calculateTipsExcludingReceptionist();
-    return totalPayments - totalDiscount + tips;
-  }
-
-
-  function calculateTempTotalCollected(): number {
-    const servicePrice = calculateTotal();
-    const tipsExcludingReceptionist = (
-      (parseFloat(tempPaymentData.tip_customer_cash) || 0) +
-      (parseFloat(tempPaymentData.tip_customer_card) || 0)
-    );
-    return servicePrice + tipsExcludingReceptionist;
-  }
-
-  function handleNumericFieldFocus(event: React.FocusEvent<HTMLInputElement>) {
-    const value = event.target.value;
-    const numericValue = parseFloat(value);
-
-    // Auto-select text if the field contains 0, 0.00, or is empty
-    if (!value || value === '' || numericValue === 0 || value === '0' || value === '0.00' || value === '0.0') {
-      event.target.select();
-    }
-  }
-
-  function handleNumericFieldBlur(event: React.FocusEvent<HTMLInputElement>, fieldName: string) {
-    const value = event.target.value;
-
-    // If field is empty or invalid, reset to '0'
-    if (!value || value.trim() === '' || isNaN(parseFloat(value))) {
-      setFormData({ ...formData, [fieldName]: '0' });
-    }
   }
 
   function hasExistingPaymentData(): boolean {
@@ -1311,7 +1144,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           await stopCurrentServiceTimer(ticketId);
         }
 
-        const { error: deleteError } = await supabase
+        await supabase
           .from('ticket_items')
           .delete()
           .eq('sale_ticket_id', ticketId)
@@ -1491,7 +1324,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     }
   }
 
-  async function handleSelectBusyTechnician(technicianId: string, currentTicketId?: string) {
+  async function handleSelectBusyTechnician(technicianId: string, _currentTicketId?: string) {
     setSelectedTechnicianId(technicianId);
     setLastUsedEmployeeId(technicianId);
     if (items.length > 0) {
@@ -1628,7 +1461,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     try {
       setSaving(true);
 
-      const { error, data } = await supabase
+      const { error } = await supabase
         .from('sale_tickets')
         .update({
           closed_at: null,
@@ -3518,7 +3351,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           <div className="flex gap-3 pt-4">
             <Button
               onClick={handlePaymentModalCancel}
-              variant="outline"
+              variant="secondary"
               className="flex-1"
             >
               {isTicketClosed ? 'Close' : 'Cancel'}

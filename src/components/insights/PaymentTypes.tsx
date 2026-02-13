@@ -122,8 +122,8 @@ export function PaymentTypes({ dateRange }: PaymentTypesProps) {
       </div>
 
       <TenderTypesChart
-        creditCard={cardData.chartData.creditCard}
-        debitCard={cardData.chartData.debitCard}
+        cash={cardData.chartData.creditCard}
+        card={cardData.chartData.debitCard}
         isLoading={cardData.isLoading}
       />
 
@@ -137,7 +137,9 @@ export function PaymentTypes({ dateRange }: PaymentTypesProps) {
           />
           <span className="text-sm text-gray-700">Show tips breakdown</span>
         </label>
-        <Info className="w-4 h-4 text-gray-400 cursor-help" title="Toggle to show tip details" />
+        <span title="Toggle to show tip details">
+          <Info className="w-4 h-4 text-gray-400 cursor-help" />
+        </span>
       </div>
 
       <CardPaymentTable data={cardData} showTips={showTips} />

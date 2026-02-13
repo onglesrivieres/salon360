@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, Calendar, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Clock, Calendar, AlertCircle } from 'lucide-react';
 import { supabase, StoreAttendance, AttendanceChangeProposal } from '../lib/supabase';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
@@ -31,7 +31,7 @@ export function ShiftDetailModal({
   const [proposedCheckInTime, setProposedCheckInTime] = useState('');
   const [proposedCheckOutTime, setProposedCheckOutTime] = useState('');
   const [reasonComment, setReasonComment] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { showToast } = useToast();
   const { session } = useAuth();

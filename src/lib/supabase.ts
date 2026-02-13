@@ -651,6 +651,9 @@ export interface EmployeeInventoryWithDetails extends EmployeeInventory {
   item_name?: string;
   item_category?: string;
   item_unit?: string;
+  item_code?: string;
+  category?: string;
+  master_item_id?: string;
   employee_name?: string;
   average_cost?: number;
   lot_count?: number;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { supabase, Client, ClientColorHistory, ClientLookupResult } from '../lib/supabase';
+import { supabase, Client, ClientColorHistory } from '../lib/supabase';
 import { normalizePhoneNumber, hasEnoughDigitsForLookup } from '../lib/phoneUtils';
 
 interface UseClientLookupOptions {

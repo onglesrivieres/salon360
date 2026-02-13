@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Edit2, Check, CheckCircle, Clock, AlertCircle, Filter, X, XCircle, DollarSign, ChevronLeft, ChevronRight, ChevronDown, ImageIcon, FileText, Calendar, CalendarRange } from 'lucide-react';
-import { supabase, SaleTicket } from '../lib/supabase';
+import { Plus, Check, CheckCircle, Clock, AlertCircle, Filter, X, XCircle, DollarSign, ChevronLeft, ChevronRight, ChevronDown, ImageIcon, FileText, Calendar, CalendarRange } from 'lucide-react';
+import { supabase, SaleTicket, SaleTicketWithItems } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
@@ -22,7 +22,7 @@ interface TicketsPageProps {
 
 export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, onHighlightComplete }: TicketsPageProps) {
   const [viewMode, setViewMode] = useState<'tickets' | 'daily' | 'period'>('tickets');
-  const [tickets, setTickets] = useState<SaleTicket[]>([]);
+  const [tickets, setTickets] = useState<SaleTicketWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
@@ -314,12 +314,6 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     setEditingTicketId(null);
     onHighlightComplete?.();
     fetchTickets();
-  }
-
-  function getTipCustomer(ticket: any): number {
-    if (!ticket.ticket_items || ticket.ticket_items.length === 0) return 0;
-    const item = ticket.ticket_items[0];
-    return (item?.tip_customer_cash || 0) + (item?.tip_customer_card || 0);
   }
 
   function getTipReceptionist(ticket: any): number {
@@ -656,7 +650,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   }
 
   // Check if the same person opened, performed, and closed the ticket
-  function isSamePersonOpenedPerformedClosed(ticket: SaleTicket): boolean {
+  function isSamePersonOpenedPerformedClosed(ticket: SaleTicketWithItems): boolean {
     // Check if closed
     if (!ticket.closed_at || !ticket.created_by || !ticket.closed_by) return false;
 
@@ -672,30 +666,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     return performerIds.size === 1 && performerIds.has(ticket.closed_by);
   }
 
-  // Check if the current user can approve based on role hierarchy for self-service tickets
-  function canApproveBasedOnRole(ticket: SaleTicket): boolean {
-    if (!session?.role_permission) return false;
-
-    // Only applies to self-service tickets (same person opened, performed, closed)
-    if (!isSamePersonOpenedPerformedClosed(ticket)) return false;
-
-    const openerRole = ticket.opened_by_role;
-    const currentUserRole = session.role_permission;
-
-    // Supervisor tickets require Manager, Owner, or Admin approval
-    if (openerRole === 'Supervisor') {
-      return ['Manager', 'Owner', 'Admin'].includes(currentUserRole);
-    }
-
-    // Manager tickets require Owner or Admin approval
-    if (openerRole === 'Manager') {
-      return ['Owner', 'Admin'].includes(currentUserRole);
-    }
-
-    return false;
-  }
-
-  function canApproveTicket(ticket: SaleTicket): boolean {
+  function canApproveTicket(ticket: SaleTicketWithItems): boolean {
     if (!session?.employee_id || !session?.role) return false;
     if (!Permissions.tickets.canApprove(session.role)) return false;
 
@@ -1139,17 +1110,9 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredTickets.map((ticket) => {
-                const tipCustomer = getTipCustomer(ticket);
-                const tipReceptionist = getTipReceptionist(ticket);
                 const technicianName = getTechnicianName(ticket);
                 const time = formatTimeEST(ticket.opened_at);
 
-                const isApproved = ticket.approval_status === 'approved' || ticket.approval_status === 'auto_approved';
-                const canEdit = session && session.role_permission && Permissions.tickets.canEdit(
-                  session.role_permission,
-                  !!ticket.closed_at,
-                  isApproved
-                );
                 const canView = session && session.role_permission && Permissions.tickets.canView(session.role_permission);
 
                 const isTicketVoided = !!ticket.voided_at;
@@ -1322,18 +1285,10 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
       <div className="md:hidden space-y-2">
         {filteredTickets.map((ticket) => {
-          const tipCustomer = getTipCustomer(ticket);
-          const tipReceptionist = getTipReceptionist(ticket);
           const totalTips = getTotalTips(ticket);
           const technicianName = getTechnicianName(ticket);
           const time = formatTimeEST(ticket.opened_at);
 
-          const isApproved = ticket.approval_status === 'approved' || ticket.approval_status === 'auto_approved';
-          const canEdit = session && Permissions.tickets.canEdit(
-            session.role_permission,
-            !!ticket.closed_at,
-            isApproved
-          );
           const canView = session && Permissions.tickets.canView(session.role_permission);
           const showApprovalButtons = canApproveTicket(ticket);
 
@@ -1350,20 +1305,15 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
           const isHighTip = totalTips > 20;
 
           let cardBackgroundClass = 'bg-gray-100';
-          let cardHoverClass = 'active:bg-gray-200';
 
           if (isTicketVoided) {
             cardBackgroundClass = 'bg-gray-200 opacity-60';
-            cardHoverClass = 'active:bg-gray-300';
           } else if (isSelfServiceTicket) {
             cardBackgroundClass = 'bg-green-50';
-            cardHoverClass = 'active:bg-green-100';
           } else if (isUnclosedTicket) {
             cardBackgroundClass = 'bg-yellow-50 animate-pulse';
-            cardHoverClass = 'active:bg-yellow-100';
           } else if (isClosedTicket) {
             cardBackgroundClass = 'bg-gray-100';
-            cardHoverClass = 'active:bg-gray-200';
           }
 
           const isHighlighted = ticket.id === highlightedTicketId;

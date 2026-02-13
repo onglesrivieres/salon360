@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DollarSign, TrendingUp, Vault, ChevronLeft, ChevronRight, TrendingDown, AlertTriangle, History, ChevronDown, ChevronUp, Edit3, Clock } from 'lucide-react';
 import { supabase, SafeBalanceSummary, CashTransactionWithDetails } from '../lib/supabase';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
-import { getCurrentDateEST, formatTimeEST } from '../lib/timezone';
+import { getCurrentDateEST } from '../lib/timezone';
 import { SafeWithdrawalModal, WithdrawalData } from '../components/SafeWithdrawalModal';
 import { CashTransactionChangeRequestModal, ChangeRequestData } from '../components/CashTransactionChangeRequestModal';
 import { Button } from '../components/ui/Button';
@@ -658,7 +658,7 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
                         </tr>
                       </thead>
                       <tbody>
-                        {balanceHistory.map((record, index) => {
+                        {balanceHistory.map((record) => {
                           const isCurrentDate = record.date === selectedDate;
                           return (
                             <tr

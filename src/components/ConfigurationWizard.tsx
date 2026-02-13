@@ -134,7 +134,7 @@ export function ConfigurationWizard({
                       }`}>
                         {info.title}
                       </h4>
-                      {info.badge && (
+                      {'badge' in info && info.badge && (
                         <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">
                           {info.badge}
                         </span>

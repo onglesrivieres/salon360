@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, Plus, Filter, CheckCircle, XCircle, Clock, Pencil, History } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
@@ -86,14 +86,14 @@ export function TransactionListModal({
   const title = transactionType === 'cash_in' ? 'Cash In Transactions' : 'Cash Out Transactions';
   const colorClass = transactionType === 'cash_in' ? 'text-green-600' : 'text-red-600';
 
-  function getStatusBadgeVariant(status: string): 'success' | 'warning' | 'error' {
+  function getStatusBadgeVariant(status: string): 'success' | 'warning' | 'danger' {
     switch (status) {
       case 'approved':
         return 'success';
       case 'pending_approval':
         return 'warning';
       case 'rejected':
-        return 'error';
+        return 'danger';
       default:
         return 'warning';
     }

@@ -282,8 +282,6 @@ export function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalPro
     if (!selectedStoreId) return;
     setImporting(true);
 
-    const created = 0;
-    const updated = 0;
     const errors: string[] = [];
 
     // Fetch fresh item lookup for parent resolution
