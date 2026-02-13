@@ -150,6 +150,7 @@ export function InventoryTransactionModal({
   const { selectedStoreId, session } = useAuth();
   const [saving, setSaving] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
+  const [deletingDraft, setDeletingDraft] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [transactionType, setTransactionType] = useState<'in' | 'out' | 'transfer'>(initialTransactionType || 'in');
   const [supplierId, setSupplierId] = useState('');
@@ -1574,6 +1575,27 @@ export function InventoryTransactionModal({
     }
   }
 
+  async function handleDeleteDraft() {
+    if (!draftId || !session?.employee_id) return;
+    if (!confirm('Delete this draft?')) return;
+    setDeletingDraft(true);
+    try {
+      const { error } = await supabase.rpc('delete_draft_transaction', {
+        p_transaction_id: draftId,
+        p_employee_id: session.employee_id,
+      });
+      if (error) throw error;
+      showToast('Draft deleted', 'success');
+      onSuccess();
+      onClose();
+    } catch (error: any) {
+      console.error('Error deleting draft:', error);
+      showToast(`Failed to delete draft: ${error.message || 'Unknown error'}`, 'error');
+    } finally {
+      setDeletingDraft(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -1966,14 +1988,20 @@ export function InventoryTransactionModal({
           </div>
 
           <div className="flex gap-3">
-            <Button type="submit" form="inventory-transaction-form" disabled={saving || savingDraft} className="flex-1">
-              {saving ? 'Submitting...' : draftId ? 'Submit for Approval' : 'Create Transaction'}
+            {draftId && (
+              <Button type="button" variant="danger" onClick={handleDeleteDraft} disabled={saving || savingDraft || deletingDraft}>
+                {deletingDraft ? 'Deleting...' : 'Delete Draft'}
+              </Button>
+            )}
+            <div className="flex-1" />
+            <Button type="button" variant="secondary" onClick={onClose} disabled={saving || savingDraft || deletingDraft}>
+              Cancel
             </Button>
-            <Button type="button" variant="secondary" onClick={handleSaveDraft} disabled={saving || savingDraft}>
+            <Button type="button" variant="secondary" onClick={handleSaveDraft} disabled={saving || savingDraft || deletingDraft}>
               {savingDraft ? 'Saving...' : 'Save Draft'}
             </Button>
-            <Button type="button" variant="secondary" onClick={onClose} disabled={saving || savingDraft}>
-              Cancel
+            <Button type="submit" form="inventory-transaction-form" disabled={saving || savingDraft || deletingDraft}>
+              {saving ? 'Submitting...' : draftId ? 'Submit for Approval' : 'Create Transaction'}
             </Button>
           </div>
           <p className="text-xs text-gray-500 text-center mt-3">
