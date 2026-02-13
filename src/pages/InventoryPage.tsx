@@ -82,7 +82,22 @@ export function InventoryPage() {
   const [draftToEdit, setDraftToEdit] = useState<any>(null);
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
   const [purchaseUnits, setPurchaseUnits] = useState<Record<string, { unit_name: string; multiplier: number }>>({});
-  const [subItemLotsMap, setSubItemLotsMap] = useState<Record<string, Array<{ id: string; lot_number: string; supplier_name: string | null; quantity_remaining: number }>>>({});
+  const [subItemLotsMap, setSubItemLotsMap] = useState<Record<string, Array<{ id: string; lot_number: string; supplier_name: string | null; quantity_received: number; quantity_remaining: number }>>>({});
+  const [itemOutTransfersMap, setItemOutTransfersMap] = useState<Record<string, Array<{
+    id: string;
+    transaction_number: string;
+    transaction_type: 'out' | 'transfer';
+    quantity: number;
+    destination_store_name: string | null;
+    created_at: string;
+  }>>>({});
+  const [itemDistributionsMap, setItemDistributionsMap] = useState<Record<string, Array<{
+    id: string;
+    quantity: number;
+    to_employee_name: string;
+    status: string;
+    distribution_date: string;
+  }>>>({});
 
   // State for responsive tab dropdown
   const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
@@ -186,8 +201,8 @@ export function InventoryPage() {
     try {
       setLoading(true);
 
-      // Fetch items via store_inventory_levels JOIN inventory_items, default purchase units, and lots in parallel
-      const [levelsResult, purchaseUnitsResult, lotsResult] = await Promise.all([
+      // Fetch items via store_inventory_levels JOIN inventory_items, default purchase units, lots, out/transfer txns, and distributions in parallel
+      const [levelsResult, purchaseUnitsResult, lotsResult, outTransfersResult, distributionsResult] = await Promise.all([
         supabase
           .from('store_inventory_levels')
           .select('*, item:inventory_items!inner(*)')
@@ -201,10 +216,21 @@ export function InventoryPage() {
           .eq('is_default', true),
         supabase
           .from('inventory_purchase_lots')
-          .select('id, lot_number, item_id, quantity_remaining, suppliers(name)')
+          .select('id, lot_number, item_id, quantity_received, quantity_remaining, suppliers(name)')
           .eq('store_id', selectedStoreId)
           .in('status', ['active', 'expired', 'archived'])
-          .order('purchase_date', { ascending: false })
+          .order('purchase_date', { ascending: false }),
+        supabase
+          .from('inventory_transaction_items')
+          .select('id, item_id, quantity, received_quantity, inventory_transactions!inner(id, transaction_number, transaction_type, store_id, status, created_at, destination_store:stores!inventory_transactions_destination_store_id_fkey(name))')
+          .eq('inventory_transactions.store_id', selectedStoreId)
+          .in('inventory_transactions.transaction_type', ['out', 'transfer'])
+          .eq('inventory_transactions.status', 'approved'),
+        supabase
+          .from('inventory_distributions')
+          .select('id, item_id, quantity, status, distribution_date, to_employee:employees!to_employee_id(display_name)')
+          .eq('store_id', selectedStoreId)
+          .not('status', 'in', '(cancelled,returned)')
       ]);
 
       if (levelsResult.error) throw levelsResult.error;
@@ -219,13 +245,14 @@ export function InventoryPage() {
       setPurchaseUnits(unitsLookup);
 
       // Build lots lookup by item_id (for sub-item lot display)
-      const lotsLookup: Record<string, Array<{ id: string; lot_number: string; supplier_name: string | null; quantity_remaining: number }>> = {};
+      const lotsLookup: Record<string, Array<{ id: string; lot_number: string; supplier_name: string | null; quantity_received: number; quantity_remaining: number }>> = {};
       if (lotsResult.data) {
         for (const lot of lotsResult.data as any[]) {
           const entry = {
             id: lot.id,
             lot_number: lot.lot_number,
             supplier_name: lot.suppliers?.name || null,
+            quantity_received: lot.quantity_received,
             quantity_remaining: lot.quantity_remaining,
           };
           if (!lotsLookup[lot.item_id]) {
@@ -235,6 +262,59 @@ export function InventoryPage() {
         }
       }
       setSubItemLotsMap(lotsLookup);
+
+      // Build out/transfer transactions lookup by item_id
+      const outTransfersLookup: Record<string, Array<{
+        id: string;
+        transaction_number: string;
+        transaction_type: 'out' | 'transfer';
+        quantity: number;
+        destination_store_name: string | null;
+        created_at: string;
+      }>> = {};
+      if (outTransfersResult.data) {
+        for (const row of outTransfersResult.data as any[]) {
+          const txn = row.inventory_transactions;
+          const entry = {
+            id: row.id,
+            transaction_number: txn.transaction_number,
+            transaction_type: txn.transaction_type as 'out' | 'transfer',
+            quantity: row.received_quantity ?? row.quantity,
+            destination_store_name: txn.destination_store?.name || null,
+            created_at: txn.created_at,
+          };
+          if (!outTransfersLookup[row.item_id]) {
+            outTransfersLookup[row.item_id] = [];
+          }
+          outTransfersLookup[row.item_id].push(entry);
+        }
+      }
+      setItemOutTransfersMap(outTransfersLookup);
+
+      // Build distributions lookup by item_id
+      const distributionsLookup: Record<string, Array<{
+        id: string;
+        quantity: number;
+        to_employee_name: string;
+        status: string;
+        distribution_date: string;
+      }>> = {};
+      if (distributionsResult.data) {
+        for (const dist of distributionsResult.data as any[]) {
+          const entry = {
+            id: dist.id,
+            quantity: dist.quantity,
+            to_employee_name: dist.to_employee?.display_name || 'Unknown',
+            status: dist.status,
+            distribution_date: dist.distribution_date,
+          };
+          if (!distributionsLookup[dist.item_id]) {
+            distributionsLookup[dist.item_id] = [];
+          }
+          distributionsLookup[dist.item_id].push(entry);
+        }
+      }
+      setItemDistributionsMap(distributionsLookup);
 
       // Flatten store_inventory_levels + inventory_items into InventoryItem shape
       const flatItems = (levelsResult.data || []).map((level: any) => ({
@@ -1405,7 +1485,9 @@ export function InventoryPage() {
                     const isLowStock = item.quantity_on_hand <= item.reorder_level;
                     const isStandalone = !item.is_master_item && !item.parent_id;
                     const standaloneLots = isStandalone ? (subItemLotsMap[item.id] || []) : [];
-                    const isExpandable = isMasterItem || (isStandalone && standaloneLots.length > 0);
+                    const standaloneOutTxns = isStandalone ? (itemOutTransfersMap[item.id] || []) : [];
+                    const standaloneDists = isStandalone ? (itemDistributionsMap[item.id] || []) : [];
+                    const isExpandable = isMasterItem || (isStandalone && (standaloneLots.length > 0 || standaloneOutTxns.length > 0 || standaloneDists.length > 0));
 
                     // For master items, use aggregated values
                     const displayQty = isMasterItem
@@ -1545,26 +1627,75 @@ export function InventoryPage() {
                             </React.Fragment>
                           );
                         })}
-                        {/* Lots for expanded standalone items */}
-                        {isStandalone && isExpanded && standaloneLots.length > 0 && standaloneLots.map((lot) => (
-                          <tr key={lot.id} className="bg-blue-50/30">
-                            <td colSpan={2} className="pl-10 pr-4 py-1.5 text-xs text-blue-700">
-                              <div className="flex items-center gap-1.5">
-                                <span className="w-1 h-1 bg-blue-400 rounded-full" />
-                                <span className="font-mono">{lot.lot_number}</span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-1.5 text-xs text-gray-500">{lot.supplier_name || '-'}</td>
-                            <td className="px-4 py-1.5"></td>
-                            <td className="px-4 py-1.5"></td>
-                            <td className="px-4 py-1.5 text-xs text-right text-blue-700 font-medium">{lot.quantity_remaining}</td>
-                            <td className="px-4 py-1.5"></td>
-                            <td className="px-4 py-1.5"></td>
-                            <td className="px-4 py-1.5"></td>
-                            <td className="px-4 py-1.5"></td>
-                            <td className="px-4 py-1.5"></td>
-                          </tr>
-                        ))}
+                        {/* Stock breakdown for expanded standalone items */}
+                        {isStandalone && isExpanded && (
+                          <>
+                            {/* Lot rows (positive - blue) */}
+                            {standaloneLots.map((lot) => (
+                              <tr key={`lot-${lot.id}`} className="bg-blue-50/30">
+                                <td colSpan={2} className="pl-10 pr-4 py-1.5 text-xs text-blue-700">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-1 h-1 bg-blue-400 rounded-full" />
+                                    <span className="font-mono">{lot.lot_number}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-1.5 text-xs text-gray-500">{lot.supplier_name || '-'}</td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5 text-xs text-right text-blue-700 font-medium">+{lot.quantity_received}</td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5"></td>
+                              </tr>
+                            ))}
+                            {/* Out/Transfer rows (negative - red) */}
+                            {standaloneOutTxns.map((txn) => (
+                              <tr key={`txn-${txn.id}`} className="bg-red-50/30">
+                                <td colSpan={2} className="pl-10 pr-4 py-1.5 text-xs text-red-600">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-1 h-1 bg-red-400 rounded-full" />
+                                    <span className="font-mono">{txn.transaction_number}</span>
+                                    <span className="text-red-500">
+                                      {txn.transaction_type === 'transfer' ? `→ ${txn.destination_store_name}` : 'OUT'}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-1.5 text-xs text-gray-500">{formatDateEST(txn.created_at)}</td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5 text-xs text-right text-red-600 font-medium">-{txn.quantity}</td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5"></td>
+                              </tr>
+                            ))}
+                            {/* Distribution rows (negative - amber) */}
+                            {standaloneDists.map((dist) => (
+                              <tr key={`dist-${dist.id}`} className="bg-amber-50/30">
+                                <td colSpan={2} className="pl-10 pr-4 py-1.5 text-xs text-amber-600">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-1 h-1 bg-amber-400 rounded-full" />
+                                    <span>Distribution</span>
+                                    <span className="text-amber-500">→ {dist.to_employee_name}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-1.5 text-xs text-gray-500">{formatDateEST(dist.distribution_date)}</td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5 text-xs text-right text-amber-600 font-medium">-{dist.quantity}</td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5"></td>
+                                <td className="px-4 py-1.5"></td>
+                              </tr>
+                            ))}
+                          </>
+                        )}
                       </React.Fragment>
                     );
                   })}
