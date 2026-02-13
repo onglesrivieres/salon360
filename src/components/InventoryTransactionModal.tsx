@@ -1927,7 +1927,7 @@ export function InventoryTransactionModal({
                   className="p-3 bg-gray-50 rounded-lg space-y-3"
                 >
                   <div className="grid grid-cols-12 gap-2 items-start">
-                    <div className="col-span-3">
+                    <div className="col-span-5">
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Item {index === 0 && <span className="text-red-500">*</span>}
                       </label>
@@ -2074,7 +2074,7 @@ export function InventoryTransactionModal({
                     )}
 
                     {transactionType === 'in' && item.item_id && (
-                      <div className="col-span-2">
+                      <div className="col-span-1">
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Qty {index === 0 && <span className="text-red-500">*</span>}
                         </label>
@@ -2091,9 +2091,9 @@ export function InventoryTransactionModal({
                     )}
 
                     {transactionType === 'in' && item.item_id && (
-                      <div className="col-span-3">
+                      <div className="col-span-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Purchase Unit Price ($)
+                          Price ($)
                         </label>
                         <NumericInput
                           step="0.01"
