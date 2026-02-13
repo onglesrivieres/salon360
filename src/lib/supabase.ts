@@ -505,6 +505,7 @@ export interface InventoryTransactionWithDetails extends InventoryTransaction {
   requested_by_name?: string;
   recipient_name?: string;
   destination_store_name?: string;
+  source_store_name?: string;
   items?: InventoryTransactionItemWithDetails[];
 }
 

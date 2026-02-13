@@ -279,10 +279,11 @@ export function InventoryPage() {
           *,
           requested_by:employees!inventory_transactions_requested_by_id_fkey(display_name),
           recipient:employees!inventory_transactions_recipient_id_fkey(display_name),
-          destination_store:stores!inventory_transactions_destination_store_id_fkey(name)
+          destination_store:stores!inventory_transactions_destination_store_id_fkey(name),
+          source_store:stores!inventory_transactions_store_id_fkey(name)
         `
         )
-        .eq('store_id', selectedStoreId)
+        .or(`store_id.eq.${selectedStoreId},destination_store_id.eq.${selectedStoreId}`)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -293,6 +294,7 @@ export function InventoryPage() {
         requested_by_name: t.requested_by?.display_name || '',
         recipient_name: t.recipient?.display_name || '',
         destination_store_name: t.destination_store?.name || '',
+        source_store_name: t.source_store?.name || '',
       }));
 
       setTransactions(transactionsWithDetails);
@@ -1756,10 +1758,15 @@ export function InventoryPage() {
                         </div>
                         <p className="text-sm text-gray-600">
                           {transaction.transaction_type === 'transfer' ? (
-                            <>
-                              {t('inventory.fromStore')}: {transaction.requested_by_name}
-                              {transaction.destination_store_name && ` → ${t('inventory.toStore')}: ${transaction.destination_store_name}`}
-                            </>
+                            transaction.store_id === selectedStoreId ? (
+                              <>
+                                {t('inventory.transfer')} → {transaction.destination_store_name}
+                              </>
+                            ) : (
+                              <>
+                                {t('inventory.transfer')} ← {transaction.source_store_name}
+                              </>
+                            )
                           ) : (
                             <>
                               Requested by {transaction.requested_by_name}
