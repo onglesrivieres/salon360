@@ -1564,7 +1564,8 @@ export function InventoryTransactionModal({
         }
       }
 
-      onSuccess(); // Refresh the list
+      onSuccess();
+      onClose();
     } catch (error: any) {
       console.error('Error saving draft:', error);
       showToast(`Failed to save draft: ${error.message || 'Unknown error'}`, 'error');
