@@ -483,6 +483,7 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes
 
 ### 2026-02-13
+- **Fix Technician not seeing pending distribution approvals**: Technicians' `PendingApprovalsPage` load now calls `fetchAllTabCounts()` before choosing the initial tab (previously skipped, leaving all badges at 0). Auto-navigates to first tab with pending items (priority: inventory → tickets → violations; falls back to tickets). Also added Technician-specific ticket count filter in `fetchAllTabCounts()` — filters to tickets where `technician_ids` includes current employee, matching `fetchPendingApprovals()` behavior. Files: `PendingApprovalsPage.tsx`
 - **Grant Receptionist & Cashier permission to distribute inventory**: Added `'Receptionist'` and `'Cashier'` to the `canDistribute` role array in `permissions.ts`. This unlocks the "Distribute to Employee" button, Lots tab, and Distributions tab on the Inventory page for both roles. No DB migration needed — the `distribute_to_employee` RPC has no server-side role check. Files: `permissions.ts`
 
 ### 2026-02-12

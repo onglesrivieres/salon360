@@ -251,10 +251,27 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       return;
     }
 
-    // Technicians: navigate to first allowed tab (tickets by default)
+    // Technicians: fetch counts then navigate to first tab with items
     if (canViewOwnRecordsOnly) {
-      handleTabChange('tickets');
-      setInitialTabSet(true);
+      fetchAllTabCounts().then(counts => {
+        if (counts) {
+          const techTabPriority: { tab: TabType; key: keyof typeof counts }[] = [
+            { tab: 'inventory', key: 'inventory' },
+            { tab: 'tickets', key: 'tickets' },
+            { tab: 'violations', key: 'violations' },
+          ];
+          let found = false;
+          for (const { tab, key } of techTabPriority) {
+            if (counts[key] > 0) {
+              handleTabChange(tab);
+              found = true;
+              break;
+            }
+          }
+          if (!found) handleTabChange('tickets');
+        }
+        setInitialTabSet(true);
+      });
       return;
     }
 
@@ -419,6 +436,11 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       if ((isReceptionist || isCashier) && session?.employee_id) {
         ticketCount = (ticketsRes.data || []).filter((t: { closed_by?: string }) => t.closed_by === session.employee_id).length;
         cashCount = (cashRes.data || []).filter((t: { created_by_id?: string }) => t.created_by_id === session.employee_id).length;
+      }
+
+      // Apply Technician filter to ticket count: only tickets they performed a service on
+      if (canViewOwnRecordsOnly && session?.employee_id) {
+        ticketCount = (ticketsRes.data || []).filter((t: { technician_ids?: string[] }) => t.technician_ids?.includes(session.employee_id)).length;
       }
 
       // Apply Supervisor filter to ticket changes count
