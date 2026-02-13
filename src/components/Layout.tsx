@@ -157,6 +157,21 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inventory_distributions',
+          filter: `store_id=eq.${selectedStoreId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            fetchPendingApprovalsCount();
+            if (allStores.length > 1) fetchAllStoresApprovalsCount();
+          }
+        }
+      )
       .subscribe();
 
     return () => {
@@ -349,12 +364,23 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
       const isSupervisorOnly = userRoles.some(role => role === 'Supervisor') && !isManagement;
 
+      // Fetch distribution approvals count (available for all roles)
+      let distributionCount = 0;
+      const { data: distData, error: distError } = await supabase.rpc('get_pending_distribution_approvals', {
+        p_employee_id: session.employee_id,
+        p_store_id: selectedStoreId,
+      });
+      if (!distError) {
+        distributionCount = distData?.length || 0;
+      }
+
       if (!isManagement && !isSupervisorOnly) {
-        setPendingApprovalsCount(0);
+        // Technician/Trainee/Receptionist/Cashier: only see distribution approvals
+        setPendingApprovalsCount(distributionCount);
         return;
       }
 
-      // Supervisor only sees cash transactions + ticket reopen requests
+      // Supervisor: cash transactions + ticket reopen requests + distributions
       if (isSupervisorOnly) {
         let cashTransactionCount = 0;
         let ticketReopenCount = 0;
@@ -376,7 +402,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           ticketReopenCount = ticketReopenData || 0;
         }
 
-        setPendingApprovalsCount(cashTransactionCount + ticketReopenCount);
+        setPendingApprovalsCount(cashTransactionCount + ticketReopenCount + distributionCount);
         return;
       }
 
@@ -417,7 +443,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         ticketReopenCount = ticketReopenData || 0;
       }
 
-      const totalCount = ticketCount + inventoryCount + cashTransactionCount + ticketReopenCount;
+      const totalCount = ticketCount + inventoryCount + cashTransactionCount + ticketReopenCount + distributionCount;
       setPendingApprovalsCount(totalCount);
     } catch (error) {
       console.error('Error fetching pending approvals count:', error);
@@ -431,17 +457,22 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
     const isSupervisorOnly = userRoles.some(role => role === 'Supervisor') && !isManagement;
 
-    if (!isManagement && !isSupervisorOnly) {
-      setPerStoreApprovalsCount({});
-      return;
-    }
-
     try {
       const counts: Record<string, number> = {};
 
       await Promise.all(allStores.map(async (store) => {
         try {
-          if (isSupervisorOnly) {
+          // Distribution approvals available for all roles
+          let distributionCount = 0;
+          const { data: distData, error: distError } = await supabase.rpc('get_pending_distribution_approvals', {
+            p_employee_id: session.employee_id,
+            p_store_id: store.id,
+          });
+          if (!distError) distributionCount = distData?.length || 0;
+
+          if (!isManagement && !isSupervisorOnly) {
+            counts[store.id] = distributionCount;
+          } else if (isSupervisorOnly) {
             let cashTransactionCount = 0;
             let ticketReopenCount = 0;
 
@@ -456,7 +487,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             });
             if (!ticketReopenError) ticketReopenCount = ticketReopenData || 0;
 
-            counts[store.id] = cashTransactionCount + ticketReopenCount;
+            counts[store.id] = cashTransactionCount + ticketReopenCount + distributionCount;
           } else {
             let ticketCount = 0;
             let inventoryCount = 0;
@@ -484,7 +515,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             });
             if (!ticketReopenError) ticketReopenCount = ticketReopenData || 0;
 
-            counts[store.id] = ticketCount + inventoryCount + cashTransactionCount + ticketReopenCount;
+            counts[store.id] = ticketCount + inventoryCount + cashTransactionCount + ticketReopenCount + distributionCount;
           }
         } catch (err) {
           console.error(`Error fetching approvals for store ${store.id}:`, err);

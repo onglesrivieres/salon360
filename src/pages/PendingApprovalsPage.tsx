@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowLeftRight, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, UserX, FileText, Ban, Timer, ChevronLeft, ChevronRight, ChevronDown, Bell, User, Calendar, History, Download, Eye, RotateCcw } from 'lucide-react';
-import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, PendingCashTransactionChangeProposal, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket, AttendanceChangeProposalWithDetails, PendingTicketReopenRequest } from '../lib/supabase';
+import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, PendingCashTransactionChangeProposal, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket, AttendanceChangeProposalWithDetails, PendingTicketReopenRequest, PendingDistributionApproval } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
@@ -77,6 +77,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
   const [historicalManagerTickets, setHistoricalManagerTickets] = useState<HistoricalApprovalTicket[]>([]);
   const [historicalSupervisorTickets, setHistoricalSupervisorTickets] = useState<HistoricalApprovalTicket[]>([]);
   const [inventoryApprovals, setInventoryApprovals] = useState<PendingInventoryApproval[]>([]);
+  const [distributionApprovals, setDistributionApprovals] = useState<PendingDistributionApproval[]>([]);
   const [cashTransactionApprovals, setCashTransactionApprovals] = useState<PendingCashTransactionApproval[]>([]);
   const [violationReports, setViolationReports] = useState<ViolationReportForApproval[]>([]);
   const [violationHistory, setViolationHistory] = useState<ViolationHistoryReport[]>([]);
@@ -152,8 +153,8 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
   // Helper function to determine which tabs each role can see
   function canViewTab(tabKey: TabType): boolean {
-    // Supervisor: Cash tab + ticket-changes (for Receptionist/Cashier requests)
-    if (isSupervisor) return tabKey === 'cash' || (tabKey === 'ticket-changes' && !!canReviewReopenRequests);
+    // Supervisor: Cash tab + inventory (for distribution approvals) + ticket-changes (for Receptionist/Cashier requests)
+    if (isSupervisor) return tabKey === 'cash' || tabKey === 'inventory' || (tabKey === 'ticket-changes' && !!canReviewReopenRequests);
 
     // Management and Receptionist: all tabs (with existing permission checks)
     if (canViewAllRecords) {
@@ -184,7 +185,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     getCount: () => number;
   }> = [
     { key: 'tickets', label: t('approvals.tabTickets'), icon: FileText, badgeVariant: 'danger', getCount: () => activeTab === 'tickets' ? tickets.length : tabCounts.tickets },
-    { key: 'inventory', label: t('approvals.tabInventory'), icon: Package, badgeVariant: 'warning', getCount: () => activeTab === 'inventory' ? inventoryApprovals.length : tabCounts.inventory },
+    { key: 'inventory', label: t('approvals.tabInventory'), icon: Package, badgeVariant: 'warning', getCount: () => activeTab === 'inventory' ? (inventoryApprovals.length + distributionApprovals.length) : tabCounts.inventory },
     { key: 'cash', label: t('approvals.tabCash'), icon: DollarSign, badgeVariant: 'warning', getCount: () => activeTab === 'cash' ? cashTransactionApprovals.length : tabCounts.cash },
     { key: 'transaction-changes', label: t('approvals.tabTransactionChanges'), icon: FileText, badgeVariant: 'warning', getCount: () => activeTab === 'transaction-changes' ? transactionChangeProposals.length : tabCounts.transactionChanges },
     { key: 'attendance', label: t('approvals.tabShiftRequest'), icon: Bell, badgeVariant: 'warning', getCount: () => activeTab === 'attendance' ? attendanceProposals.filter(p => p.status === 'pending').length : tabCounts.attendance },
@@ -294,6 +295,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         fetchRejectedTickets();
       } else if (activeTab === 'inventory' && canViewTab('inventory')) {
         fetchInventoryApprovals();
+        fetchDistributionApprovals();
       } else if (activeTab === 'cash' && canViewTab('cash')) {
         fetchCashTransactionApprovals();
       } else if (activeTab === 'attendance' && canViewTab('attendance')) {
@@ -325,6 +327,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
           fetchRejectedTickets();
         } else if (activeTab === 'inventory' && canViewTab('inventory')) {
           fetchInventoryApprovals();
+          fetchDistributionApprovals();
         } else if (activeTab === 'cash' && canViewTab('cash')) {
           fetchCashTransactionApprovals();
         } else if (activeTab === 'attendance' && canViewTab('attendance')) {
@@ -399,7 +402,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     if (!selectedStoreId || !session?.employee_id) return;
 
     try {
-      const [ticketsRes, inventoryRes, cashRes, transactionChangesRes, attendanceRes, violationsRes, ticketChangesRes] = await Promise.all([
+      const [ticketsRes, inventoryRes, cashRes, transactionChangesRes, attendanceRes, violationsRes, ticketChangesRes, distributionRes] = await Promise.all([
         supabase.rpc('get_pending_approvals_for_management', { p_store_id: selectedStoreId }),
         supabase.rpc('get_pending_inventory_approvals', { p_employee_id: session.employee_id, p_store_id: selectedStoreId }),
         supabase.rpc('get_pending_cash_transaction_approvals', { p_store_id: selectedStoreId }),
@@ -407,6 +410,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         supabase.from('attendance_change_proposals').select('id, attendance_records!inner(store_id)').eq('attendance_records.store_id', selectedStoreId).eq('status', 'pending'),
         supabase.rpc('get_violation_reports_for_approval', { p_store_id: selectedStoreId }),
         canReviewReopenRequests ? supabase.rpc('get_pending_ticket_reopen_requests', { p_store_id: selectedStoreId }) : Promise.resolve({ data: [] }),
+        supabase.rpc('get_pending_distribution_approvals', { p_employee_id: session.employee_id, p_store_id: selectedStoreId }),
       ]);
 
       // Apply Receptionist/Cashier filters to counts
@@ -428,7 +432,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
       const counts = {
         tickets: ticketCount,
-        inventory: inventoryRes.data?.length || 0,
+        inventory: (inventoryRes.data?.length || 0) + (distributionRes.data?.length || 0),
         cash: cashCount,
         transactionChanges: transactionChangesRes.data?.length || 0,
         attendance: attendanceRes.data?.length || 0,
@@ -555,6 +559,69 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       console.error('Error fetching inventory approvals:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchDistributionApprovals() {
+    if (!selectedStoreId || !session?.employee_id) return;
+
+    try {
+      const { data, error } = await supabase.rpc('get_pending_distribution_approvals', {
+        p_employee_id: session.employee_id,
+        p_store_id: selectedStoreId,
+      });
+
+      if (error) throw error;
+      setDistributionApprovals(data || []);
+    } catch (error) {
+      console.error('Error fetching distribution approvals:', error);
+    }
+  }
+
+  async function handleAcknowledgeDistribution(approval: PendingDistributionApproval) {
+    if (!session?.employee_id) return;
+
+    try {
+      setProcessing(true);
+      const { data, error } = await supabase.rpc('acknowledge_distribution', {
+        p_batch_id: approval.batch_id,
+        p_employee_id: session.employee_id,
+      });
+
+      if (error) throw error;
+      showToast('Distribution acknowledged', 'success');
+      fetchDistributionApprovals();
+      fetchAllTabCounts();
+    } catch (error: any) {
+      showToast(error.message || 'Failed to acknowledge distribution', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function handleApproveDistribution(approval: PendingDistributionApproval) {
+    if (!session?.employee_id) return;
+
+    if (approval.distributed_by_id === session.employee_id) {
+      showToast('You cannot approve your own distribution', 'error');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      const { data, error } = await supabase.rpc('approve_distribution_by_manager', {
+        p_batch_id: approval.batch_id,
+        p_employee_id: session.employee_id,
+      });
+
+      if (error) throw error;
+      showToast('Distribution approved', 'success');
+      fetchDistributionApprovals();
+      fetchAllTabCounts();
+    } catch (error: any) {
+      showToast(error.message || 'Failed to approve distribution', 'error');
+    } finally {
+      setProcessing(false);
     }
   }
 
@@ -2123,100 +2190,175 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
 {activeTab === 'inventory' && (
             <div>
-              {inventoryApprovals.length === 0 ? (
+              {inventoryApprovals.length === 0 && distributionApprovals.length === 0 ? (
                 <div className="text-center py-12">
                   <Package className="w-16 h-16 text-gray-400 mx-auto mb-3" />
-                  <p className="text-lg font-medium text-gray-900 mb-1">No pending inventory transactions</p>
-                  <p className="text-sm text-gray-500">All inventory transactions have been processed</p>
+                  <p className="text-lg font-medium text-gray-900 mb-1">No pending inventory items</p>
+                  <p className="text-sm text-gray-500">All inventory transactions and distributions have been processed</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {inventoryApprovals.map((approval) => (
-                    <div
-                      key={approval.id}
-                      className={`bg-white rounded-lg border-2 p-4 ${
-                        approval.transaction_type === 'transfer' ? 'border-purple-200' : 'border-blue-200'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            {approval.transaction_type === 'in' ? (
-                              <PackagePlus className="w-5 h-5 text-green-600" />
-                            ) : approval.transaction_type === 'transfer' ? (
-                              <ArrowLeftRight className="w-5 h-5 text-purple-600" />
+                <div className="space-y-4">
+                  {/* Inventory Transaction Approvals */}
+                  {inventoryApprovals.length > 0 && (
+                    <div className="space-y-3">
+                      {inventoryApprovals.map((approval) => (
+                        <div
+                          key={approval.id}
+                          className={`bg-white rounded-lg border-2 p-4 ${
+                            approval.transaction_type === 'transfer' ? 'border-purple-200' : 'border-blue-200'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                {approval.transaction_type === 'in' ? (
+                                  <PackagePlus className="w-5 h-5 text-green-600" />
+                                ) : approval.transaction_type === 'transfer' ? (
+                                  <ArrowLeftRight className="w-5 h-5 text-purple-600" />
+                                ) : (
+                                  <PackageMinus className="w-5 h-5 text-orange-600" />
+                                )}
+                                <span className="font-semibold text-gray-900">
+                                  {approval.transaction_number}
+                                </span>
+                                <Badge variant={
+                                  approval.transaction_type === 'in' ? 'success' :
+                                  approval.transaction_type === 'transfer' ? 'info' : 'default'
+                                }>
+                                  {approval.transaction_type === 'transfer' ? t('inventory.transfer').toUpperCase() : approval.transaction_type.toUpperCase()}
+                                </Badge>
+                              </div>
+                              {approval.transaction_type === 'transfer' ? (
+                                <p className="text-sm text-gray-600">
+                                  {t('inventory.fromStore')}: <span className="font-medium">{approval.source_store_name}</span>
+                                  {approval.destination_store_name && (
+                                    <span> → {t('inventory.toStore')}: <span className="font-medium">{approval.destination_store_name}</span></span>
+                                  )}
+                                </p>
+                              ) : (
+                                <p className="text-sm text-gray-600">
+                                  Requested by: <span className="font-medium">{approval.requested_by_name}</span>
+                                  {approval.recipient_name && (
+                                    <span> → Recipient: <span className="font-medium">{approval.recipient_name}</span></span>
+                                  )}
+                                </p>
+                              )}
+                              <p className="text-sm text-gray-600">
+                                {approval.item_count} item{approval.item_count !== 1 ? 's' : ''} • Total value: ${approval.total_value?.toFixed(2) || '0.00'}
+                              </p>
+                              {approval.notes && (
+                                <p className="text-sm text-gray-600 mt-1 italic">{approval.notes}</p>
+                              )}
+                            </div>
+                            {canTakeActions ? (
+                              <div className="flex gap-2">
+                                {approval.transaction_type === 'transfer' ? (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleOpenTransferApproval(approval)}
+                                    disabled={processing}
+                                  >
+                                    <CheckCircle className="w-4 h-4 mr-1" />
+                                    Review
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleApproveInventory(approval)}
+                                    disabled={processing}
+                                  >
+                                    <CheckCircle className="w-4 h-4 mr-1" />
+                                    Approve
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => handleRejectInventoryClick(approval)}
+                                  disabled={processing}
+                                >
+                                  <XCircle className="w-4 h-4 mr-1" />
+                                  Reject
+                                </Button>
+                              </div>
                             ) : (
-                              <PackageMinus className="w-5 h-5 text-orange-600" />
+                              <div className="text-sm text-gray-500 italic">View only</div>
                             )}
-                            <span className="font-semibold text-gray-900">
-                              {approval.transaction_number}
-                            </span>
-                            <Badge variant={
-                              approval.transaction_type === 'in' ? 'success' :
-                              approval.transaction_type === 'transfer' ? 'info' : 'default'
-                            }>
-                              {approval.transaction_type === 'transfer' ? t('inventory.transfer').toUpperCase() : approval.transaction_type.toUpperCase()}
-                            </Badge>
                           </div>
-                          {approval.transaction_type === 'transfer' ? (
-                            <p className="text-sm text-gray-600">
-                              {t('inventory.fromStore')}: <span className="font-medium">{approval.source_store_name}</span>
-                              {approval.destination_store_name && (
-                                <span> → {t('inventory.toStore')}: <span className="font-medium">{approval.destination_store_name}</span></span>
-                              )}
-                            </p>
-                          ) : (
-                            <p className="text-sm text-gray-600">
-                              Requested by: <span className="font-medium">{approval.requested_by_name}</span>
-                              {approval.recipient_name && (
-                                <span> → Recipient: <span className="font-medium">{approval.recipient_name}</span></span>
-                              )}
-                            </p>
-                          )}
-                          <p className="text-sm text-gray-600">
-                            {approval.item_count} item{approval.item_count !== 1 ? 's' : ''} • Total value: ${approval.total_value?.toFixed(2) || '0.00'}
-                          </p>
-                          {approval.notes && (
-                            <p className="text-sm text-gray-600 mt-1 italic">{approval.notes}</p>
-                          )}
                         </div>
-                        {canTakeActions ? (
-                          <div className="flex gap-2">
-                            {approval.transaction_type === 'transfer' ? (
-                              <Button
-                                size="sm"
-                                onClick={() => handleOpenTransferApproval(approval)}
-                                disabled={processing}
-                              >
-                                <CheckCircle className="w-4 h-4 mr-1" />
-                                Review
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                onClick={() => handleApproveInventory(approval)}
-                                disabled={processing}
-                              >
-                                <CheckCircle className="w-4 h-4 mr-1" />
-                                Approve
-                              </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => handleRejectInventoryClick(approval)}
-                              disabled={processing}
-                            >
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Reject
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="text-sm text-gray-500 italic">View only</div>
-                        )}
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+
+                  {/* Distribution Confirmations */}
+                  {distributionApprovals.length > 0 && (
+                    <div className="space-y-3">
+                      {inventoryApprovals.length > 0 && (
+                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mt-2">Distribution Confirmations</h3>
+                      )}
+                      {distributionApprovals.map((approval) => (
+                        <div
+                          key={`${approval.batch_id}-${approval.approval_type}`}
+                          className="bg-white rounded-lg border-2 border-green-200 p-4"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <ArrowDownLeft className="w-5 h-5 text-green-600" />
+                                <span className="font-semibold text-gray-900">{approval.item_name}</span>
+                                <Badge variant="success">DISTRIBUTION</Badge>
+                              </div>
+                              <p className="text-sm text-gray-600">
+                                Distributed by: <span className="font-medium">{approval.distributed_by_name}</span>
+                                <span> → To: <span className="font-medium">{approval.to_employee_name}</span></span>
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                Qty: {approval.total_quantity} • Value: ${approval.total_value?.toFixed(2) || '0.00'}
+                                {approval.distribution_count > 1 && ` • ${approval.distribution_count} lots`}
+                              </p>
+                              {approval.condition_notes && (
+                                <p className="text-sm text-gray-600 mt-1 italic">{approval.condition_notes}</p>
+                              )}
+                              <div className="flex items-center gap-3 mt-2">
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  approval.status !== 'pending' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                                }`}>
+                                  {approval.status !== 'pending' ? 'Acknowledged' : 'Pending Acknowledgment'}
+                                </span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  approval.manager_approved ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                                }`}>
+                                  {approval.manager_approved ? 'Manager Approved' : 'Pending Manager Approval'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 ml-3">
+                              {approval.approval_type === 'acknowledge' && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleAcknowledgeDistribution(approval)}
+                                  disabled={processing}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Acknowledge
+                                </Button>
+                              )}
+                              {approval.approval_type === 'manager_approve' && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleApproveDistribution(approval)}
+                                  disabled={processing}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Approve
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

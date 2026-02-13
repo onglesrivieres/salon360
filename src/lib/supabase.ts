@@ -701,6 +701,25 @@ export interface InventoryDistributionWithDetails extends InventoryDistribution 
   distributed_by_name?: string;
 }
 
+export interface PendingDistributionApproval {
+  batch_id: string;
+  item_id: string;
+  item_name: string;
+  to_employee_id: string;
+  to_employee_name: string;
+  distributed_by_id: string;
+  distributed_by_name: string;
+  distributed_by_role: string;
+  total_quantity: number;
+  total_value: number;
+  distribution_count: number;
+  distribution_date: string;
+  condition_notes: string | null;
+  status: string;
+  manager_approved: boolean;
+  approval_type: 'acknowledge' | 'manager_approve';
+}
+
 export interface InventoryAudit {
   id: string;
   audit_number: string;
