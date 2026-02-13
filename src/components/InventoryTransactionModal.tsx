@@ -914,122 +914,35 @@ export function InventoryTransactionModal({
       }
 
       // Resolve purchase unit names and calculate quantities
-      let needsAttentionCount = 0;
       for (let i = 0; i < importedItems.length; i++) {
         const formItem = importedItems[i];
         const unitName = purchaseUnitNames[i];
-        if (!unitName) continue;
-
         const itemUnits = newPurchaseUnits[formItem.item_id] || [];
 
-        // Case 1: Match found in existing units
-        const matchedUnit = itemUnits.find(u => u.unit_name.toLowerCase() === unitName.toLowerCase());
-        if (matchedUnit) {
-          formItem.purchase_unit_id = matchedUnit.id;
+        if (unitName && itemUnits.length > 0) {
+          const matchedUnit = itemUnits.find(u => u.unit_name.toLowerCase() === unitName.toLowerCase());
+          if (matchedUnit) {
+            formItem.purchase_unit_id = matchedUnit.id;
 
-          // Calculate stock units and costs from purchase unit
-          const pQty = parseFloat(formItem.purchase_quantity) || 0;
-          const pPrice = parseFloat(formItem.purchase_unit_price) || 0;
-          const stockUnits = pQty * matchedUnit.multiplier;
+            // Calculate stock units and costs from purchase unit
+            const pQty = parseFloat(formItem.purchase_quantity) || 0;
+            const pPrice = parseFloat(formItem.purchase_unit_price) || 0;
+            const stockUnits = pQty * matchedUnit.multiplier;
 
-          if (stockUnits > 0) {
-            formItem.quantity = stockUnits.toString();
-          }
-          if (pQty > 0 && pPrice >= 0) {
-            const totalCost = pPrice * pQty;
-            formItem.total_cost = totalCost.toFixed(2);
             if (stockUnits > 0) {
-              formItem.unit_cost = (totalCost / stockUnits).toFixed(2);
+              formItem.quantity = stockUnits.toString();
             }
-          }
-          continue;
-        }
-
-        // No match — try to auto-create or pre-fill the "Add New" form
-        const pQty = parseFloat(formItem.purchase_quantity) || 0;
-        const csvQuantity = parseFloat(formItem.quantity) || 0;
-
-        // Case 2: Can derive multiplier (old-format CSV has both quantity and purchase_qty)
-        if (pQty > 0 && csvQuantity > 0) {
-          const multiplier = csvQuantity / pQty;
-          // Resolve the master item ID for purchase units (sub-items use parent's units)
-          const invItem = inventoryItems.find(it => it.id === formItem.item_id);
-          const puItemId = invItem?.parent_id || formItem.item_id;
-
-          const existingUnits = newPurchaseUnits[puItemId] || [];
-          const isFirstUnit = existingUnits.length === 0;
-
-          const { data, error } = await supabase
-            .from('store_product_purchase_units')
-            .insert({
-              store_id: selectedStoreId,
-              item_id: puItemId,
-              unit_name: unitName,
-              multiplier,
-              is_default: isFirstUnit,
-              display_order: existingUnits.length,
-            })
-            .select()
-            .single();
-
-          if (error) {
-            if (error.code === '23505') {
-              // Duplicate — fetch existing
-              const { data: existingUnit } = await supabase
-                .from('store_product_purchase_units')
-                .select('*')
-                .eq('store_id', selectedStoreId)
-                .eq('item_id', puItemId)
-                .ilike('unit_name', unitName)
-                .maybeSingle();
-              if (existingUnit) {
-                formItem.purchase_unit_id = existingUnit.id;
-                const stockUnits = pQty * existingUnit.multiplier;
-                if (stockUnits > 0) formItem.quantity = stockUnits.toString();
-                if (pQty > 0) {
-                  const pPrice = parseFloat(formItem.purchase_unit_price) || 0;
-                  const totalCost = pPrice * pQty;
-                  formItem.total_cost = totalCost.toFixed(2);
-                  if (stockUnits > 0) formItem.unit_cost = (totalCost / stockUnits).toFixed(2);
-                }
-                // Update cache
-                if (!newPurchaseUnits[puItemId]) newPurchaseUnits[puItemId] = [];
-                newPurchaseUnits[puItemId].push(existingUnit);
-              }
-            } else {
-              console.error('Error creating purchase unit during CSV import:', error);
-            }
-          } else if (data) {
-            formItem.purchase_unit_id = data.id;
-            const stockUnits = pQty * data.multiplier;
-            if (stockUnits > 0) formItem.quantity = stockUnits.toString();
-            if (pQty > 0) {
-              const pPrice = parseFloat(formItem.purchase_unit_price) || 0;
+            if (pQty > 0 && pPrice >= 0) {
               const totalCost = pPrice * pQty;
               formItem.total_cost = totalCost.toFixed(2);
-              if (stockUnits > 0) formItem.unit_cost = (totalCost / stockUnits).toFixed(2);
+              if (stockUnits > 0) {
+                formItem.unit_cost = (totalCost / stockUnits).toFixed(2);
+              }
             }
-            // Update cache for subsequent rows referencing same item
-            if (!newPurchaseUnits[puItemId]) newPurchaseUnits[puItemId] = [];
-            newPurchaseUnits[puItemId].push(data);
           }
-          continue;
+          // If not matched, leave purchase_unit_id empty — user selects manually.
+          // purchase_quantity and purchase_unit_price are still populated.
         }
-
-        // Case 3: Can't derive multiplier — pre-fill "Add New Purchase Unit" form
-        formItem.isAddingPurchaseUnit = true;
-        formItem.purchase_unit_id = '__add_new__';
-        const unitNameLower = unitName.toLowerCase();
-        const matchedKnownUnit = UNITS.find(u => u.toLowerCase() === unitNameLower);
-        if (matchedKnownUnit) {
-          formItem.newPurchaseUnitName = matchedKnownUnit;
-          formItem.isCustomPurchaseUnit = false;
-        } else {
-          formItem.isCustomPurchaseUnit = true;
-          formItem.customPurchaseUnitName = unitName;
-        }
-        formItem.newPurchaseUnitMultiplier = '';
-        needsAttentionCount++;
       }
 
       // Determine whether to replace or append
@@ -1050,10 +963,7 @@ export function InventoryTransactionModal({
       if (skipped > 0) {
         msg += ` (${skipped} skipped)`;
       }
-      if (needsAttentionCount > 0) {
-        msg += ` — ${needsAttentionCount} item${needsAttentionCount > 1 ? 's' : ''} need${needsAttentionCount === 1 ? 's' : ''} purchase unit multiplier`;
-      }
-      showToast(msg, needsAttentionCount > 0 ? 'warning' : 'success');
+      showToast(msg, 'success');
     } catch (err: any) {
       console.error('CSV import error:', err);
       showToast(`Failed to import CSV: ${err.message || 'Unknown error'}`, 'error');
