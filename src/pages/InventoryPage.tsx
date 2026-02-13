@@ -587,6 +587,19 @@ export function InventoryPage() {
     setDraftToEdit(null);
   }
 
+  function handleDownloadTransactionTemplate() {
+    const header = 'item_name,quantity,unit_cost,notes';
+    const example = 'Example Item Name,10,3.50,Optional notes';
+    const csv = header + '\n' + example + '\n';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'inventory_transaction_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function handleOpenInventoryIn() {
     setTransactionType('in');
     setShowTransactionModal(true);
@@ -1777,6 +1790,10 @@ export function InventoryPage() {
             </div>
             {canCreateTransactions && (
               <div className="flex gap-2 ml-auto flex-wrap">
+                <Button variant="secondary" onClick={handleDownloadTransactionTemplate}>
+                  <Download className="w-4 h-4 mr-2" />
+                  CSV Template
+                </Button>
                 <Button
                   onClick={handleOpenInventoryIn}
                   className="bg-green-600 hover:bg-green-700 text-white"

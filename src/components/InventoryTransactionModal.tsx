@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { X, Plus, Trash2, Check } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef, ChangeEvent } from 'react';
+import { X, Plus, Trash2, Check, Upload } from 'lucide-react';
 import { Drawer } from './ui/Drawer';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -67,6 +67,55 @@ interface PendingPurchaseUnit {
   multiplier: number;
 }
 
+// CSV parsing utilities (duplicated from CsvImportModal for self-contained use)
+const CSV_HEADER_ALIASES: Record<string, string> = {
+  'item name': 'item_name',
+  'item_name': 'item_name',
+  'name': 'item_name',
+  'qty': 'quantity',
+  'cost': 'unit_cost',
+  'price': 'unit_cost',
+  'note': 'notes',
+};
+
+function parseCsvLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ',') {
+        fields.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
+function normalizeCsvHeader(h: string): string {
+  const lower = h.toLowerCase().trim();
+  return CSV_HEADER_ALIASES[lower] || lower;
+}
+
 export function InventoryTransactionModal({
   isOpen,
   onClose,
@@ -110,6 +159,7 @@ export function InventoryTransactionModal({
   const [pendingPurchaseUnits, setPendingPurchaseUnits] = useState<PendingPurchaseUnit[]>([]);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   // Create a map of master items for grouping sub-items
   const masterItemsMap = useMemo(() => {
@@ -574,6 +624,129 @@ export function InventoryTransactionModal({
   function handleRemoveItem(index: number) {
     if (items.length > 1) {
       setItems(items.filter((_, i) => i !== index));
+    }
+  }
+
+  async function handleCsvImport(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input so same file can be re-selected
+    if (csvInputRef.current) csvInputRef.current.value = '';
+
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+
+      if (lines.length < 2) {
+        showToast('CSV must have a header row and at least one data row', 'error');
+        return;
+      }
+
+      const headerFields = parseCsvLine(lines[0]).map(normalizeCsvHeader);
+      const nameIdx = headerFields.indexOf('item_name');
+      const qtyIdx = headerFields.indexOf('quantity');
+      const costIdx = headerFields.indexOf('unit_cost');
+      const notesIdx = headerFields.indexOf('notes');
+
+      if (nameIdx === -1) {
+        showToast('CSV must have an "item_name" (or "name") column', 'error');
+        return;
+      }
+
+      // Build lookup: lowercase item name → inventory item (only sub-items + standalone for "in")
+      const itemLookup = new Map<string, InventoryItem>();
+      for (const inv of inventoryItems) {
+        const isStandalone = !inv.is_master_item && !inv.parent_id;
+        const isSubItem = !inv.is_master_item && inv.parent_id;
+        if (isSubItem || isStandalone) {
+          itemLookup.set(inv.name.toLowerCase(), inv);
+        }
+      }
+
+      const importedItems: TransactionItemForm[] = [];
+      const itemIdsToFetchUnits: string[] = [];
+      let skipped = 0;
+
+      for (let i = 1; i < lines.length; i++) {
+        const fields = parseCsvLine(lines[i]);
+        const itemName = (fields[nameIdx] || '').trim();
+        if (!itemName) continue;
+
+        const quantity = qtyIdx >= 0 ? parseFloat(fields[qtyIdx] || '0') : 0;
+        const unitCost = costIdx >= 0 ? parseFloat(fields[costIdx] || '0') : 0;
+        const notes = notesIdx >= 0 ? (fields[notesIdx] || '').trim() : '';
+
+        if (isNaN(quantity) || quantity <= 0) {
+          skipped++;
+          continue;
+        }
+
+        const matched = itemLookup.get(itemName.toLowerCase());
+        if (!matched) {
+          skipped++;
+          continue;
+        }
+
+        importedItems.push({
+          item_id: matched.id,
+          purchase_unit_id: '',
+          purchase_quantity: '',
+          purchase_unit_price: '',
+          quantity: quantity.toString(),
+          total_cost: '',
+          unit_cost: isNaN(unitCost) ? '0' : unitCost.toString(),
+          notes,
+          isAddingPurchaseUnit: false,
+          newPurchaseUnitName: '',
+          newPurchaseUnitMultiplier: '',
+          isCustomPurchaseUnit: false,
+          customPurchaseUnitName: '',
+        });
+
+        if (matched.id) {
+          itemIdsToFetchUnits.push(matched.id);
+        }
+      }
+
+      if (importedItems.length === 0) {
+        showToast(skipped > 0
+          ? `No items imported — ${skipped} item${skipped > 1 ? 's' : ''} skipped (not found or invalid quantity)`
+          : 'No valid items found in CSV', 'error');
+        return;
+      }
+
+      // Determine whether to replace or append
+      const hasFilledItems = items.some(item => item.item_id !== '');
+      if (hasFilledItems) {
+        setItems(prev => [...prev, ...importedItems]);
+      } else {
+        setItems(importedItems);
+      }
+
+      // Fetch purchase units for all imported items in parallel
+      const uniqueIds = [...new Set(itemIdsToFetchUnits)];
+      const unitResults = await Promise.all(
+        uniqueIds.map(async (id) => {
+          const units = await fetchPurchaseUnitsForItem(id);
+          return { id, units };
+        })
+      );
+      const newPurchaseUnits: Record<string, PurchaseUnit[]> = {};
+      for (const { id, units } of unitResults) {
+        newPurchaseUnits[id] = units;
+      }
+      setPurchaseUnits(prev => ({ ...prev, ...newPurchaseUnits }));
+
+      // Show result toast
+      let msg = `Imported ${importedItems.length} item${importedItems.length > 1 ? 's' : ''} from CSV`;
+      if (skipped > 0) {
+        msg += ` (${skipped} skipped — not found or invalid)`;
+      }
+      showToast(msg, 'success');
+    } catch (err: any) {
+      console.error('CSV import error:', err);
+      showToast(`Failed to import CSV: ${err.message || 'Unknown error'}`, 'error');
     }
   }
 
@@ -1489,10 +1662,27 @@ export function InventoryTransactionModal({
         <div className="border-t border-gray-200 pt-4">
           <div className="flex justify-between items-center mb-3">
             <h4 className="text-sm font-semibold text-gray-900">Items</h4>
-            <Button type="button" onClick={handleAddItem} size="sm" variant="secondary">
-              <Plus className="w-4 h-4 mr-1" />
-              Add Item
-            </Button>
+            <div className="flex gap-2">
+              {transactionType === 'in' && (
+                <>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    ref={csvInputRef}
+                    onChange={handleCsvImport}
+                    className="hidden"
+                  />
+                  <Button type="button" onClick={() => csvInputRef.current?.click()} size="sm" variant="secondary">
+                    <Upload className="w-4 h-4 mr-1" />
+                    Import CSV
+                  </Button>
+                </>
+              )}
+              <Button type="button" onClick={handleAddItem} size="sm" variant="secondary">
+                <Plus className="w-4 h-4 mr-1" />
+                Add Item
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-3">
