@@ -345,7 +345,7 @@ export function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalPro
             .from('inventory_items')
             .insert({
               name: row.name,
-              brand: row.brand || null,
+              brand: isMaster ? null : (row.brand || null),
               category: correctCategory,
               size: row.size || null,
               unit: 'piece',

@@ -37,6 +37,8 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
   const [itemType, setItemType] = useState<'master' | 'sub' | 'standalone'>('standalone');
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [masterItems, setMasterItems] = useState<InventoryItem[]>([]);
+  const [existingBrands, setExistingBrands] = useState<string[]>([]);
+  const [isAddingNewBrand, setIsAddingNewBrand] = useState(false);
   const [transactionCount, setTransactionCount] = useState<number>(0);
   const [loadingTransactionCount, setLoadingTransactionCount] = useState(false);
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
@@ -45,6 +47,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
   useEffect(() => {
     if (isOpen) {
       fetchMasterItems();
+      fetchBrands();
       if (item) {
         fetchTransactionCount();
       }
@@ -80,10 +83,19 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
     }
   }
 
+  async function fetchBrands() {
+    const { data } = await supabase
+      .from('inventory_items')
+      .select('brand')
+      .not('brand', 'is', null);
+    const unique = Array.from(new Set((data || []).map(d => d.brand).filter(Boolean))).sort();
+    setExistingBrands(unique);
+  }
+
   useEffect(() => {
     if (item) {
       setFormData({
-        brand: item.brand || '',
+        brand: item.is_master_item ? '' : (item.brand || ''),
         name: item.name,
         description: item.description || '',
         category: item.category,
@@ -114,6 +126,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
       setSelectedParentId(null);
     }
     setTransactionCount(0);
+    setIsAddingNewBrand(false);
   }, [item, isOpen, defaultItemType]);
 
   async function fetchTransactionCount() {
@@ -167,7 +180,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
             name: formData.name.trim(),
             description: formData.description.trim(),
             category: formData.category,
-            brand: formData.brand.trim() || null,
+            brand: isMasterItem ? null : (formData.brand.trim() || null),
             size: formData.size.trim() || null,
             is_master_item: isMasterItem,
             parent_id: isSubItem ? selectedParentId : null,
@@ -200,7 +213,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
           description: formData.description.trim(),
           category: formData.category,
           unit: 'piece',
-          brand: formData.brand.trim() || null,
+          brand: isMasterItem ? null : (formData.brand.trim() || null),
           size: formData.size.trim() || null,
           is_master_item: isMasterItem,
           parent_id: isSubItem ? selectedParentId : null,
@@ -233,7 +246,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
                 is_master_item: isMasterItem,
                 parent_id: isSubItem ? selectedParentId : null,
                 category: formData.category,
-                brand: formData.brand.trim() || null,
+                brand: isMasterItem ? null : (formData.brand.trim() || null),
                 size: formData.size.trim() || null,
                 description: formData.description.trim(),
               })
@@ -377,6 +390,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
                   onChange={() => {
                     setItemType('master');
                     setSelectedParentId(null);
+                    setFormData(prev => ({ ...prev, brand: '' }));
                   }}
                   className="w-4 h-4 text-blue-600"
                 />
@@ -411,17 +425,41 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
             )}
           </div>
 
-          {/* Brand */}
+          {/* Brand - not for master items */}
+          {itemType !== 'master' && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Brand
             </label>
-            <Input
-              value={formData.brand}
-              onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-              placeholder="e.g., OPI"
-            />
+            {isAddingNewBrand ? (
+              <div className="space-y-1">
+                <Input
+                  value={formData.brand}
+                  onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                  placeholder="Enter new brand name"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => { setIsAddingNewBrand(false); setFormData(prev => ({ ...prev, brand: '' })); }}
+                  className="text-xs text-blue-600 hover:text-blue-800"
+                >
+                  ← Back to brand list
+                </button>
+              </div>
+            ) : (
+              <SearchableSelect
+                options={existingBrands.map(b => ({ value: b, label: b }))}
+                value={formData.brand}
+                onChange={(val) => setFormData({ ...formData, brand: val })}
+                placeholder="Select or add brand..."
+                allowAddNew
+                onAddNew={() => { setIsAddingNewBrand(true); setFormData(prev => ({ ...prev, brand: '' })); }}
+                addNewLabel="+ Add New Brand"
+              />
+            )}
           </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

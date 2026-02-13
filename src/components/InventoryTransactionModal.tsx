@@ -82,6 +82,7 @@ const CSV_HEADER_ALIASES: Record<string, string> = {
   'parent item': 'parent_name',
   'purchase unit': 'purchase_unit',
   'purchase_unit': 'purchase_unit',
+  'brand': 'brand',
   'unit': 'purchase_unit',
   'purchase qty': 'purchase_qty',
   'purchase_qty': 'purchase_qty',
@@ -658,6 +659,7 @@ export function InventoryTransactionModal({
 
       const headerFields = parseCsvLine(lines[0]).map(normalizeCsvHeader);
       const nameIdx = headerFields.indexOf('item_name');
+      const brandIdx = headerFields.indexOf('brand');
       const qtyIdx = headerFields.indexOf('quantity');
       const costIdx = headerFields.indexOf('unit_cost');
       const notesIdx = headerFields.indexOf('notes');
@@ -688,6 +690,7 @@ export function InventoryTransactionModal({
 
       interface CsvRow {
         itemName: string;
+        brand: string;
         parentName: string;
         quantity: number;
         unitCost: number;
@@ -708,6 +711,7 @@ export function InventoryTransactionModal({
         const itemName = (fields[nameIdx] || '').trim();
         if (!itemName) continue;
 
+        const brand = brandIdx >= 0 ? (fields[brandIdx] || '').trim() : '';
         const quantity = qtyIdx >= 0 ? parseFloat(fields[qtyIdx] || '0') : 0;
         const unitCost = costIdx >= 0 ? parseFloat(fields[costIdx] || '0') : 0;
         const notes = notesIdx >= 0 ? (fields[notesIdx] || '').trim() : '';
@@ -721,22 +725,22 @@ export function InventoryTransactionModal({
         const hasQuantity = !isNaN(quantity) && quantity > 0;
 
         if (!hasPurchaseQty && !hasQuantity) {
-          parsedRows.push({ itemName, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'skipped', skipReason: 'invalid quantity' });
+          parsedRows.push({ itemName, brand, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'skipped', skipReason: 'invalid quantity' });
           continue;
         }
 
         const matched = itemLookup.get(itemName.toLowerCase());
         if (matched) {
-          parsedRows.push({ itemName, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'matched', resolvedItem: matched });
+          parsedRows.push({ itemName, brand, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'matched', resolvedItem: matched });
         } else if (parentName) {
           const parent = masterLookup.get(parentName.toLowerCase());
           if (parent) {
-            parsedRows.push({ itemName, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'needs_creation', resolvedParent: parent });
+            parsedRows.push({ itemName, brand, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'needs_creation', resolvedParent: parent });
           } else {
-            parsedRows.push({ itemName, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'skipped', skipReason: `parent "${parentName}" not found` });
+            parsedRows.push({ itemName, brand, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'skipped', skipReason: `parent "${parentName}" not found` });
           }
         } else {
-          parsedRows.push({ itemName, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'skipped', skipReason: 'not found' });
+          parsedRows.push({ itemName, brand, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'skipped', skipReason: 'not found' });
         }
       }
 
@@ -759,7 +763,7 @@ export function InventoryTransactionModal({
           description: '',
           category: parent.category,
           unit: 'piece',
-          brand: parent.brand || null,
+          brand: row.brand || parent.brand || null,
           size: null,
           is_master_item: false,
           parent_id: parent.id,
@@ -796,7 +800,7 @@ export function InventoryTransactionModal({
                 is_master_item: false,
                 parent_id: parent.id,
                 category: parent.category,
-                brand: parent.brand || null,
+                brand: row.brand || parent.brand || null,
               })
               .eq('id', newItemId);
 
@@ -825,7 +829,7 @@ export function InventoryTransactionModal({
           id: newItemId,
           name: row.itemName.trim(),
           category: parent.category,
-          brand: parent.brand || null,
+          brand: row.brand || parent.brand || null,
           unit: 'piece',
           is_master_item: false,
           parent_id: parent.id,
