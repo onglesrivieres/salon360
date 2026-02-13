@@ -588,9 +588,13 @@ export function InventoryPage() {
   }
 
   function handleDownloadTransactionTemplate() {
-    const header = 'item_name,quantity,unit_cost,notes';
-    const example = 'Example Item Name,10,3.50,Optional notes';
-    const csv = header + '\n' + example + '\n';
+    const header = 'item_name,parent_name,purchase_unit,purchase_qty,purchase_unit_price,notes';
+    const rows = [
+      'DND DC Original 066,,,2,45.00,First batch',
+      'New Polish Color,DND DC,Box,5,12.50,',
+      'Acetone 32oz,,,20,,Bulk order',
+    ];
+    const csv = header + '\n' + rows.join('\n') + '\n';
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

@@ -76,6 +76,19 @@ const CSV_HEADER_ALIASES: Record<string, string> = {
   'cost': 'unit_cost',
   'price': 'unit_cost',
   'note': 'notes',
+  'parent': 'parent_name',
+  'parent name': 'parent_name',
+  'parent_name': 'parent_name',
+  'parent item': 'parent_name',
+  'purchase unit': 'purchase_unit',
+  'purchase_unit': 'purchase_unit',
+  'unit': 'purchase_unit',
+  'purchase qty': 'purchase_qty',
+  'purchase_qty': 'purchase_qty',
+  'purchase quantity': 'purchase_qty',
+  'purchase unit price': 'purchase_unit_price',
+  'purchase_unit_price': 'purchase_unit_price',
+  'unit price': 'purchase_unit_price',
 };
 
 function parseCsvLine(line: string): string[] {
@@ -648,25 +661,47 @@ export function InventoryTransactionModal({
       const qtyIdx = headerFields.indexOf('quantity');
       const costIdx = headerFields.indexOf('unit_cost');
       const notesIdx = headerFields.indexOf('notes');
+      const parentNameIdx = headerFields.indexOf('parent_name');
+      const purchaseUnitIdx = headerFields.indexOf('purchase_unit');
+      const purchaseQtyIdx = headerFields.indexOf('purchase_qty');
+      const purchaseUnitPriceIdx = headerFields.indexOf('purchase_unit_price');
 
       if (nameIdx === -1) {
         showToast('CSV must have an "item_name" (or "name") column', 'error');
         return;
       }
 
-      // Build lookup: lowercase item name → inventory item (only sub-items + standalone for "in")
+      // ── Phase 1: Parse & classify rows ──
+      // Build lookups: sub-items + standalone for "in" transactions, and master items by name
       const itemLookup = new Map<string, InventoryItem>();
+      const masterLookup = new Map<string, InventoryItem>();
       for (const inv of inventoryItems) {
         const isStandalone = !inv.is_master_item && !inv.parent_id;
         const isSubItem = !inv.is_master_item && inv.parent_id;
         if (isSubItem || isStandalone) {
           itemLookup.set(inv.name.toLowerCase(), inv);
         }
+        if (inv.is_master_item) {
+          masterLookup.set(inv.name.toLowerCase(), inv);
+        }
       }
 
-      const importedItems: TransactionItemForm[] = [];
-      const itemIdsToFetchUnits: string[] = [];
-      let skipped = 0;
+      interface CsvRow {
+        itemName: string;
+        parentName: string;
+        quantity: number;
+        unitCost: number;
+        notes: string;
+        purchaseUnitName: string;
+        purchaseQty: number;
+        purchaseUnitPrice: number;
+        status: 'matched' | 'needs_creation' | 'skipped';
+        resolvedItem?: InventoryItem;
+        resolvedParent?: InventoryItem;
+        skipReason?: string;
+      }
+
+      const parsedRows: CsvRow[] = [];
 
       for (let i = 1; i < lines.length; i++) {
         const fields = parseCsvLine(lines[i]);
@@ -676,27 +711,174 @@ export function InventoryTransactionModal({
         const quantity = qtyIdx >= 0 ? parseFloat(fields[qtyIdx] || '0') : 0;
         const unitCost = costIdx >= 0 ? parseFloat(fields[costIdx] || '0') : 0;
         const notes = notesIdx >= 0 ? (fields[notesIdx] || '').trim() : '';
+        const parentName = parentNameIdx >= 0 ? (fields[parentNameIdx] || '').trim() : '';
+        const purchaseUnitName = purchaseUnitIdx >= 0 ? (fields[purchaseUnitIdx] || '').trim() : '';
+        const purchaseQty = purchaseQtyIdx >= 0 ? parseFloat(fields[purchaseQtyIdx] || '0') : 0;
+        const purchaseUnitPrice = purchaseUnitPriceIdx >= 0 ? parseFloat(fields[purchaseUnitPriceIdx] || '0') : 0;
 
-        if (isNaN(quantity) || quantity <= 0) {
-          skipped++;
+        // Require either purchase_qty > 0 or quantity > 0 (backward compat)
+        const hasPurchaseQty = !isNaN(purchaseQty) && purchaseQty > 0;
+        const hasQuantity = !isNaN(quantity) && quantity > 0;
+
+        if (!hasPurchaseQty && !hasQuantity) {
+          parsedRows.push({ itemName, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'skipped', skipReason: 'invalid quantity' });
           continue;
         }
 
         const matched = itemLookup.get(itemName.toLowerCase());
-        if (!matched) {
+        if (matched) {
+          parsedRows.push({ itemName, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'matched', resolvedItem: matched });
+        } else if (parentName) {
+          const parent = masterLookup.get(parentName.toLowerCase());
+          if (parent) {
+            parsedRows.push({ itemName, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'needs_creation', resolvedParent: parent });
+          } else {
+            parsedRows.push({ itemName, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'skipped', skipReason: `parent "${parentName}" not found` });
+          }
+        } else {
+          parsedRows.push({ itemName, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'skipped', skipReason: 'not found' });
+        }
+      }
+
+      // ── Phase 2: Create new sub-items ──
+      let createdCount = 0;
+      for (const row of parsedRows) {
+        if (row.status !== 'needs_creation' || !row.resolvedParent) continue;
+
+        // Check if a previous row in this batch already created this item
+        const alreadyCreated = itemLookup.get(row.itemName.toLowerCase());
+        if (alreadyCreated) {
+          row.status = 'matched';
+          row.resolvedItem = alreadyCreated;
+          continue;
+        }
+
+        const parent = row.resolvedParent;
+        const itemData = {
+          name: row.itemName.trim(),
+          description: '',
+          category: parent.category,
+          unit: 'piece',
+          brand: parent.brand || null,
+          size: null,
+          is_master_item: false,
+          parent_id: parent.id,
+        };
+
+        const { data: insertedItem, error: insertError } = await supabase
+          .from('inventory_items')
+          .insert(itemData)
+          .select('id, name, category, brand, unit, is_master_item, parent_id')
+          .single();
+
+        let newItemId: string;
+
+        if (insertError) {
+          if (insertError.code === '23505') {
+            // Item name already exists globally — reuse it, update hierarchy
+            const { data: existingItem } = await supabase
+              .from('inventory_items')
+              .select('id, name, category, brand, unit, is_master_item, parent_id')
+              .eq('name', row.itemName.trim())
+              .single();
+
+            if (!existingItem) {
+              row.status = 'skipped';
+              row.skipReason = 'duplicate name conflict';
+              continue;
+            }
+            newItemId = existingItem.id;
+
+            // Update hierarchy to match intended sub-item
+            await supabase
+              .from('inventory_items')
+              .update({
+                is_master_item: false,
+                parent_id: parent.id,
+                category: parent.category,
+                brand: parent.brand || null,
+              })
+              .eq('id', newItemId);
+
+            // Ensure store_inventory_levels row exists
+            await supabase
+              .from('store_inventory_levels')
+              .upsert({
+                store_id: selectedStoreId!,
+                item_id: newItemId,
+                quantity_on_hand: 0,
+                unit_cost: 0,
+                reorder_level: 0,
+                is_active: true,
+              }, { onConflict: 'store_id,item_id' });
+          } else {
+            row.status = 'skipped';
+            row.skipReason = insertError.message;
+            continue;
+          }
+        } else {
+          newItemId = insertedItem.id;
+        }
+
+        // Build a minimal InventoryItem to add to lookup
+        const newItem: InventoryItem = {
+          id: newItemId,
+          name: row.itemName.trim(),
+          category: parent.category,
+          brand: parent.brand || null,
+          unit: 'piece',
+          is_master_item: false,
+          parent_id: parent.id,
+          description: '',
+          size: null,
+          store_id: selectedStoreId!,
+          quantity_on_hand: 0,
+          unit_cost: 0,
+          reorder_level: 0,
+          is_active: true,
+          created_at: new Date().toISOString(),
+        } as InventoryItem;
+
+        itemLookup.set(row.itemName.toLowerCase(), newItem);
+        row.status = 'matched';
+        row.resolvedItem = newItem;
+        createdCount++;
+      }
+
+      // Refresh inventory items dropdown if we created any new items
+      if (createdCount > 0) {
+        await fetchInventoryItems();
+      }
+
+      // ── Phase 3: Build TransactionItemForm objects ──
+      const importedItems: TransactionItemForm[] = [];
+      const itemIdsToFetchUnits: string[] = [];
+      // Parallel metadata: purchase unit name per imported item index
+      const purchaseUnitNames: string[] = [];
+      let skipped = 0;
+
+      for (const row of parsedRows) {
+        if (row.status === 'skipped') {
+          skipped++;
+          continue;
+        }
+        if (!row.resolvedItem) {
           skipped++;
           continue;
         }
 
+        const item = row.resolvedItem;
+        const hasPurchaseQty = !isNaN(row.purchaseQty) && row.purchaseQty > 0;
+
         importedItems.push({
-          item_id: matched.id,
+          item_id: item.id,
           purchase_unit_id: '',
-          purchase_quantity: '',
-          purchase_unit_price: '',
-          quantity: quantity.toString(),
+          purchase_quantity: hasPurchaseQty ? row.purchaseQty.toString() : '',
+          purchase_unit_price: hasPurchaseQty && !isNaN(row.purchaseUnitPrice) && row.purchaseUnitPrice > 0 ? row.purchaseUnitPrice.toString() : '',
+          quantity: !isNaN(row.quantity) && row.quantity > 0 ? row.quantity.toString() : '',
           total_cost: '',
-          unit_cost: isNaN(unitCost) ? '0' : unitCost.toString(),
-          notes,
+          unit_cost: !isNaN(row.unitCost) && row.unitCost > 0 ? row.unitCost.toString() : '',
+          notes: row.notes,
           isAddingPurchaseUnit: false,
           newPurchaseUnitName: '',
           newPurchaseUnitMultiplier: '',
@@ -704,8 +886,10 @@ export function InventoryTransactionModal({
           customPurchaseUnitName: '',
         });
 
-        if (matched.id) {
-          itemIdsToFetchUnits.push(matched.id);
+        purchaseUnitNames.push(row.purchaseUnitName);
+
+        if (item.id) {
+          itemIdsToFetchUnits.push(item.id);
         }
       }
 
@@ -716,15 +900,7 @@ export function InventoryTransactionModal({
         return;
       }
 
-      // Determine whether to replace or append
-      const hasFilledItems = items.some(item => item.item_id !== '');
-      if (hasFilledItems) {
-        setItems(prev => [...prev, ...importedItems]);
-      } else {
-        setItems(importedItems);
-      }
-
-      // Fetch purchase units for all imported items in parallel
+      // ── Phase 4: Fetch purchase units & resolve ──
       const uniqueIds = [...new Set(itemIdsToFetchUnits)];
       const unitResults = await Promise.all(
         uniqueIds.map(async (id) => {
@@ -736,12 +912,56 @@ export function InventoryTransactionModal({
       for (const { id, units } of unitResults) {
         newPurchaseUnits[id] = units;
       }
+
+      // Resolve purchase unit names and calculate quantities
+      for (let i = 0; i < importedItems.length; i++) {
+        const formItem = importedItems[i];
+        const unitName = purchaseUnitNames[i];
+        const itemUnits = newPurchaseUnits[formItem.item_id] || [];
+
+        if (unitName && itemUnits.length > 0) {
+          const matchedUnit = itemUnits.find(u => u.unit_name.toLowerCase() === unitName.toLowerCase());
+          if (matchedUnit) {
+            formItem.purchase_unit_id = matchedUnit.id;
+
+            // Calculate stock units and costs from purchase unit
+            const pQty = parseFloat(formItem.purchase_quantity) || 0;
+            const pPrice = parseFloat(formItem.purchase_unit_price) || 0;
+            const stockUnits = pQty * matchedUnit.multiplier;
+
+            if (stockUnits > 0) {
+              formItem.quantity = stockUnits.toString();
+            }
+            if (pQty > 0 && pPrice >= 0) {
+              const totalCost = pPrice * pQty;
+              formItem.total_cost = totalCost.toFixed(2);
+              if (stockUnits > 0) {
+                formItem.unit_cost = (totalCost / stockUnits).toFixed(2);
+              }
+            }
+          }
+          // If not matched, leave purchase_unit_id empty — user selects manually.
+          // purchase_quantity and purchase_unit_price are still populated.
+        }
+      }
+
+      // Determine whether to replace or append
+      const hasFilledItems = items.some(item => item.item_id !== '');
+      if (hasFilledItems) {
+        setItems(prev => [...prev, ...importedItems]);
+      } else {
+        setItems(importedItems);
+      }
+
       setPurchaseUnits(prev => ({ ...prev, ...newPurchaseUnits }));
 
       // Show result toast
-      let msg = `Imported ${importedItems.length} item${importedItems.length > 1 ? 's' : ''} from CSV`;
+      let msg = `Imported ${importedItems.length} item${importedItems.length > 1 ? 's' : ''}`;
+      if (createdCount > 0) {
+        msg += ` (${createdCount} new sub-item${createdCount > 1 ? 's' : ''} created)`;
+      }
       if (skipped > 0) {
-        msg += ` (${skipped} skipped — not found or invalid)`;
+        msg += ` (${skipped} skipped)`;
       }
       showToast(msg, 'success');
     } catch (err: any) {
