@@ -1401,6 +1401,9 @@ export function InventoryPage() {
                     const isMasterItem = item.is_master_item;
                     const isExpanded = expandedMasterItems.has(item.id);
                     const isLowStock = item.quantity_on_hand <= item.reorder_level;
+                    const isStandalone = !item.is_master_item && !item.parent_id;
+                    const standaloneLots = isStandalone ? (subItemLotsMap[item.id] || []) : [];
+                    const isExpandable = isMasterItem || (isStandalone && standaloneLots.length > 0);
 
                     // For master items, use aggregated values
                     const displayQty = isMasterItem
@@ -1417,12 +1420,12 @@ export function InventoryPage() {
                     return (
                       <React.Fragment key={item.id}>
                         <tr
-                          className={`hover:bg-gray-50 ${isLowStock ? 'bg-amber-50' : ''} ${isMasterItem ? 'cursor-pointer' : ''}`}
-                          onClick={() => isMasterItem && toggleMasterItem(item.id)}
+                          className={`hover:bg-gray-50 ${isLowStock ? 'bg-amber-50' : ''} ${isExpandable ? 'cursor-pointer' : ''}`}
+                          onClick={() => isExpandable && toggleMasterItem(item.id)}
                         >
                           <td className="px-4 py-3 text-sm font-medium text-gray-900">
                             <div className="flex items-center gap-2">
-                              {isMasterItem && (
+                              {isExpandable && (
                                 <span className="text-gray-400">
                                   {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                                 </span>
@@ -1433,6 +1436,11 @@ export function InventoryPage() {
                               {isMasterItem && hierarchyItem.sub_items && (
                                 <Badge variant="default" className="text-xs">
                                   {hierarchyItem.sub_items.length} variants
+                                </Badge>
+                              )}
+                              {isStandalone && standaloneLots.length > 0 && (
+                                <Badge variant="default" className="text-xs">
+                                  {standaloneLots.length} lots
                                 </Badge>
                               )}
                             </div>
@@ -1535,6 +1543,26 @@ export function InventoryPage() {
                             </React.Fragment>
                           );
                         })}
+                        {/* Lots for expanded standalone items */}
+                        {isStandalone && isExpanded && standaloneLots.length > 0 && standaloneLots.map((lot) => (
+                          <tr key={lot.id} className="bg-blue-50/30">
+                            <td colSpan={2} className="pl-10 pr-4 py-1.5 text-xs text-blue-700">
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-1 h-1 bg-blue-400 rounded-full" />
+                                <span className="font-mono">{lot.lot_number}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-1.5 text-xs text-gray-500">{lot.supplier_name || '-'}</td>
+                            <td className="px-4 py-1.5"></td>
+                            <td className="px-4 py-1.5"></td>
+                            <td className="px-4 py-1.5 text-xs text-right text-blue-700 font-medium">{lot.quantity_remaining}</td>
+                            <td className="px-4 py-1.5"></td>
+                            <td className="px-4 py-1.5"></td>
+                            <td className="px-4 py-1.5"></td>
+                            <td className="px-4 py-1.5"></td>
+                            <td className="px-4 py-1.5"></td>
+                          </tr>
+                        ))}
                       </React.Fragment>
                     );
                   })}
