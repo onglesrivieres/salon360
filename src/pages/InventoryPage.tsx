@@ -26,6 +26,8 @@ import {
   Calendar,
   FileEdit,
   Trash2,
+  Download,
+  Upload,
 } from 'lucide-react';
 import { supabase, InventoryItem, InventoryItemWithHierarchy, InventoryTransactionWithDetails, Supplier, InventoryPurchaseLotWithDetails, InventoryDistributionWithDetails } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
@@ -39,6 +41,7 @@ import { InventoryTransactionModal } from '../components/InventoryTransactionMod
 import { EmployeeDistributionModal } from '../components/EmployeeDistributionModal';
 import { SupplierModal } from '../components/SupplierModal';
 import { TransactionDetailModal } from '../components/TransactionDetailModal';
+import { CsvImportModal } from '../components/inventory/CsvImportModal';
 import { formatDateTimeEST, formatDateEST } from '../lib/timezone';
 
 type Tab = 'items' | 'transactions' | 'lots' | 'distributions' | 'suppliers';
@@ -77,6 +80,7 @@ export function InventoryPage() {
   const [expandedMasterItems, setExpandedMasterItems] = useState<Set<string>>(new Set());
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [draftToEdit, setDraftToEdit] = useState<any>(null);
+  const [showCsvImportModal, setShowCsvImportModal] = useState(false);
   const [purchaseUnits, setPurchaseUnits] = useState<Record<string, { unit_name: string; multiplier: number }>>({});
   const [subItemLotsMap, setSubItemLotsMap] = useState<Record<string, Array<{ id: string; lot_number: string; supplier_name: string | null; quantity_remaining: number }>>>({});
 
@@ -455,6 +459,44 @@ export function InventoryPage() {
 
   function handleItemSuccess() {
     fetchItems();
+  }
+
+  function handleDownloadCsv() {
+    const headers = ['name', 'brand', 'category', 'size', 'item_type', 'parent_name', 'quantity', 'unit_cost', 'reorder_level'];
+    const parentNames = new Map(items.filter(i => i.is_master_item).map(i => [i.id, i.name]));
+
+    function escapeCsvField(field: string): string {
+      if (field.includes(',') || field.includes('"') || field.includes('\n')) {
+        return '"' + field.replace(/"/g, '""') + '"';
+      }
+      return field;
+    }
+
+    const rows = items.map(item => {
+      const itemType = item.is_master_item ? 'master' : item.parent_id ? 'sub' : 'standalone';
+      const parentName = item.parent_id ? (parentNames.get(item.parent_id) || '') : '';
+      return [
+        escapeCsvField(item.name),
+        escapeCsvField(item.brand || ''),
+        escapeCsvField(item.category),
+        escapeCsvField(item.size || ''),
+        itemType,
+        escapeCsvField(parentName),
+        item.quantity_on_hand.toString(),
+        item.unit_cost.toString(),
+        item.reorder_level.toString(),
+      ].join(',');
+    });
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inventory-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    showToast('Inventory CSV downloaded', 'success');
   }
 
   function handleTransactionSuccess() {
@@ -1143,10 +1185,20 @@ export function InventoryPage() {
                 </button>
               </div>
               {canCreateItems && (
-                <Button onClick={handleAddItem} className="ml-auto">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Item
-                </Button>
+                <div className="flex gap-2 ml-auto flex-wrap">
+                  <Button variant="secondary" onClick={handleDownloadCsv}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download CSV
+                  </Button>
+                  <Button variant="secondary" onClick={() => setShowCsvImportModal(true)}>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Import CSV
+                  </Button>
+                  <Button onClick={handleAddItem}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Item
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -1581,7 +1633,7 @@ export function InventoryPage() {
                 {canDistribute && (
                   <Button
                     onClick={() => setShowDistributionModal(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    className="bg-red-600 hover:bg-red-700 text-white"
                   >
                     <PackagePlus className="w-4 h-4 mr-2" />
                     Distribute to Employee
@@ -2741,6 +2793,12 @@ export function InventoryPage() {
           setSelectedTransactionId(null);
         }}
         transactionId={selectedTransactionId || ''}
+      />
+
+      <CsvImportModal
+        isOpen={showCsvImportModal}
+        onClose={() => setShowCsvImportModal(false)}
+        onSuccess={handleItemSuccess}
       />
     </div>
   );
