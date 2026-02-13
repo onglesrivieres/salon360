@@ -212,21 +212,51 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
           .select('id')
           .single();
 
-        if (insertError) throw insertError;
+        let itemId: string;
+
+        if (insertError) {
+          if (insertError.code === '23505') {
+            // Item with this name already exists globally — reuse it
+            const { data: existingItem } = await supabase
+              .from('inventory_items')
+              .select('id')
+              .eq('name', formData.name.trim())
+              .single();
+
+            if (!existingItem) throw insertError;
+            itemId = existingItem.id;
+
+            // Ensure store_inventory_levels row exists for this store
+            await supabase
+              .from('store_inventory_levels')
+              .upsert({
+                store_id: selectedStoreId,
+                item_id: itemId,
+                quantity_on_hand: 0,
+                unit_cost: 0,
+                reorder_level: parseFloat(formData.reorder_level) || 0,
+                is_active: true,
+              }, { onConflict: 'store_id,item_id' });
+          } else {
+            throw insertError;
+          }
+        } else {
+          itemId = insertedItem.id;
+        }
 
         // Update the reorder_level for the current store (trigger created levels with 0)
-        if (!isSubItem && insertedItem) {
+        if (!isSubItem) {
           const reorderLevel = parseFloat(formData.reorder_level) || 0;
           if (reorderLevel > 0) {
             await supabase
               .from('store_inventory_levels')
               .update({ reorder_level: reorderLevel, updated_at: new Date().toISOString() })
               .eq('store_id', selectedStoreId)
-              .eq('item_id', insertedItem.id);
+              .eq('item_id', itemId);
           }
         }
 
-        showToast('Item created successfully', 'success');
+        showToast(insertError ? 'Existing item linked to this store' : 'Item created successfully', 'success');
       }
 
       onSuccess();
