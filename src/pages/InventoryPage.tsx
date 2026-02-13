@@ -389,6 +389,9 @@ export function InventoryPage() {
           ),
           distributed_by:employees!distributed_by_id (
             display_name
+          ),
+          manager_approved_by:employees!manager_approved_by_id (
+            display_name
           )
         `)
         .eq('store_id', selectedStoreId)
@@ -404,6 +407,7 @@ export function InventoryPage() {
         to_employee_name: dist.to_employee?.display_name || 'Unknown',
         from_employee_name: dist.from_employee?.display_name || null,
         distributed_by_name: dist.distributed_by?.display_name || null,
+        manager_approved_by_name: dist.manager_approved_by?.display_name || null,
       }));
 
       setDistributions(distributionsWithDetails);
@@ -2473,9 +2477,18 @@ export function InventoryPage() {
                             {dist.quantity}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <Badge variant={getDistributionStatusBadgeVariant(dist.status as DistributionStatus)}>
-                              {dist.status.replace('_', ' ')}
-                            </Badge>
+                            <div className="flex flex-col items-center gap-1">
+                              <Badge variant={getDistributionStatusBadgeVariant(dist.status as DistributionStatus)}>
+                                {dist.status.replace('_', ' ')}
+                              </Badge>
+                              {dist.status !== 'cancelled' && (
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  dist.manager_approved ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                                }`}>
+                                  {dist.manager_approved ? 'Mgr Approved' : 'Mgr Pending'}
+                                </span>
+                              )}
+                            </div>
                           </td>
                         </tr>
 
@@ -2515,6 +2528,14 @@ export function InventoryPage() {
                                       <p className="text-gray-500">Acknowledged At</p>
                                       <p className="font-medium text-gray-900">
                                         {dist.acknowledged_at ? formatDateTimeEST(dist.acknowledged_at) : '-'}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-500">Manager Approved</p>
+                                      <p className="font-medium text-gray-900">
+                                        {dist.manager_approved
+                                          ? `${dist.manager_approved_by_name || 'Unknown'} — ${dist.manager_approved_at ? formatDateTimeEST(dist.manager_approved_at) : ''}`
+                                          : '-'}
                                       </p>
                                     </div>
                                     <div className="col-span-2">

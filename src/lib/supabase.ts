@@ -689,6 +689,9 @@ export interface InventoryDistribution {
   distributed_by_id: string;
   acknowledged_by_signature?: string;
   acknowledged_at?: string;
+  manager_approved?: boolean;
+  manager_approved_by_id?: string;
+  manager_approved_at?: string;
   created_at: string;
   updated_at: string;
 }
@@ -699,6 +702,7 @@ export interface InventoryDistributionWithDetails extends InventoryDistribution 
   to_employee_name?: string;
   from_employee_name?: string;
   distributed_by_name?: string;
+  manager_approved_by_name?: string;
 }
 
 export interface PendingDistributionApproval {
