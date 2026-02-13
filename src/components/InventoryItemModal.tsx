@@ -350,68 +350,66 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
         }
       >
         <form id="inventory-item-form" onSubmit={handleSubmit} className="space-y-4">
-          {/* Item Type Selection - only for new items */}
-          {!item && (
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700">
-                Item Type <span className="text-red-500">*</span>
+          {/* Item Type Selection */}
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-700">
+              Item Type <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="item_type"
+                  checked={itemType === 'standalone'}
+                  onChange={() => {
+                    setItemType('standalone');
+                    setSelectedParentId(null);
+                  }}
+                  className="w-4 h-4 text-blue-600"
+                />
+                <span className="text-sm">Standalone Item</span>
               </label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="item_type"
-                    checked={itemType === 'standalone'}
-                    onChange={() => {
-                      setItemType('standalone');
-                      setSelectedParentId(null);
-                    }}
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span className="text-sm">Standalone Item</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="item_type"
-                    checked={itemType === 'master'}
-                    onChange={() => {
-                      setItemType('master');
-                      setSelectedParentId(null);
-                    }}
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span className="text-sm">Master Item (Group)</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="item_type"
-                    checked={itemType === 'sub'}
-                    onChange={() => setItemType('sub')}
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span className="text-sm">Sub-Item (Variation)</span>
-                </label>
-              </div>
-
-              {/* Parent Selection for Sub-Items */}
-              {itemType === 'sub' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Parent Master Item <span className="text-red-500">*</span>
-                  </label>
-                  <SearchableSelect
-                    options={masterItemOptions}
-                    value={selectedParentId || ''}
-                    onChange={handleParentSelect}
-                    placeholder="Search master items..."
-                    required
-                  />
-                </div>
-              )}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="item_type"
+                  checked={itemType === 'master'}
+                  onChange={() => {
+                    setItemType('master');
+                    setSelectedParentId(null);
+                  }}
+                  className="w-4 h-4 text-blue-600"
+                />
+                <span className="text-sm">Master Item (Group)</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="item_type"
+                  checked={itemType === 'sub'}
+                  onChange={() => setItemType('sub')}
+                  className="w-4 h-4 text-blue-600"
+                />
+                <span className="text-sm">Sub-Item (Variation)</span>
+              </label>
             </div>
-          )}
+
+            {/* Parent Selection for Sub-Items */}
+            {itemType === 'sub' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Parent Master Item <span className="text-red-500">*</span>
+                </label>
+                <SearchableSelect
+                  options={masterItemOptions.filter(o => !item || o.value !== item.id)}
+                  value={selectedParentId || ''}
+                  onChange={handleParentSelect}
+                  placeholder="Search master items..."
+                  required
+                />
+              </div>
+            )}
+          </div>
 
           {/* Brand */}
           <div>
