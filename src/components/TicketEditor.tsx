@@ -1461,6 +1461,22 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     try {
       setSaving(true);
 
+      // Stop any service timers BEFORE clearing ticket-level fields
+      // (clearing closed_at removes the implicit timer end time,
+      // so we must set explicit timer_stopped_at first to prevent timers restarting)
+      const { error: timerError } = await supabase
+        .from('ticket_items')
+        .update({ timer_stopped_at: new Date().toISOString() })
+        .eq('sale_ticket_id', ticketId)
+        .not('started_at', 'is', null)
+        .is('timer_stopped_at', null);
+
+      if (timerError) {
+        console.error('Error stopping timers:', timerError);
+        throw timerError;
+      }
+
+      // Now safe to clear closed_at and other approval fields
       const { error } = await supabase
         .from('sale_tickets')
         .update({
@@ -1482,14 +1498,6 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
         console.error('Database error reopening ticket:', error);
         throw error;
       }
-
-      // Stop any service timers that were implicitly stopped by ticket.completed_at
-      await supabase
-        .from('ticket_items')
-        .update({ timer_stopped_at: new Date().toISOString() })
-        .eq('sale_ticket_id', ticketId)
-        .not('started_at', 'is', null)
-        .is('timer_stopped_at', null);
 
       await logActivity(ticketId, 'updated', `${session?.display_name} reopened ticket`, {
         reopened: true,
