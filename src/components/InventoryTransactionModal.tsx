@@ -43,6 +43,8 @@ interface InventoryTransactionModalProps {
 
 interface TransactionItemForm {
   item_id: string;
+  brand: string;
+  isAddingNewBrand: boolean;
   purchase_unit_id: string;
   purchase_quantity: string;
   purchase_unit_price: string;
@@ -174,6 +176,7 @@ export function InventoryTransactionModal({
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
+  const [existingBrands, setExistingBrands] = useState<string[]>([]);
 
   // Create a map of master items for grouping sub-items
   const masterItemsMap = useMemo(() => {
@@ -192,6 +195,7 @@ export function InventoryTransactionModal({
       fetchEmployees();
       fetchSuppliers();
       fetchAvailableStores();
+      fetchBrands();
     }
   }, [isOpen, selectedStoreId]);
 
@@ -210,6 +214,7 @@ export function InventoryTransactionModal({
       if (draftTransaction.items.length > 0) {
         setItems(draftTransaction.items.map(item => ({
           item_id: item.item_id,
+          brand: '', isAddingNewBrand: false,
           purchase_unit_id: item.purchase_unit_id || '',
           purchase_quantity: item.purchase_quantity?.toString() || '',
           purchase_unit_price: item.purchase_unit_price?.toString() || '',
@@ -225,7 +230,7 @@ export function InventoryTransactionModal({
         })));
       } else {
         setItems([{
-          item_id: '', purchase_unit_id: '', purchase_quantity: '', purchase_unit_price: '',
+          item_id: '', brand: '', isAddingNewBrand: false, purchase_unit_id: '', purchase_quantity: '', purchase_unit_price: '',
           quantity: '', total_cost: '', unit_cost: '', notes: '',
           isAddingPurchaseUnit: false, newPurchaseUnitName: '', newPurchaseUnitMultiplier: '',
           isCustomPurchaseUnit: false, customPurchaseUnitName: '',
@@ -235,7 +240,7 @@ export function InventoryTransactionModal({
       // Reset form
       setDraftId(null);
       setItems([{
-        item_id: '', purchase_unit_id: '', purchase_quantity: '', purchase_unit_price: '',
+        item_id: '', brand: '', isAddingNewBrand: false, purchase_unit_id: '', purchase_quantity: '', purchase_unit_price: '',
         quantity: '', total_cost: '', unit_cost: '', notes: '',
         isAddingPurchaseUnit: false, newPurchaseUnitName: '', newPurchaseUnitMultiplier: '',
         isCustomPurchaseUnit: false, customPurchaseUnitName: '',
@@ -250,7 +255,7 @@ export function InventoryTransactionModal({
     }
   }, [isOpen, initialTransactionType, draftTransaction]);
 
-  // Fetch purchase units for draft items when inventory items are loaded
+  // Fetch purchase units and populate brands for draft items when inventory items are loaded
   useEffect(() => {
     if (draftTransaction && inventoryItems.length > 0) {
       const itemIds = new Set(draftTransaction.items.map(i => i.item_id).filter(Boolean));
@@ -261,6 +266,17 @@ export function InventoryTransactionModal({
           setPurchaseUnits(prev => ({ ...prev, [invItem.id!]: units }));
         }
       });
+
+      // Populate brand from inventory items for draft items
+      setItems(prev => prev.map(item => {
+        if (item.item_id && !item.brand) {
+          const invItem = inventoryItems.find(i => i.id === item.item_id);
+          if (invItem?.brand) {
+            return { ...item, brand: invItem.brand };
+          }
+        }
+        return item;
+      }));
     }
   }, [draftTransaction, inventoryItems]);
 
@@ -384,6 +400,19 @@ export function InventoryTransactionModal({
       setAvailableStores(storesData.filter(s => s.id !== selectedStoreId));
     } catch (error) {
       console.error('Error fetching stores:', error);
+    }
+  }
+
+  async function fetchBrands() {
+    try {
+      const { data } = await supabase
+        .from('inventory_items')
+        .select('brand')
+        .not('brand', 'is', null);
+      const unique = Array.from(new Set((data || []).map((d: any) => d.brand).filter(Boolean))).sort() as string[];
+      setExistingBrands(unique);
+    } catch (error) {
+      console.error('Error fetching brands:', error);
     }
   }
 
@@ -620,6 +649,8 @@ export function InventoryTransactionModal({
   function handleAddItem() {
     setItems([...items, {
       item_id: '',
+      brand: '',
+      isAddingNewBrand: false,
       purchase_unit_id: '',
       purchase_quantity: '',
       purchase_unit_price: '',
@@ -876,6 +907,8 @@ export function InventoryTransactionModal({
 
         importedItems.push({
           item_id: item.id,
+          brand: row.brand || item.brand || '',
+          isAddingNewBrand: false,
           purchase_unit_id: '',
           purchase_quantity: hasPurchaseQty ? row.purchaseQty.toString() : '',
           purchase_unit_price: hasPurchaseQty && !isNaN(row.purchaseUnitPrice) && row.purchaseUnitPrice > 0 ? row.purchaseUnitPrice.toString() : '',
@@ -981,6 +1014,9 @@ export function InventoryTransactionModal({
     if (field === 'item_id' && value) {
       const item = inventoryItems.find((i) => i.id === value);
       if (item && item.id) {
+        newItems[index].brand = item.brand || '';
+        newItems[index].isAddingNewBrand = false;
+
         const units = await fetchPurchaseUnitsForItem(item.id);
         setPurchaseUnits(prev => ({ ...prev, [item.id!]: units }));
 
@@ -1505,6 +1541,19 @@ export function InventoryTransactionModal({
         showToast('Draft saved', 'success');
       }
 
+      // Update item brands if changed
+      if (transactionType === 'in') {
+        for (const item of validItems) {
+          const invItem = inventoryItems.find(i => i.id === item.item_id);
+          if (invItem && item.brand !== (invItem.brand || '')) {
+            await supabase
+              .from('inventory_items')
+              .update({ brand: item.brand.trim() || null })
+              .eq('id', item.item_id);
+          }
+        }
+      }
+
       onSuccess(); // Refresh the list
     } catch (error: any) {
       console.error('Error saving draft:', error);
@@ -1843,6 +1892,19 @@ export function InventoryTransactionModal({
         await createTransaction();
       }
 
+      // Update item brands if changed
+      if (transactionType === 'in') {
+        for (const item of validItems) {
+          const invItem = inventoryItems.find(i => i.id === item.item_id);
+          if (invItem && item.brand !== (invItem.brand || '')) {
+            await supabase
+              .from('inventory_items')
+              .update({ brand: item.brand.trim() || null })
+              .eq('id', item.item_id);
+          }
+        }
+      }
+
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -2061,7 +2123,7 @@ export function InventoryTransactionModal({
                   className="p-3 bg-gray-50 rounded-lg space-y-3"
                 >
                   <div className="grid grid-cols-12 gap-2 items-start">
-                    <div className="col-span-5">
+                    <div className={transactionType === 'in' ? 'col-span-4' : 'col-span-5'}>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Item {index === 0 && <span className="text-red-500">*</span>}
                       </label>
@@ -2089,7 +2151,40 @@ export function InventoryTransactionModal({
                     </div>
 
                     {transactionType === 'in' && item.item_id && (
-                      <div className="col-span-3">
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Brand</label>
+                        {item.isAddingNewBrand ? (
+                          <div className="space-y-1">
+                            <Input
+                              value={item.brand}
+                              onChange={(e) => { const n = [...items]; n[index].brand = e.target.value; setItems(n); }}
+                              placeholder="New brand"
+                              className="text-sm"
+                              autoFocus
+                            />
+                            <button type="button"
+                              onClick={() => { const n = [...items]; n[index].isAddingNewBrand = false; n[index].brand = ''; setItems(n); }}
+                              className="text-xs text-blue-600 hover:text-blue-800">
+                              ← Back
+                            </button>
+                          </div>
+                        ) : (
+                          <SearchableSelect
+                            options={existingBrands.map(b => ({ value: b, label: b }))}
+                            value={item.brand}
+                            onChange={(val) => { const n = [...items]; n[index].brand = val; setItems(n); }}
+                            placeholder="Brand..."
+                            className="text-sm"
+                            allowAddNew
+                            onAddNew={() => { const n = [...items]; n[index].isAddingNewBrand = true; n[index].brand = ''; setItems(n); }}
+                            addNewLabel="+ Add New Brand"
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    {transactionType === 'in' && item.item_id && (
+                      <div className="col-span-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">
                           Purchase Unit {index === 0 && <span className="text-red-500">*</span>}
                           {itemPurchaseUnits.length > 0 && (
