@@ -1274,6 +1274,136 @@ export function InventoryTransactionModal({
         setItems(updatedItems);
       }
 
+      // Auto-save in-progress purchase units (form open, fields filled, checkmark not clicked)
+      if (transactionType === 'in') {
+        for (let index = 0; index < updatedItems.length; index++) {
+          const item = updatedItems[index];
+          if (item.isAddingPurchaseUnit && item.item_id) {
+            const unitName = item.isCustomPurchaseUnit ? item.customPurchaseUnitName.trim() : item.newPurchaseUnitName.trim();
+
+            if (!unitName) {
+              showToast(`Item ${index + 1}: Please enter a purchase unit name or cancel the purchase unit form`, 'error');
+              setSavingDraft(false);
+              return;
+            }
+
+            if (!item.newPurchaseUnitMultiplier) {
+              showToast(`Item ${index + 1}: Please enter the purchase unit multiplier (quantity)`, 'error');
+              setSavingDraft(false);
+              return;
+            }
+
+            const multiplier = parseFloat(item.newPurchaseUnitMultiplier);
+            if (multiplier <= 0) {
+              showToast(`Item ${index + 1}: Multiplier must be greater than zero`, 'error');
+              setSavingDraft(false);
+              return;
+            }
+
+            try {
+              const invItem = inventoryItems.find(i => i.id === item.item_id);
+              if (!invItem?.id) {
+                showToast(`Item ${index + 1}: Item does not have a master item ID`, 'error');
+                setSavingDraft(false);
+                return;
+              }
+
+              const existingUnits = purchaseUnits[invItem.id] || [];
+
+              const duplicateUnit = existingUnits.find(
+                u => u.unit_name.toLowerCase() === unitName.toLowerCase()
+              );
+
+              let purchaseUnitData;
+
+              if (duplicateUnit) {
+                purchaseUnitData = { id: duplicateUnit.id, multiplier: duplicateUnit.multiplier };
+              } else {
+                const isFirstUnit = existingUnits.length === 0;
+
+                const { data, error } = await supabase
+                  .from('store_product_purchase_units')
+                  .insert({
+                    store_id: selectedStoreId,
+                    item_id: invItem.id,
+                    unit_name: unitName,
+                    multiplier,
+                    is_default: isFirstUnit,
+                    display_order: existingUnits.length,
+                  })
+                  .select()
+                  .single();
+
+                if (error) {
+                  if (error.code === '23505') {
+                    const { data: existingUnit } = await supabase
+                      .from('store_product_purchase_units')
+                      .select('*')
+                      .eq('store_id', selectedStoreId)
+                      .eq('item_id', invItem.id)
+                      .ilike('unit_name', unitName)
+                      .maybeSingle();
+
+                    if (existingUnit) {
+                      purchaseUnitData = { id: existingUnit.id, multiplier: existingUnit.multiplier };
+                    } else {
+                      showToast(`Item ${index + 1}: A purchase unit with this name already exists`, 'error');
+                      setSavingDraft(false);
+                      return;
+                    }
+                  } else {
+                    console.error(`Error saving purchase unit for item ${index + 1}:`, error);
+                    showToast(`Item ${index + 1}: Failed to save purchase unit - ${error.message}`, 'error');
+                    setSavingDraft(false);
+                    return;
+                  }
+                } else {
+                  purchaseUnitData = { id: data.id, multiplier: data.multiplier };
+                }
+              }
+
+              // Update the item with the saved purchase unit
+              updatedItems[index] = {
+                ...updatedItems[index],
+                purchase_unit_id: purchaseUnitData.id,
+                isAddingPurchaseUnit: false,
+              };
+
+              // Recalculate quantity/costs if purchase_quantity is set
+              if (updatedItems[index].purchase_quantity) {
+                const purchaseQty = parseFloat(updatedItems[index].purchase_quantity);
+                const stockQty = purchaseQty * purchaseUnitData.multiplier;
+                updatedItems[index] = {
+                  ...updatedItems[index],
+                  quantity: stockQty.toString(),
+                };
+                if (updatedItems[index].purchase_unit_price) {
+                  const purchaseUnitPrice = parseFloat(updatedItems[index].purchase_unit_price);
+                  const totalCost = purchaseQty * purchaseUnitPrice;
+                  const unitCost = stockQty > 0 ? totalCost / stockQty : 0;
+                  updatedItems[index] = {
+                    ...updatedItems[index],
+                    total_cost: totalCost.toFixed(2),
+                    unit_cost: unitCost.toFixed(2),
+                  };
+                }
+              }
+
+              // Update purchase units cache
+              const updatedUnits = await fetchPurchaseUnitsForItem(invItem.id);
+              setPurchaseUnits(prev => ({ ...prev, [invItem.id!]: updatedUnits }));
+            } catch (error: any) {
+              console.error('Error auto-saving purchase unit:', error);
+              showToast(`Item ${index + 1}: Failed to save purchase unit - ${error.message || 'Unknown error'}`, 'error');
+              setSavingDraft(false);
+              return;
+            }
+          }
+        }
+
+        setItems(updatedItems);
+      }
+
       const validItems = updatedItems.filter(item => item.item_id);
 
       const canSelfApprove = session.role && Permissions.inventory.canSelfApprove(session.role);
