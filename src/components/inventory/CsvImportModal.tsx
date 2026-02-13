@@ -310,8 +310,24 @@ export function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalPro
     for (const row of sortedRows) {
       try {
         if (row.action === 'update' && row.matchedId) {
-          // Update store_inventory_levels (skip stock update for sub-items)
           const isSub = row.item_type === 'sub';
+
+          // Update catalog fields on inventory_items
+          const catalogUpdate: Record<string, unknown> = {};
+          if (row.brand) catalogUpdate.brand = row.brand;
+          if (row.category) {
+            const correctCategory = categoryMap.get(row.category.toLowerCase()) || row.category;
+            catalogUpdate.category = correctCategory;
+          }
+          if (row.size) catalogUpdate.size = row.size;
+          if (Object.keys(catalogUpdate).length > 0) {
+            await supabase
+              .from('inventory_items')
+              .update(catalogUpdate)
+              .eq('id', row.matchedId);
+          }
+
+          // Update store_inventory_levels (skip stock update for sub-items)
           if (!isSub) {
             const { error } = await supabase
               .from('store_inventory_levels')
@@ -362,6 +378,19 @@ export function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalPro
             if (insertError.code === '23505') {
               const existing = itemsByName.get(row.name.toLowerCase());
               if (existing && !isSub) {
+                // Update catalog fields on existing item
+                const catalogUpdate: Record<string, unknown> = {};
+                if (row.brand) catalogUpdate.brand = row.brand;
+                if (row.size) catalogUpdate.size = row.size;
+                const correctCat = categoryMap.get(row.category.toLowerCase()) || row.category;
+                if (correctCat) catalogUpdate.category = correctCat;
+                if (Object.keys(catalogUpdate).length > 0) {
+                  await supabase
+                    .from('inventory_items')
+                    .update(catalogUpdate)
+                    .eq('id', existing);
+                }
+
                 await supabase
                   .from('store_inventory_levels')
                   .update({
