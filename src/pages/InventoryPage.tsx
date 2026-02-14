@@ -1474,7 +1474,7 @@ export function InventoryPage() {
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[200px]"
                       onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center gap-1">
@@ -1506,9 +1506,6 @@ export function InventoryPage() {
                         )}
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Description
-                    </th>
                     <th
                       className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort('quantity_on_hand')}
@@ -1518,11 +1515,6 @@ export function InventoryPage() {
                         {sortColumn === 'quantity_on_hand' && (
                           sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
                         )}
-                      </div>
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      <div className="flex items-center justify-end gap-1">
-                        Qty (Lot)
                       </div>
                     </th>
                     <th
@@ -1572,7 +1564,7 @@ export function InventoryPage() {
                           className="bg-gray-100 hover:bg-gray-200 cursor-pointer"
                           onClick={() => toggleCategory(category)}
                         >
-                          <td colSpan={10} className="px-4 py-2">
+                          <td colSpan={8} className="px-4 py-2">
                             <div className="flex items-center gap-2">
                               {isCategoryCollapsed ? <ChevronRight className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
                               <span className="font-semibold text-gray-800">{category}</span>
@@ -1631,20 +1623,14 @@ export function InventoryPage() {
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-900">
+                          <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
                             {isMasterItem ? '-' : item.supplier}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-900">
                             {isMasterItem ? '-' : (item.brand || '-')}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" title={item.description}>
-                            {item.description || '-'}
-                          </td>
                           <td className={`px-4 py-3 text-sm text-right font-semibold ${isLowStock ? 'text-amber-600' : 'text-gray-900'}`}>
                             {displayQty} {item.unit}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right text-gray-600">
-                            {lotQty ? `${lotQty} ${defaultUnit?.unit_name || ''}` : '-'}
                           </td>
                           <td className="px-4 py-3 text-sm text-right text-gray-900">
                             {item.reorder_level} {item.unit}
@@ -1684,8 +1670,6 @@ export function InventoryPage() {
                                 </td>
                                 <td className="px-4 py-2 text-sm text-gray-600">{subItem.supplier}</td>
                                 <td className="px-4 py-2 text-sm text-gray-600">{subItem.brand || '-'}</td>
-                                <td className="px-4 py-2 text-sm text-gray-500 max-w-xs truncate">{subItem.description || '-'}</td>
-                                <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
                                 <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
                                 <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
                                 <td className="px-4 py-2 text-sm text-right text-gray-600">
@@ -1713,9 +1697,7 @@ export function InventoryPage() {
                                   </td>
                                   <td className="px-4 py-1.5 text-xs text-gray-500">{lot.supplier_name || '-'}</td>
                                   <td className="px-4 py-1.5"></td>
-                                  <td className="px-4 py-1.5"></td>
                                   <td className="px-4 py-1.5 text-xs text-right text-blue-700 font-medium">{lot.quantity_remaining}</td>
-                                  <td className="px-4 py-1.5"></td>
                                   <td className="px-4 py-1.5"></td>
                                   <td className="px-4 py-1.5"></td>
                                   <td className="px-4 py-1.5"></td>
@@ -1739,9 +1721,7 @@ export function InventoryPage() {
                                 </td>
                                 <td className="px-4 py-1.5 text-xs text-gray-500">{lot.supplier_name || '-'}</td>
                                 <td className="px-4 py-1.5"></td>
-                                <td className="px-4 py-1.5"></td>
                                 <td className="px-4 py-1.5 text-xs text-right text-blue-700 font-medium">+{lot.quantity_received}</td>
-                                <td className="px-4 py-1.5"></td>
                                 <td className="px-4 py-1.5"></td>
                                 <td className="px-4 py-1.5"></td>
                                 <td className="px-4 py-1.5"></td>
@@ -1762,9 +1742,7 @@ export function InventoryPage() {
                                 </td>
                                 <td className="px-4 py-1.5 text-xs text-gray-500">{formatDateEST(txn.created_at)}</td>
                                 <td className="px-4 py-1.5"></td>
-                                <td className="px-4 py-1.5"></td>
                                 <td className="px-4 py-1.5 text-xs text-right text-red-600 font-medium">-{txn.quantity}</td>
-                                <td className="px-4 py-1.5"></td>
                                 <td className="px-4 py-1.5"></td>
                                 <td className="px-4 py-1.5"></td>
                                 <td className="px-4 py-1.5"></td>
@@ -1783,9 +1761,7 @@ export function InventoryPage() {
                                 </td>
                                 <td className="px-4 py-1.5 text-xs text-gray-500">{formatDateEST(dist.distribution_date)}</td>
                                 <td className="px-4 py-1.5"></td>
-                                <td className="px-4 py-1.5"></td>
                                 <td className="px-4 py-1.5 text-xs text-right text-amber-600 font-medium">-{dist.quantity}</td>
-                                <td className="px-4 py-1.5"></td>
                                 <td className="px-4 py-1.5"></td>
                                 <td className="px-4 py-1.5"></td>
                                 <td className="px-4 py-1.5"></td>

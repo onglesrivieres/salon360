@@ -499,6 +499,7 @@ Always filter by `store_id` when querying store-specific data:
 Changes grouped by feature area. All dates in 2026.
 
 ### Inventory Items (Feb 15)
+- Items tab table: removed Description and Qty (Lot) columns (10→8 columns). Added `min-w-[200px]` to Name column, `whitespace-nowrap` to Supplier column. Files: `InventoryPage.tsx`
 - Separate search state for Items and Suppliers tabs — each tab now has independent search query. Files: `InventoryPage.tsx`
 - Removed redundant "DND DC " prefix from 362 item names (already categorized under DND categories). Migration only
 
