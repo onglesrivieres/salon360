@@ -47,7 +47,7 @@ import { formatDateTimeEST, formatDateEST } from '../lib/timezone';
 
 type Tab = 'items' | 'transactions' | 'lots' | 'distributions' | 'suppliers';
 type ViewMode = 'grid' | 'table';
-type SortColumn = 'supplier' | 'brand' | 'name' | 'category' | 'quantity_on_hand' | 'reorder_level' | 'unit_cost' | 'total_value';
+type SortColumn = 'supplier' | 'brand' | 'name' | 'quantity_on_hand' | 'reorder_level' | 'unit_cost' | 'total_value';
 type SortDirection = 'asc' | 'desc';
 type LotSortColumn = 'lot_number' | 'item_name' | 'quantity_remaining' | 'unit_cost' | 'purchase_date' | 'status';
 type LotStatus = 'active' | 'depleted' | 'expired' | 'archived';
@@ -79,6 +79,7 @@ export function InventoryPage() {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [expandedMasterItems, setExpandedMasterItems] = useState<Set<string>>(new Set());
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [draftToEdit, setDraftToEdit] = useState<any>(null);
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
@@ -355,6 +356,18 @@ export function InventoryPage() {
         newSet.delete(masterId);
       } else {
         newSet.add(masterId);
+      }
+      return newSet;
+    });
+  }
+
+  function toggleCategory(category: string) {
+    setCollapsedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(category)) {
+        newSet.delete(category);
+      } else {
+        newSet.add(category);
       }
       return newSet;
     });
@@ -733,6 +746,24 @@ export function InventoryPage() {
     if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
     return 0;
   }) : filteredItems;
+
+  // Group sorted items by category for collapsible sections
+  const itemsByCategory = (() => {
+    const groups: { category: string; items: typeof sortedItems }[] = [];
+    const categoryMap = new Map<string, typeof sortedItems>();
+    for (const item of sortedItems) {
+      const cat = item.category || 'Uncategorized';
+      if (!categoryMap.has(cat)) {
+        categoryMap.set(cat, []);
+      }
+      categoryMap.get(cat)!.push(item);
+    }
+    const sortedCategories = [...categoryMap.keys()].sort((a, b) => a.localeCompare(b));
+    for (const cat of sortedCategories) {
+      groups.push({ category: cat, items: categoryMap.get(cat)! });
+    }
+    return groups;
+  })();
 
   const filteredTransactions = transactions.filter((t) => {
     if (!statusFilter) return true;
@@ -1334,81 +1365,99 @@ export function InventoryPage() {
               {searchQuery || categoryFilter || supplierFilter || brandFilter ? 'No items match your filters' : 'No items yet'}
             </div>
           ) : viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sortedItems.map((item) => {
-                const isLowStock = item.quantity_on_hand <= item.reorder_level;
-                const totalValue = item.quantity_on_hand * item.unit_cost;
-
+            <div className="space-y-4">
+              {itemsByCategory.map(({ category, items: categoryItems }) => {
+                const isCategoryCollapsed = collapsedCategories.has(category);
                 return (
-                  <div
-                    key={item.id}
-                    className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-start gap-2">
-                          <Package className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <h3 className="font-semibold text-gray-900">{item.name}</h3>
-                            {item.brand && (
-                              <p className="text-xs text-gray-500 mt-0.5">Brand: {item.brand}</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      {canEditItems && (
-                        <button
-                          onClick={() => handleEditItem(item)}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
+                  <div key={category}>
+                    <button
+                      onClick={() => toggleCategory(category)}
+                      className="flex items-center gap-2 w-full text-left px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      {isCategoryCollapsed ? <ChevronRight className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+                      <span className="font-semibold text-gray-800">{category}</span>
+                      <Badge variant="default" className="text-xs">{categoryItems.length}</Badge>
+                    </button>
+                    {!isCategoryCollapsed && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+                        {categoryItems.map((item) => {
+                          const isLowStock = item.quantity_on_hand <= item.reorder_level;
+                          const totalValue = item.quantity_on_hand * item.unit_cost;
 
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="default">{item.category}</Badge>
-                        <Badge variant="default">{item.supplier}</Badge>
-                        {isLowStock && (
-                          <Badge variant="warning" className="flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" />
-                            Low Stock
-                          </Badge>
-                        )}
-                      </div>
+                          return (
+                            <div
+                              key={item.id}
+                              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                            >
+                              <div className="flex justify-between items-start mb-3">
+                                <div className="flex-1">
+                                  <div className="flex items-start gap-2">
+                                    <Package className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                      <h3 className="font-semibold text-gray-900">{item.name}</h3>
+                                      {item.brand && (
+                                        <p className="text-xs text-gray-500 mt-0.5">Brand: {item.brand}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                {canEditItems && (
+                                  <button
+                                    onClick={() => handleEditItem(item)}
+                                    className="text-gray-400 hover:text-gray-600"
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
 
-                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
-                        <div>
-                          <p className="text-gray-500">On Hand</p>
-                          <p
-                            className={`font-semibold ${isLowStock ? 'text-amber-600' : 'text-gray-900'}`}
-                          >
-                            {item.quantity_on_hand} {item.unit}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">Reorder Level</p>
-                          <p className="font-semibold text-gray-900">
-                            {item.reorder_level} {item.unit}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">Unit Cost</p>
-                          <p className="font-semibold text-gray-900">${item.unit_cost.toFixed(2)}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">Total Value</p>
-                          <p className="font-semibold text-gray-900">${totalValue.toFixed(2)}</p>
-                        </div>
-                      </div>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge variant="default">{item.supplier}</Badge>
+                                  {isLowStock && (
+                                    <Badge variant="warning" className="flex items-center gap-1">
+                                      <AlertTriangle className="w-3 h-3" />
+                                      Low Stock
+                                    </Badge>
+                                  )}
+                                </div>
 
-                      {item.description && (
-                        <p className="text-gray-600 text-xs pt-2 border-t border-gray-100">
-                          {item.description}
-                        </p>
-                      )}
-                    </div>
+                                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
+                                  <div>
+                                    <p className="text-gray-500">On Hand</p>
+                                    <p
+                                      className={`font-semibold ${isLowStock ? 'text-amber-600' : 'text-gray-900'}`}
+                                    >
+                                      {item.quantity_on_hand} {item.unit}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-gray-500">Reorder Level</p>
+                                    <p className="font-semibold text-gray-900">
+                                      {item.reorder_level} {item.unit}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-gray-500">Unit Cost</p>
+                                    <p className="font-semibold text-gray-900">${item.unit_cost.toFixed(2)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-gray-500">Total Value</p>
+                                    <p className="font-semibold text-gray-900">${totalValue.toFixed(2)}</p>
+                                  </div>
+                                </div>
+
+                                {item.description && (
+                                  <p className="text-gray-600 text-xs pt-2 border-t border-gray-100">
+                                    {item.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1425,17 +1474,6 @@ export function InventoryPage() {
                       <div className="flex items-center gap-1">
                         Name
                         {sortColumn === 'name' && (
-                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('category')}
-                    >
-                      <div className="flex items-center justify-center gap-1">
-                        Category
-                        {sortColumn === 'category' && (
                           sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
                         )}
                       </div>
@@ -1520,7 +1558,23 @@ export function InventoryPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedItems.map((item) => {
+                  {itemsByCategory.map(({ category, items: categoryItems }) => {
+                    const isCategoryCollapsed = collapsedCategories.has(category);
+                    return (
+                      <React.Fragment key={`cat-${category}`}>
+                        <tr
+                          className="bg-gray-100 hover:bg-gray-200 cursor-pointer"
+                          onClick={() => toggleCategory(category)}
+                        >
+                          <td colSpan={10} className="px-4 py-2">
+                            <div className="flex items-center gap-2">
+                              {isCategoryCollapsed ? <ChevronRight className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+                              <span className="font-semibold text-gray-800">{category}</span>
+                              <Badge variant="default" className="text-xs">{categoryItems.length}</Badge>
+                            </div>
+                          </td>
+                        </tr>
+                        {!isCategoryCollapsed && categoryItems.map((item) => {
                     const hierarchyItem = item as InventoryItemWithHierarchy;
                     const isMasterItem = item.is_master_item;
                     const isExpanded = expandedMasterItems.has(item.id);
@@ -1570,9 +1624,6 @@ export function InventoryPage() {
                                 </Badge>
                               )}
                             </div>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-center">
-                            <Badge variant="default">{item.category}</Badge>
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-900">
                             {isMasterItem ? '-' : item.supplier}
@@ -1625,7 +1676,6 @@ export function InventoryPage() {
                                     {!subItem.color_code && !subItem.size && <span>{subItem.name}</span>}
                                   </div>
                                 </td>
-                                <td className="px-4 py-2 text-sm text-center text-gray-500">-</td>
                                 <td className="px-4 py-2 text-sm text-gray-600">{subItem.supplier}</td>
                                 <td className="px-4 py-2 text-sm text-gray-600">{subItem.brand || '-'}</td>
                                 <td className="px-4 py-2 text-sm text-gray-500 max-w-xs truncate">{subItem.description || '-'}</td>
@@ -1649,7 +1699,7 @@ export function InventoryPage() {
                               </tr>
                               {subItemLots.map((lot) => (
                                 <tr key={lot.id} className="bg-blue-50/30">
-                                  <td colSpan={2} className="pl-16 pr-4 py-1.5 text-xs text-blue-700">
+                                  <td className="pl-16 pr-4 py-1.5 text-xs text-blue-700">
                                     <div className="flex items-center gap-1.5">
                                       <span className="w-1 h-1 bg-blue-400 rounded-full" />
                                       <span className="font-mono">{lot.lot_number}</span>
@@ -1675,7 +1725,7 @@ export function InventoryPage() {
                             {/* Lot rows (positive - blue) */}
                             {standaloneLots.map((lot) => (
                               <tr key={`lot-${lot.id}`} className="bg-blue-50/30">
-                                <td colSpan={2} className="pl-10 pr-4 py-1.5 text-xs text-blue-700">
+                                <td className="pl-10 pr-4 py-1.5 text-xs text-blue-700">
                                   <div className="flex items-center gap-1.5">
                                     <span className="w-1 h-1 bg-blue-400 rounded-full" />
                                     <span className="font-mono">{lot.lot_number}</span>
@@ -1695,7 +1745,7 @@ export function InventoryPage() {
                             {/* Out/Transfer rows (negative - red) */}
                             {standaloneOutTxns.map((txn) => (
                               <tr key={`txn-${txn.id}`} className="bg-red-50/30">
-                                <td colSpan={2} className="pl-10 pr-4 py-1.5 text-xs text-red-600">
+                                <td className="pl-10 pr-4 py-1.5 text-xs text-red-600">
                                   <div className="flex items-center gap-1.5">
                                     <span className="w-1 h-1 bg-red-400 rounded-full" />
                                     <span className="font-mono">{txn.transaction_number}</span>
@@ -1718,7 +1768,7 @@ export function InventoryPage() {
                             {/* Distribution rows (negative - amber) */}
                             {standaloneDists.map((dist) => (
                               <tr key={`dist-${dist.id}`} className="bg-amber-50/30">
-                                <td colSpan={2} className="pl-10 pr-4 py-1.5 text-xs text-amber-600">
+                                <td className="pl-10 pr-4 py-1.5 text-xs text-amber-600">
                                   <div className="flex items-center gap-1.5">
                                     <span className="w-1 h-1 bg-amber-400 rounded-full" />
                                     <span>Distribution</span>
@@ -1738,6 +1788,9 @@ export function InventoryPage() {
                             ))}
                           </>
                         )}
+                      </React.Fragment>
+                    );
+                  })}
                       </React.Fragment>
                     );
                   })}
