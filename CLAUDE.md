@@ -500,6 +500,7 @@ Changes grouped by feature area. All dates in 2026.
 
 ### Inventory Items (Feb 15)
 - Separate search state for Items and Suppliers tabs — each tab now has independent search query. Files: `InventoryPage.tsx`
+- Removed redundant "DND DC " prefix from 362 item names (already categorized under DND categories). Migration only
 
 ### Inventory Lots Cleanup (Feb 15)
 - Removed expiration date functionality from inventory lots (unused by salon). Dropped `expiration_date` column, `expired` lot status, "Expiring Soon" summary card, and expiry warnings. Updated `update_lot_status()` and `get_available_lots_fifo()` functions. Files: `InventoryPage.tsx`, `supabase.ts`, `i18n.ts` + migration
