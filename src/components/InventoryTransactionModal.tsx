@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, ChangeEvent } from 'react';
-import { X, Plus, Trash2, Check, Upload } from 'lucide-react';
+import { X, Plus, Trash2, Check, Upload, Camera } from 'lucide-react';
 import { Drawer } from './ui/Drawer';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -9,10 +9,13 @@ import { SearchableSelect, SearchableSelectOption } from './ui/SearchableSelect'
 import { useToast } from './ui/Toast';
 import { supabase, InventoryItem, PurchaseUnit, Supplier, Store } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { InventoryItemModal } from './InventoryItemModal';
 import { SupplierModal } from './SupplierModal';
 import { UNITS } from '../lib/inventory-constants';
 import { Permissions } from '../lib/permissions';
+import { useInventoryItemPhotos } from '../hooks/useInventoryItemPhotos';
+import { PhotoThumbnail } from './photos';
 
 interface DraftTransaction {
   id: string;
@@ -151,6 +154,9 @@ export function InventoryTransactionModal({
 }: InventoryTransactionModalProps) {
   const { showToast } = useToast();
   const { selectedStoreId, session } = useAuth();
+  const { isR2Configured, getStorageConfig } = useSettings();
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [activePhotoIndex, setActivePhotoIndex] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [deletingDraft, setDeletingDraft] = useState(false);
@@ -191,6 +197,12 @@ export function InventoryTransactionModal({
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [existingBrands, setExistingBrands] = useState<string[]>([]);
 
+  const itemPhotos = useInventoryItemPhotos({
+    storeId: selectedStoreId || '',
+    uploadedBy: session?.employee_id || '',
+    storageConfig: getStorageConfig(),
+  });
+
   // Create a map of master items for grouping sub-items
   const masterItemsMap = useMemo(() => {
     const map = new Map<string, InventoryItem>();
@@ -201,6 +213,13 @@ export function InventoryTransactionModal({
     });
     return map;
   }, [inventoryItems]);
+
+  // Clean up pending photos when drawer closes
+  useEffect(() => {
+    if (!isOpen) {
+      itemPhotos.clearAll();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && selectedStoreId) {
@@ -682,6 +701,7 @@ export function InventoryTransactionModal({
   function handleRemoveItem(index: number) {
     if (items.length > 1) {
       setItems(items.filter((_, i) => i !== index));
+      itemPhotos.removeItemPhotos(index);
     }
   }
 
@@ -1182,6 +1202,37 @@ export function InventoryTransactionModal({
     }, 0);
   }
 
+  async function uploadItemPhotos(transactionId: string, validItems: TransactionItemForm[]): Promise<void> {
+    if (!itemPhotos.hasPendingPhotos) return;
+
+    // Query the created transaction items to get their IDs
+    const { data: createdItems, error: fetchError } = await supabase
+      .from('inventory_transaction_items')
+      .select('id, item_id')
+      .eq('transaction_id', transactionId)
+      .order('created_at', { ascending: true });
+
+    if (fetchError || !createdItems) {
+      console.error('Failed to fetch created transaction items for photo upload:', fetchError);
+      return;
+    }
+
+    // Build index-to-itemId map: match validItems order to createdItems order
+    const indexToItemIdMap = new Map<number, string>();
+    for (let vi = 0; vi < validItems.length; vi++) {
+      const originalIndex = items.findIndex(i => i === validItems[vi]);
+      const createdItem = createdItems.find(ci => ci.item_id === validItems[vi].item_id);
+      if (createdItem && originalIndex >= 0) {
+        indexToItemIdMap.set(originalIndex, createdItem.id);
+      }
+    }
+
+    const uploadSuccess = await itemPhotos.uploadAllPhotos(transactionId, indexToItemIdMap);
+    if (!uploadSuccess) {
+      console.error('Some photos failed to upload');
+    }
+  }
+
   async function createTransaction(): Promise<void> {
     if (!selectedStoreId || !session?.employee_id) {
       throw new Error('Missing required data');
@@ -1300,6 +1351,11 @@ export function InventoryTransactionModal({
           });
         }
       }
+    }
+
+    // Upload pending item photos
+    if (transactionType === 'in') {
+      await uploadItemPhotos(transaction.id, validItems);
     }
 
     showToast(
@@ -1974,6 +2030,11 @@ export function InventoryTransactionModal({
           }
         }
 
+        // Upload pending item photos
+        if (transactionType === 'in') {
+          await uploadItemPhotos(draftId, validItems);
+        }
+
         showToast(`Transaction ${realTxnNumber} submitted for approval`, 'success');
       } else {
         await createTransaction();
@@ -2445,7 +2506,25 @@ export function InventoryTransactionModal({
                       </div>
                     )}
 
-                    <div className="col-span-1 pt-6">
+                    <div className="col-span-1 pt-6 flex items-center gap-1">
+                      {transactionType === 'in' && item.item_id && isR2Configured() && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActivePhotoIndex(index);
+                            photoInputRef.current?.click();
+                          }}
+                          className="text-blue-600 hover:text-blue-700 relative"
+                          title="Add photo"
+                        >
+                          <Camera className="w-4 h-4" />
+                          {itemPhotos.getPhotoCount(index) > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 bg-blue-600 text-white text-[10px] w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none">
+                              {itemPhotos.getPhotoCount(index)}
+                            </span>
+                          )}
+                        </button>
+                      )}
                       {items.length > 1 && (
                         <button
                           type="button"
@@ -2457,6 +2536,35 @@ export function InventoryTransactionModal({
                       )}
                     </div>
                   </div>
+
+                  {/* Photo thumbnails row */}
+                  {transactionType === 'in' && item.item_id && itemPhotos.getPhotoCount(index) > 0 && (
+                    <div className="flex gap-2 flex-wrap items-center">
+                      {itemPhotos.getPhotosForIndex(index).map(photo => (
+                        <PhotoThumbnail
+                          key={photo.id}
+                          photo={photo}
+                          onDelete={() => itemPhotos.removePendingPhoto(index, photo.id)}
+                          canDelete
+                          size="sm"
+                          isPending
+                        />
+                      ))}
+                      {itemPhotos.getRemainingSlots(index) > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActivePhotoIndex(index);
+                            photoInputRef.current?.click();
+                          }}
+                          className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500"
+                          title="Add another photo"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {transactionType === 'in' && item.item_id && item.purchase_quantity && (selectedPurchaseUnit || (item.isAddingPurchaseUnit && item.newPurchaseUnitMultiplier)) && (
                     <div className="text-xs text-gray-600 bg-white p-2 rounded border border-gray-200">
@@ -2492,6 +2600,26 @@ export function InventoryTransactionModal({
           </div>
         </div>
 
+        {/* Hidden file input for item photos */}
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          capture="environment"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (file && activePhotoIndex !== null) {
+              const success = await itemPhotos.addPendingPhoto(activePhotoIndex, file);
+              if (!success && itemPhotos.error) {
+                showToast(itemPhotos.error, 'error');
+              }
+            }
+            // Reset so the same file can be re-selected
+            if (photoInputRef.current) photoInputRef.current.value = '';
+            setActivePhotoIndex(null);
+          }}
+        />
       </form>
     </Drawer>
 

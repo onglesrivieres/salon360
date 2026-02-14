@@ -106,7 +106,8 @@ node scripts/migrations/apply_<migration_name>.mjs
     ├── supabase.ts            # Supabase client + TypeScript interfaces
     ├── permissions.ts         # Permission checking logic per role
     ├── i18n.ts                # Translations (en, fr, vi, km)
-    └── timezone.ts            # EST timezone utilities
+    ├── timezone.ts            # EST timezone utilities
+    └── image-utils.ts         # Shared image compression (canvas resize + JPEG 85%)
 ```
 
 ### Context Provider Hierarchy (in App.tsx)
@@ -383,6 +384,7 @@ Technician ready → In queue → (skip turn → back to end of queue) → Assig
 | `inventory_items` | Inventory master data |
 | `inventory_transactions` | Stock in/out transactions |
 | `inventory_transaction_items` | Transaction line items |
+| `inventory_transaction_item_photos` | Photos per transaction item (proof of receipt) |
 | `inventory_purchase_lots` | Purchase lot tracking |
 | `inventory_distributions` | Employee distributions |
 | `employee_inventory_lots` | Employee-lot assignments |
@@ -483,6 +485,13 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes (Jan 23 – Feb 14, 2026)
 
 Changes grouped by feature area. All dates in 2026.
+
+### Inventory Transaction Photos (Feb 14)
+- Per-item photo capture in "In" transaction drawer — camera icon per item row, up to 3 photos each. Photos held as pending blobs, uploaded to R2 after transaction submit. Files: `InventoryTransactionModal.tsx`, `useInventoryItemPhotos.ts`, `image-utils.ts` + migration
+- New `inventory_transaction_item_photos` table (FK to `inventory_transaction_items` with CASCADE delete). Files: migration
+- Photo display in TransactionDetailModal — inline thumbnails under each item name. Files: `TransactionDetailModal.tsx`
+- Shared `compressImage()` extracted from `useTicketPhotos.ts` into `lib/image-utils.ts`. Files: `image-utils.ts`, `useTicketPhotos.ts`
+- `InventoryTransactionItemPhoto` / `InventoryTransactionItemPhotoWithUrl` interfaces. Files: `supabase.ts`
 
 ### Inventory Items (Feb 10–14)
 - Item types: standalone (default), master (group), sub-item (variation) — 3 radio options. Files: `InventoryItemModal.tsx`, `InventoryPage.tsx`, `InventoryTransactionModal.tsx` + migrations

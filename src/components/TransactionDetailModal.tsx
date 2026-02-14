@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Package, User, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { useToast } from './ui/Toast';
-import { supabase, TransactionDetail } from '../lib/supabase';
+import { supabase, TransactionDetail, InventoryTransactionItemPhotoWithUrl } from '../lib/supabase';
 import { formatDateTimeEST } from '../lib/timezone';
+import { useSettings } from '../contexts/SettingsContext';
+import { getStorageService, type StorageService } from '../lib/storage';
 
 interface TransactionDetailModalProps {
   isOpen: boolean;
@@ -15,8 +17,23 @@ interface TransactionDetailModalProps {
 
 export function TransactionDetailModal({ isOpen, onClose, transactionId }: TransactionDetailModalProps) {
   const { showToast } = useToast();
+  const { getStorageConfig } = useSettings();
   const [loading, setLoading] = useState(false);
   const [transaction, setTransaction] = useState<TransactionDetail | null>(null);
+  // Map<transactionItemId, photos[]>
+  const [itemPhotos, setItemPhotos] = useState<Map<string, InventoryTransactionItemPhotoWithUrl[]>>(new Map());
+
+  const storageConfig = getStorageConfig();
+  const storagePublicUrl = storageConfig?.r2Config?.publicUrl;
+  const storage: StorageService | null = useMemo(() => {
+    if (!storageConfig || !storagePublicUrl) return null;
+    try {
+      return getStorageService(storageConfig);
+    } catch {
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storagePublicUrl]);
 
   useEffect(() => {
     if (isOpen && transactionId) {
@@ -58,12 +75,12 @@ export function TransactionDetailModal({ isOpen, onClose, transactionId }: Trans
 
       if (itemsError) throw itemsError;
 
-      const itemIds = [...new Set(itemsData.map((item: any) => item.item_id).filter(Boolean))];
+      const inventoryItemIds = [...new Set(itemsData.map((item: any) => item.item_id).filter(Boolean))];
 
       const { data: inventoryItemsData, error: inventoryItemsError } = await supabase
         .from('inventory_items')
         .select('id, name, unit')
-        .in('id', itemIds);
+        .in('id', inventoryItemIds);
 
       if (inventoryItemsError) throw inventoryItemsError;
 
@@ -109,6 +126,30 @@ export function TransactionDetailModal({ isOpen, onClose, transactionId }: Trans
       };
 
       setTransaction(detail);
+
+      // Fetch photos for all transaction items
+      const itemIds = (itemsData || []).map((item: any) => item.id).filter(Boolean);
+      if (itemIds.length > 0) {
+        const { data: photosData } = await supabase
+          .from('inventory_transaction_item_photos')
+          .select('*')
+          .in('transaction_item_id', itemIds)
+          .order('display_order', { ascending: true });
+
+        if (photosData && photosData.length > 0) {
+          const photosMap = new Map<string, InventoryTransactionItemPhotoWithUrl[]>();
+          for (const photo of photosData) {
+            const url = storage ? storage.getPublicUrl(photo.storage_path) : photo.storage_path;
+            const photoWithUrl: InventoryTransactionItemPhotoWithUrl = { ...photo, url };
+            const existing = photosMap.get(photo.transaction_item_id) || [];
+            existing.push(photoWithUrl);
+            photosMap.set(photo.transaction_item_id, existing);
+          }
+          setItemPhotos(photosMap);
+        } else {
+          setItemPhotos(new Map());
+        }
+      }
     } catch (error) {
       console.error('Error fetching transaction details:', error);
       showToast('Failed to load transaction details', 'error');
@@ -329,28 +370,46 @@ export function TransactionDetailModal({ isOpen, onClose, transactionId }: Trans
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {transaction.items.map((item) => (
-                  <tr key={item.id}>
-                    <td className="px-4 py-3 text-sm text-gray-900">{item.item_name}</td>
-                    {transaction.transaction_type === 'in' && (
-                      <td className="px-4 py-3 text-sm text-gray-700">{item.purchase_unit_name || 'N/A'}</td>
-                    )}
-                    <td className="px-4 py-3 text-sm text-gray-900 text-right">
-                      {transaction.transaction_type === 'in' ? item.purchase_quantity : item.quantity}
-                    </td>
-                    {transaction.transaction_type === 'in' && (
-                      <>
-                        <td className="px-4 py-3 text-sm text-gray-900 text-right">
-                          ${(item.purchase_unit_price || 0).toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
-                          ${((item.purchase_quantity || 0) * (item.purchase_unit_price || 0)).toFixed(2)}
-                        </td>
-                      </>
-                    )}
-                    <td className="px-4 py-3 text-sm text-gray-500">{item.notes || '-'}</td>
-                  </tr>
-                ))}
+                {transaction.items.map((item) => {
+                  const photos = itemPhotos.get(item.id) || [];
+                  return (
+                    <tr key={item.id} className="align-top">
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {item.item_name}
+                        {photos.length > 0 && (
+                          <div className="flex gap-2 flex-wrap mt-2">
+                            {photos.map(photo => (
+                              <a key={photo.id} href={photo.url} target="_blank" rel="noopener noreferrer">
+                                <img
+                                  src={photo.url}
+                                  alt={photo.filename}
+                                  className="w-16 h-16 object-cover rounded-lg border border-gray-200 hover:ring-2 hover:ring-blue-400"
+                                />
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      {transaction.transaction_type === 'in' && (
+                        <td className="px-4 py-3 text-sm text-gray-700">{item.purchase_unit_name || 'N/A'}</td>
+                      )}
+                      <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                        {transaction.transaction_type === 'in' ? item.purchase_quantity : item.quantity}
+                      </td>
+                      {transaction.transaction_type === 'in' && (
+                        <>
+                          <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                            ${(item.purchase_unit_price || 0).toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
+                            ${((item.purchase_quantity || 0) * (item.purchase_unit_price || 0)).toFixed(2)}
+                          </td>
+                        </>
+                      )}
+                      <td className="px-4 py-3 text-sm text-gray-500">{item.notes || '-'}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
               {transaction.transaction_type === 'in' && totalValue > 0 && (
                 <tfoot className="bg-gray-50">
