@@ -99,6 +99,9 @@ const CSV_HEADER_ALIASES: Record<string, string> = {
   'purchase unit price': 'purchase_unit_price',
   'purchase_unit_price': 'purchase_unit_price',
   'unit price': 'purchase_unit_price',
+  'multiplier': 'multiplier',
+  'purchase_unit_multiplier': 'multiplier',
+  'purchase unit multiplier': 'multiplier',
 };
 
 function parseCsvLine(line: string): string[] {
@@ -708,6 +711,7 @@ export function InventoryTransactionModal({
       const purchaseUnitIdx = headerFields.indexOf('purchase_unit');
       const purchaseQtyIdx = headerFields.indexOf('purchase_qty');
       const purchaseUnitPriceIdx = headerFields.indexOf('purchase_unit_price');
+      const multiplierIdx = headerFields.indexOf('multiplier');
 
       if (nameIdx === -1) {
         showToast('CSV must have an "item_name" (or "name") column', 'error');
@@ -739,6 +743,7 @@ export function InventoryTransactionModal({
         purchaseUnitName: string;
         purchaseQty: number;
         purchaseUnitPrice: number;
+        multiplier: number;
         status: 'matched' | 'needs_creation' | 'skipped';
         resolvedItem?: InventoryItem;
         resolvedParent?: InventoryItem;
@@ -760,28 +765,29 @@ export function InventoryTransactionModal({
         const purchaseUnitName = purchaseUnitIdx >= 0 ? (fields[purchaseUnitIdx] || '').trim() : '';
         const purchaseQty = purchaseQtyIdx >= 0 ? parseFloat(fields[purchaseQtyIdx] || '0') : 0;
         const purchaseUnitPrice = purchaseUnitPriceIdx >= 0 ? parseFloat(fields[purchaseUnitPriceIdx] || '0') : 0;
+        const multiplier = multiplierIdx >= 0 ? parseFloat(fields[multiplierIdx] || '0') : 0;
 
         // Require either purchase_qty > 0 or quantity > 0 (backward compat)
         const hasPurchaseQty = !isNaN(purchaseQty) && purchaseQty > 0;
         const hasQuantity = !isNaN(quantity) && quantity > 0;
 
         if (!hasPurchaseQty && !hasQuantity) {
-          parsedRows.push({ itemName, brand, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'skipped', skipReason: 'invalid quantity' });
+          parsedRows.push({ itemName, brand, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, multiplier, status: 'skipped', skipReason: 'invalid quantity' });
           continue;
         }
 
         const matched = itemLookup.get(itemName.toLowerCase());
         if (matched) {
-          parsedRows.push({ itemName, brand, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'matched', resolvedItem: matched });
+          parsedRows.push({ itemName, brand, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, multiplier, status: 'matched', resolvedItem: matched });
         } else if (parentName) {
           const parent = masterLookup.get(parentName.toLowerCase());
           if (parent) {
-            parsedRows.push({ itemName, brand, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'needs_creation', resolvedParent: parent });
+            parsedRows.push({ itemName, brand, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, multiplier, status: 'needs_creation', resolvedParent: parent });
           } else {
-            parsedRows.push({ itemName, brand, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'skipped', skipReason: `parent "${parentName}" not found` });
+            parsedRows.push({ itemName, brand, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, multiplier, status: 'skipped', skipReason: `parent "${parentName}" not found` });
           }
         } else {
-          parsedRows.push({ itemName, brand, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, status: 'skipped', skipReason: 'not found' });
+          parsedRows.push({ itemName, brand, parentName, quantity, unitCost, notes, purchaseUnitName, purchaseQty, purchaseUnitPrice, multiplier, status: 'skipped', skipReason: 'not found' });
         }
       }
 
@@ -900,8 +906,9 @@ export function InventoryTransactionModal({
       // ── Phase 3: Build TransactionItemForm objects ──
       const importedItems: TransactionItemForm[] = [];
       const itemIdsToFetchUnits: string[] = [];
-      // Parallel metadata: purchase unit name per imported item index
+      // Parallel metadata: purchase unit name and multiplier per imported item index
       const purchaseUnitNames: string[] = [];
+      const purchaseUnitMultipliers: number[] = [];
       let skipped = 0;
 
       for (const row of parsedRows) {
@@ -936,6 +943,7 @@ export function InventoryTransactionModal({
         });
 
         purchaseUnitNames.push(row.purchaseUnitName);
+        purchaseUnitMultipliers.push(!isNaN(row.multiplier) ? row.multiplier : 0);
 
         if (item.id) {
           itemIdsToFetchUnits.push(item.id);
@@ -962,36 +970,83 @@ export function InventoryTransactionModal({
         newPurchaseUnits[id] = units;
       }
 
-      // Resolve purchase unit names and calculate quantities
+      // Resolve purchase unit names, auto-create when missing, and calculate quantities
+      let purchaseUnitsCreated = 0;
       for (let i = 0; i < importedItems.length; i++) {
         const formItem = importedItems[i];
         const unitName = purchaseUnitNames[i];
-        const itemUnits = newPurchaseUnits[formItem.item_id] || [];
+        const csvMultiplier = purchaseUnitMultipliers[i];
+        if (!unitName) continue;
 
-        if (unitName && itemUnits.length > 0) {
-          const matchedUnit = itemUnits.find(u => u.unit_name.toLowerCase() === unitName.toLowerCase());
-          if (matchedUnit) {
-            formItem.purchase_unit_id = matchedUnit.id;
+        let itemUnits = newPurchaseUnits[formItem.item_id] || [];
+        let matchedUnit = itemUnits.find(u => u.unit_name.toLowerCase() === unitName.toLowerCase());
 
-            // Calculate stock units and costs from purchase unit
-            const pQty = parseFloat(formItem.purchase_quantity) || 0;
-            const pPrice = parseFloat(formItem.purchase_unit_price) || 0;
-            const stockUnits = pQty * matchedUnit.multiplier;
+        // Auto-create purchase unit if no match and multiplier provided
+        if (!matchedUnit && csvMultiplier > 0 && selectedStoreId) {
+          const isFirstUnit = itemUnits.length === 0;
+          const { data, error } = await supabase
+            .from('store_product_purchase_units')
+            .insert({
+              store_id: selectedStoreId,
+              item_id: formItem.item_id,
+              unit_name: unitName,
+              multiplier: csvMultiplier,
+              is_default: isFirstUnit,
+              display_order: itemUnits.length,
+            })
+            .select()
+            .single();
 
-            if (stockUnits > 0) {
-              formItem.quantity = stockUnits.toString();
-            }
-            if (pQty > 0 && pPrice >= 0) {
-              const totalCost = pPrice * pQty;
-              formItem.total_cost = totalCost.toFixed(2);
-              if (stockUnits > 0) {
-                formItem.unit_cost = (totalCost / stockUnits).toFixed(2);
+          if (error) {
+            if (error.code === '23505') {
+              // Duplicate — fetch existing unit
+              const { data: existingUnit } = await supabase
+                .from('store_product_purchase_units')
+                .select('*')
+                .eq('store_id', selectedStoreId)
+                .eq('item_id', formItem.item_id)
+                .ilike('unit_name', unitName)
+                .maybeSingle();
+              if (existingUnit) {
+                matchedUnit = existingUnit as PurchaseUnit;
               }
             }
+            // Other errors: leave unmatched, user selects manually
+          } else {
+            matchedUnit = data as PurchaseUnit;
+            purchaseUnitsCreated++;
           }
-          // If not matched, leave purchase_unit_id empty — user selects manually.
-          // purchase_quantity and purchase_unit_price are still populated.
+
+          // Update local cache so duplicate CSV rows for the same item match
+          if (matchedUnit) {
+            if (!newPurchaseUnits[formItem.item_id]) {
+              newPurchaseUnits[formItem.item_id] = [];
+            }
+            newPurchaseUnits[formItem.item_id].push(matchedUnit);
+          }
         }
+
+        if (matchedUnit) {
+          formItem.purchase_unit_id = matchedUnit.id;
+
+          // Calculate stock units and costs from purchase unit
+          const pQty = parseFloat(formItem.purchase_quantity) || 0;
+          const pPrice = parseFloat(formItem.purchase_unit_price) || 0;
+          const stockUnits = pQty * matchedUnit.multiplier;
+
+          if (stockUnits > 0) {
+            formItem.quantity = stockUnits.toString();
+          }
+          if (pQty > 0 && pPrice >= 0) {
+            const totalCost = pPrice * pQty;
+            formItem.total_cost = totalCost.toFixed(2);
+            if (stockUnits > 0) {
+              formItem.unit_cost = (totalCost / stockUnits).toFixed(2);
+            }
+          }
+        }
+        // If not matched and no multiplier, leave purchase_unit_id empty — user selects manually.
+        // purchase_quantity and purchase_unit_price are still populated.
       }
 
       // Determine whether to replace or append
@@ -1008,6 +1063,9 @@ export function InventoryTransactionModal({
       let msg = `Imported ${importedItems.length} item${importedItems.length > 1 ? 's' : ''}`;
       if (createdCount > 0) {
         msg += ` (${createdCount} new sub-item${createdCount > 1 ? 's' : ''} created)`;
+      }
+      if (purchaseUnitsCreated > 0) {
+        msg += ` (${purchaseUnitsCreated} purchase unit${purchaseUnitsCreated > 1 ? 's' : ''} created)`;
       }
       if (skipped > 0) {
         msg += ` (${skipped} skipped)`;
