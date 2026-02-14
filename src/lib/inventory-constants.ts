@@ -10,6 +10,7 @@ export const UNITS = [
 ];
 
 export const CATEGORIES = [
+  'DND Collections',
   'Manicure & Pedicure Tools',
   'Nail Polish & Products',
   'Electric Equipment',
