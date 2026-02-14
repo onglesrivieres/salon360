@@ -482,7 +482,7 @@ Always filter by `store_id` when querying store-specific data:
 
 ---
 
-## Recent Changes (Jan 23 – Feb 14, 2026)
+## Recent Changes (Jan 23 – Feb 15, 2026)
 
 Changes grouped by feature area. All dates in 2026.
 
@@ -513,13 +513,15 @@ Changes grouped by feature area. All dates in 2026.
 - 23505 fallback in transaction modal updates item hierarchy fields. Files: `InventoryItemModal.tsx`
 - Re-categorized 91 non-DND items into 7 correct categories (migration only)
 - Seeded "Bottle" purchase unit for all 362 DND items across stores (migration only)
+- Category sections collapsed by default on first load; items sorted A→Z by name. Files: `InventoryPage.tsx`
 
-### Inventory CSV Import/Export (Feb 13–14)
+### Inventory CSV Import/Export (Feb 13–15)
 - Items tab: Download CSV + Import CSV (3-step modal: upload → preview → results). Files: `InventoryPage.tsx`, `CsvImportModal.tsx`
 - Transaction CSV: Import button in "In" drawer + CSV Template download. 4-phase logic with `parent_name`, `purchase_unit`, `purchase_qty`, `purchase_unit_price` columns. Files: `InventoryTransactionModal.tsx`, `InventoryPage.tsx`
 - Auto-create purchase units from CSV when `multiplier` column present. Files: `InventoryTransactionModal.tsx`
 - Brand column in CSV import/export for both items and transactions. Files: `CsvImportModal.tsx`, `InventoryTransactionModal.tsx`
 - Fix CSV import dropping brand/category/size on update and 23505 fallback paths. Files: `CsvImportModal.tsx`
+- Auto-select purchase unit on CSV import when item has exactly 1 unit (recalculates stock units/costs). Files: `InventoryTransactionModal.tsx`
 
 ### Inventory Transactions (Feb 10–14)
 - Transaction form converted to right-side Drawer (`size="xl"`). Total/Notes pinned to footer. Files: `Drawer.tsx`, `InventoryTransactionModal.tsx`

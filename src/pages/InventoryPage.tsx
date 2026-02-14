@@ -67,7 +67,7 @@ export function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [showItemModal, setShowItemModal] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
@@ -80,6 +80,7 @@ export function InventoryPage() {
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [expandedMasterItems, setExpandedMasterItems] = useState<Set<string>>(new Set());
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const categoriesInitializedRef = useRef(false);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [draftToEdit, setDraftToEdit] = useState<any>(null);
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
@@ -180,6 +181,14 @@ export function InventoryPage() {
       fetchSuppliers();
     }
   }, [selectedStoreId]);
+
+  // Collapse all categories by default on first load
+  useEffect(() => {
+    if (categoriesInitializedRef.current || items.length === 0) return;
+    const allCategories = new Set(items.map(item => item.category || 'Uncategorized'));
+    setCollapsedCategories(allCategories);
+    categoriesInitializedRef.current = true;
+  }, [items]);
 
   // Auto-refresh data when page becomes visible (e.g., returning from PendingApprovalsPage after approval)
   useEffect(() => {

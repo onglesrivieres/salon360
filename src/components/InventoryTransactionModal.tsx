@@ -1069,6 +1069,35 @@ export function InventoryTransactionModal({
         // purchase_quantity and purchase_unit_price are still populated.
       }
 
+      // Auto-select purchase unit for items without explicit CSV unit name
+      // that have exactly 1 purchase unit available
+      for (let i = 0; i < importedItems.length; i++) {
+        const formItem = importedItems[i];
+        if (formItem.purchase_unit_id) continue; // Already resolved
+
+        const itemUnits = newPurchaseUnits[formItem.item_id] || [];
+        if (itemUnits.length === 1) {
+          const unit = itemUnits[0];
+          formItem.purchase_unit_id = unit.id;
+
+          // Recalculate stock units and costs if purchase_quantity is set
+          const pQty = parseFloat(formItem.purchase_quantity) || 0;
+          const pPrice = parseFloat(formItem.purchase_unit_price) || 0;
+          const stockUnits = pQty * unit.multiplier;
+
+          if (stockUnits > 0) {
+            formItem.quantity = stockUnits.toString();
+          }
+          if (pQty > 0 && pPrice >= 0) {
+            const totalCost = pPrice * pQty;
+            formItem.total_cost = totalCost.toFixed(2);
+            if (stockUnits > 0) {
+              formItem.unit_cost = (totalCost / stockUnits).toFixed(2);
+            }
+          }
+        }
+      }
+
       // Determine whether to replace or append
       const hasFilledItems = items.some(item => item.item_id !== '');
       if (hasFilledItems) {
