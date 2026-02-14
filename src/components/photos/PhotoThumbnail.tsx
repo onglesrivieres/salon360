@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
-import { TicketPhotoWithUrl } from '../../lib/supabase';
 import { PendingPhoto } from './useTicketPhotos';
 
+interface PhotoWithUrl {
+  id: string;
+  url: string;
+  filename: string;
+}
+
 interface PhotoThumbnailProps {
-  photo: TicketPhotoWithUrl | PendingPhoto;
+  photo: PhotoWithUrl | PendingPhoto;
   onClick?: () => void;
   onDelete?: () => void;
   canDelete?: boolean;
@@ -33,7 +38,7 @@ export function PhotoThumbnail({
   // Get the image URL based on photo type
   const imageUrl = isPending
     ? (photo as PendingPhoto).previewUrl
-    : (photo as TicketPhotoWithUrl).url;
+    : (photo as PhotoWithUrl).url;
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();

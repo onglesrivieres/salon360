@@ -1104,6 +1104,24 @@ export interface TicketPhotoWithUrl extends TicketPhoto {
   url: string;
 }
 
+export interface InventoryItemPhoto {
+  id: string;
+  store_id: string;
+  item_id: string;
+  storage_path: string;
+  filename: string;
+  file_size: number;
+  mime_type: 'image/jpeg' | 'image/png' | 'image/webp';
+  display_order: number;
+  uploaded_by: string;
+  caption: string;
+  created_at: string;
+}
+
+export interface InventoryItemPhotoWithUrl extends InventoryItemPhoto {
+  url: string;
+}
+
 export interface InventoryTransactionItemPhoto {
   id: string;
   store_id: string;

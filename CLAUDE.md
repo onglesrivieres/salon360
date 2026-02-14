@@ -531,6 +531,7 @@ Changes grouped by feature area. All dates in 2026.
 - Grid layout adjustments: wider Item/Purchase Unit columns, narrower Qty/Price. Files: `InventoryTransactionModal.tsx`
 - "+ Add New Supplier" option in transaction form. Files: `InventoryTransactionModal.tsx`
 - Default Sub-Item type when creating item from transaction drawer. Files: `InventoryItemModal.tsx`, `InventoryTransactionModal.tsx`
+- Hide "Select Unit" placeholder in Purchase Unit dropdown when item has exactly 1 unit (already auto-selected). Files: `InventoryTransactionModal.tsx`
 
 ### Inventory Transfers (Feb 10–13)
 - Store-to-store transfers: `transfer` type, `destination_store_id`, `received_quantity` for partial receipt. `XFER-` prefix. `approve_inventory_transfer` RPC. Stock moves atomically on approval. Files: `InventoryPage.tsx`, `InventoryTransactionModal.tsx`, `PendingApprovalsPage.tsx`, `supabase.ts` + migration

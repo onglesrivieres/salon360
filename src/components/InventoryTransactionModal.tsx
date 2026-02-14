@@ -2439,7 +2439,9 @@ export function InventoryTransactionModal({
                             required={index === 0}
                             className="text-sm"
                           >
-                            <option value="">Select Unit</option>
+                            {itemPurchaseUnits.length !== 1 && (
+                              <option value="">Select Unit</option>
+                            )}
                             <option value="__add_new__" className="text-blue-600 font-medium">
                               + Add New Purchase Unit
                             </option>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowUpDown, Info, Trash2 } from 'lucide-react';
+import { ArrowUpDown, ImageIcon, Info, Loader2, Trash2 } from 'lucide-react';
 import { Drawer } from './ui/Drawer';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -7,8 +7,11 @@ import { NumericInput } from './ui/NumericInput';
 import { Select } from './ui/Select';
 import { SearchableSelect } from './ui/SearchableSelect';
 import { useToast } from './ui/Toast';
-import { supabase, InventoryItem } from '../lib/supabase';
+import { supabase, InventoryItem, InventoryItemPhotoWithUrl } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
+import { useItemPhotos } from '../hooks/useItemPhotos';
+import { PhotoUpload, PhotoThumbnail, PhotoPreview } from './photos';
 import { PurchaseUnitManager } from './PurchaseUnitManager';
 import { ItemTransactionHistoryModal } from './ItemTransactionHistoryModal';
 import { TransactionDetailModal } from './TransactionDetailModal';
@@ -25,9 +28,12 @@ interface InventoryItemModalProps {
 
 export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultItemType, canDeleteItems }: InventoryItemModalProps) {
   const { showToast } = useToast();
-  const { selectedStoreId } = useAuth();
+  const { selectedStoreId, session } = useAuth();
+  const { isR2Configured, getStorageConfig } = useSettings();
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<InventoryItemPhotoWithUrl | null>(null);
+  const [previewIndex, setPreviewIndex] = useState(0);
   const [formData, setFormData] = useState({
     brand: '',
     name: '',
@@ -45,6 +51,72 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
   const [loadingTransactionCount, setLoadingTransactionCount] = useState(false);
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+
+  const showPhotos = isR2Configured() && itemType !== 'master';
+
+  const {
+    photos: itemPhotos,
+    pendingPhotos,
+    isLoading: photosLoading,
+    isUploading,
+    error: photosError,
+    canAddMore,
+    remainingSlots,
+    totalPhotoCount,
+    addPendingPhoto,
+    removePendingPhoto,
+    uploadPendingPhotos,
+    deletePhoto,
+    clearPending,
+  } = useItemPhotos({
+    storeId: selectedStoreId || '',
+    itemId: item?.id ?? null,
+    uploadedBy: session?.employee_id || '',
+    storageConfig: getStorageConfig(),
+  });
+
+  // Clear pending photos when drawer closes
+  useEffect(() => {
+    if (!isOpen) {
+      clearPending();
+    }
+  }, [isOpen, clearPending]);
+
+  const handlePhotoFileSelect = async (file: File) => {
+    // If editing an existing item, upload immediately
+    if (item?.id) {
+      const success = await addPendingPhoto(file);
+      if (success) {
+        // Immediately upload since we have an item ID
+        await uploadPendingPhotos(item.id);
+        showToast('Photo uploaded', 'success');
+      } else if (photosError) {
+        showToast(photosError, 'error');
+      }
+    } else {
+      // New item — hold as pending
+      const success = await addPendingPhoto(file);
+      if (success) {
+        showToast('Photo added (will upload on save)', 'success');
+      } else if (photosError) {
+        showToast(photosError, 'error');
+      }
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: string) => {
+    const success = await deletePhoto(photoId);
+    if (success) {
+      showToast('Photo deleted', 'success');
+    } else {
+      showToast('Failed to delete photo', 'error');
+    }
+  };
+
+  const handleRemovePendingPhoto = (id: string) => {
+    removePendingPhoto(id);
+    showToast('Photo removed', 'success');
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -323,6 +395,11 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
           }
         }
 
+        // Upload pending photos for the new item
+        if (pendingPhotos.length > 0) {
+          await uploadPendingPhotos(itemId);
+        }
+
         showToast(insertError ? 'Existing item linked to this store' : 'Item created successfully', 'success');
       }
 
@@ -569,6 +646,75 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
           />
         </div>
 
+        {/* Photos Section - standalone and sub-items only */}
+        {showPhotos && (
+          <div className="border-t border-gray-200 pt-4 mt-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-gray-500" />
+                <h3 className="text-sm font-medium text-gray-900">Photos</h3>
+                <span className="text-xs text-gray-500">
+                  ({totalPhotoCount}/5)
+                </span>
+              </div>
+            </div>
+
+            {photosError && (
+              <div className="mb-3 p-2 bg-red-50 text-red-600 text-sm rounded-lg">
+                {photosError}
+              </div>
+            )}
+
+            {photosLoading && item?.id ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+              </div>
+            ) : (
+              <div className="flex gap-3 flex-wrap items-start">
+                {itemPhotos.map((photo, index) => (
+                  <PhotoThumbnail
+                    key={photo.id}
+                    photo={photo}
+                    onClick={() => {
+                      setPreviewPhoto(photo);
+                      setPreviewIndex(index);
+                    }}
+                    onDelete={() => handleDeletePhoto(photo.id)}
+                    canDelete={!saving}
+                    size="md"
+                  />
+                ))}
+
+                {pendingPhotos.map((pending) => (
+                  <PhotoThumbnail
+                    key={pending.id}
+                    photo={pending}
+                    onDelete={() => handleRemovePendingPhoto(pending.id)}
+                    canDelete={!saving}
+                    size="md"
+                    isPending
+                  />
+                ))}
+
+                {canAddMore && !saving && (
+                  <div className="flex-shrink-0">
+                    <PhotoUpload
+                      onFileSelect={handlePhotoFileSelect}
+                      disabled={!canAddMore}
+                      isUploading={isUploading}
+                      remainingSlots={remainingSlots}
+                    />
+                  </div>
+                )}
+
+                {itemPhotos.length === 0 && pendingPhotos.length === 0 && (
+                  <p className="text-sm text-gray-500 italic">No photos</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Reorder Level - not for sub-items */}
         {itemType !== 'sub' && (
         <div>
@@ -638,6 +784,32 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
             transactionId={selectedTransactionId || ''}
           />
         </>
+      )}
+
+      {previewPhoto && (
+        <PhotoPreview
+          isOpen={!!previewPhoto}
+          onClose={() => setPreviewPhoto(null)}
+          photo={previewPhoto}
+          onDelete={!saving ? () => handleDeletePhoto(previewPhoto.id) : undefined}
+          canDelete={!saving}
+          onPrevious={() => {
+            if (previewIndex > 0) {
+              const newIndex = previewIndex - 1;
+              setPreviewIndex(newIndex);
+              setPreviewPhoto(itemPhotos[newIndex]);
+            }
+          }}
+          onNext={() => {
+            if (previewIndex < itemPhotos.length - 1) {
+              const newIndex = previewIndex + 1;
+              setPreviewIndex(newIndex);
+              setPreviewPhoto(itemPhotos[newIndex]);
+            }
+          }}
+          hasPrevious={previewIndex > 0}
+          hasNext={previewIndex < itemPhotos.length - 1}
+        />
       )}
     </>
   );

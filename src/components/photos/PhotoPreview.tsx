@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { X, Trash2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
-import { TicketPhotoWithUrl } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+
+interface PhotoWithUrl {
+  url: string;
+  filename: string;
+  caption?: string;
+}
 
 interface PhotoPreviewProps {
   isOpen: boolean;
   onClose: () => void;
-  photo: TicketPhotoWithUrl;
+  photo: PhotoWithUrl;
   onDelete?: () => Promise<void>;
   canDelete?: boolean;
   onPrevious?: () => void;
