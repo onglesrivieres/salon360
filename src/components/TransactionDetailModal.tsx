@@ -5,6 +5,7 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { useToast } from './ui/Toast';
 import { supabase, TransactionDetail, InventoryTransactionItemPhotoWithUrl } from '../lib/supabase';
+import { batchIn } from '../lib/batch-queries';
 import { formatDateTimeEST } from '../lib/timezone';
 import { useSettings } from '../contexts/SettingsContext';
 import { getStorageService, type StorageService } from '../lib/storage';
@@ -77,14 +78,12 @@ export function TransactionDetailModal({ isOpen, onClose, transactionId }: Trans
 
       const inventoryItemIds = [...new Set(itemsData.map((item: any) => item.item_id).filter(Boolean))];
 
-      const { data: inventoryItemsData, error: inventoryItemsError } = await supabase
-        .from('inventory_items')
-        .select('id, name, unit')
-        .in('id', inventoryItemIds);
+      const inventoryItemsData = await batchIn<{ id: string; name: string; unit: string }>(
+        (ids) => supabase.from('inventory_items').select('id, name, unit').in('id', ids),
+        inventoryItemIds
+      );
 
-      if (inventoryItemsError) throw inventoryItemsError;
-
-      const itemsMap = new Map(inventoryItemsData?.map((item: any) => [item.id, item]) || []);
+      const itemsMap = new Map(inventoryItemsData.map((item) => [item.id, item]));
 
       const detail: TransactionDetail = {
         id: transactionData.id,
@@ -130,13 +129,16 @@ export function TransactionDetailModal({ isOpen, onClose, transactionId }: Trans
       // Fetch photos for all transaction items
       const itemIds = (itemsData || []).map((item: any) => item.id).filter(Boolean);
       if (itemIds.length > 0) {
-        const { data: photosData } = await supabase
-          .from('inventory_transaction_item_photos')
-          .select('*')
-          .in('transaction_item_id', itemIds)
-          .order('display_order', { ascending: true });
+        const photosData = await batchIn<any>(
+          (ids) => supabase
+            .from('inventory_transaction_item_photos')
+            .select('*')
+            .in('transaction_item_id', ids)
+            .order('display_order', { ascending: true }),
+          itemIds
+        );
 
-        if (photosData && photosData.length > 0) {
+        if (photosData.length > 0) {
           const photosMap = new Map<string, InventoryTransactionItemPhotoWithUrl[]>();
           for (const photo of photosData) {
             const url = storage ? storage.getPublicUrl(photo.storage_path) : photo.storage_path;

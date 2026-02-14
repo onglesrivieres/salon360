@@ -473,6 +473,18 @@ const { settings } = useSettings();
 const { checkPermission } = usePermissions();
 ```
 
+### Batched `.in()` Queries
+Use `batchIn()` from `src/lib/batch-queries.ts` when querying with large ID lists to avoid URL length limits. Chunks IDs into batches of 50.
+
+```typescript
+import { batchIn } from '../lib/batch-queries';
+
+const items = await batchIn<{ id: string; name: string }>(
+  (ids) => supabase.from('inventory_items').select('id, name').in('id', ids),
+  inventoryItemIds
+);
+```
+
 ### Multi-Store Filtering
 Always filter by `store_id` when querying store-specific data:
 
@@ -485,6 +497,9 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes (Jan 23 – Feb 15, 2026)
 
 Changes grouped by feature area. All dates in 2026.
+
+### Inventory Transaction Detail Fix (Feb 14)
+- Fix "Failed to load transaction details" for large transactions (300+ items). Batched `.in()` queries for inventory items and photos using shared `batchIn()` utility. Files: `TransactionDetailModal.tsx`, `batch-queries.ts`, `useClients.ts`
 
 ### Inventory Transaction Photos (Feb 14)
 - Per-item photo capture in "In" transaction drawer — camera icon per item row, up to 3 photos each. Photos held as pending blobs, uploaded to R2 after transaction submit. Files: `InventoryTransactionModal.tsx`, `useInventoryItemPhotos.ts`, `image-utils.ts` + migration
@@ -603,7 +618,7 @@ Changes grouped by feature area. All dates in 2026.
 
 ### Clients (Feb 3–6)
 - Visit History tab replacing Color History (last 20 tickets, expandable). Files: `ClientDetailsModal.tsx`, `supabase.ts`
-- `batchIn()` helper for chunked `.in()` queries (50 IDs max). Files: `useClients.ts`
+- `batchIn()` helper extracted to shared `lib/batch-queries.ts` (chunked `.in()` queries, 50 IDs per batch). Files: `batch-queries.ts`, `useClients.ts`, `TransactionDetailModal.tsx`
 - Clickable column sorting on Clients (5 cols) and Employees (5 cols). Files: `ClientsPage.tsx`, `EmployeesPage.tsx`
 
 ### Roles & Auth (Feb 5–9)
