@@ -28,6 +28,7 @@ import {
   Trash2,
   Download,
   Upload,
+  RefreshCw,
 } from 'lucide-react';
 import { supabase, InventoryItem, InventoryItemWithHierarchy, InventoryTransactionWithDetails, Supplier, InventoryPurchaseLotWithDetails, InventoryDistributionWithDetails } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
@@ -176,6 +177,18 @@ export function InventoryPage() {
       fetchTransactions();
       fetchSuppliers();
     }
+  }, [selectedStoreId]);
+
+  // Auto-refresh data when page becomes visible (e.g., returning from PendingApprovalsPage after approval)
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible' && selectedStoreId) {
+        fetchItems();
+        fetchTransactions();
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [selectedStoreId]);
 
   // Fetch lots when tab changes to 'lots' (lazy loading)
@@ -653,9 +666,14 @@ export function InventoryPage() {
   const subItems = items.filter(item => item.parent_id);
   const standaloneItems = items.filter(item => !item.is_master_item && !item.parent_id);
 
+  // Identify orphaned sub-items whose parent master is not in the current results
+  const masterItemIds = new Set(masterItems.map(m => m.id));
+  const orphanedSubItems = subItems.filter(sub => !masterItemIds.has(sub.parent_id!));
+  const validSubItems = subItems.filter(sub => masterItemIds.has(sub.parent_id!));
+
   // Build hierarchical items with sub-items attached
   const hierarchicalItems: InventoryItemWithHierarchy[] = masterItems.map(master => {
-    const children = subItems.filter(sub => sub.parent_id === master.id);
+    const children = validSubItems.filter(sub => sub.parent_id === master.id);
     return {
       ...master,
       sub_items: children,
@@ -664,8 +682,8 @@ export function InventoryPage() {
     };
   });
 
-  // Standalone items displayed as flat rows (no hierarchy)
-  const standaloneDisplayItems: InventoryItemWithHierarchy[] = standaloneItems.map(item => ({
+  // Standalone items + orphaned sub-items displayed as flat rows (no hierarchy)
+  const standaloneDisplayItems: InventoryItemWithHierarchy[] = [...standaloneItems, ...orphanedSubItems].map(item => ({
     ...item,
     sub_items: [],
     total_sub_item_quantity: item.quantity_on_hand,
@@ -1153,6 +1171,13 @@ export function InventoryPage() {
                   className="pl-10"
                 />
               </div>
+              <button
+                onClick={() => fetchItems()}
+                className="px-3 py-2 text-sm border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                title="Refresh items"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
               <div className="relative">
                 <button
                   onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}

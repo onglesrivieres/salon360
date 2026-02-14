@@ -482,6 +482,9 @@ Always filter by `store_id` when querying store-specific data:
 
 ## Recent Changes
 
+### 2026-02-14
+- **Fix inventory items missing from Items tab after lot approval**: Added three mechanisms to ensure items appear after external events (e.g., approving a transaction on PendingApprovalsPage). (1) Auto-refresh on page visibility change — `useEffect` listens for `document.visibilitychange` and re-fetches items + transactions when the tab becomes visible. (2) Manual refresh button — `RefreshCw` icon button next to the search input on Items tab. (3) Orphaned sub-item display — sub-items whose parent master has no `store_inventory_levels` row (and thus isn't in query results) are now detected and displayed as standalone rows instead of being silently dropped. No migration needed. Files: `InventoryPage.tsx`
+
 ### 2026-02-13
 - **Hide Home page from sidebar navigation**: Added `hidden: true` to the home nav item in the sidebar navigation array. The existing `filter(item => !item.hidden)` excludes it from rendering, same pattern used for conditional inventory visibility. No migration needed. Files: `Layout.tsx`
 - **Delete Draft button in inventory transaction drawer**: Added a red "Delete Draft" button to the transaction drawer footer when editing a draft. Calls existing `delete_draft_transaction` RPC with confirmation dialog, then refreshes the list and closes the drawer. Button appears on the left; Cancel/Save Draft/Submit pushed to the right. All footer buttons disabled during any in-progress operation. No migration needed. Files: `InventoryTransactionModal.tsx`
