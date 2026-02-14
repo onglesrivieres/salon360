@@ -1376,7 +1376,7 @@ export function InventoryPage() {
           ) : viewMode === 'grid' ? (
             <div className="space-y-4">
               {itemsByCategory.map(({ category, items: categoryItems }) => {
-                const isCategoryCollapsed = collapsedCategories.has(category);
+                const isCategoryCollapsed = !searchQuery && collapsedCategories.has(category);
                 return (
                   <div key={category}>
                     <button
@@ -1568,7 +1568,7 @@ export function InventoryPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {itemsByCategory.map(({ category, items: categoryItems }) => {
-                    const isCategoryCollapsed = collapsedCategories.has(category);
+                    const isCategoryCollapsed = !searchQuery && collapsedCategories.has(category);
                     return (
                       <React.Fragment key={`cat-${category}`}>
                         <tr

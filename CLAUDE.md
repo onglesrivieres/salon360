@@ -493,7 +493,7 @@ Changes grouped by feature area. All dates in 2026.
 - Shared `compressImage()` extracted from `useTicketPhotos.ts` into `lib/image-utils.ts`. Files: `image-utils.ts`, `useTicketPhotos.ts`
 - `InventoryTransactionItemPhoto` / `InventoryTransactionItemPhotoWithUrl` interfaces. Files: `supabase.ts`
 
-### Inventory Items (Feb 10–14)
+### Inventory Items (Feb 10–15)
 - Item types: standalone (default), master (group), sub-item (variation) — 3 radio options. Files: `InventoryItemModal.tsx`, `InventoryPage.tsx`, `InventoryTransactionModal.tsx` + migrations
 - Feb 11 removed standalone → Feb 12 restored it; childless masters auto-converted back to standalone
 - Master-level stock tracking: "In" selects sub-items, approval routes stock to parent master. "Out"/"Transfer" show master+standalone only. Files: `InventoryTransactionModal.tsx`, `InventoryPage.tsx` + migration
@@ -514,6 +514,7 @@ Changes grouped by feature area. All dates in 2026.
 - Re-categorized 91 non-DND items into 7 correct categories (migration only)
 - Seeded "Bottle" purchase unit for all 362 DND items across stores (migration only)
 - Category sections collapsed by default on first load; items sorted A→Z by name. Files: `InventoryPage.tsx`
+- Auto-expand all categories when search query is active; collapse state restored when search cleared. Files: `InventoryPage.tsx`
 
 ### Inventory CSV Import/Export (Feb 13–15)
 - Items tab: Download CSV + Import CSV (3-step modal: upload → preview → results). Files: `InventoryPage.tsx`, `CsvImportModal.tsx`
