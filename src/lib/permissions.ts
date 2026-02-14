@@ -290,6 +290,9 @@ export const Permissions = {
     canEditItems: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
     },
+    canDeleteItems: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+    },
     canCreateTransactions: (roles: Role[] | RolePermission): boolean => {
       return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
     },

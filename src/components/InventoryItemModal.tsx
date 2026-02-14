@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowUpDown, Info } from 'lucide-react';
+import { ArrowUpDown, Info, Trash2 } from 'lucide-react';
 import { Drawer } from './ui/Drawer';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -20,12 +20,14 @@ interface InventoryItemModalProps {
   item?: InventoryItem | null;
   onSuccess: () => void;
   defaultItemType?: 'master' | 'sub' | 'standalone';
+  canDeleteItems?: boolean;
 }
 
-export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultItemType }: InventoryItemModalProps) {
+export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultItemType, canDeleteItems }: InventoryItemModalProps) {
   const { showToast } = useToast();
   const { selectedStoreId } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({
     brand: '',
     name: '',
@@ -145,6 +147,45 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
       console.error('Error fetching transaction count:', error);
     } finally {
       setLoadingTransactionCount(false);
+    }
+  }
+
+  async function handleDeleteItem() {
+    if (!item || !selectedStoreId) return;
+    if (!window.confirm('Are you sure you want to delete this item? This cannot be undone.')) return;
+
+    setDeleting(true);
+    try {
+      // 1. Remove from current store
+      const { error: silError } = await supabase
+        .from('store_inventory_levels')
+        .delete()
+        .eq('item_id', item.id)
+        .eq('store_id', selectedStoreId);
+
+      if (silError) throw silError;
+
+      // 2. Try to fully delete the item record
+      const { error: itemError } = await supabase
+        .from('inventory_items')
+        .delete()
+        .eq('id', item.id);
+
+      if (itemError && itemError.code === '23503') {
+        // FK constraint — item has transaction history, but it's removed from store
+        showToast('Item removed from this store (full deletion blocked by transaction history)', 'info');
+      } else if (itemError) {
+        throw itemError;
+      } else {
+        showToast('Item deleted successfully', 'success');
+      }
+
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to delete item', 'error');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -353,12 +394,26 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
         }
         footer={
           <div className="flex gap-3">
-            <Button type="submit" form="inventory-item-form" disabled={saving} className="flex-1">
-              {saving ? 'Saving...' : item ? 'Update' : 'Create Item'}
-            </Button>
-            <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
-              Cancel
-            </Button>
+            {item && canDeleteItems && (
+              <Button
+                type="button"
+                variant="danger"
+                onClick={handleDeleteItem}
+                disabled={deleting || saving}
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                {deleting ? 'Deleting...' : 'Delete'}
+              </Button>
+            )}
+            <div className="flex gap-3 ml-auto">
+              <Button type="submit" form="inventory-item-form" disabled={saving || deleting}>
+                {saving ? 'Saving...' : item ? 'Update' : 'Create Item'}
+              </Button>
+              <Button type="button" variant="secondary" onClick={onClose} disabled={saving || deleting}>
+                Cancel
+              </Button>
+            </div>
           </div>
         }
       >

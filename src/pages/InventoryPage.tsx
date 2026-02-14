@@ -137,6 +137,7 @@ export function InventoryPage() {
 
   const canCreateItems = session?.role && Permissions.inventory.canCreateItems(session.role);
   const canEditItems = session?.role && Permissions.inventory.canEditItems(session.role);
+  const canDeleteItems = session?.role && Permissions.inventory.canDeleteItems(session.role);
   const canCreateTransactions =
     session?.role && Permissions.inventory.canCreateTransactions(session.role);
   const canDistribute = session?.role && Permissions.inventory.canDistribute(session.role);
@@ -2963,6 +2964,7 @@ export function InventoryPage() {
         onClose={handleItemModalClose}
         item={selectedItem}
         onSuccess={handleItemSuccess}
+        canDeleteItems={!!canDeleteItems}
       />
 
       <InventoryTransactionModal
