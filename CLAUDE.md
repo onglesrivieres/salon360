@@ -551,11 +551,12 @@ Changes grouped by feature area. All dates in 2026.
 - Fix `distribute_to_employee` RPC status constraint (use `'pending'` not `'completed'`). Migration only
 - Fix `get_pending_distribution_approvals` RPC column reference (`ii.name` not `ii.item_name`). Migration only
 
-### Inventory DB Fixes (Feb 12)
+### Inventory DB Fixes (Feb 12–15)
 - Fix duplicate lot number: restored `pg_advisory_xact_lock`, global scope, `p_offset` param. Migration only
 - Fix lot/transaction number regex: replaced `\d` with POSIX `[0-9]`. Migration only
 - Drop old `create_inventory_transaction_atomic` overloads (9/10-param) causing PGRST203. Migration only
 - Clean up DND DC Original 066 sub-item/lots, convert to standalone. Migration only
+- Fix duplicate lot number on transaction approval: re-deploy `generate_lot_number()` with `[0-9]+$` regex, add retry loop (up to 5 attempts) in `create_lots_from_approved_transaction()` on `unique_violation`. Migration only
 
 ### Tickets (Feb 2–14)
 - Void ticket: soft-delete with reason, excluded from all financial reports. `voided_at`/`voided_by`/`void_reason` columns. Admin keeps hard-delete. Files: `permissions.ts`, `TicketEditor.tsx`, `TicketsPage.tsx`, many report pages + migration
