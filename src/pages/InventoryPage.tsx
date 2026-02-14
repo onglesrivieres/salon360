@@ -60,6 +60,7 @@ export function InventoryPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [supplierSearchQuery, setSupplierSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [supplierFilter, setSupplierFilter] = useState('');
   const [brandFilter, setBrandFilter] = useState('');
@@ -2851,8 +2852,8 @@ export function InventoryPage() {
             <div className="flex-1 relative max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={supplierSearchQuery}
+                onChange={(e) => setSupplierSearchQuery(e.target.value)}
                 placeholder="Search suppliers..."
                 className="pl-10"
               />
@@ -2878,15 +2879,15 @@ export function InventoryPage() {
                 <p className="mt-2 text-gray-500">Loading suppliers...</p>
               </div>
             ) : suppliers.filter((s) =>
-                s.name.toLowerCase().includes(searchQuery.toLowerCase())
+                s.name.toLowerCase().includes(supplierSearchQuery.toLowerCase())
               ).length === 0 ? (
               <div className="text-center py-12">
                 <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                  {searchQuery ? 'No suppliers found' : 'No suppliers yet'}
+                  {supplierSearchQuery ? 'No suppliers found' : 'No suppliers yet'}
                 </h3>
                 <p className="text-gray-500">
-                  {searchQuery
+                  {supplierSearchQuery
                     ? 'Try adjusting your search'
                     : 'Add your first supplier to get started'}
                 </p>
@@ -2916,7 +2917,7 @@ export function InventoryPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {suppliers
                       .filter((s) =>
-                        s.name.toLowerCase().includes(searchQuery.toLowerCase())
+                        s.name.toLowerCase().includes(supplierSearchQuery.toLowerCase())
                       )
                       .map((supplier) => (
                         <tr key={supplier.id} className="hover:bg-gray-50">
