@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, ChangeEvent } from 'react';
-import { X, Plus, Trash2, Check, Upload, Camera } from 'lucide-react';
+import { X, Plus, Trash2, Check, Upload, Camera, Paperclip, FileText } from 'lucide-react';
 import { Drawer } from './ui/Drawer';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -7,7 +7,9 @@ import { Select } from './ui/Select';
 import { NumericInput } from './ui/NumericInput';
 import { SearchableSelect, SearchableSelectOption } from './ui/SearchableSelect';
 import { useToast } from './ui/Toast';
-import { supabase, InventoryItem, PurchaseUnit, Supplier, Store } from '../lib/supabase';
+import { supabase, InventoryItem, PurchaseUnit, Supplier, Store, InventoryTransactionInvoicePhoto } from '../lib/supabase';
+import { compressImage } from '../lib/image-utils';
+import { getStorageService, type StorageService } from '../lib/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { InventoryItemModal } from './InventoryItemModal';
@@ -156,6 +158,7 @@ export function InventoryTransactionModal({
   const { selectedStoreId, session } = useAuth();
   const { isR2Configured, getStorageConfig } = useSettings();
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const photoFileInputRef = useRef<HTMLInputElement>(null);
   const [activePhotoIndex, setActivePhotoIndex] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -167,6 +170,14 @@ export function InventoryTransactionModal({
   const [destinationStoreId, setDestinationStoreId] = useState('');
   const [availableStores, setAvailableStores] = useState<Store[]>([]);
   const [invoiceReference, setInvoiceReference] = useState('');
+  const invoicePhotoInputRef = useRef<HTMLInputElement>(null);
+  const [pendingInvoicePhotos, setPendingInvoicePhotos] = useState<Array<{
+    id: string;
+    file: File;
+    compressedBlob: Blob;
+    previewUrl: string;
+    filename: string;
+  }>>([]);
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<TransactionItemForm[]>([
     {
@@ -218,6 +229,8 @@ export function InventoryTransactionModal({
   useEffect(() => {
     if (!isOpen) {
       itemPhotos.clearAll();
+      pendingInvoicePhotos.forEach(p => URL.revokeObjectURL(p.previewUrl));
+      setPendingInvoicePhotos([]);
     }
   }, [isOpen]);
 
@@ -281,6 +294,8 @@ export function InventoryTransactionModal({
       setDestinationStoreId('');
       setSupplierId('');
       setInvoiceReference('');
+      pendingInvoicePhotos.forEach(p => URL.revokeObjectURL(p.previewUrl));
+      setPendingInvoicePhotos([]);
       setNotes('');
       setPendingPurchaseUnits([]);
       setTransactionType(initialTransactionType || 'in');
@@ -1262,6 +1277,101 @@ export function InventoryTransactionModal({
     }
   }
 
+  async function addInvoicePhoto(file: File) {
+    if (pendingInvoicePhotos.length >= 3) {
+      showToast('Maximum 3 invoice photos', 'error');
+      return;
+    }
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      showToast('Invalid file type. Please use JPG, PNG, or WebP', 'error');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('File too large. Maximum 5MB allowed', 'error');
+      return;
+    }
+    try {
+      const compressedBlob = await compressImage(file);
+      const previewUrl = URL.createObjectURL(compressedBlob);
+      setPendingInvoicePhotos(prev => [...prev, {
+        id: crypto.randomUUID(),
+        file,
+        compressedBlob,
+        previewUrl,
+        filename: file.name,
+      }]);
+    } catch (err) {
+      console.error('Error preparing invoice photo:', err);
+      showToast('Failed to process photo', 'error');
+    }
+  }
+
+  function removeInvoicePhoto(id: string) {
+    setPendingInvoicePhotos(prev => {
+      const photo = prev.find(p => p.id === id);
+      if (photo) URL.revokeObjectURL(photo.previewUrl);
+      return prev.filter(p => p.id !== id);
+    });
+  }
+
+  async function uploadInvoicePhotos(transactionId: string) {
+    if (pendingInvoicePhotos.length === 0) return;
+    if (!selectedStoreId || !session?.employee_id) return;
+
+    const storageConfig = getStorageConfig();
+    if (!storageConfig?.r2Config?.publicUrl) return;
+
+    let storage: StorageService;
+    try {
+      storage = getStorageService(storageConfig);
+    } catch {
+      return;
+    }
+
+    for (let i = 0; i < pendingInvoicePhotos.length; i++) {
+      const pending = pendingInvoicePhotos[i];
+      const timestamp = Date.now();
+      const uuid = crypto.randomUUID();
+      const filename = `${timestamp}_${uuid}.jpg`;
+      const storagePath = `invoices/${selectedStoreId}/${transactionId}/${filename}`;
+
+      const uploadResult = await storage.upload(storagePath, pending.compressedBlob, {
+        contentType: 'image/jpeg',
+        cacheControl: '3600',
+      });
+
+      if (!uploadResult.success) {
+        console.error('Failed to upload invoice photo:', uploadResult.error);
+        continue;
+      }
+
+      const photoData: Omit<InventoryTransactionInvoicePhoto, 'id' | 'created_at'> = {
+        store_id: selectedStoreId,
+        transaction_id: transactionId,
+        storage_path: storagePath,
+        filename: pending.filename,
+        file_size: pending.compressedBlob.size,
+        mime_type: 'image/jpeg',
+        display_order: i,
+        uploaded_by: session.employee_id,
+        caption: '',
+      };
+
+      const { error: insertError } = await supabase
+        .from('inventory_transaction_invoice_photos')
+        .insert(photoData);
+
+      if (insertError) {
+        console.error('Failed to save invoice photo record:', insertError);
+      }
+
+      URL.revokeObjectURL(pending.previewUrl);
+    }
+
+    setPendingInvoicePhotos([]);
+  }
+
   async function createTransaction(): Promise<void> {
     if (!selectedStoreId || !session?.employee_id) {
       throw new Error('Missing required data');
@@ -1382,9 +1492,10 @@ export function InventoryTransactionModal({
       }
     }
 
-    // Upload pending item photos
+    // Upload pending item photos and invoice photos
     if (transactionType === 'in') {
       await uploadItemPhotos(transaction.id, validItems);
+      await uploadInvoicePhotos(transaction.id);
     }
 
     showToast(
@@ -2059,9 +2170,10 @@ export function InventoryTransactionModal({
           }
         }
 
-        // Upload pending item photos
+        // Upload pending item photos and invoice photos
         if (transactionType === 'in') {
           await uploadItemPhotos(draftId, validItems);
+          await uploadInvoicePhotos(draftId);
         }
 
         showToast(`Transaction ${realTxnNumber} submitted for approval`, 'success');
@@ -2254,6 +2366,36 @@ export function InventoryTransactionModal({
                 onChange={(e) => setInvoiceReference(e.target.value)}
                 placeholder="e.g., INV-2024-001 or PO-1234"
               />
+            </div>
+          )}
+
+          {transactionType === 'in' && isR2Configured() && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Invoice Photo
+              </label>
+              <div className="flex gap-2 flex-wrap items-center">
+                {pendingInvoicePhotos.map(photo => (
+                  <PhotoThumbnail
+                    key={photo.id}
+                    photo={photo}
+                    isPending
+                    canDelete
+                    onDelete={() => removeInvoicePhoto(photo.id)}
+                    size="sm"
+                  />
+                ))}
+                {pendingInvoicePhotos.length < 3 && (
+                  <button
+                    type="button"
+                    onClick={() => invoicePhotoInputRef.current?.click()}
+                    className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors"
+                  >
+                    <FileText className="w-5 h-5" />
+                    <span className="text-[10px] mt-0.5">Invoice</span>
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -2539,22 +2681,35 @@ export function InventoryTransactionModal({
 
                     <div className="col-span-1 pt-6 flex items-center gap-1">
                       {transactionType === 'in' && item.item_id && isR2Configured() && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActivePhotoIndex(index);
-                            photoInputRef.current?.click();
-                          }}
-                          className="text-blue-600 hover:text-blue-700 relative"
-                          title="Add photo"
-                        >
-                          <Camera className="w-4 h-4" />
+                        <div className="relative flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActivePhotoIndex(index);
+                              photoInputRef.current?.click();
+                            }}
+                            className="text-blue-600 hover:text-blue-700"
+                            title="Take photo"
+                          >
+                            <Camera className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActivePhotoIndex(index);
+                              photoFileInputRef.current?.click();
+                            }}
+                            className="text-blue-600 hover:text-blue-700"
+                            title="Attach photo"
+                          >
+                            <Paperclip className="w-4 h-4" />
+                          </button>
                           {itemPhotos.getPhotoCount(index) > 0 && (
                             <span className="absolute -top-1.5 -right-1.5 bg-blue-600 text-white text-[10px] w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none">
                               {itemPhotos.getPhotoCount(index)}
                             </span>
                           )}
-                        </button>
+                        </div>
                       )}
                       {items.length > 1 && (
                         <button
@@ -2631,7 +2786,7 @@ export function InventoryTransactionModal({
           </div>
         </div>
 
-        {/* Hidden file input for item photos */}
+        {/* Hidden file input for camera capture */}
         <input
           ref={photoInputRef}
           type="file"
@@ -2649,6 +2804,39 @@ export function InventoryTransactionModal({
             // Reset so the same file can be re-selected
             if (photoInputRef.current) photoInputRef.current.value = '';
             setActivePhotoIndex(null);
+          }}
+        />
+        {/* Hidden file input for gallery/file picker (no capture attribute) */}
+        <input
+          ref={photoFileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (file && activePhotoIndex !== null) {
+              const success = await itemPhotos.addPendingPhoto(activePhotoIndex, file);
+              if (!success && itemPhotos.error) {
+                showToast(itemPhotos.error, 'error');
+              }
+            }
+            if (photoFileInputRef.current) photoFileInputRef.current.value = '';
+            setActivePhotoIndex(null);
+          }}
+        />
+        {/* Hidden file input for invoice photos */}
+        <input
+          ref={invoicePhotoInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          capture="environment"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              await addInvoicePhoto(file);
+            }
+            if (invoicePhotoInputRef.current) invoicePhotoInputRef.current.value = '';
           }}
         />
       </form>

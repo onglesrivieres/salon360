@@ -4,7 +4,7 @@ import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { useToast } from './ui/Toast';
-import { supabase, TransactionDetail, InventoryTransactionItemPhotoWithUrl } from '../lib/supabase';
+import { supabase, TransactionDetail, InventoryTransactionItemPhotoWithUrl, InventoryTransactionInvoicePhotoWithUrl } from '../lib/supabase';
 import { batchIn } from '../lib/batch-queries';
 import { formatDateTimeEST } from '../lib/timezone';
 import { useSettings } from '../contexts/SettingsContext';
@@ -23,6 +23,7 @@ export function TransactionDetailModal({ isOpen, onClose, transactionId }: Trans
   const [transaction, setTransaction] = useState<TransactionDetail | null>(null);
   // Map<transactionItemId, photos[]>
   const [itemPhotos, setItemPhotos] = useState<Map<string, InventoryTransactionItemPhotoWithUrl[]>>(new Map());
+  const [invoicePhotos, setInvoicePhotos] = useState<InventoryTransactionInvoicePhotoWithUrl[]>([]);
 
   const storageConfig = getStorageConfig();
   const storagePublicUrl = storageConfig?.r2Config?.publicUrl;
@@ -152,6 +153,22 @@ export function TransactionDetailModal({ isOpen, onClose, transactionId }: Trans
           setItemPhotos(new Map());
         }
       }
+
+      // Fetch invoice photos
+      const { data: invoicePhotosData } = await supabase
+        .from('inventory_transaction_invoice_photos')
+        .select('*')
+        .eq('transaction_id', transactionId)
+        .order('display_order', { ascending: true });
+
+      if (invoicePhotosData && invoicePhotosData.length > 0) {
+        setInvoicePhotos(invoicePhotosData.map((photo: any) => ({
+          ...photo,
+          url: storage ? storage.getPublicUrl(photo.storage_path) : photo.storage_path,
+        })));
+      } else {
+        setInvoicePhotos([]);
+      }
     } catch (error) {
       console.error('Error fetching transaction details:', error);
       showToast('Failed to load transaction details', 'error');
@@ -264,6 +281,26 @@ export function TransactionDetailModal({ isOpen, onClose, transactionId }: Trans
                 <div>
                   <p className="text-sm font-medium text-gray-700">Invoice Reference</p>
                   <p className="text-sm text-gray-900">{transaction.invoice_reference}</p>
+                </div>
+              </div>
+            )}
+
+            {invoicePhotos.length > 0 && (
+              <div className="flex items-start gap-3">
+                <FileText className="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Invoice Photos</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {invoicePhotos.map(photo => (
+                      <a key={photo.id} href={photo.url} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={photo.url}
+                          alt={photo.filename}
+                          className="w-16 h-16 object-cover rounded-lg border border-gray-200 hover:ring-2 hover:ring-blue-400"
+                        />
+                      </a>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

@@ -509,12 +509,14 @@ Changes grouped by feature area. All dates in 2026.
 ### Inventory Transaction Detail Fix (Feb 14)
 - Fix "Failed to load transaction details" for large transactions (300+ items). Batched `.in()` queries for inventory items and photos using shared `batchIn()` utility. Files: `TransactionDetailModal.tsx`, `batch-queries.ts`, `useClients.ts`
 
-### Inventory Transaction Photos (Feb 14)
+### Inventory Transaction Photos (Feb 14–15)
 - Per-item photo capture in "In" transaction drawer — camera icon per item row, up to 3 photos each. Photos held as pending blobs, uploaded to R2 after transaction submit. Files: `InventoryTransactionModal.tsx`, `useInventoryItemPhotos.ts`, `image-utils.ts` + migration
+- Dual photo input: Camera icon (capture) + Paperclip icon (gallery/file picker) per item row. Same upload flow for both sources. Files: `InventoryTransactionModal.tsx`
+- Invoice-level photos: up to 3 photos per transaction (proof of supplier invoice). `inventory_transaction_invoice_photos` table (FK to `inventory_transactions` with CASCADE delete). Upload on submit, display in TransactionDetailModal. Files: `InventoryTransactionModal.tsx`, `TransactionDetailModal.tsx`, `supabase.ts` + migration
 - New `inventory_transaction_item_photos` table (FK to `inventory_transaction_items` with CASCADE delete). Files: migration
 - Photo display in TransactionDetailModal — inline thumbnails under each item name. Files: `TransactionDetailModal.tsx`
 - Shared `compressImage()` extracted from `useTicketPhotos.ts` into `lib/image-utils.ts`. Files: `image-utils.ts`, `useTicketPhotos.ts`
-- `InventoryTransactionItemPhoto` / `InventoryTransactionItemPhotoWithUrl` interfaces. Files: `supabase.ts`
+- `InventoryTransactionItemPhoto` / `InventoryTransactionItemPhotoWithUrl` / `InventoryTransactionInvoicePhoto` / `InventoryTransactionInvoicePhotoWithUrl` interfaces. Files: `supabase.ts`
 
 ### Inventory Items (Feb 10–15)
 - Item types: standalone (default), master (group), sub-item (variation) — 3 radio options. Files: `InventoryItemModal.tsx`, `InventoryPage.tsx`, `InventoryTransactionModal.tsx` + migrations
