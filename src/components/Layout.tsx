@@ -876,7 +876,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const requireOpeningCash = getSettingBoolean('require_opening_cash_count', false);
 
   const allNavItems = [
-    { id: 'home' as const, label: t('home.title'), icon: Home },
+    { id: 'home' as const, label: t('home.title'), icon: Home, hidden: true },
     { id: 'tickets' as const, label: t('nav.tickets'), icon: Receipt },
     { id: 'approvals' as const, label: t('approvals.title'), icon: CheckCircle, badge: showPendingApprovalBadge ? pendingApprovalsCount : 0 },
     { id: 'tipreport' as const, label: t('eod.title'), icon: Coins },
