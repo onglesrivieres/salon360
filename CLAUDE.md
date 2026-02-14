@@ -498,6 +498,10 @@ Always filter by `store_id` when querying store-specific data:
 
 Changes grouped by feature area. All dates in 2026.
 
+### Inventory Lots Cleanup (Feb 15)
+- Removed expiration date functionality from inventory lots (unused by salon). Dropped `expiration_date` column, `expired` lot status, "Expiring Soon" summary card, and expiry warnings. Updated `update_lot_status()` and `get_available_lots_fifo()` functions. Files: `InventoryPage.tsx`, `supabase.ts`, `i18n.ts` + migration
+- Show transaction number instead of batch number in Lots tab detail row. Reverse join through `inventory_transaction_items` → `inventory_transactions` to fetch `transaction_number`. Files: `InventoryPage.tsx`, `supabase.ts`
+
 ### Inventory Transaction Detail Fix (Feb 14)
 - Fix "Failed to load transaction details" for large transactions (300+ items). Batched `.in()` queries for inventory items and photos using shared `batchIn()` utility. Files: `TransactionDetailModal.tsx`, `batch-queries.ts`, `useClients.ts`
 

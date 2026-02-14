@@ -601,11 +601,10 @@ export interface InventoryPurchaseLot {
   quantity_remaining: number;
   unit_cost: number;
   purchase_date: string;
-  expiration_date?: string;
   batch_number?: string;
   invoice_reference?: string;
   notes: string;
-  status: 'active' | 'depleted' | 'expired' | 'archived';
+  status: 'active' | 'depleted' | 'archived';
   created_by_id?: string;
   created_at: string;
   updated_at: string;
@@ -616,6 +615,7 @@ export interface InventoryPurchaseLotWithDetails extends InventoryPurchaseLot {
   item_name?: string;
   supplier_name?: string;
   created_by_name?: string;
+  transaction_number?: string;
 }
 
 export interface EmployeeInventory {

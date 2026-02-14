@@ -23,7 +23,6 @@ import {
   Power,
   PowerOff,
   Eye,
-  Calendar,
   FileEdit,
   Trash2,
   Download,
@@ -50,7 +49,7 @@ type ViewMode = 'grid' | 'table';
 type SortColumn = 'supplier' | 'brand' | 'name' | 'quantity_on_hand' | 'reorder_level' | 'unit_cost' | 'total_value';
 type SortDirection = 'asc' | 'desc';
 type LotSortColumn = 'lot_number' | 'item_name' | 'quantity_remaining' | 'unit_cost' | 'purchase_date' | 'status';
-type LotStatus = 'active' | 'depleted' | 'expired' | 'archived';
+type LotStatus = 'active' | 'depleted' | 'archived';
 type DistributionSortColumn = 'distribution_number' | 'distribution_date' | 'item_name' | 'to_employee_name' | 'quantity' | 'status';
 type DistributionStatus = 'pending' | 'acknowledged' | 'in_use' | 'returned' | 'consumed' | 'cancelled';
 
@@ -242,7 +241,7 @@ export function InventoryPage() {
           .from('inventory_purchase_lots')
           .select('id, lot_number, item_id, quantity_received, quantity_remaining, suppliers(name)')
           .eq('store_id', selectedStoreId)
-          .in('status', ['active', 'expired', 'archived'])
+          .in('status', ['active', 'archived'])
           .order('purchase_date', { ascending: false }),
         supabase
           .from('inventory_transaction_items')
@@ -458,6 +457,9 @@ export function InventoryPage() {
           ),
           created_by:employees!created_by_id (
             display_name
+          ),
+          inventory_transaction_items!lot_id (
+            inventory_transactions ( transaction_number )
           )
         `)
         .eq('store_id', selectedStoreId)
@@ -472,6 +474,7 @@ export function InventoryPage() {
         item: lot.inventory_items,
         supplier_name: lot.suppliers?.name || null,
         created_by_name: lot.created_by?.display_name || null,
+        transaction_number: lot.inventory_transaction_items?.[0]?.inventory_transactions?.transaction_number || null,
       }));
 
       setLots(lotsWithDetails);
@@ -861,13 +864,6 @@ export function InventoryPage() {
     totalValue: lots
       .filter(l => l.status === 'active')
       .reduce((sum, lot) => sum + (lot.quantity_remaining * lot.unit_cost), 0),
-    expiringLots: lots.filter(l => {
-      if (!l.expiration_date || l.status !== 'active') return false;
-      const daysUntilExpiry = Math.ceil(
-        (new Date(l.expiration_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-      );
-      return daysUntilExpiry > 0 && daysUntilExpiry <= 30;
-    }).length,
     lowQuantityLots: lots.filter(l =>
       l.status === 'active' && l.quantity_remaining <= l.quantity_received * 0.1
     ).length,
@@ -2103,16 +2099,6 @@ export function InventoryPage() {
 
             <div className="bg-white rounded-lg border border-gray-200 p-4">
               <div className="flex items-center gap-2 text-gray-600 mb-1">
-                <Calendar className="w-4 h-4" />
-                <span className="text-sm">Expiring Soon</span>
-              </div>
-              <p className={`text-2xl font-bold ${lotStats.expiringLots > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
-                {lotStats.expiringLots}
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-center gap-2 text-gray-600 mb-1">
                 <AlertTriangle className="w-4 h-4" />
                 <span className="text-sm">Low Quantity</span>
               </div>
@@ -2208,7 +2194,6 @@ export function InventoryPage() {
                           <option value="">All Status</option>
                           <option value="active">Active</option>
                           <option value="depleted">Depleted</option>
-                          <option value="expired">Expired</option>
                           <option value="archived">Archived</option>
                         </select>
                       </div>
@@ -2360,16 +2345,6 @@ export function InventoryPage() {
                     const lotValue = lot.quantity_remaining * lot.unit_cost;
                     const isLowQuantity = lot.quantity_remaining <= lot.quantity_received * 0.1 && lot.status === 'active';
 
-                    // Calculate days until expiration
-                    let daysUntilExpiry: number | null = null;
-                    let isExpiringSoon = false;
-                    if (lot.expiration_date && lot.status === 'active') {
-                      daysUntilExpiry = Math.ceil(
-                        (new Date(lot.expiration_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-                      );
-                      isExpiringSoon = daysUntilExpiry > 0 && daysUntilExpiry <= 30;
-                    }
-
                     return (
                       <React.Fragment key={lot.id}>
                         <tr
@@ -2415,19 +2390,11 @@ export function InventoryPage() {
                               variant={
                                 lot.status === 'active' ? 'success' :
                                 lot.status === 'depleted' ? 'default' :
-                                lot.status === 'expired' ? 'danger' :
                                 'warning'
                               }
                             >
                               {lot.status}
                             </Badge>
-                            {isExpiringSoon && (
-                              <div className="mt-1">
-                                <Badge variant="warning">
-                                  Expires in {daysUntilExpiry}d
-                                </Badge>
-                              </div>
-                            )}
                           </td>
                         </tr>
 
@@ -2440,8 +2407,8 @@ export function InventoryPage() {
                                   <h4 className="text-sm font-semibold text-gray-700 mb-3">Lot Details</h4>
                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                     <div>
-                                      <p className="text-gray-500">Batch Number</p>
-                                      <p className="font-medium text-gray-900">{lot.batch_number || '-'}</p>
+                                      <p className="text-gray-500">Transaction #</p>
+                                      <p className="font-medium text-gray-900">{lot.transaction_number || '-'}</p>
                                     </div>
                                     <div>
                                       <p className="text-gray-500">Invoice Reference</p>
@@ -2450,12 +2417,6 @@ export function InventoryPage() {
                                     <div>
                                       <p className="text-gray-500">Supplier</p>
                                       <p className="font-medium text-gray-900">{lot.supplier_name || '-'}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-gray-500">Expiration Date</p>
-                                      <p className={`font-medium ${isExpiringSoon ? 'text-amber-600' : 'text-gray-900'}`}>
-                                        {lot.expiration_date ? formatDateEST(lot.expiration_date) : '-'}
-                                      </p>
                                     </div>
                                     <div>
                                       <p className="text-gray-500">Created By</p>
