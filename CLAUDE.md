@@ -502,6 +502,7 @@ Changes grouped by feature area. All dates in 2026.
 - Items tab table: removed Description and Qty (Lot) columns (10→8 columns). Added `min-w-[200px]` to Name column, `whitespace-nowrap` to Supplier column. Files: `InventoryPage.tsx`
 - Separate search state for Items and Suppliers tabs — each tab now has independent search query. Files: `InventoryPage.tsx`
 - Removed redundant "DND DC " prefix from 362 item names (already categorized under DND categories). Migration only
+- Converted all standalone items to master items (`is_master_item = true` where `parent_id IS NULL`). "In" transactions now allow selecting all items (masters, sub-items, standalones). CSV import `itemLookup` includes master items. Files: `InventoryTransactionModal.tsx` + migration
 
 ### Inventory Lots Cleanup (Feb 15)
 - Removed expiration date functionality from inventory lots (unused by salon). Dropped `expiration_date` column, `expired` lot status, "Expiring Soon" summary card, and expiry warnings. Updated `update_lot_status()` and `get_available_lots_fifo()` functions. Files: `InventoryPage.tsx`, `supabase.ts`, `i18n.ts` + migration

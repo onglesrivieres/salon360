@@ -760,7 +760,7 @@ export function InventoryTransactionModal({
       for (const inv of inventoryItems) {
         const isStandalone = !inv.is_master_item && !inv.parent_id;
         const isSubItem = !inv.is_master_item && inv.parent_id;
-        if (isSubItem || isStandalone) {
+        if (isSubItem || isStandalone || inv.is_master_item) {
           itemLookup.set(inv.name.toLowerCase(), inv);
         }
         if (inv.is_master_item) {
@@ -2432,11 +2432,11 @@ export function InventoryTransactionModal({
               const itemPurchaseUnits = invItem?.id ? purchaseUnits[invItem.id] || [] : [];
               const selectedPurchaseUnit = itemPurchaseUnits.find(u => u.id === item.purchase_unit_id);
 
-              // "In": sub-items + standalone items (receive stock directly); "Out"/"Transfer": master + standalone items (hold their own stock)
+              // "In": all items (sub-items, standalones, and masters); "Out"/"Transfer": master + standalone items (hold their own stock)
               const filteredInventoryItems = inventoryItems.filter(invItem => {
                 const isStandalone = !invItem.is_master_item && !invItem.parent_id;
                 if (transactionType === 'in') {
-                  return (!invItem.is_master_item && invItem.parent_id) || isStandalone;
+                  return true; // All items selectable: sub-items, standalones, and masters
                 } else {
                   return invItem.is_master_item || isStandalone;
                 }
