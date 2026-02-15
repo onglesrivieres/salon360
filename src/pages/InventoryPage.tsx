@@ -84,23 +84,7 @@ export function InventoryPage() {
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [draftToEdit, setDraftToEdit] = useState<any>(null);
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
-  const [purchaseUnits, setPurchaseUnits] = useState<Record<string, { unit_name: string; multiplier: number }>>({});
   const [subItemLotsMap, setSubItemLotsMap] = useState<Record<string, Array<{ id: string; lot_number: string; supplier_name: string | null; quantity_received: number; quantity_remaining: number }>>>({});
-  const [itemOutTransfersMap, setItemOutTransfersMap] = useState<Record<string, Array<{
-    id: string;
-    transaction_number: string;
-    transaction_type: 'out' | 'transfer';
-    quantity: number;
-    destination_store_name: string | null;
-    created_at: string;
-  }>>>({});
-  const [itemDistributionsMap, setItemDistributionsMap] = useState<Record<string, Array<{
-    id: string;
-    quantity: number;
-    to_employee_name: string;
-    status: string;
-    distribution_date: string;
-  }>>>({});
 
   // State for responsive tab dropdown
   const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
@@ -225,8 +209,8 @@ export function InventoryPage() {
     try {
       setLoading(true);
 
-      // Fetch items via store_inventory_levels JOIN inventory_items, default purchase units, lots, out/transfer txns, and distributions in parallel
-      const [levelsResult, purchaseUnitsResult, lotsResult, outTransfersResult, distributionsResult] = await Promise.all([
+      // Fetch items via store_inventory_levels JOIN inventory_items and lots in parallel
+      const [levelsResult, lotsResult] = await Promise.all([
         supabase
           .from('store_inventory_levels')
           .select('*, item:inventory_items!inner(*)')
@@ -234,39 +218,14 @@ export function InventoryPage() {
           .eq('is_active', true)
           .order('created_at', { referencedTable: 'inventory_items' }),
         supabase
-          .from('store_product_purchase_units')
-          .select('item_id, unit_name, multiplier')
-          .eq('store_id', selectedStoreId)
-          .eq('is_default', true),
-        supabase
           .from('inventory_purchase_lots')
           .select('id, lot_number, item_id, quantity_received, quantity_remaining, suppliers(name)')
           .eq('store_id', selectedStoreId)
           .in('status', ['active', 'archived'])
           .order('purchase_date', { ascending: false }),
-        supabase
-          .from('inventory_transaction_items')
-          .select('id, item_id, quantity, received_quantity, inventory_transactions!inner(id, transaction_number, transaction_type, store_id, status, created_at, destination_store:stores!inventory_transactions_destination_store_id_fkey(name))')
-          .eq('inventory_transactions.store_id', selectedStoreId)
-          .in('inventory_transactions.transaction_type', ['out', 'transfer'])
-          .eq('inventory_transactions.status', 'approved'),
-        supabase
-          .from('inventory_distributions')
-          .select('id, item_id, quantity, status, distribution_date, to_employee:employees!to_employee_id(display_name)')
-          .eq('store_id', selectedStoreId)
-          .not('status', 'in', '(cancelled,returned)')
       ]);
 
       if (levelsResult.error) throw levelsResult.error;
-
-      // Build purchase units lookup
-      const unitsLookup: Record<string, { unit_name: string; multiplier: number }> = {};
-      if (purchaseUnitsResult.data) {
-        for (const unit of purchaseUnitsResult.data) {
-          unitsLookup[unit.item_id] = { unit_name: unit.unit_name, multiplier: unit.multiplier };
-        }
-      }
-      setPurchaseUnits(unitsLookup);
 
       // Build lots lookup by item_id (for sub-item lot display)
       const lotsLookup: Record<string, Array<{ id: string; lot_number: string; supplier_name: string | null; quantity_received: number; quantity_remaining: number }>> = {};
@@ -286,59 +245,6 @@ export function InventoryPage() {
         }
       }
       setSubItemLotsMap(lotsLookup);
-
-      // Build out/transfer transactions lookup by item_id
-      const outTransfersLookup: Record<string, Array<{
-        id: string;
-        transaction_number: string;
-        transaction_type: 'out' | 'transfer';
-        quantity: number;
-        destination_store_name: string | null;
-        created_at: string;
-      }>> = {};
-      if (outTransfersResult.data) {
-        for (const row of outTransfersResult.data as any[]) {
-          const txn = row.inventory_transactions;
-          const entry = {
-            id: row.id,
-            transaction_number: txn.transaction_number,
-            transaction_type: txn.transaction_type as 'out' | 'transfer',
-            quantity: row.received_quantity ?? row.quantity,
-            destination_store_name: txn.destination_store?.name || null,
-            created_at: txn.created_at,
-          };
-          if (!outTransfersLookup[row.item_id]) {
-            outTransfersLookup[row.item_id] = [];
-          }
-          outTransfersLookup[row.item_id].push(entry);
-        }
-      }
-      setItemOutTransfersMap(outTransfersLookup);
-
-      // Build distributions lookup by item_id
-      const distributionsLookup: Record<string, Array<{
-        id: string;
-        quantity: number;
-        to_employee_name: string;
-        status: string;
-        distribution_date: string;
-      }>> = {};
-      if (distributionsResult.data) {
-        for (const dist of distributionsResult.data as any[]) {
-          const entry = {
-            id: dist.id,
-            quantity: dist.quantity,
-            to_employee_name: dist.to_employee?.display_name || 'Unknown',
-            status: dist.status,
-            distribution_date: dist.distribution_date,
-          };
-          if (!distributionsLookup[dist.item_id]) {
-            distributionsLookup[dist.item_id] = [];
-          }
-          distributionsLookup[dist.item_id].push(entry);
-        }
-      }
-      setItemDistributionsMap(distributionsLookup);
 
       // Flatten store_inventory_levels + inventory_items into InventoryItem shape
       const flatItems = (levelsResult.data || []).map((level: any) => ({
@@ -595,7 +501,7 @@ export function InventoryPage() {
     }
 
     const rows = items.map(item => {
-      const itemType = item.is_master_item ? 'master' : item.parent_id ? 'sub' : 'standalone';
+      const itemType = item.is_master_item ? 'master' : 'sub';
       const parentName = item.parent_id ? (parentNames.get(item.parent_id) || '') : '';
       return [
         escapeCsvField(item.name),
@@ -691,7 +597,6 @@ export function InventoryPage() {
   // Organize items into hierarchy
   const masterItems = items.filter(item => item.is_master_item);
   const subItems = items.filter(item => item.parent_id);
-  const standaloneItems = items.filter(item => !item.is_master_item && !item.parent_id);
 
   // Identify orphaned sub-items whose parent master is not in the current results
   const masterItemIds = new Set(masterItems.map(m => m.id));
@@ -709,15 +614,15 @@ export function InventoryPage() {
     };
   });
 
-  // Standalone items + orphaned sub-items displayed as flat rows (no hierarchy)
-  const standaloneDisplayItems: InventoryItemWithHierarchy[] = [...standaloneItems, ...orphanedSubItems].map(item => ({
+  // Orphaned sub-items displayed as flat rows (no hierarchy)
+  const orphanedDisplayItems: InventoryItemWithHierarchy[] = orphanedSubItems.map(item => ({
     ...item,
     sub_items: [],
     total_sub_item_quantity: item.quantity_on_hand,
     has_low_stock_sub_items: item.quantity_on_hand <= item.reorder_level,
   }));
 
-  const displayItems: InventoryItemWithHierarchy[] = [...hierarchicalItems, ...standaloneDisplayItems];
+  const displayItems: InventoryItemWithHierarchy[] = [...hierarchicalItems, ...orphanedDisplayItems];
 
   const filteredItems = displayItems.filter((item) => {
     const matchesSearch =
@@ -1577,23 +1482,13 @@ export function InventoryPage() {
                     const isMasterItem = item.is_master_item;
                     const isExpanded = expandedMasterItems.has(item.id);
                     const isLowStock = item.quantity_on_hand <= item.reorder_level;
-                    const isStandalone = !item.is_master_item && !item.parent_id;
-                    const standaloneLots = isStandalone ? (subItemLotsMap[item.id] || []) : [];
-                    const standaloneOutTxns = isStandalone ? (itemOutTransfersMap[item.id] || []) : [];
-                    const standaloneDists = isStandalone ? (itemDistributionsMap[item.id] || []) : [];
-                    const isExpandable = isMasterItem || (isStandalone && (standaloneLots.length > 0 || standaloneOutTxns.length > 0 || standaloneDists.length > 0));
+                    const isExpandable = isMasterItem;
 
                     // For master items, use aggregated values
                     const displayQty = isMasterItem
                       ? hierarchyItem.total_sub_item_quantity || 0
                       : item.quantity_on_hand;
                     const totalValue = displayQty * item.unit_cost;
-
-                    // Calculate lot quantity using default purchase unit
-                    const defaultUnit = purchaseUnits[item.id];
-                    const lotQty = defaultUnit
-                      ? (displayQty / defaultUnit.multiplier).toFixed(1)
-                      : null;
 
                     return (
                       <React.Fragment key={item.id}>
@@ -1614,11 +1509,6 @@ export function InventoryPage() {
                               {isMasterItem && hierarchyItem.sub_items && (
                                 <Badge variant="default" className="text-xs">
                                   {hierarchyItem.sub_items.length} variants
-                                </Badge>
-                              )}
-                              {isStandalone && standaloneLots.length > 0 && (
-                                <Badge variant="default" className="text-xs">
-                                  {standaloneLots.length} lots
                                 </Badge>
                               )}
                             </div>
@@ -1707,69 +1597,6 @@ export function InventoryPage() {
                             </React.Fragment>
                           );
                         })}
-                        {/* Stock breakdown for expanded standalone items */}
-                        {isStandalone && isExpanded && (
-                          <>
-                            {/* Lot rows (positive - blue) */}
-                            {standaloneLots.map((lot) => (
-                              <tr key={`lot-${lot.id}`} className="bg-blue-50/30">
-                                <td className="pl-10 pr-4 py-1.5 text-xs text-blue-700">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="w-1 h-1 bg-blue-400 rounded-full" />
-                                    <span className="font-mono">{lot.lot_number}</span>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-1.5 text-xs text-gray-500">{lot.supplier_name || '-'}</td>
-                                <td className="px-4 py-1.5"></td>
-                                <td className="px-4 py-1.5 text-xs text-right text-blue-700 font-medium">+{lot.quantity_received}</td>
-                                <td className="px-4 py-1.5"></td>
-                                <td className="px-4 py-1.5"></td>
-                                <td className="px-4 py-1.5"></td>
-                                <td className="px-4 py-1.5"></td>
-                              </tr>
-                            ))}
-                            {/* Out/Transfer rows (negative - red) */}
-                            {standaloneOutTxns.map((txn) => (
-                              <tr key={`txn-${txn.id}`} className="bg-red-50/30">
-                                <td className="pl-10 pr-4 py-1.5 text-xs text-red-600">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="w-1 h-1 bg-red-400 rounded-full" />
-                                    <span className="font-mono">{txn.transaction_number}</span>
-                                    <span className="text-red-500">
-                                      {txn.transaction_type === 'transfer' ? `→ ${txn.destination_store_name}` : 'OUT'}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-1.5 text-xs text-gray-500">{formatDateEST(txn.created_at)}</td>
-                                <td className="px-4 py-1.5"></td>
-                                <td className="px-4 py-1.5 text-xs text-right text-red-600 font-medium">-{txn.quantity}</td>
-                                <td className="px-4 py-1.5"></td>
-                                <td className="px-4 py-1.5"></td>
-                                <td className="px-4 py-1.5"></td>
-                                <td className="px-4 py-1.5"></td>
-                              </tr>
-                            ))}
-                            {/* Distribution rows (negative - amber) */}
-                            {standaloneDists.map((dist) => (
-                              <tr key={`dist-${dist.id}`} className="bg-amber-50/30">
-                                <td className="pl-10 pr-4 py-1.5 text-xs text-amber-600">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="w-1 h-1 bg-amber-400 rounded-full" />
-                                    <span>Distribution</span>
-                                    <span className="text-amber-500">→ {dist.to_employee_name}</span>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-1.5 text-xs text-gray-500">{formatDateEST(dist.distribution_date)}</td>
-                                <td className="px-4 py-1.5"></td>
-                                <td className="px-4 py-1.5 text-xs text-right text-amber-600 font-medium">-{dist.quantity}</td>
-                                <td className="px-4 py-1.5"></td>
-                                <td className="px-4 py-1.5"></td>
-                                <td className="px-4 py-1.5"></td>
-                                <td className="px-4 py-1.5"></td>
-                              </tr>
-                            ))}
-                          </>
-                        )}
                       </React.Fragment>
                     );
                   })}

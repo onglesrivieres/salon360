@@ -188,7 +188,7 @@ export function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalPro
       const brand = brandIdx >= 0 ? (fields[brandIdx] || '') : '';
       const category = categoryIdx >= 0 ? (fields[categoryIdx] || '') : '';
       const size = sizeIdx >= 0 ? (fields[sizeIdx] || '') : '';
-      const itemType = typeIdx >= 0 ? (fields[typeIdx] || '').toLowerCase() : 'standalone';
+      const itemType = typeIdx >= 0 ? (fields[typeIdx] || '').toLowerCase() : 'master';
       const parentName = parentIdx >= 0 ? (fields[parentIdx] || '') : '';
       const qtyRaw = qtyIdx >= 0 ? (fields[qtyIdx] || '0') : '0';
       const costRaw = costIdx >= 0 ? (fields[costIdx] || '0') : '0';
@@ -203,7 +203,7 @@ export function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalPro
         brand,
         category,
         size,
-        item_type: itemType || 'standalone',
+        item_type: (itemType === 'standalone' ? 'master' : itemType) || 'master',
         parent_name: parentName,
         quantity: isNaN(quantity) ? 0 : quantity,
         unit_cost: isNaN(unitCost) ? 0 : unitCost,
@@ -296,8 +296,8 @@ export function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalPro
     // Find the correct category casing
     const categoryMap = new Map(CATEGORIES.map(c => [c.toLowerCase(), c]));
 
-    // Sort: process master items first, then standalone, then sub-items
-    const typeOrder: Record<string, number> = { master: 0, standalone: 1, sub: 2 };
+    // Sort: process master items first, then sub-items
+    const typeOrder: Record<string, number> = { master: 0, sub: 1 };
     const sortedRows = [...parsedRows]
       .filter(r => r.action !== 'error')
       .sort((a, b) => (typeOrder[a.item_type] || 1) - (typeOrder[b.item_type] || 1));
@@ -438,7 +438,7 @@ export function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalPro
           if (newItem) {
             itemsByName.set(row.name.toLowerCase(), newItem.id);
 
-            // Set stock levels for standalone/master (not sub-items)
+            // Set stock levels for master items (not sub-items)
             if (!isSub) {
               // DB trigger auto-creates store_inventory_levels row; update it
               const { error: levelError } = await supabase

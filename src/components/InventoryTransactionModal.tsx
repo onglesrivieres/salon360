@@ -760,13 +760,12 @@ export function InventoryTransactionModal({
       }
 
       // ── Phase 1: Parse & classify rows ──
-      // Build lookups: sub-items + standalone for "in" transactions, and master items by name
+      // Build lookups: sub-items only for "in" transactions, and master items by name
       const itemLookup = new Map<string, InventoryItem>();
       const masterLookup = new Map<string, InventoryItem>();
       for (const inv of inventoryItems) {
-        const isStandalone = !inv.is_master_item && !inv.parent_id;
         const isSubItem = !inv.is_master_item && inv.parent_id;
-        if (isSubItem || isStandalone || inv.is_master_item) {
+        if (isSubItem) {
           itemLookup.set(inv.name.toLowerCase(), inv);
         }
         if (inv.is_master_item) {
@@ -2451,13 +2450,12 @@ export function InventoryTransactionModal({
               const itemPurchaseUnits = invItem?.id ? purchaseUnits[invItem.id] || [] : [];
               const selectedPurchaseUnit = itemPurchaseUnits.find(u => u.id === item.purchase_unit_id);
 
-              // "In": all items (sub-items, standalones, and masters); "Out"/"Transfer": master + standalone items (hold their own stock)
+              // "In": sub-items only (masters are group headers); "Out"/"Transfer": master items only (hold stock)
               const filteredInventoryItems = inventoryItems.filter(invItem => {
-                const isStandalone = !invItem.is_master_item && !invItem.parent_id;
                 if (transactionType === 'in') {
-                  return true; // All items selectable: sub-items, standalones, and masters
+                  return !!invItem.parent_id && !invItem.is_master_item; // Sub-items only
                 } else {
-                  return invItem.is_master_item || isStandalone;
+                  return invItem.is_master_item;
                 }
               });
 

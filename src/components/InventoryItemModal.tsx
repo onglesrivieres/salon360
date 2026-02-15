@@ -22,7 +22,7 @@ interface InventoryItemModalProps {
   onClose: () => void;
   item?: InventoryItem | null;
   onSuccess: () => void;
-  defaultItemType?: 'master' | 'sub' | 'standalone';
+  defaultItemType?: 'master' | 'sub';
   canDeleteItems?: boolean;
 }
 
@@ -42,7 +42,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
     reorder_level: '0',
     size: '',
   });
-  const [itemType, setItemType] = useState<'master' | 'sub' | 'standalone'>('standalone');
+  const [itemType, setItemType] = useState<'master' | 'sub'>('master');
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [masterItems, setMasterItems] = useState<InventoryItem[]>([]);
   const [existingBrands, setExistingBrands] = useState<string[]>([]);
@@ -184,7 +184,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
         setItemType('sub');
         setSelectedParentId(item.parent_id);
       } else {
-        setItemType('standalone');
+        setItemType('master');
         setSelectedParentId(null);
       }
     } else {
@@ -196,7 +196,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
         reorder_level: '0',
         size: '',
       });
-      setItemType(defaultItemType ?? 'standalone');
+      setItemType(defaultItemType ?? 'master');
       setSelectedParentId(null);
     }
     setTransactionCount(0);
@@ -510,19 +510,6 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
                 <input
                   type="radio"
                   name="item_type"
-                  checked={itemType === 'standalone'}
-                  onChange={() => {
-                    setItemType('standalone');
-                    setSelectedParentId(null);
-                  }}
-                  className="w-4 h-4 text-blue-600"
-                />
-                <span className="text-sm">Standalone Item</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="item_type"
                   checked={itemType === 'master'}
                   onChange={() => {
                     setItemType('master');
@@ -651,7 +638,7 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
           />
         </div>
 
-        {/* Photos Section - standalone and sub-items only */}
+        {/* Photos Section - sub-items only */}
         {showPhotos && (
           <div className="border-t border-gray-200 pt-4 mt-4">
             <div className="flex items-center justify-between mb-3">

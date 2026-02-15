@@ -505,7 +505,7 @@ Changes grouped by feature area. All dates in 2026.
 - Items tab table: removed Description and Qty (Lot) columns (10→8 columns). Added `min-w-[200px]` to Name column, `whitespace-nowrap` to Supplier column. Files: `InventoryPage.tsx`
 - Separate search state for Items and Suppliers tabs — each tab now has independent search query. Files: `InventoryPage.tsx`
 - Removed redundant "DND DC " prefix from 362 item names (already categorized under DND categories). Migration only
-- Converted all standalone items to master items (`is_master_item = true` where `parent_id IS NULL`). "In" transactions now allow selecting all items (masters, sub-items, standalones). CSV import `itemLookup` includes master items. Files: `InventoryTransactionModal.tsx` + migration
+- Converted all standalone items to master items (`is_master_item = true` where `parent_id IS NULL`). Added CHECK constraint enforcing top-level items must be masters. "In" transactions only allow sub-items (items with `parent_id`); masters are group headers. CSV import `itemLookup` restricted to sub-items only. Files: `InventoryTransactionModal.tsx` + migration
 
 ### Inventory Lots Cleanup (Feb 15)
 - Removed expiration date functionality from inventory lots (unused by salon). Dropped `expiration_date` column, `expired` lot status, "Expiring Soon" summary card, and expiry warnings. Updated `update_lot_status()` and `get_available_lots_fifo()` functions. Files: `InventoryPage.tsx`, `supabase.ts`, `i18n.ts` + migration
@@ -524,9 +524,8 @@ Changes grouped by feature area. All dates in 2026.
 - `InventoryTransactionItemPhoto` / `InventoryTransactionItemPhotoWithUrl` / `InventoryTransactionInvoicePhoto` / `InventoryTransactionInvoicePhotoWithUrl` interfaces. Files: `supabase.ts`
 
 ### Inventory Items (Feb 10–15)
-- Item types: standalone (default), master (group), sub-item (variation) — 3 radio options. Files: `InventoryItemModal.tsx`, `InventoryPage.tsx`, `InventoryTransactionModal.tsx` + migrations
-- Feb 11 removed standalone → Feb 12 restored it; childless masters auto-converted back to standalone
-- Master-level stock tracking: "In" selects sub-items, approval routes stock to parent master. "Out"/"Transfer" show master+standalone only. Files: `InventoryTransactionModal.tsx`, `InventoryPage.tsx` + migration
+- Item types: master (group) and sub-item (variation) — 2 radio options. Standalone type fully removed (DB CHECK constraint prevents creation). Files: `InventoryItemModal.tsx`, `InventoryPage.tsx`, `InventoryTransactionModal.tsx`, `CsvImportModal.tsx` + migration
+- Master-level stock tracking: "In" selects sub-items, approval routes stock to parent master. "Out"/"Transfer" show master items only. Files: `InventoryTransactionModal.tsx`, `InventoryPage.tsx` + migration
 - InventoryItemModal converted to right-side Drawer (`size="lg"`), fixed footer with form buttons. Files: `InventoryItemModal.tsx`
 - Delete button in item edit drawer — removes `store_inventory_levels` row, attempts full delete (FK-safe). `canDeleteItems` permission. Files: `InventoryItemModal.tsx`, `permissions.ts`
 - Brand field: `SearchableSelect` with "+ Add New Brand" free-text toggle. Hidden for master items. Files: `InventoryItemModal.tsx`
@@ -535,10 +534,9 @@ Changes grouped by feature area. All dates in 2026.
 - Searchable parent item dropdown with category auto-fill. Files: `InventoryItemModal.tsx`
 - Supplier field removed from item drawer (captured at transaction/lot level). Files: `InventoryItemModal.tsx`
 - Edit button enabled for master items in table view. Files: `InventoryPage.tsx`
-- Lot rows shown under sub-items and standalone items (expandable, blue styling). Files: `InventoryPage.tsx`
-- Stock breakdown under standalone items: lots (+), out/transfer (-), distributions (-). Files: `InventoryPage.tsx`
+- Lot rows shown under sub-items (expandable, blue styling). Files: `InventoryPage.tsx`
 - Auto-refresh on visibility change + manual refresh button on Items tab. Files: `InventoryPage.tsx`
-- Orphaned sub-items (parent missing from store) displayed as standalone rows. Files: `InventoryPage.tsx`
+- Orphaned sub-items (parent missing from store) displayed as flat rows. Files: `InventoryPage.tsx`
 - Duplicate item name: 23505 fallback links existing item to current store. Files: `InventoryItemModal.tsx`
 - 23505 fallback in transaction modal updates item hierarchy fields. Files: `InventoryItemModal.tsx`
 - Re-categorized 91 non-DND items into 7 correct categories (migration only)
