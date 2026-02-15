@@ -1495,8 +1495,8 @@ export function InventoryTransactionModal({
             p_store_id: selectedStoreId,
             p_item_id: inventoryItem.id,
             p_purchase_unit_id: item.purchase_unit_id,
-            p_unit_cost: parseFloat(item.unit_cost) || 0,
-            p_employee_id: session.employee_id
+            p_purchase_cost: parseFloat(item.unit_cost) || 0,
+            p_updated_by_id: session.employee_id
           });
         }
       }
@@ -2181,8 +2181,8 @@ export function InventoryTransactionModal({
                 p_store_id: selectedStoreId,
                 p_item_id: inventoryItem.id,
                 p_purchase_unit_id: item.purchase_unit_id,
-                p_unit_cost: parseFloat(item.unit_cost) || 0,
-                p_employee_id: session.employee_id,
+                p_purchase_cost: parseFloat(item.unit_cost) || 0,
+                p_updated_by_id: session.employee_id,
               });
             }
           }
