@@ -639,7 +639,8 @@ Changes grouped by feature area. All dates in 2026.
 - "Today" button on 5 pages (Tickets, TipReport, EOD, SafeBalance, Approvals)
 - Fix auto check-out 1 hour early (EST time guard). Migration only
 
-### Clients (Feb 3–6)
+### Clients (Feb 3–15)
+- ClientDetailsModal converted from centered popup modal to right-side Drawer (`size="lg"`). Status badge and edit button in `headerActions`, Close button in `footer`. Files: `ClientDetailsModal.tsx`
 - Visit History tab replacing Color History (last 20 tickets, expandable). Files: `ClientDetailsModal.tsx`, `supabase.ts`
 - `batchIn()` helper extracted to shared `lib/batch-queries.ts` (chunked `.in()` queries, 50 IDs per batch). Files: `batch-queries.ts`, `useClients.ts`, `TransactionDetailModal.tsx`
 - Clickable column sorting on Clients (5 cols) and Employees (5 cols). Files: `ClientsPage.tsx`, `EmployeesPage.tsx`
