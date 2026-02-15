@@ -498,6 +498,9 @@ Always filter by `store_id` when querying store-specific data:
 
 Changes grouped by feature area. All dates in 2026.
 
+### Insights Schema Fix (Feb 15)
+- Fix Insights page not loading on Salon365: `useSalesMetrics` selected `tax` column from `sale_tickets` but Salon365 was missing that column (schema divergence from initial migration). Removed unused `tax` from both current/previous period queries (dead code — never referenced in calculations). Added `subtotal`, `tax`, `line_subtotal` columns to Salon365 for schema consistency. Files: `useSalesData.ts` + migration
+
 ### Inventory Purchase Units Immediate Save (Feb 15)
 - New purchase units now saved to database immediately on checkmark click instead of deferred as "pending" with temp IDs. Removed `PendingPurchaseUnit` interface and `pendingPurchaseUnits` state. `handleAddPurchaseUnit` is now async — inserts into `store_product_purchase_units`, handles 23505 duplicates, refreshes cache so unit appears in dropdown as normal saved entry. Removed pending unit persistence blocks from `handleSubmit` and `handleSaveDraft`. Removed ⏳ indicator options from dropdown. Checkmark/cancel buttons disabled with pulse animation while saving. Files: `InventoryTransactionModal.tsx`
 

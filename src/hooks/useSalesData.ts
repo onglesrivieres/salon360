@@ -86,7 +86,7 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
         const [currentResult, previousResult, currentItemsResult, previousItemsResult] = await Promise.all([
           supabase
             .from('sale_tickets')
-            .select('id, total, tax, discount, closed_at')
+            .select('id, total, discount, closed_at')
             .eq('store_id', storeId)
             .gte('ticket_date', dateRange.startDate)
             .lte('ticket_date', dateRange.endDate)
@@ -94,7 +94,7 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
             .is('voided_at', null),
           supabase
             .from('sale_tickets')
-            .select('id, total, tax, discount, closed_at')
+            .select('id, total, discount, closed_at')
             .eq('store_id', storeId)
             .gte('ticket_date', previousRange.startDate)
             .lte('ticket_date', previousRange.endDate)
