@@ -867,11 +867,12 @@ export function InventoryTransactionModal({
 
         if (insertError) {
           if (insertError.code === '23505') {
-            // Item name already exists globally — reuse it, update hierarchy
+            // Item name already exists — find by name + parent scope
             const { data: existingItem } = await supabase
               .from('inventory_items')
               .select('id, name, category, brand, unit, is_master_item, parent_id')
               .eq('name', row.itemName.trim())
+              .eq('parent_id', parent.id)
               .single();
 
             if (!existingItem) {
@@ -881,12 +882,10 @@ export function InventoryTransactionModal({
             }
             newItemId = existingItem.id;
 
-            // Update hierarchy to match intended sub-item
+            // Update catalog fields only — never overwrite hierarchy
             await supabase
               .from('inventory_items')
               .update({
-                is_master_item: false,
-                parent_id: parent.id,
                 category: parent.category,
                 brand: row.brand || parent.brand || null,
               })

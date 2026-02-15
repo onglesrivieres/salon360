@@ -498,6 +498,9 @@ Always filter by `store_id` when querying store-specific data:
 
 Changes grouped by feature area. All dates in 2026.
 
+### Inventory Items Name Constraint Fix (Feb 15)
+- Fix sub-item creation corrupting master item: creating a sub-item with parent's name triggered 23505 fallback that overwrote the parent's hierarchy fields. Replaced global `UNIQUE(name)` constraint with two partial indexes: `UNIQUE(name) WHERE parent_id IS NULL` for top-level items and `UNIQUE(name, parent_id) WHERE parent_id IS NOT NULL` for sub-items. 23505 fallback handlers in `InventoryItemModal.tsx`, `InventoryTransactionModal.tsx`, and `CsvImportModal.tsx` now query by name+parent_id scope and no longer overwrite `is_master_item`/`parent_id`. Files: `InventoryItemModal.tsx`, `InventoryTransactionModal.tsx`, `CsvImportModal.tsx` + migration
+
 ### Inventory Items (Feb 15)
 - Items tab table: removed Description and Qty (Lot) columns (10→8 columns). Added `min-w-[200px]` to Name column, `whitespace-nowrap` to Supplier column. Files: `InventoryPage.tsx`
 - Separate search state for Items and Suppliers tabs — each tab now has independent search query. Files: `InventoryPage.tsx`

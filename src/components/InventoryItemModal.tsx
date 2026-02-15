@@ -342,22 +342,27 @@ export function InventoryItemModal({ isOpen, onClose, item, onSuccess, defaultIt
 
         if (insertError) {
           if (insertError.code === '23505') {
-            // Item with this name already exists globally — reuse it
-            const { data: existingItem } = await supabase
+            // Item with this name already exists — find by name + parent scope
+            let existingQuery = supabase
               .from('inventory_items')
               .select('id')
-              .eq('name', formData.name.trim())
-              .single();
+              .eq('name', formData.name.trim());
+
+            if (isSubItem && selectedParentId) {
+              existingQuery = existingQuery.eq('parent_id', selectedParentId);
+            } else {
+              existingQuery = existingQuery.is('parent_id', null);
+            }
+
+            const { data: existingItem } = await existingQuery.single();
 
             if (!existingItem) throw insertError;
             itemId = existingItem.id;
 
-            // Update the existing item's type/hierarchy to match user's intent
+            // Update catalog fields only — never overwrite hierarchy (is_master_item, parent_id)
             await supabase
               .from('inventory_items')
               .update({
-                is_master_item: isMasterItem,
-                parent_id: isSubItem ? selectedParentId : null,
                 category: formData.category,
                 brand: isMasterItem ? null : (formData.brand.trim() || null),
                 size: formData.size.trim() || null,

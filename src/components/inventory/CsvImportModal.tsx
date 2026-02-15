@@ -374,31 +374,60 @@ export function CsvImportModal({ isOpen, onClose, onSuccess }: CsvImportModalPro
           if (insertError) {
             // 23505 = unique_violation, item already exists — fall back to update
             if (insertError.code === '23505') {
-              const existing = itemsByName.get(row.name.toLowerCase());
-              if (existing && !isSub) {
-                // Update catalog fields on existing item
-                const catalogUpdate: Record<string, unknown> = {};
-                if (row.brand) catalogUpdate.brand = row.brand;
-                if (row.size) catalogUpdate.size = row.size;
-                const correctCat = categoryMap.get(row.category.toLowerCase()) || row.category;
-                if (correctCat) catalogUpdate.category = correctCat;
-                if (Object.keys(catalogUpdate).length > 0) {
-                  await supabase
-                    .from('inventory_items')
-                    .update(catalogUpdate)
-                    .eq('id', existing);
-                }
+              let existingId: string | undefined;
 
-                await supabase
-                  .from('store_inventory_levels')
-                  .update({
-                    quantity_on_hand: row.quantity,
-                    unit_cost: row.unit_cost,
-                    reorder_level: row.reorder_level,
-                  })
-                  .eq('store_id', selectedStoreId)
-                  .eq('item_id', existing);
-                updatedCount++;
+              if (isSub && parentId) {
+                // Sub-item: find by name + parent_id
+                const { data: existingSub } = await supabase
+                  .from('inventory_items')
+                  .select('id')
+                  .eq('name', row.name)
+                  .eq('parent_id', parentId)
+                  .single();
+
+                if (existingSub) {
+                  existingId = existingSub.id;
+                  // Ensure store_inventory_levels row exists
+                  await supabase
+                    .from('store_inventory_levels')
+                    .upsert({
+                      store_id: selectedStoreId,
+                      item_id: existingId,
+                      quantity_on_hand: 0,
+                      unit_cost: 0,
+                      reorder_level: 0,
+                      is_active: true,
+                    }, { onConflict: 'store_id,item_id' });
+                  itemsByName.set(row.name.toLowerCase(), existingId);
+                  updatedCount++;
+                }
+              } else {
+                existingId = itemsByName.get(row.name.toLowerCase());
+                if (existingId) {
+                  // Update catalog fields on existing top-level item
+                  const catalogUpdate: Record<string, unknown> = {};
+                  if (row.brand) catalogUpdate.brand = row.brand;
+                  if (row.size) catalogUpdate.size = row.size;
+                  const correctCat = categoryMap.get(row.category.toLowerCase()) || row.category;
+                  if (correctCat) catalogUpdate.category = correctCat;
+                  if (Object.keys(catalogUpdate).length > 0) {
+                    await supabase
+                      .from('inventory_items')
+                      .update(catalogUpdate)
+                      .eq('id', existingId);
+                  }
+
+                  await supabase
+                    .from('store_inventory_levels')
+                    .update({
+                      quantity_on_hand: row.quantity,
+                      unit_cost: row.unit_cost,
+                      reorder_level: row.reorder_level,
+                    })
+                    .eq('store_id', selectedStoreId)
+                    .eq('item_id', existingId);
+                  updatedCount++;
+                }
               }
               continue;
             }
