@@ -551,7 +551,7 @@ Changes grouped by feature area. All dates in 2026.
 - Fix CSV import dropping brand/category/size on update and 23505 fallback paths. Files: `CsvImportModal.tsx`
 - Auto-select purchase unit on CSV import when item has exactly 1 unit (recalculates stock units/costs). Files: `InventoryTransactionModal.tsx`
 
-### Inventory Transactions (Feb 10–14)
+### Inventory Transactions (Feb 10–15)
 - Transaction form converted to right-side Drawer (`size="xl"`). Total/Notes pinned to footer. Files: `Drawer.tsx`, `InventoryTransactionModal.tsx`
 - Save as Draft: `'draft'` status, placeholder `DRAFT-<uuid>` numbers, resume editing, submit for approval. RPCs: `update_draft_transaction`, `submit_draft_transaction`, `delete_draft_transaction`. Files: `InventoryTransactionModal.tsx`, `InventoryPage.tsx`, `TransactionDetailModal.tsx`, `supabase.ts` + migration
 - Delete Draft button (red) in drawer footer. Close drawer after saving draft. Files: `InventoryTransactionModal.tsx`
@@ -562,6 +562,7 @@ Changes grouped by feature area. All dates in 2026.
 - "+ Add New Supplier" option in transaction form. Files: `InventoryTransactionModal.tsx`
 - Default Sub-Item type when creating item from transaction drawer. Files: `InventoryItemModal.tsx`, `InventoryTransactionModal.tsx`
 - Hide "Select Unit" placeholder in Purchase Unit dropdown when item has exactly 1 unit (already auto-selected). Files: `InventoryTransactionModal.tsx`
+- Fix purchase unit duplicate detection: changed from name-only to name+multiplier matching. Allows same unit name with different multipliers (e.g., "box" x400 and "box" x800). Updated DB unique constraint `(store_id, item_id, unit_name)` → `(store_id, item_id, unit_name, multiplier)`. Pending purchase units now shown in dropdown with ⏳ indicator. Cancel restores previous selection. Files: `InventoryTransactionModal.tsx`, `PurchaseUnitManager.tsx` + migration
 
 ### Inventory Transfers (Feb 10–13)
 - Store-to-store transfers: `transfer` type, `destination_store_id`, `received_quantity` for partial receipt. `XFER-` prefix. `approve_inventory_transfer` RPC. Stock moves atomically on approval. Files: `InventoryPage.tsx`, `InventoryTransactionModal.tsx`, `PendingApprovalsPage.tsx`, `supabase.ts` + migration

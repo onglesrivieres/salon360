@@ -83,7 +83,7 @@ export function PurchaseUnitManager({ masterItemId, isOpen }: PurchaseUnitManage
     } catch (error: any) {
       console.error('Error adding purchase unit:', error);
       if (error.code === '23505') {
-        showToast('A purchase unit with this name already exists', 'error');
+        showToast('A purchase unit with this name and multiplier already exists', 'error');
       } else {
         showToast('Failed to add purchase unit', 'error');
       }
@@ -120,7 +120,7 @@ export function PurchaseUnitManager({ masterItemId, isOpen }: PurchaseUnitManage
     } catch (error: any) {
       console.error('Error updating purchase unit:', error);
       if (error.code === '23505') {
-        showToast('A purchase unit with this name already exists', 'error');
+        showToast('A purchase unit with this name and multiplier already exists', 'error');
       } else {
         showToast('Failed to update purchase unit', 'error');
       }

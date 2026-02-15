@@ -63,6 +63,7 @@ interface TransactionItemForm {
   newPurchaseUnitMultiplier: string;
   isCustomPurchaseUnit: boolean;
   customPurchaseUnitName: string;
+  previousPurchaseUnitId: string;
 }
 
 interface EmployeeListItem {
@@ -195,7 +196,8 @@ export function InventoryTransactionModal({
       newPurchaseUnitName: '',
       newPurchaseUnitMultiplier: '',
       isCustomPurchaseUnit: false,
-      customPurchaseUnitName: ''
+      customPurchaseUnitName: '',
+      previousPurchaseUnitId: '',
     },
   ]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -272,13 +274,14 @@ export function InventoryTransactionModal({
           newPurchaseUnitMultiplier: '',
           isCustomPurchaseUnit: false,
           customPurchaseUnitName: '',
+          previousPurchaseUnitId: '',
         })));
       } else {
         setItems([{
           item_id: '', brand: '', isAddingNewBrand: false, purchase_unit_id: '', purchase_quantity: '', purchase_unit_price: '',
           quantity: '', total_cost: '', unit_cost: '', notes: '',
           isAddingPurchaseUnit: false, newPurchaseUnitName: '', newPurchaseUnitMultiplier: '',
-          isCustomPurchaseUnit: false, customPurchaseUnitName: '',
+          isCustomPurchaseUnit: false, customPurchaseUnitName: '', previousPurchaseUnitId: '',
         }]);
       }
     } else {
@@ -288,7 +291,7 @@ export function InventoryTransactionModal({
         item_id: '', brand: '', isAddingNewBrand: false, purchase_unit_id: '', purchase_quantity: '', purchase_unit_price: '',
         quantity: '', total_cost: '', unit_cost: '', notes: '',
         isAddingPurchaseUnit: false, newPurchaseUnitName: '', newPurchaseUnitMultiplier: '',
-        isCustomPurchaseUnit: false, customPurchaseUnitName: '',
+        isCustomPurchaseUnit: false, customPurchaseUnitName: '', previousPurchaseUnitId: '',
       }]);
       setRecipientId('');
       setDestinationStoreId('');
@@ -530,6 +533,7 @@ export function InventoryTransactionModal({
   function handlePurchaseUnitDropdownChange(index: number, value: string) {
     if (value === '__add_new__') {
       const newItems = [...items];
+      newItems[index].previousPurchaseUnitId = newItems[index].purchase_unit_id;
       newItems[index].isAddingPurchaseUnit = true;
       newItems[index].newPurchaseUnitName = '';
       newItems[index].newPurchaseUnitMultiplier = '';
@@ -569,13 +573,13 @@ export function InventoryTransactionModal({
 
     const existingUnits = purchaseUnits[invItem.id] || [];
 
-    // Check for duplicate unit name (case-insensitive) in existing units
+    // Check for duplicate unit name + multiplier (case-insensitive) in existing units
     const duplicateUnit = existingUnits.find(
-      u => u.unit_name.toLowerCase() === unitName.toLowerCase()
+      u => u.unit_name.toLowerCase() === unitName.toLowerCase() && u.multiplier === multiplier
     );
 
     if (duplicateUnit) {
-      // Unit already exists - use it instead of creating duplicate
+      // Unit already exists with same name and multiplier - use it instead of creating duplicate
       showToast(`Using existing purchase unit: ${duplicateUnit.unit_name}`, 'success');
 
       const newItems = [...items];
@@ -606,9 +610,9 @@ export function InventoryTransactionModal({
       return;
     }
 
-    // Check for duplicate in pending units
+    // Check for duplicate in pending units (same name + multiplier)
     const duplicatePending = pendingPurchaseUnits.find(
-      p => p.itemId === invItem.id && p.unitName.toLowerCase() === unitName.toLowerCase()
+      p => p.itemId === invItem.id && p.unitName.toLowerCase() === unitName.toLowerCase() && p.multiplier === multiplier
     );
 
     if (duplicatePending) {
@@ -685,11 +689,12 @@ export function InventoryTransactionModal({
   function cancelAddPurchaseUnit(index: number) {
     const newItems = [...items];
     newItems[index].isAddingPurchaseUnit = false;
-    newItems[index].purchase_unit_id = '';
+    newItems[index].purchase_unit_id = newItems[index].previousPurchaseUnitId || '';
     newItems[index].newPurchaseUnitName = '';
     newItems[index].newPurchaseUnitMultiplier = '';
     newItems[index].isCustomPurchaseUnit = false;
     newItems[index].customPurchaseUnitName = '';
+    newItems[index].previousPurchaseUnitId = '';
     setItems(newItems);
   }
 
@@ -709,7 +714,8 @@ export function InventoryTransactionModal({
       newPurchaseUnitName: '',
       newPurchaseUnitMultiplier: '',
       isCustomPurchaseUnit: false,
-      customPurchaseUnitName: ''
+      customPurchaseUnitName: '',
+      previousPurchaseUnitId: '',
     }]);
   }
 
@@ -975,6 +981,7 @@ export function InventoryTransactionModal({
           newPurchaseUnitMultiplier: '',
           isCustomPurchaseUnit: false,
           customPurchaseUnitName: '',
+          previousPurchaseUnitId: '',
         });
 
         purchaseUnitNames.push(row.purchaseUnitName);
@@ -1014,7 +1021,10 @@ export function InventoryTransactionModal({
         if (!unitName) continue;
 
         let itemUnits = newPurchaseUnits[formItem.item_id] || [];
-        let matchedUnit = itemUnits.find(u => u.unit_name.toLowerCase() === unitName.toLowerCase());
+        // Match by name + multiplier if CSV provides multiplier, otherwise name-only
+        let matchedUnit = csvMultiplier > 0
+          ? itemUnits.find(u => u.unit_name.toLowerCase() === unitName.toLowerCase() && u.multiplier === csvMultiplier)
+          : itemUnits.find(u => u.unit_name.toLowerCase() === unitName.toLowerCase());
 
         // Auto-create purchase unit if no match and multiplier provided
         if (!matchedUnit && csvMultiplier > 0 && selectedStoreId) {
@@ -1034,13 +1044,14 @@ export function InventoryTransactionModal({
 
           if (error) {
             if (error.code === '23505') {
-              // Duplicate — fetch existing unit
+              // Duplicate — fetch existing unit with same name and multiplier
               const { data: existingUnit } = await supabase
                 .from('store_product_purchase_units')
                 .select('*')
                 .eq('store_id', selectedStoreId)
                 .eq('item_id', formItem.item_id)
                 .ilike('unit_name', unitName)
+                .eq('multiplier', csvMultiplier)
                 .maybeSingle();
               if (existingUnit) {
                 matchedUnit = existingUnit as PurchaseUnit;
@@ -1401,6 +1412,7 @@ export function InventoryTransactionModal({
         const existingUnits = purchaseUnits[invItem.id] || [];
         const duplicateUnit = existingUnits.find(
           u => u.unit_name.toLowerCase() === unitName.toLowerCase()
+            && u.multiplier === multiplier
         );
 
         if (duplicateUnit) {
@@ -1520,6 +1532,7 @@ export function InventoryTransactionModal({
           const existingUnits = purchaseUnits[pendingUnit.itemId] || [];
           const duplicateUnit = existingUnits.find(
             u => u.unit_name.toLowerCase() === pendingUnit.unitName.toLowerCase()
+              && u.multiplier === pendingUnit.multiplier
           );
 
           let realId: string;
@@ -1548,6 +1561,7 @@ export function InventoryTransactionModal({
                   .eq('store_id', selectedStoreId)
                   .eq('item_id', pendingUnit.itemId)
                   .ilike('unit_name', pendingUnit.unitName)
+                  .eq('multiplier', pendingUnit.multiplier)
                   .maybeSingle();
                 if (existingUnit) {
                   realId = existingUnit.id;
@@ -1617,6 +1631,7 @@ export function InventoryTransactionModal({
 
               const duplicateUnit = existingUnits.find(
                 u => u.unit_name.toLowerCase() === unitName.toLowerCase()
+                  && u.multiplier === multiplier
               );
 
               let purchaseUnitData;
@@ -1647,6 +1662,7 @@ export function InventoryTransactionModal({
                       .eq('store_id', selectedStoreId)
                       .eq('item_id', invItem.id)
                       .ilike('unit_name', unitName)
+                      .eq('multiplier', multiplier)
                       .maybeSingle();
 
                     if (existingUnit) {
@@ -1879,15 +1895,16 @@ export function InventoryTransactionModal({
         for (const pendingUnit of pendingPurchaseUnits) {
           const existingUnits = purchaseUnits[pendingUnit.itemId] || [];
 
-          // Check for duplicate unit name (case-insensitive) - might have been created since
+          // Check for duplicate unit name + multiplier (case-insensitive) - might have been created since
           const duplicateUnit = existingUnits.find(
             u => u.unit_name.toLowerCase() === pendingUnit.unitName.toLowerCase()
+              && u.multiplier === pendingUnit.multiplier
           );
 
           let realId: string;
 
           if (duplicateUnit) {
-            // Unit already exists - use it
+            // Unit already exists with same name and multiplier - use it
             realId = duplicateUnit.id;
           } else {
             // Create the unit in database
@@ -1915,6 +1932,7 @@ export function InventoryTransactionModal({
                   .eq('store_id', selectedStoreId)
                   .eq('item_id', pendingUnit.itemId)
                   .ilike('unit_name', pendingUnit.unitName)
+                  .eq('multiplier', pendingUnit.multiplier)
                   .maybeSingle();
 
                 if (existingUnit) {
@@ -1990,15 +2008,16 @@ export function InventoryTransactionModal({
 
             const existingUnits = purchaseUnits[invItem.id] || [];
 
-            // Check for duplicate unit name (case-insensitive)
+            // Check for duplicate unit name + multiplier (case-insensitive)
             const duplicateUnit = existingUnits.find(
               u => u.unit_name.toLowerCase() === unitName.toLowerCase()
+                && u.multiplier === multiplier
             );
 
             let purchaseUnitData;
 
             if (duplicateUnit) {
-              // Unit already exists - reuse it
+              // Unit already exists with same name and multiplier - reuse it
               purchaseUnitData = { id: duplicateUnit.id, multiplier: duplicateUnit.multiplier };
             } else {
               // Create new unit
@@ -2026,6 +2045,7 @@ export function InventoryTransactionModal({
                     .eq('store_id', selectedStoreId)
                     .eq('item_id', invItem.id)
                     .ilike('unit_name', unitName)
+                    .eq('multiplier', multiplier)
                     .maybeSingle();
 
                   if (existingUnit) {
@@ -2624,6 +2644,14 @@ export function InventoryTransactionModal({
                                 {unit.unit_name} (x{unit.multiplier})
                               </option>
                             ))}
+                            {pendingPurchaseUnits
+                              .filter(p => p.itemId === invItem?.id)
+                              .map(p => (
+                                <option key={p.tempId} value={p.tempId}>
+                                  {p.unitName} (x{p.multiplier}) ⏳
+                                </option>
+                              ))
+                            }
                           </Select>
                         )}
                       </div>
