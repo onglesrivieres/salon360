@@ -498,6 +498,9 @@ Always filter by `store_id` when querying store-specific data:
 
 Changes grouped by feature area. All dates in 2026.
 
+### Inventory Purchase Units Immediate Save (Feb 15)
+- New purchase units now saved to database immediately on checkmark click instead of deferred as "pending" with temp IDs. Removed `PendingPurchaseUnit` interface and `pendingPurchaseUnits` state. `handleAddPurchaseUnit` is now async — inserts into `store_product_purchase_units`, handles 23505 duplicates, refreshes cache so unit appears in dropdown as normal saved entry. Removed pending unit persistence blocks from `handleSubmit` and `handleSaveDraft`. Removed ⏳ indicator options from dropdown. Checkmark/cancel buttons disabled with pulse animation while saving. Files: `InventoryTransactionModal.tsx`
+
 ### Inventory Product Preference RPC Fix (Feb 15)
 - Fix `update_product_preference` RPC 404 errors on "In" transaction submit: frontend passed `p_unit_cost`/`p_employee_id` but DB function expects `p_purchase_cost`/`p_updated_by_id`. PostgREST matches by name+params, so mismatched names caused 404. Fixed both call sites (direct submit + draft submit). Files: `InventoryTransactionModal.tsx`
 

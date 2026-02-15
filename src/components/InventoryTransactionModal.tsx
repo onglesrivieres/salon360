@@ -73,15 +73,6 @@ interface EmployeeListItem {
   status: string;
 }
 
-// Interface for pending purchase units that will be created on submit
-interface PendingPurchaseUnit {
-  tempId: string;  // Temporary ID for UI reference
-  itemIndex: number;  // Index in items array
-  itemId: string;  // The inventory item ID
-  unitName: string;
-  multiplier: number;
-}
-
 // CSV parsing utilities (duplicated from CsvImportModal for self-contained use)
 const CSV_HEADER_ALIASES: Record<string, string> = {
   'item name': 'item_name',
@@ -204,7 +195,7 @@ export function InventoryTransactionModal({
   const [employees, setEmployees] = useState<EmployeeListItem[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [purchaseUnits, setPurchaseUnits] = useState<Record<string, PurchaseUnit[]>>({});
-  const [pendingPurchaseUnits, setPendingPurchaseUnits] = useState<PendingPurchaseUnit[]>([]);
+  const [savingPurchaseUnitIndex, setSavingPurchaseUnitIndex] = useState<number | null>(null);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
@@ -256,7 +247,6 @@ export function InventoryTransactionModal({
       setDestinationStoreId(draftTransaction.destination_store_id || '');
       setInvoiceReference(draftTransaction.invoice_reference || '');
       setNotes(draftTransaction.notes || '');
-      setPendingPurchaseUnits([]);
 
       if (draftTransaction.items.length > 0) {
         setItems(draftTransaction.items.map(item => ({
@@ -300,7 +290,6 @@ export function InventoryTransactionModal({
       pendingInvoicePhotos.forEach(p => URL.revokeObjectURL(p.previewUrl));
       setPendingInvoicePhotos([]);
       setNotes('');
-      setPendingPurchaseUnits([]);
       setTransactionType(initialTransactionType || 'in');
     }
   }, [isOpen, initialTransactionType, draftTransaction]);
@@ -545,7 +534,7 @@ export function InventoryTransactionModal({
     }
   }
 
-  function handleAddPurchaseUnit(index: number) {
+  async function handleAddPurchaseUnit(index: number) {
     const item = items[index];
     if (!item.item_id || !selectedStoreId) {
       showToast('Please select an item first', 'error');
@@ -610,26 +599,71 @@ export function InventoryTransactionModal({
       return;
     }
 
-    // Check for duplicate in pending units (same name + multiplier)
-    const duplicatePending = pendingPurchaseUnits.find(
-      p => p.itemId === invItem.id && p.unitName.toLowerCase() === unitName.toLowerCase() && p.multiplier === multiplier
-    );
+    // Save to database immediately
+    setSavingPurchaseUnitIndex(index);
+    try {
+      const isFirstUnit = existingUnits.length === 0;
 
-    if (duplicatePending) {
-      showToast(`Using pending purchase unit: ${duplicatePending.unitName}`, 'success');
+      const { data, error } = await supabase
+        .from('store_product_purchase_units')
+        .insert({
+          store_id: selectedStoreId,
+          item_id: invItem.id,
+          unit_name: unitName,
+          multiplier,
+          is_default: isFirstUnit,
+          display_order: existingUnits.length,
+        })
+        .select()
+        .single();
+
+      let realId: string;
+
+      if (error) {
+        if (error.code === '23505') {
+          // Duplicate constraint - fetch existing unit
+          const { data: existingUnit } = await supabase
+            .from('store_product_purchase_units')
+            .select('*')
+            .eq('store_id', selectedStoreId)
+            .eq('item_id', invItem.id)
+            .ilike('unit_name', unitName)
+            .eq('multiplier', multiplier)
+            .maybeSingle();
+
+          if (existingUnit) {
+            realId = existingUnit.id;
+            showToast(`Using existing purchase unit: ${unitName}`, 'success');
+          } else {
+            showToast(`Failed to create purchase unit: ${unitName}`, 'error');
+            return;
+          }
+        } else {
+          console.error('Error creating purchase unit:', error);
+          showToast(`Failed to create purchase unit: ${unitName}`, 'error');
+          return;
+        }
+      } else {
+        realId = data.id;
+        showToast(`Purchase unit "${unitName}" saved`, 'success');
+      }
+
+      // Refresh purchase units cache
+      const updatedUnits = await fetchPurchaseUnitsForItem(invItem.id);
+      setPurchaseUnits(prev => ({ ...prev, [invItem.id!]: updatedUnits }));
 
       const newItems = [...items];
-      newItems[index].purchase_unit_id = duplicatePending.tempId;
+      newItems[index].purchase_unit_id = realId;
       newItems[index].isAddingPurchaseUnit = false;
       newItems[index].newPurchaseUnitName = '';
       newItems[index].newPurchaseUnitMultiplier = '';
       newItems[index].isCustomPurchaseUnit = false;
       newItems[index].customPurchaseUnitName = '';
 
-      // Recalculate with pending unit's multiplier
+      // Recalculate quantity, total_cost, and unit_cost
       const purchaseQty = parseFloat(newItems[index].purchase_quantity) || 0;
       const purchasePrice = parseFloat(newItems[index].purchase_unit_price) || 0;
-      const stockUnits = purchaseQty * duplicatePending.multiplier;
+      const stockUnits = purchaseQty * multiplier;
 
       newItems[index].quantity = stockUnits.toString();
 
@@ -643,47 +677,12 @@ export function InventoryTransactionModal({
       }
 
       setItems(newItems);
-      return;
+    } catch (error: any) {
+      console.error('Error creating purchase unit:', error);
+      showToast(`Failed to create purchase unit: ${error.message}`, 'error');
+    } finally {
+      setSavingPurchaseUnitIndex(null);
     }
-
-    // Create a new pending purchase unit (NOT saved to database yet)
-    const tempId = `pending-${Date.now()}-${index}`;
-    const newPendingUnit: PendingPurchaseUnit = {
-      tempId,
-      itemIndex: index,
-      itemId: invItem.id,
-      unitName,
-      multiplier,
-    };
-
-    setPendingPurchaseUnits(prev => [...prev, newPendingUnit]);
-    showToast('Purchase unit will be created when you submit the transaction', 'success');
-
-    const newItems = [...items];
-    newItems[index].purchase_unit_id = tempId;  // Use temp ID for now
-    newItems[index].isAddingPurchaseUnit = false;
-    newItems[index].newPurchaseUnitName = '';
-    newItems[index].newPurchaseUnitMultiplier = '';
-    newItems[index].isCustomPurchaseUnit = false;
-    newItems[index].customPurchaseUnitName = '';
-
-    // Recalculate quantity, total_cost, and unit_cost
-    const purchaseQty = parseFloat(newItems[index].purchase_quantity) || 0;
-    const purchasePrice = parseFloat(newItems[index].purchase_unit_price) || 0;
-    const stockUnits = purchaseQty * multiplier;
-
-    newItems[index].quantity = stockUnits.toString();
-
-    if (purchaseQty > 0 && purchasePrice >= 0) {
-      const totalCost = purchasePrice * purchaseQty;
-      newItems[index].total_cost = totalCost.toFixed(2);
-
-      if (stockUnits > 0) {
-        newItems[index].unit_cost = (totalCost / stockUnits).toFixed(2);
-      }
-    }
-
-    setItems(newItems);
   }
 
   function cancelAddPurchaseUnit(index: number) {
@@ -1523,73 +1522,7 @@ export function InventoryTransactionModal({
     setSavingDraft(true);
 
     try {
-      // Save any pending purchase units first (same logic as handleSubmit)
       let updatedItems = [...items];
-      if (pendingPurchaseUnits.length > 0 && transactionType === 'in') {
-        for (const pendingUnit of pendingPurchaseUnits) {
-          const existingUnits = purchaseUnits[pendingUnit.itemId] || [];
-          const duplicateUnit = existingUnits.find(
-            u => u.unit_name.toLowerCase() === pendingUnit.unitName.toLowerCase()
-              && u.multiplier === pendingUnit.multiplier
-          );
-
-          let realId: string;
-          if (duplicateUnit) {
-            realId = duplicateUnit.id;
-          } else {
-            const isFirstUnit = existingUnits.length === 0;
-            const { data, error } = await supabase
-              .from('store_product_purchase_units')
-              .insert({
-                store_id: selectedStoreId,
-                item_id: pendingUnit.itemId,
-                unit_name: pendingUnit.unitName,
-                multiplier: pendingUnit.multiplier,
-                is_default: isFirstUnit,
-                display_order: existingUnits.length,
-              })
-              .select()
-              .single();
-
-            if (error) {
-              if (error.code === '23505') {
-                const { data: existingUnit } = await supabase
-                  .from('store_product_purchase_units')
-                  .select('*')
-                  .eq('store_id', selectedStoreId)
-                  .eq('item_id', pendingUnit.itemId)
-                  .ilike('unit_name', pendingUnit.unitName)
-                  .eq('multiplier', pendingUnit.multiplier)
-                  .maybeSingle();
-                if (existingUnit) {
-                  realId = existingUnit.id;
-                } else {
-                  showToast(`Failed to create purchase unit: ${pendingUnit.unitName}`, 'error');
-                  setSavingDraft(false);
-                  return;
-                }
-              } else {
-                showToast(`Failed to create purchase unit: ${pendingUnit.unitName}`, 'error');
-                setSavingDraft(false);
-                return;
-              }
-            } else {
-              realId = data.id;
-              const updatedUnits = await fetchPurchaseUnitsForItem(pendingUnit.itemId);
-              setPurchaseUnits(prev => ({ ...prev, [pendingUnit.itemId]: updatedUnits }));
-            }
-          }
-
-          updatedItems = updatedItems.map(item => {
-            if (item.purchase_unit_id === pendingUnit.tempId) {
-              return { ...item, purchase_unit_id: realId };
-            }
-            return item;
-          });
-        }
-        setPendingPurchaseUnits([]);
-        setItems(updatedItems);
-      }
 
       // Auto-save in-progress purchase units (form open, fields filled, checkmark not clicked)
       if (transactionType === 'in') {
@@ -1886,95 +1819,7 @@ export function InventoryTransactionModal({
     const savedPurchaseUnits = new Map<number, { id: string; multiplier: number }>();
     let updatedItems = [...items];
 
-    // First, create all pending purchase units that were confirmed via checkmark button
-    if (pendingPurchaseUnits.length > 0 && transactionType === 'in') {
-      setSaving(true);
-      try {
-        for (const pendingUnit of pendingPurchaseUnits) {
-          const existingUnits = purchaseUnits[pendingUnit.itemId] || [];
-
-          // Check for duplicate unit name + multiplier (case-insensitive) - might have been created since
-          const duplicateUnit = existingUnits.find(
-            u => u.unit_name.toLowerCase() === pendingUnit.unitName.toLowerCase()
-              && u.multiplier === pendingUnit.multiplier
-          );
-
-          let realId: string;
-
-          if (duplicateUnit) {
-            // Unit already exists with same name and multiplier - use it
-            realId = duplicateUnit.id;
-          } else {
-            // Create the unit in database
-            const isFirstUnit = existingUnits.length === 0;
-
-            const { data, error } = await supabase
-              .from('store_product_purchase_units')
-              .insert({
-                store_id: selectedStoreId,
-                item_id: pendingUnit.itemId,
-                unit_name: pendingUnit.unitName,
-                multiplier: pendingUnit.multiplier,
-                is_default: isFirstUnit,
-                display_order: existingUnits.length,
-              })
-              .select()
-              .single();
-
-            if (error) {
-              if (error.code === '23505') {
-                // Duplicate error - fetch the existing unit
-                const { data: existingUnit } = await supabase
-                  .from('store_product_purchase_units')
-                  .select('*')
-                  .eq('store_id', selectedStoreId)
-                  .eq('item_id', pendingUnit.itemId)
-                  .ilike('unit_name', pendingUnit.unitName)
-                  .eq('multiplier', pendingUnit.multiplier)
-                  .maybeSingle();
-
-                if (existingUnit) {
-                  realId = existingUnit.id;
-                } else {
-                  showToast(`Failed to create purchase unit: ${pendingUnit.unitName}`, 'error');
-                  setSaving(false);
-                  return;
-                }
-              } else {
-                console.error('Error creating pending purchase unit:', error);
-                showToast(`Failed to create purchase unit: ${pendingUnit.unitName}`, 'error');
-                setSaving(false);
-                return;
-              }
-            } else {
-              realId = data.id;
-
-              // Update purchase units cache
-              const updatedUnits = await fetchPurchaseUnitsForItem(pendingUnit.itemId);
-              setPurchaseUnits(prev => ({ ...prev, [pendingUnit.itemId]: updatedUnits }));
-            }
-          }
-
-          // Replace temp ID with real ID in all items that use this pending unit
-          updatedItems = updatedItems.map(item => {
-            if (item.purchase_unit_id === pendingUnit.tempId) {
-              return { ...item, purchase_unit_id: realId };
-            }
-            return item;
-          });
-        }
-
-        // Clear pending purchase units after creating them
-        setPendingPurchaseUnits([]);
-      } catch (error: any) {
-        console.error('Error creating pending purchase units:', error);
-        showToast('Failed to create purchase units', 'error');
-        setSaving(false);
-        return;
-      }
-    }
-
-    // Auto-save pending purchase units for IN transactions (handles isAddingPurchaseUnit still being true)
+    // Auto-save in-progress purchase units for IN transactions (handles isAddingPurchaseUnit still being true)
     if (transactionType === 'in') {
       for (let index = 0; index < items.length; index++) {
         const item = items[index];
@@ -2587,15 +2432,17 @@ export function InventoryTransactionModal({
                               <button
                                 type="button"
                                 onClick={() => handleAddPurchaseUnit(index)}
-                                className="text-green-600 hover:text-green-700 p-1"
+                                disabled={savingPurchaseUnitIndex === index}
+                                className="text-green-600 hover:text-green-700 p-1 disabled:opacity-50"
                                 title="Save"
                               >
-                                <Check className="w-4 h-4" />
+                                <Check className={`w-4 h-4 ${savingPurchaseUnitIndex === index ? 'animate-pulse' : ''}`} />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => cancelAddPurchaseUnit(index)}
-                                className="text-gray-600 hover:text-gray-700 p-1"
+                                disabled={savingPurchaseUnitIndex === index}
+                                className="text-gray-600 hover:text-gray-700 p-1 disabled:opacity-50"
                                 title="Cancel"
                               >
                                 <X className="w-4 h-4" />
@@ -2641,14 +2488,6 @@ export function InventoryTransactionModal({
                                 {unit.unit_name} (x{unit.multiplier})
                               </option>
                             ))}
-                            {pendingPurchaseUnits
-                              .filter(p => p.itemId === invItem?.id)
-                              .map(p => (
-                                <option key={p.tempId} value={p.tempId}>
-                                  {p.unitName} (x{p.multiplier}) ⏳
-                                </option>
-                              ))
-                            }
                           </Select>
                         )}
                       </div>
