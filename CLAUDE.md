@@ -498,6 +498,9 @@ Always filter by `store_id` when querying store-specific data:
 
 Changes grouped by feature area. All dates in 2026.
 
+### Cash Management Date Display Fix (Feb 16)
+- Fix Cash Management tab showing dates one day behind (e.g., Feb 16 → Feb 15). `formatDateEST()` parsed date-only strings (`"2026-02-16"`) as UTC midnight, which rolled back to previous day in EST. Switched to `formatDateOnly()` which parses date components manually in local time. Files: `PendingApprovalsPage.tsx`
+
 ### Cash Transaction Approvals Inline Status (Feb 16)
 - Show approver info inline on Pending Approvals Cash Management tab after approve/reject. Previously transactions disappeared immediately on action. Now processed transactions stay visible with green (approved) or red (rejected) styling, showing approver name, timestamp, and rejection reason. Uses local state (`processedCashTransactions`) — cleared on next data re-fetch (tab switch, date change, periodic refresh). No DB changes needed. Files: `PendingApprovalsPage.tsx`
 

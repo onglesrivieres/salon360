@@ -2448,7 +2448,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                             </p>
                           )}
                           <p className="text-xs text-gray-500 mt-2">
-                            Date: {formatDateEST(approval.date)}
+                            Date: {formatDateOnly(approval.date)}
                           </p>
                         </div>
                         {canTakeActions ? (
