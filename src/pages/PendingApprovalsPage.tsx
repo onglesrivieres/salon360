@@ -79,6 +79,12 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
   const [inventoryApprovals, setInventoryApprovals] = useState<PendingInventoryApproval[]>([]);
   const [distributionApprovals, setDistributionApprovals] = useState<PendingDistributionApproval[]>([]);
   const [cashTransactionApprovals, setCashTransactionApprovals] = useState<PendingCashTransactionApproval[]>([]);
+  const [processedCashTransactions, setProcessedCashTransactions] = useState<Array<PendingCashTransactionApproval & {
+    processed_status: 'approved' | 'rejected';
+    processed_by_name: string;
+    processed_at: string;
+    rejection_reason?: string;
+  }>>([]);
   const [violationReports, setViolationReports] = useState<ViolationReportForApproval[]>([]);
   const [violationHistory, setViolationHistory] = useState<ViolationHistoryReport[]>([]);
   const [attendanceProposals, setAttendanceProposals] = useState<ProposalWithAttendance[]>([]);
@@ -658,6 +664,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       }
 
       setCashTransactionApprovals(filteredData);
+      setProcessedCashTransactions([]);
     } catch (error) {
       console.error('Error fetching cash transaction approvals:', error);
     } finally {
@@ -1332,7 +1339,14 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       if (error) throw error;
 
       showToast('Cash transaction approved', 'success');
-      fetchCashTransactionApprovals();
+      setCashTransactionApprovals(prev => prev.filter(a => a.transaction_id !== approval.transaction_id));
+      setProcessedCashTransactions(prev => [...prev, {
+        ...approval,
+        processed_status: 'approved',
+        processed_by_name: session.display_name || 'Unknown',
+        processed_at: new Date().toISOString(),
+      }]);
+      fetchAllTabCounts();
     } catch (error: any) {
       showToast(error.message || 'Failed to approve transaction', 'error');
     } finally {
@@ -1375,8 +1389,16 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
       showToast('Cash transaction rejected', 'success');
       setShowCashTransactionRejectModal(false);
+      setCashTransactionApprovals(prev => prev.filter(a => a.transaction_id !== selectedCashTransaction.transaction_id));
+      setProcessedCashTransactions(prev => [...prev, {
+        ...selectedCashTransaction,
+        processed_status: 'rejected',
+        processed_by_name: session?.display_name || 'Unknown',
+        processed_at: new Date().toISOString(),
+        rejection_reason: rejectionReason.trim(),
+      }]);
       setSelectedCashTransaction(null);
-      fetchCashTransactionApprovals();
+      fetchAllTabCounts();
     } catch (error) {
       console.error('Error rejecting cash transaction:', error);
       showToast('Failed to reject transaction', 'error');
@@ -2384,7 +2406,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
           {activeTab === 'cash' && (
             <div>
-              {cashTransactionApprovals.length === 0 ? (
+              {cashTransactionApprovals.length === 0 && processedCashTransactions.length === 0 ? (
                 <div className="text-center py-12">
                   <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-3" />
                   <p className="text-lg font-medium text-gray-900 mb-1">No pending cash transactions</p>
@@ -2452,6 +2474,53 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                         ) : (
                           <div className="text-sm text-gray-500 italic">View only</div>
                         )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {processedCashTransactions.map((item) => (
+                    <div
+                      key={item.transaction_id}
+                      className={`rounded-lg border-2 p-4 opacity-75 ${
+                        item.processed_status === 'approved'
+                          ? 'bg-green-50 border-green-300'
+                          : 'bg-red-50 border-red-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            {item.processed_status === 'approved' ? (
+                              <CheckCircle className="w-5 h-5 text-green-600" />
+                            ) : (
+                              <XCircle className="w-5 h-5 text-red-600" />
+                            )}
+                            <span className="font-semibold text-gray-900">
+                              ${item.amount.toFixed(2)}
+                            </span>
+                            <Badge variant={item.transaction_type === 'cash_in' ? 'success' : 'danger'}>
+                              {item.transaction_type === 'cash_in' ? 'CASH IN' : 'CASH OUT'}
+                            </Badge>
+                            <Badge variant={item.processed_status === 'approved' ? 'success' : 'danger'}>
+                              {item.processed_status === 'approved' ? 'APPROVED' : 'REJECTED'}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-1">
+                            Created by: <span className="font-medium">{item.created_by_name}</span>
+                          </p>
+                          <p className="text-sm text-gray-900 mb-1">
+                            <span className="font-medium">Description:</span> {item.description}
+                          </p>
+                          <p className={`text-sm mt-1 ${item.processed_status === 'approved' ? 'text-green-700' : 'text-red-700'}`}>
+                            {item.processed_status === 'approved' ? 'Approved' : 'Rejected'} by <span className="font-medium">{item.processed_by_name}</span>
+                            {item.processed_status === 'rejected' && item.rejection_reason && (
+                              <span>: {item.rejection_reason}</span>
+                            )}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {formatTimeEST(item.processed_at)}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   ))}

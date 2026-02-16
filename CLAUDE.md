@@ -498,6 +498,9 @@ Always filter by `store_id` when querying store-specific data:
 
 Changes grouped by feature area. All dates in 2026.
 
+### Cash Transaction Approvals Inline Status (Feb 16)
+- Show approver info inline on Pending Approvals Cash Management tab after approve/reject. Previously transactions disappeared immediately on action. Now processed transactions stay visible with green (approved) or red (rejected) styling, showing approver name, timestamp, and rejection reason. Uses local state (`processedCashTransactions`) — cleared on next data re-fetch (tab switch, date change, periodic refresh). No DB changes needed. Files: `PendingApprovalsPage.tsx`
+
 ### Inventory Master Item Expansion Fix (Feb 16)
 - Fix master items with no sub-items showing blank expansion. After cleanup migrations some masters (e.g., "Original 066") had zero sub-items but still had stock/lots. Expansion only iterated `sub_items` array — empty array produced nothing. Added fallback: when a master has no sub-items, render its lots directly under the master row (blue styling, `pl-10`). Updated `isExpandable` to require sub-items OR master-level lots (masters with neither are no longer clickable). Badge shows "N lots" instead of "0 variants" when applicable. Files: `InventoryPage.tsx`
 
