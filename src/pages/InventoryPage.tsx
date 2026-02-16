@@ -1482,7 +1482,8 @@ export function InventoryPage() {
                     const isMasterItem = item.is_master_item;
                     const isExpanded = expandedMasterItems.has(item.id);
                     const isLowStock = item.quantity_on_hand <= item.reorder_level;
-                    const isExpandable = isMasterItem;
+                    const masterLots = subItemLotsMap[item.id] || [];
+                    const isExpandable = isMasterItem && ((hierarchyItem.sub_items?.length || 0) > 0 || masterLots.length > 0);
 
                     // For master items, use aggregated values
                     const displayQty = isMasterItem
@@ -1506,9 +1507,14 @@ export function InventoryPage() {
                               <span className={isMasterItem ? 'font-semibold' : ''}>
                                 {item.name}
                               </span>
-                              {isMasterItem && hierarchyItem.sub_items && (
+                              {isMasterItem && hierarchyItem.sub_items && hierarchyItem.sub_items.length > 0 && (
                                 <Badge variant="default" className="text-xs">
                                   {hierarchyItem.sub_items.length} variants
+                                </Badge>
+                              )}
+                              {isMasterItem && (!hierarchyItem.sub_items || hierarchyItem.sub_items.length === 0) && masterLots.length > 0 && (
+                                <Badge variant="default" className="text-xs">
+                                  {masterLots.length} {masterLots.length === 1 ? 'lot' : 'lots'}
                                 </Badge>
                               )}
                             </div>
@@ -1597,6 +1603,26 @@ export function InventoryPage() {
                             </React.Fragment>
                           );
                         })}
+                        {/* Lots directly under master when no sub-items exist */}
+                        {isMasterItem && isExpanded && (!hierarchyItem.sub_items || hierarchyItem.sub_items.length === 0) && (
+                          masterLots.map((lot) => (
+                            <tr key={lot.id} className="bg-blue-50/30">
+                              <td className="pl-10 pr-4 py-1.5 text-xs text-blue-700">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-1 h-1 bg-blue-400 rounded-full" />
+                                  <span className="font-mono">{lot.lot_number}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-1.5 text-xs text-gray-500">{lot.supplier_name || '-'}</td>
+                              <td className="px-4 py-1.5"></td>
+                              <td className="px-4 py-1.5 text-xs text-right text-blue-700 font-medium">{lot.quantity_remaining}</td>
+                              <td className="px-4 py-1.5"></td>
+                              <td className="px-4 py-1.5"></td>
+                              <td className="px-4 py-1.5"></td>
+                              <td className="px-4 py-1.5"></td>
+                            </tr>
+                          ))
+                        )}
                       </React.Fragment>
                     );
                   })}

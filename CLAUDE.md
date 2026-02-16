@@ -494,9 +494,12 @@ Always filter by `store_id` when querying store-specific data:
 
 ---
 
-## Recent Changes (Jan 23 – Feb 15, 2026)
+## Recent Changes (Jan 23 – Feb 16, 2026)
 
 Changes grouped by feature area. All dates in 2026.
+
+### Inventory Master Item Expansion Fix (Feb 16)
+- Fix master items with no sub-items showing blank expansion. After cleanup migrations some masters (e.g., "Original 066") had zero sub-items but still had stock/lots. Expansion only iterated `sub_items` array — empty array produced nothing. Added fallback: when a master has no sub-items, render its lots directly under the master row (blue styling, `pl-10`). Updated `isExpandable` to require sub-items OR master-level lots (masters with neither are no longer clickable). Badge shows "N lots" instead of "0 variants" when applicable. Files: `InventoryPage.tsx`
 
 ### Insights Schema Fix (Feb 15)
 - Fix Insights page not loading on Salon365: `useSalesMetrics` selected `tax` column from `sale_tickets` but Salon365 was missing that column (schema divergence from initial migration). Removed unused `tax` from both current/previous period queries (dead code — never referenced in calculations). Added `subtotal`, `tax`, `line_subtotal` columns to Salon365 for schema consistency. Files: `useSalesData.ts` + migration
