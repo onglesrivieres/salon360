@@ -498,6 +498,9 @@ Always filter by `store_id` when querying store-specific data:
 
 Changes grouped by feature area. All dates in 2026.
 
+### Historical Approvals on All Tabs (Feb 16)
+- Added Historical Approvals section to Inventory, Cash, Transaction Changes, and Ticket Changes tabs on Pending Approvals page. Previously only Tickets, Attendance, and Violations tabs showed history — approved/rejected items disappeared on other tabs. 4 new RPCs: `get_historical_inventory_approvals`, `get_historical_cash_transaction_approvals`, `get_historical_transaction_change_approvals`, `get_historical_ticket_reopen_approvals`. Each returns up to 50 recent records with reviewer info. Cash history applies same role-based filtering as pending (Supervisor sees Receptionist/Cashier only). Fixed `handleRejectInventory` and `handleRejectCashTransaction` not recording `manager_approved_by_id`/`manager_approved_at` on rejection. 4 new TypeScript interfaces. Historical sections use same visual pattern as Tickets tab (green/red borders, status+type badges, reviewer timestamp, "Showing X of Y"). Files: `PendingApprovalsPage.tsx`, `supabase.ts` + migration
+
 ### Cash Management Date Display Fix (Feb 16)
 - Fix Cash Management tab showing dates one day behind (e.g., Feb 16 → Feb 15). `formatDateEST()` parsed date-only strings (`"2026-02-16"`) as UTC midnight, which rolled back to previous day in EST. Switched to `formatDateOnly()` which parses date components manually in local time. Files: `PendingApprovalsPage.tsx`
 

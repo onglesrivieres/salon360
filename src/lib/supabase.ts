@@ -379,6 +379,65 @@ export interface HistoricalApprovalTicket {
   service_names: string;
 }
 
+export interface HistoricalInventoryApproval {
+  transaction_id: string;
+  transaction_number: string;
+  transaction_type: string;
+  requested_by_name: string;
+  item_count: number;
+  total_value: number;
+  destination_store_name: string | null;
+  source_store_name: string | null;
+  status: string;
+  manager_approved_by_name: string;
+  manager_approved_at: string;
+  rejection_reason: string;
+}
+
+export interface HistoricalCashTransactionApproval {
+  transaction_id: string;
+  transaction_type: string;
+  amount: number;
+  description: string;
+  category: string | null;
+  date: string;
+  created_by_name: string;
+  created_by_id: string;
+  created_by_role: string;
+  status: string;
+  manager_approved_by_name: string;
+  manager_approved_at: string;
+  rejection_reason: string;
+}
+
+export interface HistoricalTransactionChangeApproval {
+  proposal_id: string;
+  transaction_type: string;
+  current_amount: number;
+  current_description: string;
+  is_deletion_request: boolean;
+  status: string;
+  created_by_name: string;
+  reviewed_by_name: string;
+  reviewed_at: string;
+  review_comment: string;
+}
+
+export interface HistoricalTicketReopenApproval {
+  request_id: string;
+  ticket_no: number;
+  customer_name: string | null;
+  total: number;
+  reason_comment: string;
+  requested_changes_description: string;
+  status: string;
+  created_by_name: string;
+  created_by_id: string;
+  reviewed_by_name: string;
+  reviewed_at: string;
+  review_comment: string;
+}
+
 export interface ApprovalStatistics {
   total_closed: number;
   pending_approval: number;

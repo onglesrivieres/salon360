@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowLeftRight, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, FileText, Timer, ChevronLeft, ChevronRight, ChevronDown, Bell, User, Calendar, History, Download, Eye, RotateCcw } from 'lucide-react';
-import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, PendingCashTransactionChangeProposal, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket, AttendanceChangeProposalWithDetails, PendingTicketReopenRequest, PendingDistributionApproval } from '../lib/supabase';
+import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, PendingCashTransactionChangeProposal, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket, HistoricalInventoryApproval, HistoricalCashTransactionApproval, HistoricalTransactionChangeApproval, HistoricalTicketReopenApproval, AttendanceChangeProposalWithDetails, PendingTicketReopenRequest, PendingDistributionApproval } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/Toast';
@@ -119,6 +119,10 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
   const [selectedTicketReopenRequest, setSelectedTicketReopenRequest] = useState<PendingTicketReopenRequest | null>(null);
   const [ticketReopenReviewComment, setTicketReopenReviewComment] = useState('');
   const [viewingRequest, setViewingRequest] = useState<PendingTicketReopenRequest | null>(null);
+  const [historicalInventoryApprovals, setHistoricalInventoryApprovals] = useState<HistoricalInventoryApproval[]>([]);
+  const [historicalCashApprovals, setHistoricalCashApprovals] = useState<HistoricalCashTransactionApproval[]>([]);
+  const [historicalTransactionChanges, setHistoricalTransactionChanges] = useState<HistoricalTransactionChangeApproval[]>([]);
+  const [historicalTicketReopenRequests, setHistoricalTicketReopenRequests] = useState<HistoricalTicketReopenApproval[]>([]);
   const [rejectedTickets, setRejectedTickets] = useState<any[]>([]);
   // Additional info request state
   const [additionalInfoText, setAdditionalInfoText] = useState('');
@@ -307,8 +311,10 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       } else if (activeTab === 'inventory' && canViewTab('inventory')) {
         fetchInventoryApprovals();
         fetchDistributionApprovals();
+        fetchHistoricalInventoryApprovals();
       } else if (activeTab === 'cash' && canViewTab('cash')) {
         fetchCashTransactionApprovals();
+        fetchHistoricalCashApprovals();
       } else if (activeTab === 'attendance' && canViewTab('attendance')) {
         fetchAttendanceProposals();
       } else if (activeTab === 'violations' && canViewTab('violations')) {
@@ -316,8 +322,10 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         fetchViolationHistory();
       } else if (activeTab === 'transaction-changes' && canViewTab('transaction-changes')) {
         fetchTransactionChangeProposals();
+        fetchHistoricalTransactionChanges();
       } else if (activeTab === 'ticket-changes' && canViewTab('ticket-changes')) {
         fetchTicketReopenRequests();
+        fetchHistoricalTicketReopenRequests();
       } else if (activeTab === 'queue-history' && canViewTab('queue-history')) {
         fetchQueueRemovalHistory();
       }
@@ -339,8 +347,10 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         } else if (activeTab === 'inventory' && canViewTab('inventory')) {
           fetchInventoryApprovals();
           fetchDistributionApprovals();
+          fetchHistoricalInventoryApprovals();
         } else if (activeTab === 'cash' && canViewTab('cash')) {
           fetchCashTransactionApprovals();
+          fetchHistoricalCashApprovals();
         } else if (activeTab === 'attendance' && canViewTab('attendance')) {
           fetchAttendanceProposals();
         } else if (activeTab === 'violations' && canViewTab('violations')) {
@@ -348,8 +358,10 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
           fetchViolationHistory();
         } else if (activeTab === 'transaction-changes' && canViewTab('transaction-changes')) {
           fetchTransactionChangeProposals();
+          fetchHistoricalTransactionChanges();
         } else if (activeTab === 'ticket-changes' && canViewTab('ticket-changes')) {
           fetchTicketReopenRequests();
+          fetchHistoricalTicketReopenRequests();
         } else if (activeTab === 'queue-history' && canViewTab('queue-history')) {
           fetchQueueRemovalHistory();
         }
@@ -826,6 +838,65 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     }
   }
 
+  async function fetchHistoricalInventoryApprovals() {
+    if (!selectedStoreId) return;
+    try {
+      const { data, error } = await supabase.rpc('get_historical_inventory_approvals', {
+        p_store_id: selectedStoreId,
+      });
+      if (error) throw error;
+      setHistoricalInventoryApprovals(data || []);
+    } catch (error) {
+      console.error('Error fetching historical inventory approvals:', error);
+    }
+  }
+
+  async function fetchHistoricalCashApprovals() {
+    if (!selectedStoreId) return;
+    try {
+      const { data, error } = await supabase.rpc('get_historical_cash_transaction_approvals', {
+        p_store_id: selectedStoreId,
+      });
+      if (error) throw error;
+      let filtered = data || [];
+      if (isSupervisor) {
+        filtered = filtered.filter((a: HistoricalCashTransactionApproval) => a.created_by_role === 'Receptionist' || a.created_by_role === 'Cashier');
+      }
+      if ((isReceptionist || isCashier) && session?.employee_id) {
+        filtered = filtered.filter((a: HistoricalCashTransactionApproval) => a.created_by_id === session.employee_id);
+      }
+      setHistoricalCashApprovals(filtered);
+    } catch (error) {
+      console.error('Error fetching historical cash approvals:', error);
+    }
+  }
+
+  async function fetchHistoricalTransactionChanges() {
+    if (!selectedStoreId) return;
+    try {
+      const { data, error } = await supabase.rpc('get_historical_transaction_change_approvals', {
+        p_store_id: selectedStoreId,
+      });
+      if (error) throw error;
+      setHistoricalTransactionChanges(data || []);
+    } catch (error) {
+      console.error('Error fetching historical transaction changes:', error);
+    }
+  }
+
+  async function fetchHistoricalTicketReopenRequests() {
+    if (!selectedStoreId) return;
+    try {
+      const { data, error } = await supabase.rpc('get_historical_ticket_reopen_approvals', {
+        p_store_id: selectedStoreId,
+      });
+      if (error) throw error;
+      setHistoricalTicketReopenRequests(data || []);
+    } catch (error) {
+      console.error('Error fetching historical ticket reopen requests:', error);
+    }
+  }
+
   async function fetchQueueRemovalHistory() {
     if (!selectedStoreId || !session?.employee_id) return;
 
@@ -974,6 +1045,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
       showToast('Request approved and ticket reopened', 'success');
       fetchTicketReopenRequests();
+      fetchHistoricalTicketReopenRequests();
 
       // Step 3: Navigate to the ticket with highlight
       const navState = {
@@ -1019,6 +1091,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       setSelectedTicketReopenRequest(null);
       setTicketReopenReviewComment('');
       fetchTicketReopenRequests();
+      fetchHistoricalTicketReopenRequests();
     } catch (error: any) {
       console.error('Error rejecting ticket reopen request:', error);
       showToast(error.message || 'Failed to reject request', 'error');
@@ -1050,6 +1123,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       setSelectedTransactionChangeProposal(null);
       setTransactionChangeReviewComment('');
       fetchTransactionChangeProposals();
+      fetchHistoricalTransactionChanges();
     } catch (error: any) {
       console.error('Error approving transaction change proposal:', error);
       showToast(error.message || 'Failed to approve proposal', 'error');
@@ -1086,6 +1160,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       setSelectedTransactionChangeProposal(null);
       setTransactionChangeReviewComment('');
       fetchTransactionChangeProposals();
+      fetchHistoricalTransactionChanges();
     } catch (error: any) {
       console.error('Error rejecting transaction change proposal:', error);
       showToast(error.message || 'Failed to reject proposal', 'error');
@@ -1173,6 +1248,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
       showToast('Inventory transaction approved', 'success');
       fetchInventoryApprovals();
+      fetchHistoricalInventoryApprovals();
     } catch (error: any) {
       showToast(error.message || 'Failed to approve transaction', 'error');
     } finally {
@@ -1207,6 +1283,8 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         .update({
           status: 'rejected',
           rejection_reason: rejectionReason.trim(),
+          manager_approved_by_id: session?.employee_id,
+          manager_approved_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', selectedInventory.id);
@@ -1217,6 +1295,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       setShowInventoryRejectModal(false);
       setSelectedInventory(null);
       fetchInventoryApprovals();
+      fetchHistoricalInventoryApprovals();
     } catch (error) {
       console.error('Error rejecting inventory:', error);
       showToast('Failed to reject transaction', 'error');
@@ -1304,6 +1383,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       setSelectedInventory(null);
       setTransferApprovalItems([]);
       fetchInventoryApprovals();
+      fetchHistoricalInventoryApprovals();
     } catch (error: any) {
       showToast(error.message || 'Failed to approve transfer', 'error');
     } finally {
@@ -1347,6 +1427,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         processed_at: new Date().toISOString(),
       }]);
       fetchAllTabCounts();
+      fetchHistoricalCashApprovals();
     } catch (error: any) {
       showToast(error.message || 'Failed to approve transaction', 'error');
     } finally {
@@ -1381,6 +1462,8 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         .update({
           status: 'rejected',
           rejection_reason: rejectionReason.trim(),
+          manager_approved_by_id: session?.employee_id,
+          manager_approved_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', selectedCashTransaction.transaction_id);
@@ -1399,6 +1482,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       }]);
       setSelectedCashTransaction(null);
       fetchAllTabCounts();
+      fetchHistoricalCashApprovals();
     } catch (error) {
       console.error('Error rejecting cash transaction:', error);
       showToast('Failed to reject transaction', 'error');
@@ -2230,7 +2314,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
 {activeTab === 'inventory' && (
             <div>
-              {inventoryApprovals.length === 0 && distributionApprovals.length === 0 ? (
+              {inventoryApprovals.length === 0 && distributionApprovals.length === 0 && historicalInventoryApprovals.length === 0 ? (
                 <div className="text-center py-12">
                   <Package className="w-16 h-16 text-gray-400 mx-auto mb-3" />
                   <p className="text-lg font-medium text-gray-900 mb-1">No pending inventory items</p>
@@ -2401,12 +2485,78 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                   )}
                 </div>
               )}
+
+              {historicalInventoryApprovals.length > 0 && (
+                <div className="mt-8 pt-8 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Historical Approvals</h3>
+                  <div className="space-y-2">
+                    {historicalInventoryApprovals.slice(0, 10).map((item) => (
+                      <div
+                        key={item.transaction_id}
+                        className={`bg-gray-50 rounded-lg border p-3 ${
+                          item.status === 'approved' ? 'border-green-200' : 'border-red-200'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              {item.transaction_type === 'in' ? (
+                                <PackagePlus className="w-4 h-4 text-green-600" />
+                              ) : item.transaction_type === 'transfer' ? (
+                                <ArrowLeftRight className="w-4 h-4 text-purple-600" />
+                              ) : (
+                                <PackageMinus className="w-4 h-4 text-orange-600" />
+                              )}
+                              <span className="text-sm font-medium text-gray-900">
+                                {item.transaction_number}
+                              </span>
+                              <Badge variant={item.status === 'approved' ? 'success' : 'danger'}>
+                                {item.status.toUpperCase()}
+                              </Badge>
+                              <Badge variant={
+                                item.transaction_type === 'in' ? 'success' :
+                                item.transaction_type === 'transfer' ? 'info' : 'default'
+                              }>
+                                {item.transaction_type.toUpperCase()}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-gray-600">
+                              Requested by: {item.requested_by_name}
+                              {' • '}{item.item_count} item{item.item_count !== 1 ? 's' : ''}
+                              {' • '}Total: ${item.total_value.toFixed(2)}
+                            </p>
+                            {item.transaction_type === 'transfer' && (
+                              <p className="text-xs text-gray-600">
+                                {item.source_store_name} → {item.destination_store_name}
+                              </p>
+                            )}
+                            {item.status === 'rejected' && item.rejection_reason && (
+                              <p className="text-xs text-red-600 mt-1">
+                                Reason: {item.rejection_reason}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-500 mt-1">
+                              {item.status === 'approved' ? 'Approved' : 'Rejected'} by: {item.manager_approved_by_name}
+                              {item.manager_approved_at && ` on ${formatDateTimeEST(item.manager_approved_at)}`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {historicalInventoryApprovals.length > 10 && (
+                    <p className="text-xs text-gray-500 text-center mt-2">
+                      Showing 10 of {historicalInventoryApprovals.length} records
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === 'cash' && (
             <div>
-              {cashTransactionApprovals.length === 0 && processedCashTransactions.length === 0 ? (
+              {cashTransactionApprovals.length === 0 && processedCashTransactions.length === 0 && historicalCashApprovals.length === 0 ? (
                 <div className="text-center py-12">
                   <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-3" />
                   <p className="text-lg font-medium text-gray-900 mb-1">No pending cash transactions</p>
@@ -2526,12 +2676,72 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                   ))}
                 </div>
               )}
+
+              {historicalCashApprovals.length > 0 && (
+                <div className="mt-8 pt-8 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Historical Approvals</h3>
+                  <div className="space-y-2">
+                    {historicalCashApprovals.slice(0, 10).map((item) => (
+                      <div
+                        key={item.transaction_id}
+                        className={`bg-gray-50 rounded-lg border p-3 ${
+                          item.status === 'approved' ? 'border-green-200' : 'border-red-200'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              {item.transaction_type === 'cash_in' ? (
+                                <ArrowDownLeft className="w-4 h-4 text-green-600" />
+                              ) : (
+                                <ArrowUpRight className="w-4 h-4 text-red-600" />
+                              )}
+                              <span className="text-sm font-medium text-gray-900">
+                                ${item.amount.toFixed(2)}
+                              </span>
+                              <Badge variant={item.status === 'approved' ? 'success' : 'danger'}>
+                                {item.status.toUpperCase()}
+                              </Badge>
+                              <Badge variant={item.transaction_type === 'cash_in' ? 'success' : 'danger'}>
+                                {item.transaction_type === 'cash_in' ? 'CASH IN' : 'CASH OUT'}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-gray-600">
+                              Created by: {item.created_by_name}
+                              {' • '}{item.description}
+                            </p>
+                            {item.category && (
+                              <p className="text-xs text-gray-600">
+                                Category: {item.category}
+                              </p>
+                            )}
+                            {item.status === 'rejected' && item.rejection_reason && (
+                              <p className="text-xs text-red-600 mt-1">
+                                Reason: {item.rejection_reason}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-500 mt-1">
+                              {item.status === 'approved' ? 'Approved' : 'Rejected'} by: {item.manager_approved_by_name}
+                              {item.manager_approved_at && ` on ${formatDateTimeEST(item.manager_approved_at)}`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {historicalCashApprovals.length > 10 && (
+                    <p className="text-xs text-gray-500 text-center mt-2">
+                      Showing 10 of {historicalCashApprovals.length} records
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === 'transaction-changes' && canReviewTransactionChanges && (
             <div>
-              {transactionChangeProposals.length === 0 ? (
+              {transactionChangeProposals.length === 0 && historicalTransactionChanges.length === 0 ? (
                 <div className="text-center py-12">
                   <FileText className="w-16 h-16 text-gray-400 mx-auto mb-3" />
                   <p className="text-lg font-medium text-gray-900 mb-1">No pending transaction changes</p>
@@ -2736,6 +2946,62 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {historicalTransactionChanges.length > 0 && (
+                <div className="mt-8 pt-8 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Historical Approvals</h3>
+                  <div className="space-y-2">
+                    {historicalTransactionChanges.slice(0, 10).map((item) => (
+                      <div
+                        key={item.proposal_id}
+                        className={`bg-gray-50 rounded-lg border p-3 ${
+                          item.status === 'approved' ? 'border-green-200' : 'border-red-200'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              {item.is_deletion_request ? (
+                                <AlertOctagon className="w-4 h-4 text-red-600" />
+                              ) : (
+                                <FileText className="w-4 h-4 text-yellow-600" />
+                              )}
+                              <span className="text-sm font-medium text-gray-900">
+                                {item.is_deletion_request ? 'Deletion Request' : 'Change Request'}
+                              </span>
+                              <Badge variant={item.status === 'approved' ? 'success' : 'danger'}>
+                                {item.status.toUpperCase()}
+                              </Badge>
+                              {item.is_deletion_request && (
+                                <Badge variant="danger">DELETE</Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-600">
+                              Created by: {item.created_by_name}
+                              {' • '}Amount: ${item.current_amount.toFixed(2)}
+                              {' • '}{item.current_description}
+                            </p>
+                            {item.review_comment && (
+                              <p className="text-xs text-gray-600 mt-1">
+                                Comment: {item.review_comment}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-500 mt-1">
+                              {item.status === 'approved' ? 'Approved' : 'Rejected'} by: {item.reviewed_by_name}
+                              {item.reviewed_at && ` on ${formatDateTimeEST(item.reviewed_at)}`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {historicalTransactionChanges.length > 10 && (
+                    <p className="text-xs text-gray-500 text-center mt-2">
+                      Showing 10 of {historicalTransactionChanges.length} records
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -3464,7 +3730,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
               <p className="text-sm text-gray-600 mb-4">
                 Review requests to reopen closed tickets for changes.
               </p>
-              {ticketReopenRequests.length === 0 ? (
+              {ticketReopenRequests.length === 0 && historicalTicketReopenRequests.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
                   <p>No pending ticket change requests</p>
@@ -3546,6 +3812,57 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {historicalTicketReopenRequests.length > 0 && (
+                <div className="mt-8 pt-8 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Historical Approvals</h3>
+                  <div className="space-y-2">
+                    {historicalTicketReopenRequests.slice(0, 10).map((item) => (
+                      <div
+                        key={item.request_id}
+                        className={`bg-gray-50 rounded-lg border p-3 ${
+                          item.status === 'approved' ? 'border-green-200' : 'border-red-200'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <RotateCcw className="w-4 h-4 text-blue-600" />
+                              <span className="text-sm font-medium text-gray-900">
+                                Ticket #{item.ticket_no}
+                              </span>
+                              <Badge variant={item.status === 'approved' ? 'success' : 'danger'}>
+                                {item.status.toUpperCase()}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-gray-600">
+                              {item.customer_name || 'Walk-in'} • ${item.total.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-gray-600">
+                              Requested by: {item.created_by_name}
+                              {' • '}Reason: {item.reason_comment}
+                            </p>
+                            {item.review_comment && (
+                              <p className="text-xs text-gray-600 mt-1">
+                                Comment: {item.review_comment}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-500 mt-1">
+                              {item.status === 'approved' ? 'Approved' : 'Rejected'} by: {item.reviewed_by_name}
+                              {item.reviewed_at && ` on ${formatDateTimeEST(item.reviewed_at)}`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {historicalTicketReopenRequests.length > 10 && (
+                    <p className="text-xs text-gray-500 text-center mt-2">
+                      Showing 10 of {historicalTicketReopenRequests.length} records
+                    </p>
+                  )}
                 </div>
               )}
             </div>
