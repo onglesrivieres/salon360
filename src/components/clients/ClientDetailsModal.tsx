@@ -159,7 +159,7 @@ export function ClientDetailsModal({
       isOpen={isOpen}
       onClose={onClose}
       title={client.name}
-      size="lg"
+      size="xl"
       headerActions={
         <>
           <span className={`text-xs font-medium px-2 py-0.5 rounded ${
