@@ -134,7 +134,7 @@ ToastProvider → AuthProvider → PermissionsProvider → PermissionsCacheProvi
 
 **AttendancePage** (`AttendancePage.tsx`): Bi-weekly payroll period view. Check-in/out recording, hours + overtime calculation, multi-store tracking. CSV export. Change request proposals. Employees grouped by pay type. Technician/Receptionist see own attendance only.
 
-**TipReportPage** (`TipReportPage.tsx`): Daily/weekly tip views by technician. Customer tips (cash+card) and receptionist-paired tips. Service duration status indicators (green/yellow/red). Multi-select technician filter. CSV export. Commission employees can't see tips unless Manager+.
+**TipReportPage** (`TipReportPage.tsx`): Daily/weekly/period tip views by technician. Customer tips (cash+card) and receptionist-paired tips. Service duration status indicators (green/yellow/red). Multi-select technician filter. CSV export. Commission employees can't see tips unless Manager+. Period tab shows 14-day bi-weekly payroll cycle (same anchor as AttendancePage: Oct 13, 2024) using WeeklyCalendarView with 14 columns.
 
 **EndOfDayPage** (`EndOfDayPage.tsx`): Cash reconciliation — opening cash, denomination counting, cash in/out transactions, variance calculation. Expected = Cash payments + Cash tips - Discounts. Balanced when variance < $0.01.
 
@@ -494,9 +494,12 @@ Always filter by `store_id` when querying store-specific data:
 
 ---
 
-## Recent Changes (Jan 23 – Feb 16, 2026)
+## Recent Changes (Jan 23 – Feb 17, 2026)
 
 Changes grouped by feature area. All dates in 2026.
+
+### Tip Report Period Tab (Feb 17)
+- Added Period tab to Tip Report page showing 14-day bi-weekly payroll cycle tips per technician per day. Uses same payroll anchor as AttendancePage (Oct 13, 2024). Reuses `WeeklyCalendarView` with 14-column `periodDates`. New functions: `getPeriodDateRange()`, `getPeriodDates()`, `getCurrentPeriodLabel()`, `navigatePeriod()`, `isCurrentPeriod()`, `fetchPeriodData()`. Period navigation (prev/next ±14 days, Today button) on both mobile and desktop. Hidden from Receptionist/Cashier via existing `visibleViewModes` filter. No database changes. Files: `TipReportPage.tsx`
 
 ### Historical Approvals on All Tabs (Feb 16)
 - Added Historical Approvals section to Inventory, Cash, Transaction Changes, and Ticket Changes tabs on Pending Approvals page. Previously only Tickets, Attendance, and Violations tabs showed history — approved/rejected items disappeared on other tabs. 4 new RPCs: `get_historical_inventory_approvals`, `get_historical_cash_transaction_approvals`, `get_historical_transaction_change_approvals`, `get_historical_ticket_reopen_approvals`. Each returns up to 50 recent records with reviewer info. Cash history applies same role-based filtering as pending (Supervisor sees Receptionist/Cashier only). Fixed `handleRejectInventory` and `handleRejectCashTransaction` not recording `manager_approved_by_id`/`manager_approved_at` on rejection. 4 new TypeScript interfaces. Historical sections use same visual pattern as Tickets tab (green/red borders, status+type badges, reviewer timestamp, "Showing X of Y"). Files: `PendingApprovalsPage.tsx`, `supabase.ts` + migration

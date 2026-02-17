@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Download, Printer, ChevronLeft, ChevronRight, ChevronDown, Check, CheckCircle, X, Circle, Calendar, CalendarDays, Filter } from 'lucide-react';
+import { Download, Printer, ChevronLeft, ChevronRight, ChevronDown, Check, CheckCircle, X, Circle, Calendar, CalendarDays, CalendarRange, Filter } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -76,7 +76,7 @@ interface TipReportPageProps {
 export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps) {
   const [summaries, setSummaries] = useState<TechnicianSummary[]>([]);
   const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<'detail' | 'weekly'>('detail');
+  const [viewMode, setViewMode] = useState<'detail' | 'weekly' | 'period'>('detail');
   const [weeklyData, setWeeklyData] = useState<Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>>>(new Map());
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
@@ -104,9 +104,10 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   const [storeClosingTime, setStoreClosingTime] = useState<string | null>(null);
 
   // View mode tab configuration for responsive dropdown
-  const viewModeConfig: Array<{ key: 'detail' | 'weekly'; label: string; icon: typeof Calendar }> = [
+  const viewModeConfig: Array<{ key: 'detail' | 'weekly' | 'period'; label: string; icon: typeof Calendar }> = [
     { key: 'detail', label: 'Daily', icon: Calendar },
     { key: 'weekly', label: 'Weekly', icon: CalendarDays },
+    { key: 'period', label: 'Period', icon: CalendarRange },
   ];
   const visibleViewModes = viewModeConfig.filter(mode =>
     mode.key === 'detail' || !isReceptionist
@@ -268,6 +269,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   useEffect(() => {
     if (viewMode === 'weekly') {
       fetchWeeklyData();
+    } else if (viewMode === 'period') {
+      fetchPeriodData();
     } else {
       fetchTipData();
     }
@@ -297,6 +300,68 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     return weekNo;
+  }
+
+  function getPeriodDateRange(dateStr: string) {
+    const payrollStartDate = new Date(2024, 9, 13); // Oct 13, 2024
+    const currentDate = new Date(dateStr + 'T00:00:00');
+    currentDate.setHours(0, 0, 0, 0);
+    payrollStartDate.setHours(0, 0, 0, 0);
+
+    const daysSinceStart = Math.floor((currentDate.getTime() - payrollStartDate.getTime()) / (1000 * 60 * 60 * 24));
+    const periodNumber = Math.floor(daysSinceStart / 14);
+
+    const periodStart = new Date(payrollStartDate);
+    periodStart.setDate(periodStart.getDate() + (periodNumber * 14));
+
+    const periodEnd = new Date(periodStart);
+    periodEnd.setDate(periodEnd.getDate() + 13);
+
+    const formatLocalDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    return { startDate: formatLocalDate(periodStart), endDate: formatLocalDate(periodEnd), periodStart, periodEnd };
+  }
+
+  function getPeriodDates(dateStr: string): string[] {
+    const { periodStart, periodEnd } = getPeriodDateRange(dateStr);
+    const dates: string[] = [];
+    for (let d = new Date(periodStart); d <= periodEnd; d.setDate(d.getDate() + 1)) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      dates.push(`${year}-${month}-${day}`);
+    }
+    return dates;
+  }
+
+  function getCurrentPeriodLabel(): string {
+    const { periodStart, periodEnd } = getPeriodDateRange(selectedDate);
+    const startYear = periodStart.getFullYear();
+    const endYear = periodEnd.getFullYear();
+
+    if (startYear !== endYear) {
+      const formatDateWithYear = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+      return `${formatDateWithYear(periodStart)} - ${formatDateWithYear(periodEnd)}`;
+    } else {
+      const formatDate = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+      return `${formatDate(periodStart)} - ${formatDate(periodEnd)}/${endYear}`;
+    }
+  }
+
+  function navigatePeriod(direction: 'prev' | 'next') {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + (direction === 'prev' ? -14 : 14));
+    onDateChange(formatDateISOEST(d));
+  }
+
+  function isCurrentPeriod(): boolean {
+    const today = getCurrentDateEST();
+    return getPeriodDateRange(selectedDate).startDate === getPeriodDateRange(today).startDate;
   }
 
   async function fetchDailyTipData(dateToFetch: string, forWeeklyView: boolean = false): Promise<Map<string, TechnicianSummary>> {
@@ -662,6 +727,122 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     }
   }
 
+  async function fetchPeriodData() {
+    try {
+      setLoading(true);
+
+      const periodDates = getPeriodDates(selectedDate);
+
+      const dailyDataPromises = periodDates.map(date => fetchDailyTipData(date, true));
+      const dailyDataResults = await Promise.all(dailyDataPromises);
+
+      const dataMap = new Map<string, Map<string, Map<string, { store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>>();
+
+      periodDates.forEach((date, index) => {
+        const technicianMap = dailyDataResults[index];
+
+        for (const [techId, summary] of technicianMap.entries()) {
+          if (!dataMap.has(techId)) {
+            dataMap.set(techId, new Map());
+          }
+
+          const techMap = dataMap.get(techId)!;
+          if (!techMap.has(date)) {
+            techMap.set(date, new Map());
+          }
+
+          const storeBreakdown = new Map<string, { store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>();
+
+          for (const item of summary.items) {
+            const storeId = item.store_code;
+            if (!storeBreakdown.has(storeId)) {
+              storeBreakdown.set(storeId, {
+                store_id: storeId,
+                store_code: item.store_code,
+                tips_customer: 0,
+                tips_receptionist: 0,
+              });
+            }
+
+            const storeData = storeBreakdown.get(storeId)!;
+            storeData.tips_customer += (parseFloat(String(item.tip_customer_cash)) || 0) + (parseFloat(String(item.tip_customer_card)) || 0);
+            storeData.tips_receptionist += (parseFloat(String(item.tip_receptionist)) || 0);
+          }
+
+          const dateMap = techMap.get(date)!;
+          for (const [storeId, storeData] of storeBreakdown.entries()) {
+            dateMap.set(storeId, storeData);
+          }
+        }
+      });
+
+      const finalData = new Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>>();
+
+      for (const [techId, dateMap] of dataMap.entries()) {
+        const techDateMap = new Map<string, Array<{ store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>();
+
+        for (const [date, storeMap] of dateMap.entries()) {
+          const storesArray = Array.from(storeMap.values());
+          techDateMap.set(date, storesArray);
+        }
+
+        finalData.set(techId, techDateMap);
+      }
+
+      const techNames = new Map<string, string>();
+      for (const technicianMap of dailyDataResults) {
+        for (const [techId, summary] of technicianMap.entries()) {
+          techNames.set(techId, summary.technician_name);
+        }
+      }
+
+      const sortedData = new Map(
+        Array.from(finalData.entries()).sort((a, b) => {
+          const nameA = techNames.get(a[0]) || '';
+          const nameB = techNames.get(b[0]) || '';
+          return nameA.localeCompare(nameB);
+        })
+      );
+
+      setWeeklyData(sortedData);
+
+      const technicianMap = new Map<string, TechnicianSummary>();
+      for (const [techId, dayMap] of sortedData.entries()) {
+        const techName = techNames.get(techId) || 'Unknown';
+        let totalCustomer = 0;
+        let totalReceptionist = 0;
+
+        for (const storesArray of dayMap.values()) {
+          for (const storeData of storesArray) {
+            totalCustomer += storeData.tips_customer;
+            totalReceptionist += storeData.tips_receptionist;
+          }
+        }
+
+        technicianMap.set(techId, {
+          technician_id: techId,
+          technician_name: techName,
+          services_count: 0,
+          revenue: 0,
+          service_revenue: 0,
+          addon_revenue: 0,
+          total_revenue: 0,
+          tips_customer: totalCustomer,
+          tips_receptionist: totalReceptionist,
+          tips_total: totalCustomer + totalReceptionist,
+          items: [],
+        });
+      }
+
+      const sortedSummaries = Array.from(technicianMap.values());
+      setSummaries(sortedSummaries);
+    } catch (error) {
+      showToast('Failed to load period data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function fetchTipData() {
     try {
       setLoading(true);
@@ -924,6 +1105,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     setEditingTicketId(null);
     if (viewMode === 'weekly') {
       fetchWeeklyData();
+    } else if (viewMode === 'period') {
+      fetchPeriodData();
     } else {
       fetchTipData();
     }
@@ -1093,6 +1276,35 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                 )}
               </div>
             )}
+            {viewMode === 'period' && (
+              <div className="flex items-center gap-2 md:hidden">
+                {!isCurrentPeriod() && (
+                  <button
+                    onClick={() => onDateChange(getCurrentDateEST())}
+                    className="px-2 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[44px] flex items-center justify-center"
+                  >
+                    {t('common.today')}
+                  </button>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => navigatePeriod('prev')}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-sm font-medium text-gray-700 min-w-[130px] text-center">
+                  {getCurrentPeriodLabel()}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => navigatePeriod('next')}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
           </div>
           <div className="flex gap-2 items-center w-full md:w-auto justify-between">
             {viewMode === 'weekly' && (
@@ -1119,6 +1331,35 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                   size="sm"
                   variant="ghost"
                   onClick={() => navigateWeek('next')}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+            {viewMode === 'period' && (
+              <div className="hidden md:flex items-center gap-2">
+                {!isCurrentPeriod() && (
+                  <button
+                    onClick={() => onDateChange(getCurrentDateEST())}
+                    className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[32px] flex items-center justify-center"
+                  >
+                    {t('common.today')}
+                  </button>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => navigatePeriod('prev')}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-sm font-medium text-gray-700 min-w-[150px] text-center">
+                  {getCurrentPeriodLabel()}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => navigatePeriod('next')}
                 >
                   <ChevronRight className="w-4 h-4" />
                 </Button>
@@ -1251,6 +1492,16 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
               weeklyData={weeklyData}
               summaries={filteredSummaries}
               periodDates={getWeekDates(getWeekStartDate(selectedDate))}
+              multiStoreEmployeeIds={multiStoreEmployeeIds}
+            />
+          </div>
+        ) : viewMode === 'period' ? (
+          <div className="p-2 overflow-x-auto">
+            <WeeklyCalendarView
+              selectedDate={selectedDate}
+              weeklyData={weeklyData}
+              summaries={filteredSummaries}
+              periodDates={getPeriodDates(selectedDate)}
               multiStoreEmployeeIds={multiStoreEmployeeIds}
             />
           </div>
