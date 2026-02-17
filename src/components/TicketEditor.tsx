@@ -753,6 +753,8 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     return svc?.requires_photos;
   });
 
+  const hasHighAddonPrice = items.some(item => (parseFloat(item.addon_price) || 0) > 15);
+
   function calculateSubtotal(): number {
     const itemsTotal = items.reduce((sum, item) => {
       const price = parseFloat(item.price_each) || 0;
@@ -1053,7 +1055,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     }
 
     // Validate photos and notes for new tickets with requires_photos services
-    if (!ticketId && hasRequiresPhotosService) {
+    if (!ticketId && (hasRequiresPhotosService || hasHighAddonPrice)) {
       if (!formData.notes || formData.notes.trim() === '') {
         showToast('Notes are required for this service', 'error');
         return;
@@ -1412,7 +1414,7 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     }
 
     // Validate photos and notes for tickets with requires_photos services
-    if (hasRequiresPhotosService) {
+    if (hasRequiresPhotosService || hasHighAddonPrice) {
       if (!formData.notes || formData.notes.trim() === '') {
         showToast('Notes are required for this service', 'error');
         return;
@@ -2700,26 +2702,26 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              Notes / Comments{hasRequiresPhotosService && !ticketId && <span className="text-red-500"> *</span>}
+              Notes / Comments{(hasRequiresPhotosService || hasHighAddonPrice) && !ticketId && <span className="text-red-500"> *</span>}
             </label>
             <textarea
               value={formData.notes}
               onChange={(e) =>
                 setFormData({ ...formData, notes: e.target.value })
               }
-              rows={hasRequiresPhotosService && !ticketId ? 2 : 1}
+              rows={(hasRequiresPhotosService || hasHighAddonPrice) && !ticketId ? 2 : 1}
               className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                hasRequiresPhotosService && !ticketId && (!formData.notes || formData.notes.trim() === '')
+                (hasRequiresPhotosService || hasHighAddonPrice) && !ticketId && (!formData.notes || formData.notes.trim() === '')
                   ? 'border-red-300'
                   : 'border-gray-300'
               }`}
               disabled={!canEditNotes}
-              placeholder={canEditNotes ? (hasRequiresPhotosService && !ticketId ? "Notes required for this service..." : "Add notes or comments...") : ""}
+              placeholder={canEditNotes ? ((hasRequiresPhotosService || hasHighAddonPrice) && !ticketId ? "Notes required for this service..." : "Add notes or comments...") : ""}
             />
           </div>
 
           {/* Photos Section */}
-          {(ticketId || (!ticketId && hasRequiresPhotosService)) && selectedStoreId && (
+          {(ticketId || (!ticketId && (hasRequiresPhotosService || hasHighAddonPrice))) && selectedStoreId && (
             <TicketPhotosSection
               ref={photosSectionRef}
               storeId={selectedStoreId}

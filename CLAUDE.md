@@ -269,6 +269,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 - **Rejection**: Rejected tickets can be reopened (Manager+ only)
 - **Delete**: Admin only — permanent removal
 - **Void**: Owner/Manager/Supervisor/Receptionist/Cashier — soft-delete with required reason. Voided tickets visible (grayed out, amber badge) but excluded from all financial reports (Tip Report, EOD, Insights, client stats). Read-only. Admin sees Delete instead of Void.
+- **Photos/Notes Required**: Tickets with `requires_photos` services OR any item add-on > $15 require at least 1 photo and notes before closing
 
 ### 6.2 Tip Visibility Rules
 
@@ -508,6 +509,9 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes (Jan 23 – Feb 17, 2026)
 
 Changes grouped by feature area. All dates in 2026.
+
+### Tickets — High Add-On Photo Requirement (Feb 17)
+- Require photos and notes when any ticket item has an add-on price > $15. Reuses existing `requires_photos` validation (min 1 photo + notes on close). Photo upload section and required indicators shown on new tickets with high add-ons. No DB changes. Files: `TicketEditor.tsx`
 
 ### Tax Feature (Feb 17)
 - Configurable GST/QST sales tax on service charges. 3 new `app_settings`: `enable_tax` (boolean, off by default), `tax_rate_gst` (5.0%), `tax_rate_qst` (9.975%). Tax is additive — calculated on `max(0, subtotal - discount)`. Tips are NOT taxed. Payment pre-fill is tax-inclusive (subtotal + GST + QST), keeping EOD formula unchanged. New columns on `sale_tickets`: `tax_gst`, `tax_qst` (numeric, default 0.00). Existing `subtotal` and `tax` columns now populated on save. Payment Summary in TicketEditor shows Service Subtotal, Discounts, GST/QST lines (when enabled), and updated Grand Total. ConfigurationPage auto-renders settings with `%` unit labels and decimal step for rate fields. Insights page adds conditional "Tax Collected" metric card (orange, Receipt icon) when `taxCollected > 0`. `SalesSummary` interface extended with `taxCollected`. i18n keys added: `gst`, `qst`, `serviceSubtotal`, `taxCollected` in all 4 languages. Files: `TicketEditor.tsx`, `SalesMetrics.tsx`, `useSalesData.ts`, `ConfigurationPage.tsx`, `supabase.ts`, `i18n.ts` + migration
