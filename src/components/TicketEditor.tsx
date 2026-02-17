@@ -88,6 +88,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
   const showCustomerPhone = getSettingBoolean('show_customer_phone_field', true);
   const showTodaysColor = getSettingBoolean('show_todays_color_field', true);
   const requireTodaysColor = getSettingBoolean('require_todays_color_on_tickets', false);
+  const enableTax = getSettingBoolean('enable_tax', false);
+  const taxRateGst = getSettingNumber('tax_rate_gst', 5.0);
+  const taxRateQst = getSettingNumber('tax_rate_qst', 9.975);
 
   const isApproved = ticket?.approval_status === 'approved' || ticket?.approval_status === 'auto_approved';
 
@@ -759,6 +762,22 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
     return itemsTotal;
   }
 
+  function calculateTaxGst(discountOverride?: number): number {
+    if (!enableTax) return 0;
+    const subtotal = calculateSubtotal();
+    const discount = discountOverride ?? calculateTotalDiscount();
+    const taxable = Math.max(0, subtotal - discount);
+    return Math.round(taxable * (taxRateGst / 100) * 100) / 100;
+  }
+
+  function calculateTaxQst(discountOverride?: number): number {
+    if (!enableTax) return 0;
+    const subtotal = calculateSubtotal();
+    const discount = discountOverride ?? calculateTotalDiscount();
+    const taxable = Math.max(0, subtotal - discount);
+    return Math.round(taxable * (taxRateQst / 100) * 100) / 100;
+  }
+
   function calculateTotal(): number {
     const subtotal = calculateSubtotal();
     const totalDiscount = calculateTotalDiscount();
@@ -805,13 +824,14 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
 
   function handlePaymentMethodClick(method: 'Cash' | 'Card' | 'Mixed') {
     const subtotal = calculateSubtotal();
-    const subtotalStr = subtotal > 0 ? subtotal.toFixed(2) : '';
+    const totalWithTax = subtotal + calculateTaxGst() + calculateTaxQst();
+    const amountStr = totalWithTax > 0 ? totalWithTax.toFixed(2) : '';
     const existingData = hasExistingPaymentData();
 
     setTempPaymentData({
-      // Always prefill payment with current subtotal for the selected method
-      payment_cash: method === 'Cash' ? subtotalStr : (existingData ? (formData.payment_cash || '0') : ''),
-      payment_card: method === 'Card' ? subtotalStr : (existingData ? (formData.payment_card || '0') : ''),
+      // Always prefill payment with current subtotal + tax for the selected method
+      payment_cash: method === 'Cash' ? amountStr : (existingData ? (formData.payment_cash || '0') : ''),
+      payment_card: method === 'Card' ? amountStr : (existingData ? (formData.payment_card || '0') : ''),
       payment_gift_card: existingData ? (formData.payment_gift_card || '0') : '',
       // Preserve existing tips and discounts
       tip_customer_cash: existingData ? (formData.tip_customer_cash || '0') : '',
@@ -1059,6 +1079,9 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
       }
 
       const total = calculateTotal();
+      const ticketSubtotal = calculateSubtotal();
+      const ticketTaxGst = calculateTaxGst();
+      const ticketTaxQst = calculateTaxQst();
       let createdTicketId: string | null = null;
       let paymentCash = parseFloat(formData.payment_cash) || 0;
       let paymentCard = parseFloat(formData.payment_card) || 0;
@@ -1087,6 +1110,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           client_id: linkedClient?.id || null,
           payment_method: formData.payment_method || null,
           total,
+          subtotal: ticketSubtotal,
+          tax_gst: ticketTaxGst,
+          tax_qst: ticketTaxQst,
+          tax: ticketTaxGst + ticketTaxQst,
           notes: formData.notes,
           saved_by: session?.employee_id,
           updated_at: new Date().toISOString(),
@@ -1218,6 +1245,10 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           client_id: linkedClient?.id || null,
           payment_method: formData.payment_method || null,
           total,
+          subtotal: ticketSubtotal,
+          tax_gst: ticketTaxGst,
+          tax_qst: ticketTaxQst,
+          tax: ticketTaxGst + ticketTaxQst,
           notes: formData.notes,
           store_id: selectedStoreId || null,
           created_by: session?.employee_id,
@@ -3318,23 +3349,37 @@ export function TicketEditor({ ticketId, onClose, selectedDate, hideTips = false
           )}
 
           {(() => {
-            const tempTotalPayments = (parseFloat(tempPaymentData.payment_cash) || 0) + (parseFloat(tempPaymentData.payment_card) || 0) + (parseFloat(tempPaymentData.payment_gift_card) || 0);
+            const tempSubtotal = calculateSubtotal();
             const tempTotalDiscount = formData.payment_method === 'Cash' ? (parseFloat(tempPaymentData.discount_amount_cash) || 0) : (formData.payment_method === 'Card' || formData.payment_method === 'Mixed') ? (parseFloat(tempPaymentData.discount_amount) || 0) : 0;
+            const tempGst = calculateTaxGst(tempTotalDiscount);
+            const tempQst = calculateTaxQst(tempTotalDiscount);
             const tempTotalTipsClient = parseFloat(tempPaymentData.tip_customer_card) || 0;
-            const tempTotalCollected = tempTotalPayments - tempTotalDiscount + tempTotalTipsClient;
+            const tempTotalCollected = tempSubtotal - tempTotalDiscount + tempGst + tempQst + tempTotalTipsClient;
             const tempTipReceptionist = parseFloat(tempPaymentData.tip_receptionist) || 0;
             return (
           <div className="border border-gray-200 rounded-lg p-2.5 bg-gray-50">
             <h4 className="text-xs font-semibold text-gray-700 mb-1.5">Payment Summary</h4>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Total Payments:</span>
-                <span className="font-semibold text-gray-900">${tempTotalPayments.toFixed(2)}</span>
+                <span className="text-gray-600">Service Subtotal:</span>
+                <span className="font-semibold text-gray-900">${tempSubtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-red-600">
                 <span>Total Discounts:</span>
                 <span className="font-semibold">-${tempTotalDiscount.toFixed(2)}</span>
               </div>
+              {enableTax && (
+                <>
+                  <div className="flex justify-between text-gray-600">
+                    <span>GST ({taxRateGst}%):</span>
+                    <span className="font-semibold">+${tempGst.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>QST ({taxRateQst}%):</span>
+                    <span className="font-semibold">+${tempQst.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
               {!hideTips && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Total Tips Given by Clients:</span>

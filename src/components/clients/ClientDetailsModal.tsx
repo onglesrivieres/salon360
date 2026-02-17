@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { User, Phone, FileText, Calendar, Hash, AlertTriangle, Palette, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
+import { User, Phone, FileText, Calendar, Hash, AlertTriangle, Palette, Edit2, Eye } from 'lucide-react';
 import { ClientWithStats, VisitHistoryEntry, supabase } from '../../lib/supabase';
 import { formatPhoneNumber, maskPhoneNumber } from '../../lib/phoneUtils';
 import { Drawer } from '../ui/Drawer';
+import { TicketEditor } from '../TicketEditor';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface ClientDetailsModalProps {
   isOpen: boolean;
@@ -21,10 +23,34 @@ export function ClientDetailsModal({
   onEdit,
   canViewFullPhone = false,
 }: ClientDetailsModalProps) {
+  const { session } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [visitHistory, setVisitHistory] = useState<VisitHistoryEntry[]>([]);
   const [isLoadingVisits, setIsLoadingVisits] = useState(false);
-  const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
+  const [viewingTicketId, setViewingTicketId] = useState<string | null>(null);
+  const [viewingTicketDate, setViewingTicketDate] = useState<string>('');
+
+  // Check if user is a commission employee (tips hidden for commission non-management)
+  const [isCommissionEmployee, setIsCommissionEmployee] = useState(false);
+
+  useEffect(() => {
+    async function checkPayType() {
+      if (session?.employee_id) {
+        const { data: employeeData } = await supabase
+          .from('employees')
+          .select('pay_type')
+          .eq('id', session.employee_id)
+          .maybeSingle();
+        setIsCommissionEmployee(employeeData?.pay_type === 'commission');
+      }
+    }
+    checkPayType();
+  }, [session?.employee_id]);
+
+  const MANAGEMENT_ROLES = ['Admin', 'Manager', 'Owner', 'Supervisor'] as const;
+  const isManagement = session?.role ?
+    MANAGEMENT_ROLES.some(r => session.role?.includes(r)) : false;
+  const shouldHideTips = isCommissionEmployee && !isManagement;
 
   // Fetch visit history when visits tab is selected
   useEffect(() => {
@@ -37,7 +63,7 @@ export function ClientDetailsModal({
   useEffect(() => {
     if (isOpen) {
       setActiveTab('details');
-      setExpandedVisitId(null);
+      setViewingTicketId(null);
     }
   }, [isOpen]);
 
@@ -128,6 +154,7 @@ export function ClientDetailsModal({
   };
 
   return (
+    <>
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
@@ -300,103 +327,79 @@ export function ClientDetailsModal({
                 <p className="text-sm">No visit history yet</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
-                {visitHistory.map((visit) => {
-                  const isExpanded = expandedVisitId === visit.id;
-                  const serviceNames = visit.services.map(s => s.name).join(', ');
-                  const techNames = getUniqueNames(visit.services);
+              <div className="overflow-x-auto -mx-2">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-gray-500 uppercase tracking-wide border-b border-gray-200">
+                      <th className="py-2 px-2 font-medium">Date</th>
+                      <th className="py-2 px-2 font-medium">Service</th>
+                      <th className="py-2 px-2 font-medium">Technician</th>
+                      <th className="py-2 px-2 font-medium">Color</th>
+                      <th className="py-2 px-2 w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {visitHistory.map((visit) => {
+                      const serviceNames = visit.services.map(s => s.name).join(', ');
+                      const techNames = getUniqueNames(visit.services);
+                      const colorNames = visit.colors.map(c => c.color).join(', ');
 
-                  return (
-                    <div key={visit.id}>
-                      {/* Summary Row */}
-                      <button
-                        onClick={() => setExpandedVisitId(isExpanded ? null : visit.id)}
-                        className="w-full text-left py-3 hover:bg-gray-50 transition-colors flex items-center gap-3"
-                      >
-                        {/* Date */}
-                        <div className="w-14 flex-shrink-0">
-                          <span className="text-sm font-medium text-gray-900">
-                            {formatShortDate(visit.ticket_date)}
-                          </span>
-                        </div>
-
-                        {/* Services & Technicians */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-800 truncate">
-                            {serviceNames || 'No services'}
-                          </p>
-                          <p className="text-xs text-gray-500 truncate">
+                      return (
+                        <tr key={visit.id} className="hover:bg-gray-50">
+                          <td className="py-2.5 px-2 whitespace-nowrap">
+                            <span className="text-sm font-medium text-gray-900">
+                              {formatShortDate(visit.ticket_date)}
+                            </span>
+                            {!visit.closed_at && (
+                              <span className="ml-1.5 text-xs font-medium px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700">
+                                Open
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-2 text-gray-800">
+                            {serviceNames || '—'}
+                          </td>
+                          <td className="py-2.5 px-2 text-gray-600">
                             {techNames.length > 0 ? techNames.join(', ') : '—'}
-                          </p>
-                        </div>
-
-                        {/* Color indicator */}
-                        {visit.colors.length > 0 && (
-                          <Palette className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
-                        )}
-
-                        {/* Status */}
-                        {!visit.closed_at && (
-                          <span className="flex-shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700">
-                            Open
-                          </span>
-                        )}
-
-                        {/* Expand icon */}
-                        <div className="flex-shrink-0 text-gray-400">
-                          {isExpanded ? (
-                            <ChevronUp className="w-4 h-4" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4" />
-                          )}
-                        </div>
-                      </button>
-
-                      {/* Expanded Details */}
-                      {isExpanded && (
-                        <div className="pb-3 pl-4 pr-2 bg-gray-50 rounded-b-lg mb-1">
-                          {/* Ticket info */}
-                          <div className="flex items-center gap-3 py-2 text-xs text-gray-500 border-b border-gray-200">
-                            <span className="font-mono">#{visit.ticket_no}</span>
-                          </div>
-
-                          {/* Service lines */}
-                          <div className="py-2 space-y-1.5">
-                            {visit.services.map((svc) => (
-                              <div key={svc.id} className="text-xs">
-                                  <span className="text-gray-800">{svc.name}</span>
-                                  <span className="text-gray-400"> — by </span>
-                                  <span className="text-blue-600">{svc.employee_name}</span>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Colors */}
-                          {visit.colors.length > 0 && (
-                            <div className="pt-1.5 border-t border-gray-200">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <Palette className="w-3 h-3 text-purple-500" />
-                                {visit.colors.map((c) => (
-                                  <span
-                                    key={c.id}
-                                    className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full"
-                                  >
-                                    {c.color}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                          </td>
+                          <td className="py-2.5 px-2">
+                            {colorNames ? (
+                              <span className="text-purple-600">{colorNames}</span>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-2">
+                            <button
+                              onClick={() => {
+                                setViewingTicketId(visit.id);
+                                setViewingTicketDate(visit.ticket_date);
+                              }}
+                              className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="View ticket"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
         )}
       </div>
     </Drawer>
+    {viewingTicketId && (
+      <TicketEditor
+        ticketId={viewingTicketId}
+        onClose={() => setViewingTicketId(null)}
+        selectedDate={viewingTicketDate}
+        hideTips={shouldHideTips}
+      />
+    )}
+    </>
   );
 }

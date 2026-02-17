@@ -172,6 +172,10 @@ export interface SaleTicket {
   voided_at?: string | null;
   voided_by?: string | null;
   void_reason?: string | null;
+  subtotal?: number;
+  tax?: number;
+  tax_gst?: number;
+  tax_qst?: number;
   created_at: string;
   updated_at: string;
   // Optional: populated when ticket_photos is included in query

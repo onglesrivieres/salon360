@@ -11,6 +11,7 @@ export interface SalesSummary {
   cardCollected: number;
   tipsGiven: number;
   tipsPaired: number;
+  taxCollected: number;
 }
 
 export interface SalesMetrics {
@@ -63,8 +64,8 @@ function getPreviousDateRange(dateRange: DateRange): DateRange {
 
 export function useSalesMetrics(dateRange: DateRange, storeId: string | null): SalesMetrics {
   const [metrics, setMetrics] = useState<SalesMetrics>({
-    current: { transactions: 0, grossSales: 0, netSales: 0, averageTicket: 0, cashCollected: 0, cardCollected: 0, tipsGiven: 0, tipsPaired: 0 },
-    previous: { transactions: 0, grossSales: 0, netSales: 0, averageTicket: 0, cashCollected: 0, cardCollected: 0, tipsGiven: 0, tipsPaired: 0 },
+    current: { transactions: 0, grossSales: 0, netSales: 0, averageTicket: 0, cashCollected: 0, cardCollected: 0, tipsGiven: 0, tipsPaired: 0, taxCollected: 0 },
+    previous: { transactions: 0, grossSales: 0, netSales: 0, averageTicket: 0, cashCollected: 0, cardCollected: 0, tipsGiven: 0, tipsPaired: 0, taxCollected: 0 },
     isLoading: true,
     error: null,
   });
@@ -86,7 +87,7 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
         const [currentResult, previousResult, currentItemsResult, previousItemsResult] = await Promise.all([
           supabase
             .from('sale_tickets')
-            .select('id, total, discount, closed_at')
+            .select('id, total, discount, closed_at, tax_gst, tax_qst')
             .eq('store_id', storeId)
             .gte('ticket_date', dateRange.startDate)
             .lte('ticket_date', dateRange.endDate)
@@ -94,7 +95,7 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
             .is('voided_at', null),
           supabase
             .from('sale_tickets')
-            .select('id, total, discount, closed_at')
+            .select('id, total, discount, closed_at, tax_gst, tax_qst')
             .eq('store_id', storeId)
             .gte('ticket_date', previousRange.startDate)
             .lte('ticket_date', previousRange.endDate)
@@ -227,6 +228,13 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
           0
         );
 
+        const currentTaxCollected = currentTickets.reduce(
+          (sum, t) => sum + ((t as any).tax_gst || 0) + ((t as any).tax_qst || 0), 0
+        );
+        const previousTaxCollected = previousTickets.reduce(
+          (sum, t) => sum + ((t as any).tax_gst || 0) + ((t as any).tax_qst || 0), 0
+        );
+
         const currentSummary: SalesSummary = {
           transactions: currentTickets.length,
           grossSales: currentGrandTotal,
@@ -239,6 +247,7 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
           cardCollected: currentCardCollected,
           tipsGiven: currentTipsGiven,
           tipsPaired: currentTipsPaired,
+          taxCollected: currentTaxCollected,
         };
 
         const previousSummary: SalesSummary = {
@@ -253,6 +262,7 @@ export function useSalesMetrics(dateRange: DateRange, storeId: string | null): S
           cardCollected: previousCardCollected,
           tipsGiven: previousTipsGiven,
           tipsPaired: previousTipsPaired,
+          taxCollected: previousTaxCollected,
         };
 
         setMetrics({

@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Banknote, CreditCard, Heart, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Banknote, CreditCard, Heart, Users, Receipt } from 'lucide-react';
 import { SalesMetrics as SalesMetricsData } from '../../hooks/useSalesData';
 import { formatCurrency, formatNumber, formatPercentage, calculateTrend } from '../../lib/formatters';
 
@@ -26,6 +26,7 @@ export function SalesMetrics({ data }: SalesMetricsProps) {
   const cardCollectedTrend = calculateTrend(data.current.cardCollected, data.previous.cardCollected);
   const tipsGivenTrend = calculateTrend(data.current.tipsGiven, data.previous.tipsGiven);
   const tipsPairedTrend = calculateTrend(data.current.tipsPaired, data.previous.tipsPaired);
+  const taxCollectedTrend = calculateTrend(data.current.taxCollected, data.previous.taxCollected);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -77,6 +78,16 @@ export function SalesMetrics({ data }: SalesMetricsProps) {
         iconBgColor="bg-teal-100"
         iconColor="text-teal-600"
       />
+      {data.current.taxCollected > 0 && (
+        <MetricCard
+          label="Tax Collected"
+          value={formatCurrency(data.current.taxCollected)}
+          trend={taxCollectedTrend}
+          icon={Receipt}
+          iconBgColor="bg-orange-100"
+          iconColor="text-orange-600"
+        />
+      )}
     </div>
   );
 }

@@ -922,20 +922,23 @@ export function ConfigurationPage() {
                                   min={
                                     (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'manager_approval_minutes') ? 10 :
                                     setting.setting_key === 'violation_min_votes_required' ? 1 :
-                                    setting.setting_key === 'small_service_threshold' ? 0 : undefined
+                                    setting.setting_key === 'small_service_threshold' ? 0 :
+                                    (setting.setting_key === 'tax_rate_gst' || setting.setting_key === 'tax_rate_qst') ? 0 : undefined
                                   }
                                   max={
                                     (setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'manager_approval_minutes') ? 10080 :
                                     setting.setting_key === 'violation_min_votes_required' ? 10 :
-                                    setting.setting_key === 'small_service_threshold' ? 500 : undefined
+                                    setting.setting_key === 'small_service_threshold' ? 500 :
+                                    (setting.setting_key === 'tax_rate_gst' || setting.setting_key === 'tax_rate_qst') ? 30 : undefined
                                   }
-                                  step="1"
+                                  step={(setting.setting_key === 'tax_rate_gst' || setting.setting_key === 'tax_rate_qst') ? '0.001' : '1'}
                                   className="w-28 px-3 py-2"
                                   disabled={!canManageSettings || isDisabledByParent}
                                 />
                                 <span className="text-sm text-gray-600">
                                   {setting.setting_key === 'violation_min_votes_required' ? 'votes' :
-                                   setting.setting_key === 'small_service_threshold' ? 'dollars' : 'minutes'}
+                                   setting.setting_key === 'small_service_threshold' ? 'dollars' :
+                                   (setting.setting_key === 'tax_rate_gst' || setting.setting_key === 'tax_rate_qst') ? '%' : 'minutes'}
                                 </span>
                               </div>
                               {(setting.setting_key === 'auto_approval_minutes' || setting.setting_key === 'manager_approval_minutes') && (

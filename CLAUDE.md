@@ -296,6 +296,17 @@ When a user has multiple roles, the highest-ranking role determines their permis
 - **Variance** = Actual Count - Expected Cash; Balanced when < $0.01
 - **Transaction Categories**: Expenses, safe deposit, refunds, HQ deposit, etc.
 
+### 6.4.1 Tax Rules
+
+- **Configurable**: Toggle `enable_tax` setting per store (off by default). Rates: `tax_rate_gst` (5%), `tax_rate_qst` (9.975%)
+- **Additive**: Tax calculated on top of service prices, on `max(0, subtotal - discount)`
+- **Tips NOT taxed**: Tax applies to service charges only
+- **Payment pre-fill**: Tax-inclusive (subtotal + GST + QST). Cashier enters what's actually collected
+- **EOD unaffected**: `payment_cash` already contains tax portion, so Expected Cash formula unchanged
+- **Stored on ticket**: `tax_gst`, `tax_qst`, `tax` (sum), `subtotal` columns on `sale_tickets`
+- **Rounding**: GST and QST rounded independently to nearest cent
+- **Insights**: "Tax Collected" metric card appears when `taxCollected > 0`
+
 ### 6.5 Inventory Rules
 
 - **Lot Numbers**: Auto-generated with store prefix (e.g., `OM-2026-00001`)
@@ -401,7 +412,7 @@ Technician ready → In queue → (skip turn → back to end of queue) → Assig
 
 ### Important Fields
 
-**sale_tickets**: `ticket_no` (auto-generated), `ticket_date` (YYYY-MM-DD), `opened_at`/`closed_at`/`completed_at` (timestamps), `payment_method` (cash/card/mixed/gift_card), `approval_status` (pending_approval/approved/auto_approved/rejected), `approval_required_level` (technician/supervisor/manager/owner), `requires_admin_review` (boolean), `voided_at`/`voided_by`/`void_reason` (void fields)
+**sale_tickets**: `ticket_no` (auto-generated), `ticket_date` (YYYY-MM-DD), `opened_at`/`closed_at`/`completed_at` (timestamps), `payment_method` (cash/card/mixed/gift_card), `approval_status` (pending_approval/approved/auto_approved/rejected), `approval_required_level` (technician/supervisor/manager/owner), `requires_admin_review` (boolean), `voided_at`/`voided_by`/`void_reason` (void fields), `subtotal`/`tax`/`tax_gst`/`tax_qst` (tax fields, default 0.00)
 
 **ticket_items**: `started_at`/`timer_stopped_at`/`completed_at` (service timer), `tip_customer_cash`/`tip_customer_card`, `tip_receptionist`, `payment_cash`/`payment_card`/`payment_gift_card`
 
@@ -497,6 +508,12 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes (Jan 23 – Feb 17, 2026)
 
 Changes grouped by feature area. All dates in 2026.
+
+### Tax Feature (Feb 17)
+- Configurable GST/QST sales tax on service charges. 3 new `app_settings`: `enable_tax` (boolean, off by default), `tax_rate_gst` (5.0%), `tax_rate_qst` (9.975%). Tax is additive — calculated on `max(0, subtotal - discount)`. Tips are NOT taxed. Payment pre-fill is tax-inclusive (subtotal + GST + QST), keeping EOD formula unchanged. New columns on `sale_tickets`: `tax_gst`, `tax_qst` (numeric, default 0.00). Existing `subtotal` and `tax` columns now populated on save. Payment Summary in TicketEditor shows Service Subtotal, Discounts, GST/QST lines (when enabled), and updated Grand Total. ConfigurationPage auto-renders settings with `%` unit labels and decimal step for rate fields. Insights page adds conditional "Tax Collected" metric card (orange, Receipt icon) when `taxCollected > 0`. `SalesSummary` interface extended with `taxCollected`. i18n keys added: `gst`, `qst`, `serviceSubtotal`, `taxCollected` in all 4 languages. Files: `TicketEditor.tsx`, `SalesMetrics.tsx`, `useSalesData.ts`, `ConfigurationPage.tsx`, `supabase.ts`, `i18n.ts` + migration
+
+### Client Visit History Ticket Viewer (Feb 17)
+- Visit History tab in ClientDetailsModal now opens tickets in a read-only TicketEditor overlay instead of expanding inline. Clicking the eye icon on a visit sets `viewingTicketId` and renders `TicketEditor` in view mode. Commission employee detection for tip visibility. Files: `ClientDetailsModal.tsx`
 
 ### Tip Report Period Tab (Feb 17)
 - Added Period tab to Tip Report page showing 14-day bi-weekly payroll cycle tips per technician per day. Uses same payroll anchor as AttendancePage (Oct 13, 2024). Reuses `WeeklyCalendarView` with 14-column `periodDates`. New functions: `getPeriodDateRange()`, `getPeriodDates()`, `getCurrentPeriodLabel()`, `navigatePeriod()`, `isCurrentPeriod()`, `fetchPeriodData()`. Period navigation (prev/next ±14 days, Today button) on both mobile and desktop. Hidden from Receptionist/Cashier via existing `visibleViewModes` filter. No database changes. Files: `TipReportPage.tsx`
