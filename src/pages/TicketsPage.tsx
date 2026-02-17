@@ -9,6 +9,7 @@ import { TicketEditor } from '../components/TicketEditor';
 import { TicketsDetailView } from '../components/TicketsDetailView';
 import { TicketsPeriodView } from '../components/TicketsPeriodView';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { Permissions } from '../lib/permissions';
 import { formatTimeEST, getCurrentDateEST } from '../lib/timezone';
 import { getCategoryBadgeClasses } from '../lib/category-colors';
@@ -38,6 +39,8 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   const [processing, setProcessing] = useState(false);
   const { showToast } = useToast();
   const { session, selectedStoreId, t } = useAuth();
+  const { getSettingBoolean } = useSettings();
+  const enableTax = getSettingBoolean('enable_tax', false);
 
   // Receptionist/Cashier: local date state to bypass global date lock (only for Tickets page)
   const isLocalDateRole = session?.role_permission === 'Receptionist' || session?.role_permission === 'Cashier';
@@ -372,16 +375,16 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   }
 
   function getGrandTotalCollected(ticket: any): number {
-    const firstItem = ticket.ticket_items?.[0];
-    if (!firstItem) return 0;
+    const items = ticket.ticket_items;
+    if (!items || items.length === 0) return 0;
 
-    // Payment values are the same on all items, so take from first item
-    const totalPayments =
-      (firstItem.payment_cash || 0) +
-      (firstItem.payment_card || 0) +
-      (firstItem.payment_gift_card || 0);
+    // Compute subtotal from service prices
+    const subtotal = items.reduce((sum: number, item: any) => {
+      return sum + (item.price_each || 0) + (item.addon_price || 0);
+    }, 0);
 
     // Discount based on payment method (from first item)
+    const firstItem = items[0];
     let totalDiscount = 0;
     if (ticket.payment_method === 'Cash') {
       totalDiscount = firstItem.discount_amount_cash || 0;
@@ -389,10 +392,13 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
       totalDiscount = firstItem.discount_amount || 0;
     }
 
+    // Tax from stored ticket values (only when setting is on)
+    const tax = enableTax ? ((ticket.tax_gst || 0) + (ticket.tax_qst || 0)) : 0;
+
     // Card tips from first item
     const tipCustomerCard = firstItem.tip_customer_card || 0;
 
-    return totalPayments - totalDiscount + tipCustomerCard;
+    return subtotal - totalDiscount + tax + tipCustomerCard;
   }
 
   function getApprovalStatusBadge(ticket: SaleTicket) {
