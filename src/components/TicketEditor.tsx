@@ -936,13 +936,21 @@ export function TicketEditor({
   function calculateTaxGst(): number {
     if (!enableTax) return 0;
     const subtotal = calculateSubtotal();
-    return Math.round(subtotal * (taxRateGst / 100) * 100) / 100;
+    const taxable =
+      formData.payment_method === "Cash"
+        ? subtotal
+        : Math.max(0, subtotal - calculateTotalDiscount());
+    return Math.round(taxable * (taxRateGst / 100) * 100) / 100;
   }
 
   function calculateTaxQst(): number {
     if (!enableTax) return 0;
     const subtotal = calculateSubtotal();
-    return Math.round(subtotal * (taxRateQst / 100) * 100) / 100;
+    const taxable =
+      formData.payment_method === "Cash"
+        ? subtotal
+        : Math.max(0, subtotal - calculateTotalDiscount());
+    return Math.round(taxable * (taxRateQst / 100) * 100) / 100;
   }
 
   function calculateTotal(): number {
