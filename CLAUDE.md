@@ -303,7 +303,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 ### 6.4.1 Tax Rules
 
 - **Configurable**: Toggle `enable_tax` setting per store (off by default). Rates: `tax_rate_gst` (5%), `tax_rate_qst` (9.975%)
-- **Additive**: Tax calculated on top of service prices, on `max(0, subtotal - discount)`
+- **Additive**: Tax calculated on top of service prices, on subtotal (discount does not reduce the tax base)
 - **Tips NOT taxed**: Tax applies to service charges only
 - **Payment pre-fill**: Subtotal only (tax-exclusive). Payment Summary section shows full breakdown (Subtotal, GST, QST, Grand Total) for cashier reference. Discount entry does NOT auto-update payment fields
 - **`payment_cash` semantics**: Stores **subtotal only** (tax-exclusive). EOD computes Cash ticket expected cash from `sale_tickets.subtotal` (not `payment_cash`), making it independent of pre-fill behavior. Fallback to `payment_cash` when `subtotal = 0` (old tickets). Discount % always calculated from `subtotal`
@@ -516,6 +516,9 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes (Jan 23 – Feb 18, 2026)
 
 Changes grouped by feature area. All dates in 2026.
+
+### Tax Calculation Base Fix (Feb 18)
+- Tax (GST/QST) now calculated on subtotal only — discount no longer reduces the tax base. Previously `calculateTaxGst`/`calculateTaxQst` used `max(0, subtotal - discount)` as the taxable amount; now they use `subtotal` directly. Removed `discountOverride` parameter from both functions and updated all call sites. No DB changes. Files: `TicketEditor.tsx`
 
 ### Resources: Dynamic Tabs + Unread Notification System (Feb 18)
 - Replaced hardcoded 2-tab system (SOP, Employee Manual) with fully dynamic tabs. New `resource_tabs` table stores per-store tab definitions (name, slug, icon_name, display_order). Managers can create/rename/delete tabs via Tab Management Modal with icon picker (10 curated lucide icons). Slug auto-generated from name. Existing `sop` and `employee_manual` tabs seeded from current data. Dropped CHECK constraints on `resources.category` and `resource_categories.tab` — both now accept any string matching a `resource_tabs.slug`. `ResourceCategory` TypeScript type widened from union to `string`. Files: `ResourcesPage.tsx`, `ResourceModal.tsx`, `supabase.ts`, `permissions.ts`, `resource-icons.ts` (new), `i18n.ts` + migration

@@ -933,20 +933,16 @@ export function TicketEditor({
     return itemsTotal;
   }
 
-  function calculateTaxGst(discountOverride?: number): number {
+  function calculateTaxGst(): number {
     if (!enableTax) return 0;
     const subtotal = calculateSubtotal();
-    const discount = discountOverride ?? calculateTotalDiscount();
-    const taxable = Math.max(0, subtotal - discount);
-    return Math.round(taxable * (taxRateGst / 100) * 100) / 100;
+    return Math.round(subtotal * (taxRateGst / 100) * 100) / 100;
   }
 
-  function calculateTaxQst(discountOverride?: number): number {
+  function calculateTaxQst(): number {
     if (!enableTax) return 0;
     const subtotal = calculateSubtotal();
-    const discount = discountOverride ?? calculateTotalDiscount();
-    const taxable = Math.max(0, subtotal - discount);
-    return Math.round(taxable * (taxRateQst / 100) * 100) / 100;
+    return Math.round(subtotal * (taxRateQst / 100) * 100) / 100;
   }
 
   function calculateTotal(): number {
@@ -4129,8 +4125,8 @@ export function TicketEditor({
                     formData.payment_method === "Mixed"
                   ? parseFloat(tempPaymentData.discount_amount) || 0
                   : 0;
-            const tempGst = calculateTaxGst(tempTotalDiscount);
-            const tempQst = calculateTaxQst(tempTotalDiscount);
+            const tempGst = calculateTaxGst();
+            const tempQst = calculateTaxQst();
             const tempTotalTipsClient =
               parseFloat(tempPaymentData.tip_customer_card) || 0;
             const tempTotalCollected =
