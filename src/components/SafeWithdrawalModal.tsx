@@ -1,12 +1,12 @@
-import { useState, useCallback } from 'react';
-import { AlertTriangle } from 'lucide-react';
-import { Modal } from './ui/Modal';
-import { Button } from './ui/Button';
-import { NumericInput } from './ui/NumericInput';
-import { PhotoUpload } from './photos/PhotoUpload';
-import { PhotoThumbnail } from './photos/PhotoThumbnail';
-import { compressImage } from '../lib/image-utils';
-import type { PendingPhoto } from './photos/useTicketPhotos';
+import { useState, useCallback } from "react";
+import { AlertTriangle } from "lucide-react";
+import { Drawer } from "./ui/Drawer";
+import { Button } from "./ui/Button";
+import { NumericInput } from "./ui/NumericInput";
+import { PhotoUpload } from "./photos/PhotoUpload";
+import { PhotoThumbnail } from "./photos/PhotoThumbnail";
+import { compressImage } from "../lib/image-utils";
+import type { PendingPhoto } from "./photos/useTicketPhotos";
 
 const MAX_PHOTOS = 3;
 
@@ -25,10 +25,10 @@ export interface WithdrawalData {
 }
 
 const WITHDRAWAL_CATEGORIES = [
-  'Payroll',
-  'Tip Payout',
-  'Headquarter Deposit',
-  'Other',
+  "Payroll",
+  "Tip Payout",
+  "Headquarter Deposit",
+  "Other",
 ];
 
 export function SafeWithdrawalModal({
@@ -37,69 +37,80 @@ export function SafeWithdrawalModal({
   onSubmit,
   currentBalance,
 }: SafeWithdrawalModalProps) {
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
-  const [errors, setErrors] = useState<{ amount?: string; description?: string; category?: string }>({});
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
+  const [errors, setErrors] = useState<{
+    amount?: string;
+    description?: string;
+    category?: string;
+  }>({});
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
   const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
 
-  const handleFileSelect = useCallback(async (file: File) => {
-    if (pendingPhotos.length >= MAX_PHOTOS) return;
+  const handleFileSelect = useCallback(
+    async (file: File) => {
+      if (pendingPhotos.length >= MAX_PHOTOS) return;
 
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!validTypes.includes(file.type)) return;
+      const validTypes = ["image/jpeg", "image/png", "image/webp"];
+      if (!validTypes.includes(file.type)) return;
 
-    try {
-      setIsProcessingPhoto(true);
-      const compressedBlob = await compressImage(file);
-      const previewUrl = URL.createObjectURL(compressedBlob);
+      try {
+        setIsProcessingPhoto(true);
+        const compressedBlob = await compressImage(file);
+        const previewUrl = URL.createObjectURL(compressedBlob);
 
-      const pending: PendingPhoto = {
-        id: crypto.randomUUID(),
-        file,
-        compressedBlob,
-        previewUrl,
-        filename: file.name,
-      };
+        const pending: PendingPhoto = {
+          id: crypto.randomUUID(),
+          file,
+          compressedBlob,
+          previewUrl,
+          filename: file.name,
+        };
 
-      setPendingPhotos(prev => [...prev, pending]);
-    } catch (err) {
-      console.error('Failed to process photo:', err);
-    } finally {
-      setIsProcessingPhoto(false);
-    }
-  }, [pendingPhotos.length]);
+        setPendingPhotos((prev) => [...prev, pending]);
+      } catch (err) {
+        console.error("Failed to process photo:", err);
+      } finally {
+        setIsProcessingPhoto(false);
+      }
+    },
+    [pendingPhotos.length],
+  );
 
   const handleRemovePhoto = useCallback((id: string) => {
-    setPendingPhotos(prev => {
-      const photo = prev.find(p => p.id === id);
+    setPendingPhotos((prev) => {
+      const photo = prev.find((p) => p.id === id);
       if (photo) {
         URL.revokeObjectURL(photo.previewUrl);
       }
-      return prev.filter(p => p.id !== id);
+      return prev.filter((p) => p.id !== id);
     });
   }, []);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const newErrors: { amount?: string; description?: string; category?: string } = {};
+    const newErrors: {
+      amount?: string;
+      description?: string;
+      category?: string;
+    } = {};
 
     const withdrawalAmount = parseFloat(amount);
 
     if (!amount || withdrawalAmount <= 0) {
-      newErrors.amount = 'Please enter a valid amount greater than 0';
+      newErrors.amount = "Please enter a valid amount greater than 0";
     } else if (withdrawalAmount > currentBalance) {
       newErrors.amount = `Amount cannot exceed available safe balance ($${currentBalance.toFixed(2)})`;
     }
 
     if (!description.trim()) {
-      newErrors.description = 'Please enter a description';
+      newErrors.description = "Please enter a description";
     }
 
     if (!category) {
-      newErrors.category = 'Please select a category';
+      newErrors.category = "Please select a category";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -125,9 +136,9 @@ export function SafeWithdrawalModal({
     for (const photo of pendingPhotos) {
       URL.revokeObjectURL(photo.previewUrl);
     }
-    setAmount('');
-    setDescription('');
-    setCategory('');
+    setAmount("");
+    setDescription("");
+    setCategory("");
     setErrors({});
     setPendingPhotos([]);
     onClose();
@@ -137,18 +148,41 @@ export function SafeWithdrawalModal({
   const newBalance = currentBalance - withdrawalAmount;
   const showLowBalanceWarning = newBalance < 500 && withdrawalAmount > 0;
 
+  const footerContent = (
+    <div className="flex justify-end gap-2">
+      <Button type="button" variant="secondary" onClick={handleClose}>
+        Cancel
+      </Button>
+      <Button type="submit" form="withdrawal-form" variant="primary">
+        Submit for Approval
+      </Button>
+    </div>
+  );
+
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Safe Withdrawal">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <Drawer
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Safe Withdrawal"
+      footer={footerContent}
+    >
+      <form onSubmit={handleSubmit} id="withdrawal-form" className="space-y-4">
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <div className="flex justify-between items-center text-sm">
-            <span className="text-blue-900 font-medium">Current Safe Balance:</span>
-            <span className="text-blue-900 font-bold text-lg">${currentBalance.toFixed(2)}</span>
+            <span className="text-blue-900 font-medium">
+              Current Safe Balance:
+            </span>
+            <span className="text-blue-900 font-bold text-lg">
+              ${currentBalance.toFixed(2)}
+            </span>
           </div>
         </div>
 
         <div>
-          <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="amount"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Withdrawal Amount *
           </label>
           <NumericInput
@@ -162,9 +196,11 @@ export function SafeWithdrawalModal({
               if (errors.amount) setErrors({ ...errors, amount: undefined });
             }}
             placeholder="0.00"
-            className={errors.amount ? 'border-red-500' : ''}
+            className={errors.amount ? "border-red-500" : ""}
           />
-          {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
+          {errors.amount && (
+            <p className="text-red-500 text-xs mt-1">{errors.amount}</p>
+          )}
         </div>
 
         {showLowBalanceWarning && (
@@ -172,13 +208,18 @@ export function SafeWithdrawalModal({
             <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-amber-900">
               <p className="font-medium mb-1">Low Balance Warning</p>
-              <p>Withdrawal will reduce safe balance to ${newBalance.toFixed(2)}</p>
+              <p>
+                Withdrawal will reduce safe balance to ${newBalance.toFixed(2)}
+              </p>
             </div>
           </div>
         )}
 
         <div>
-          <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="category"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Category *
           </label>
           <select
@@ -186,10 +227,11 @@ export function SafeWithdrawalModal({
             value={category}
             onChange={(e) => {
               setCategory(e.target.value);
-              if (errors.category) setErrors({ ...errors, category: undefined });
+              if (errors.category)
+                setErrors({ ...errors, category: undefined });
             }}
             className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.category ? 'border-red-500' : 'border-gray-300'
+              errors.category ? "border-red-500" : "border-gray-300"
             }`}
           >
             <option value="">Select a category...</option>
@@ -199,11 +241,16 @@ export function SafeWithdrawalModal({
               </option>
             ))}
           </select>
-          {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
+          {errors.category && (
+            <p className="text-red-500 text-xs mt-1">{errors.category}</p>
+          )}
         </div>
 
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="description"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Description *
           </label>
           <textarea
@@ -211,15 +258,18 @@ export function SafeWithdrawalModal({
             value={description}
             onChange={(e) => {
               setDescription(e.target.value);
-              if (errors.description) setErrors({ ...errors, description: undefined });
+              if (errors.description)
+                setErrors({ ...errors, description: undefined });
             }}
             placeholder="Enter purpose of withdrawal..."
             className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.description ? 'border-red-500' : 'border-gray-300'
+              errors.description ? "border-red-500" : "border-gray-300"
             }`}
             rows={3}
           />
-          {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description}</p>}
+          {errors.description && (
+            <p className="text-red-500 text-xs mt-1">{errors.description}</p>
+          )}
         </div>
 
         {/* Photo Upload Section */}
@@ -256,23 +306,18 @@ export function SafeWithdrawalModal({
         {withdrawalAmount > 0 && (
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
             <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-700 font-medium">New Safe Balance:</span>
-              <span className={`font-bold text-lg ${newBalance < 0 ? 'text-red-600' : 'text-green-600'}`}>
+              <span className="text-gray-700 font-medium">
+                New Safe Balance:
+              </span>
+              <span
+                className={`font-bold text-lg ${newBalance < 0 ? "text-red-600" : "text-green-600"}`}
+              >
                 ${newBalance.toFixed(2)}
               </span>
             </div>
           </div>
         )}
-
-        <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="secondary" onClick={handleClose}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="primary">
-            Submit for Approval
-          </Button>
-        </div>
       </form>
-    </Modal>
+    </Drawer>
   );
 }

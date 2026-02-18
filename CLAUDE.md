@@ -515,7 +515,7 @@ Always filter by `store_id` when querying store-specific data:
 
 ---
 
-## Recent Changes (Jan 23 – Feb 18, 2026)
+## Recent Changes (Jan 23 – Feb 19, 2026)
 
 Changes grouped by feature area. All dates in 2026.
 
@@ -525,6 +525,9 @@ Changes grouped by feature area. All dates in 2026.
 ### Safe Withdrawal: Photo Upload + CashCountModal Drawer Conversion (Feb 19)
 - Photo capture on safe withdrawal modal — up to 3 photos (receipts, proof of withdrawal) staged during form entry, uploaded to R2 after transaction creation. Photos stored in `cash_transaction_photos` table. `SafeWithdrawalModal` passes `pendingPhotos` array in `WithdrawalData`. `SafeBalancePage` handles R2 upload via `uploadWithdrawalPhotos()` after `create_cash_transaction_with_validation` RPC returns transaction ID. Storage path: `cash-transactions/{storeId}/{transactionId}/{ts}_{uuid}.jpg`. New `cash_transaction_photos` table. Files: `SafeWithdrawalModal.tsx`, `SafeBalancePage.tsx`, `CashCountModal.tsx`, `supabase.ts` + migration
 - CashCountModal converted from centered Modal to right-slide Drawer component. Files: `CashCountModal.tsx`
+
+### EOD Cash Modals: Drawer Conversion (Feb 19)
+- Converted 3 remaining EOD cash-related popups from centered Modal to right-slide Drawer for consistency with CashCountModal and SafeWithdrawalModal. CashTransactionModal uses dynamic footer that switches between form mode (Void/Cancel/Submit) and void mode (Back/Request Void); form submit button linked via `form="cash-transaction-form"` attribute since it lives outside the `<form>` tag. TransactionListModal moves summary totals (Approved/Pending/Rejected) and Close button into sticky Drawer footer; removes `max-h-[400px]` constraint; edit history modal rendered as sibling (not child) to avoid z-index stacking issues. CashTransactionEditHistoryModal moves Close button to footer; removes `max-h-[500px]` constraint. No DB changes. Files: `CashTransactionModal.tsx`, `TransactionListModal.tsx`, `CashTransactionEditHistoryModal.tsx`
 
 ### Inventory: Tab Reorder — Transactions Before Items (Feb 18)
 - Swapped tab order in `tabConfig` array so Transactions appears first. Default `activeTab` changed from `'items'` to `'transactions'`. Final order: Transactions, Items, Lots, Distributions, Suppliers. No migration. Files: `InventoryPage.tsx`

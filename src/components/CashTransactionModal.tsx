@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { AlertTriangle, DollarSign } from 'lucide-react';
-import { Modal } from './ui/Modal';
-import { Button } from './ui/Button';
-import { NumericInput } from './ui/NumericInput';
-import { CashTransactionType } from '../lib/supabase';
+import React, { useState } from "react";
+import { AlertTriangle, DollarSign } from "lucide-react";
+import { Drawer } from "./ui/Drawer";
+import { Button } from "./ui/Button";
+import { NumericInput } from "./ui/NumericInput";
+import { CashTransactionType } from "../lib/supabase";
 
 interface CashDenominations {
   bill_100: number;
@@ -38,7 +38,7 @@ interface CashTransactionModalProps {
   transactionType: CashTransactionType;
   defaultCategory?: string;
   defaultDescription?: string;
-  mode?: 'create' | 'edit';
+  mode?: "create" | "edit";
   transactionId?: string;
   initialData?: {
     amount: number;
@@ -60,18 +60,15 @@ export interface TransactionData {
   denominations: CashDenominations;
 }
 
-const CASH_IN_CATEGORIES = [
-  'Change Fund',
-  'Other',
-];
+const CASH_IN_CATEGORIES = ["Change Fund", "Other"];
 
 const CASH_OUT_CATEGORIES = [
-  'Safe Deposit',
-  'Supplies Purchase',
-  'Tip Payout',
-  'Change Fund',
-  'Vendor Payment',
-  'Other',
+  "Safe Deposit",
+  "Supplies Purchase",
+  "Tip Payout",
+  "Change Fund",
+  "Vendor Payment",
+  "Other",
 ];
 
 export function CashTransactionModal({
@@ -81,27 +78,32 @@ export function CashTransactionModal({
   transactionType,
   defaultCategory,
   defaultDescription,
-  mode = 'create',
+  mode = "create",
   transactionId,
   initialData,
   onVoid,
   canVoid,
   transactionStatus,
 }: CashTransactionModalProps) {
-  const [denominations, setDenominations] = useState<CashDenominations>(DEFAULT_DENOMINATIONS);
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
-  const [editReason, setEditReason] = useState('');
-  const [errors, setErrors] = useState<{ amount?: string; category?: string }>({});
+  const [denominations, setDenominations] = useState<CashDenominations>(
+    DEFAULT_DENOMINATIONS,
+  );
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
+  const [editReason, setEditReason] = useState("");
+  const [errors, setErrors] = useState<{ amount?: string; category?: string }>(
+    {},
+  );
   const [isVoidMode, setIsVoidMode] = useState(false);
-  const [voidReason, setVoidReason] = useState('');
+  const [voidReason, setVoidReason] = useState("");
   const [voidError, setVoidError] = useState<string | null>(null);
 
-  const showVoidButton = mode === 'edit' && canVoid && transactionStatus === 'approved' && onVoid;
+  const showVoidButton =
+    mode === "edit" && canVoid && transactionStatus === "approved" && onVoid;
 
   function updateDenomination(key: keyof CashDenominations, value: string) {
     const numValue = parseInt(value) || 0;
-    setDenominations(prev => ({ ...prev, [key]: Math.max(0, numValue) }));
+    setDenominations((prev) => ({ ...prev, [key]: Math.max(0, numValue) }));
     if (errors.amount) setErrors({ ...errors, amount: undefined });
   }
 
@@ -115,7 +117,7 @@ export function CashTransactionModal({
       denominations.bill_2 * 2 +
       denominations.bill_1 * 1 +
       denominations.coin_25 * 0.25 +
-      denominations.coin_10 * 0.10 +
+      denominations.coin_10 * 0.1 +
       denominations.coin_5 * 0.05
     );
   }
@@ -123,17 +125,17 @@ export function CashTransactionModal({
   React.useEffect(() => {
     if (isOpen) {
       setIsVoidMode(false);
-      setVoidReason('');
+      setVoidReason("");
       setVoidError(null);
-      if (mode === 'edit' && initialData) {
+      if (mode === "edit" && initialData) {
         setDenominations(initialData.denominations || DEFAULT_DENOMINATIONS);
-        setDescription(initialData.description || '');
+        setDescription(initialData.description || "");
         setCategory(initialData.category);
-        setEditReason('');
+        setEditReason("");
       } else {
         setDenominations(DEFAULT_DENOMINATIONS);
-        setDescription(defaultDescription || '');
-        setCategory(defaultCategory || '');
+        setDescription(defaultDescription || "");
+        setCategory(defaultCategory || "");
       }
     }
   }, [isOpen, mode, initialData, defaultCategory, defaultDescription]);
@@ -145,11 +147,12 @@ export function CashTransactionModal({
     const total = calculateTotal();
 
     if (total <= 0) {
-      newErrors.amount = 'Please count at least some cash (total must be greater than 0)';
+      newErrors.amount =
+        "Please count at least some cash (total must be greater than 0)";
     }
 
     if (!category) {
-      newErrors.category = 'Please select a category';
+      newErrors.category = "Please select a category";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -161,8 +164,8 @@ export function CashTransactionModal({
       amount: total,
       description: description.trim() || undefined,
       category: category,
-      editReason: mode === 'edit' ? editReason.trim() || undefined : undefined,
-      transactionId: mode === 'edit' ? transactionId : undefined,
+      editReason: mode === "edit" ? editReason.trim() || undefined : undefined,
+      transactionId: mode === "edit" ? transactionId : undefined,
       denominations: denominations,
     });
 
@@ -171,19 +174,19 @@ export function CashTransactionModal({
 
   function handleClose() {
     setDenominations(DEFAULT_DENOMINATIONS);
-    setDescription('');
-    setCategory('');
-    setEditReason('');
+    setDescription("");
+    setCategory("");
+    setEditReason("");
     setErrors({});
     setIsVoidMode(false);
-    setVoidReason('');
+    setVoidReason("");
     setVoidError(null);
     onClose();
   }
 
   function handleVoidSubmit() {
     if (!voidReason.trim()) {
-      setVoidError('Please provide a reason for voiding this transaction');
+      setVoidError("Please provide a reason for voiding this transaction");
       return;
     }
     if (onVoid) {
@@ -192,17 +195,23 @@ export function CashTransactionModal({
     }
   }
 
-  const title = mode === 'edit'
-    ? (transactionType === 'cash_in' ? 'Edit Cash In Transaction' : 'Edit Cash Out Transaction')
-    : (transactionType === 'cash_in' ? 'Add Cash In Transaction' : 'Add Cash Out Transaction');
+  const title =
+    mode === "edit"
+      ? transactionType === "cash_in"
+        ? "Edit Cash In Transaction"
+        : "Edit Cash Out Transaction"
+      : transactionType === "cash_in"
+        ? "Add Cash In Transaction"
+        : "Add Cash Out Transaction";
 
-  const availableCategories = transactionType === 'cash_in' ? CASH_IN_CATEGORIES : CASH_OUT_CATEGORIES;
+  const availableCategories =
+    transactionType === "cash_in" ? CASH_IN_CATEGORIES : CASH_OUT_CATEGORIES;
 
   const DenominationInput = ({
     label,
     value,
     onChange,
-    denomination
+    denomination,
   }: {
     label: string;
     value: number;
@@ -212,7 +221,9 @@ export function CashTransactionModal({
     const itemTotal = value * denomination;
     return (
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-gray-700 w-10 whitespace-nowrap flex-shrink-0">{label}</label>
+        <label className="text-sm font-medium text-gray-700 w-10 whitespace-nowrap flex-shrink-0">
+          {label}
+        </label>
         <NumericInput
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -227,17 +238,63 @@ export function CashTransactionModal({
     );
   };
 
+  const footerContent = isVoidMode ? (
+    <div className="flex justify-end gap-2">
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={() => setIsVoidMode(false)}
+      >
+        Back
+      </Button>
+      <Button type="button" variant="danger" onClick={handleVoidSubmit}>
+        Request Void
+      </Button>
+    </div>
+  ) : (
+    <div className="flex justify-between gap-2">
+      <div>
+        {showVoidButton && (
+          <Button
+            type="button"
+            variant="danger"
+            onClick={() => setIsVoidMode(true)}
+          >
+            Void Transaction
+          </Button>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <Button type="button" variant="secondary" onClick={handleClose}>
+          Cancel
+        </Button>
+        <Button type="submit" form="cash-transaction-form" variant="primary">
+          {mode === "edit" ? "Update Transaction" : "Submit for Approval"}
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={isVoidMode ? 'Void Transaction' : title}>
+    <Drawer
+      isOpen={isOpen}
+      onClose={handleClose}
+      title={isVoidMode ? "Void Transaction" : title}
+      footer={footerContent}
+    >
       {isVoidMode ? (
         <div className="space-y-4">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-sm font-medium text-red-800">Request to Void Transaction</h4>
+                <h4 className="text-sm font-medium text-red-800">
+                  Request to Void Transaction
+                </h4>
                 <p className="text-sm text-red-700 mt-1">
-                  This will submit a request to permanently delete this transaction. An Owner or Admin must approve before it takes effect.
+                  This will submit a request to permanently delete this
+                  transaction. An Owner or Admin must approve before it takes
+                  effect.
                 </p>
               </div>
             </div>
@@ -249,12 +306,17 @@ export function CashTransactionModal({
               ${initialData?.amount.toFixed(2)} - {initialData?.category}
             </p>
             {initialData?.description && (
-              <p className="text-sm text-gray-600 mt-1">{initialData.description}</p>
+              <p className="text-sm text-gray-600 mt-1">
+                {initialData.description}
+              </p>
             )}
           </div>
 
           <div>
-            <label htmlFor="voidReason" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="voidReason"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Reason for voiding *
             </label>
             <textarea
@@ -266,24 +328,21 @@ export function CashTransactionModal({
               }}
               placeholder="Explain why this transaction should be voided..."
               className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 ${
-                voidError ? 'border-red-500' : 'border-gray-300'
+                voidError ? "border-red-500" : "border-gray-300"
               }`}
               rows={3}
             />
-            {voidError && <p className="text-red-500 text-xs mt-1">{voidError}</p>}
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="secondary" onClick={() => setIsVoidMode(false)}>
-              Back
-            </Button>
-            <Button type="button" variant="danger" onClick={handleVoidSubmit}>
-              Request Void
-            </Button>
+            {voidError && (
+              <p className="text-red-500 text-xs mt-1">{voidError}</p>
+            )}
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          id="cash-transaction-form"
+          onSubmit={handleSubmit}
+          className="space-y-4"
+        >
           {/* Cash Count Section - Two Column Layout */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -292,92 +351,109 @@ export function CashTransactionModal({
             <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-lg p-3">
               {/* Bills Column */}
               <div className="flex flex-col justify-between pr-4 border-r border-gray-300">
-                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Bills</h4>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  Bills
+                </h4>
                 <DenominationInput
                   label="$100"
                   value={denominations.bill_100}
-                  onChange={(v) => updateDenomination('bill_100', v)}
+                  onChange={(v) => updateDenomination("bill_100", v)}
                   denomination={100}
                 />
                 <DenominationInput
                   label="$50"
                   value={denominations.bill_50}
-                  onChange={(v) => updateDenomination('bill_50', v)}
+                  onChange={(v) => updateDenomination("bill_50", v)}
                   denomination={50}
                 />
                 <DenominationInput
                   label="$20"
                   value={denominations.bill_20}
-                  onChange={(v) => updateDenomination('bill_20', v)}
+                  onChange={(v) => updateDenomination("bill_20", v)}
                   denomination={20}
                 />
                 <DenominationInput
                   label="$10"
                   value={denominations.bill_10}
-                  onChange={(v) => updateDenomination('bill_10', v)}
+                  onChange={(v) => updateDenomination("bill_10", v)}
                   denomination={10}
                 />
                 <DenominationInput
                   label="$5"
                   value={denominations.bill_5}
-                  onChange={(v) => updateDenomination('bill_5', v)}
+                  onChange={(v) => updateDenomination("bill_5", v)}
                   denomination={5}
                 />
               </div>
 
               {/* Coins Column */}
               <div className="flex flex-col justify-between">
-                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Coins</h4>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  Coins
+                </h4>
                 <DenominationInput
                   label="$2"
                   value={denominations.bill_2}
-                  onChange={(v) => updateDenomination('bill_2', v)}
+                  onChange={(v) => updateDenomination("bill_2", v)}
                   denomination={2}
                 />
                 <DenominationInput
                   label="$1"
                   value={denominations.bill_1}
-                  onChange={(v) => updateDenomination('bill_1', v)}
+                  onChange={(v) => updateDenomination("bill_1", v)}
                   denomination={1}
                 />
                 <DenominationInput
                   label="25¢"
                   value={denominations.coin_25}
-                  onChange={(v) => updateDenomination('coin_25', v)}
+                  onChange={(v) => updateDenomination("coin_25", v)}
                   denomination={0.25}
                 />
                 <DenominationInput
                   label="10¢"
                   value={denominations.coin_10}
-                  onChange={(v) => updateDenomination('coin_10', v)}
-                  denomination={0.10}
+                  onChange={(v) => updateDenomination("coin_10", v)}
+                  denomination={0.1}
                 />
                 <DenominationInput
                   label="5¢"
                   value={denominations.coin_5}
-                  onChange={(v) => updateDenomination('coin_5', v)}
+                  onChange={(v) => updateDenomination("coin_5", v)}
                   denomination={0.05}
                 />
               </div>
             </div>
 
             {/* Total Display */}
-            <div className={`mt-3 rounded-lg p-3 ${transactionType === 'cash_in' ? 'bg-green-50 border border-green-200' : 'bg-blue-50 border border-blue-200'}`}>
+            <div
+              className={`mt-3 rounded-lg p-3 ${transactionType === "cash_in" ? "bg-green-50 border border-green-200" : "bg-blue-50 border border-blue-200"}`}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <DollarSign className={`w-5 h-5 ${transactionType === 'cash_in' ? 'text-green-600' : 'text-blue-600'}`} />
-                  <span className="text-base font-bold text-gray-900">Total:</span>
+                  <DollarSign
+                    className={`w-5 h-5 ${transactionType === "cash_in" ? "text-green-600" : "text-blue-600"}`}
+                  />
+                  <span className="text-base font-bold text-gray-900">
+                    Total:
+                  </span>
                 </div>
-                <span className={`text-2xl font-bold ${transactionType === 'cash_in' ? 'text-green-600' : 'text-blue-600'}`}>
+                <span
+                  className={`text-2xl font-bold ${transactionType === "cash_in" ? "text-green-600" : "text-blue-600"}`}
+                >
                   ${calculateTotal().toFixed(2)}
                 </span>
               </div>
             </div>
-            {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
+            {errors.amount && (
+              <p className="text-red-500 text-xs mt-1">{errors.amount}</p>
+            )}
           </div>
 
           <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="category"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Category *
             </label>
             <select
@@ -385,10 +461,11 @@ export function CashTransactionModal({
               value={category}
               onChange={(e) => {
                 setCategory(e.target.value);
-                if (errors.category) setErrors({ ...errors, category: undefined });
+                if (errors.category)
+                  setErrors({ ...errors, category: undefined });
               }}
               className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.category ? 'border-red-500' : 'border-gray-300'
+                errors.category ? "border-red-500" : "border-gray-300"
               }`}
             >
               <option value="">Select a category...</option>
@@ -398,11 +475,16 @@ export function CashTransactionModal({
                 </option>
               ))}
             </select>
-            {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
+            {errors.category && (
+              <p className="text-red-500 text-xs mt-1">{errors.category}</p>
+            )}
           </div>
 
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="description"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Description (optional)
             </label>
             <input
@@ -415,9 +497,12 @@ export function CashTransactionModal({
             />
           </div>
 
-          {mode === 'edit' && (
+          {mode === "edit" && (
             <div>
-              <label htmlFor="editReason" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="editReason"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Edit Reason (optional)
               </label>
               <textarea
@@ -430,26 +515,8 @@ export function CashTransactionModal({
               />
             </div>
           )}
-
-          <div className="flex justify-between gap-2 pt-4">
-            <div>
-              {showVoidButton && (
-                <Button type="button" variant="danger" onClick={() => setIsVoidMode(true)}>
-                  Void Transaction
-                </Button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button type="button" variant="secondary" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary">
-                {mode === 'edit' ? 'Update Transaction' : 'Submit for Approval'}
-              </Button>
-            </div>
-          </div>
         </form>
       )}
-    </Modal>
+    </Drawer>
   );
 }
