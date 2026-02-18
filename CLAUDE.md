@@ -519,6 +519,9 @@ Always filter by `store_id` when querying store-specific data:
 
 Changes grouped by feature area. All dates in 2026.
 
+### Card Options: Interac / Mastercard / Visa Toggle (Feb 19)
+- Configurable `enable_card_options` setting (Payment category, display_order 95, default OFF). Depends on `enable_card_payments`. When enabled, three pill buttons (Interac, Mastercard, Visa) appear above the card payment input in the payment modal for Card and Mixed payment methods. Selection is required — `handlePaymentModalSave` blocks with toast if no card type selected. Selected card type persisted as `card_type` column on `sale_tickets` (nullable text: `'interac'`, `'mastercard'`, `'visa'`, or NULL). Cleared to NULL for Cash payments. Loaded on ticket edit. ConfigurationPage auto-renders the toggle via existing boolean rendering. `SaleTicket` interface updated with `card_type`. No changes to Insights page (existing placeholder logic unchanged). Files: `TicketEditor.tsx`, `supabase.ts` + migration
+
 ### Resources: Scroll-Gated "Mark as Read" Button (Feb 19)
 - "Mark as Read" button in resource view popup now requires scrolling to the bottom of the content before becoming clickable. Three button states: disabled-gray with `ChevronDown` icon ("Scroll to Read") when unread and not scrolled, active-emerald ("Mark as Read") when scrolled to bottom, and disabled-emerald ("Read") for already-read resources. Short content that doesn't overflow auto-enables the button via a post-render `scrollHeight` check. 5px threshold accounts for sub-pixel rounding. State resets on resource change. No DB changes. Files: `ResourcesPage.tsx`
 

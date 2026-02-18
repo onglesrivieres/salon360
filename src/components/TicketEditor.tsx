@@ -146,6 +146,7 @@ export function TicketEditor({
     false,
   );
   const enableTax = getSettingBoolean("enable_tax", false);
+  const enableCardOptions = getSettingBoolean("enable_card_options", false);
   const taxRateGst = getSettingNumber("tax_rate_gst", 5.0);
   const taxRateQst = getSettingNumber("tax_rate_qst", 9.975);
 
@@ -304,6 +305,7 @@ export function TicketEditor({
     customer_phone: "",
     todays_color: "",
     payment_method: "" as "" | "Cash" | "Card" | "Mixed",
+    card_type: "" as "" | "interac" | "mastercard" | "visa",
     payment_cash: "",
     payment_card: "",
     payment_gift_card: "",
@@ -334,6 +336,7 @@ export function TicketEditor({
     discount_percentage: "",
     discount_percentage_cash: "",
     discount_amount_cash: "",
+    card_type: "" as "" | "interac" | "mastercard" | "visa",
   });
 
   // Client lookup hook - only enabled when not editing an existing ticket with a client already linked
@@ -658,6 +661,7 @@ export function TicketEditor({
           customer_phone: ticketData.customer_phone || "",
           todays_color: (ticketData as any).todays_color || "",
           payment_method: ticketData.payment_method || "",
+          card_type: (ticketData as any).card_type || "",
           payment_cash: firstItem
             ? parseFloat(firstItem.payment_cash || 0).toString()
             : "0",
@@ -1034,12 +1038,32 @@ export function TicketEditor({
       discount_amount_cash: existingData
         ? formData.discount_amount_cash || "0"
         : "",
+      card_type:
+        method === "Cash" ? "" : existingData ? formData.card_type || "" : "",
     });
-    setFormData({ ...formData, payment_method: method });
+    setFormData({
+      ...formData,
+      payment_method: method,
+      card_type: method === "Cash" ? "" : formData.card_type,
+    });
     setShowPaymentModal(true);
   }
 
   function handlePaymentModalSave() {
+    // Validate card type selection when card options are enabled
+    if (
+      enableCardOptions &&
+      (formData.payment_method === "Card" ||
+        formData.payment_method === "Mixed") &&
+      !tempPaymentData.card_type
+    ) {
+      showToast(
+        "Please select a card type (Interac, Mastercard, or Visa)",
+        "error",
+      );
+      return;
+    }
+
     // Warn if cash discount is entered - prevents accidental phantom discounts
     const cashDiscountAmount =
       parseFloat(tempPaymentData.discount_amount_cash) || 0;
@@ -1064,6 +1088,7 @@ export function TicketEditor({
       discount_percentage: tempPaymentData.discount_percentage,
       discount_percentage_cash: tempPaymentData.discount_percentage_cash,
       discount_amount_cash: tempPaymentData.discount_amount_cash,
+      card_type: tempPaymentData.card_type,
     });
     setShowPaymentModal(false);
     showToast("Payment details saved", "success");
@@ -1085,6 +1110,7 @@ export function TicketEditor({
       discount_percentage: formData.discount_percentage || "0",
       discount_percentage_cash: formData.discount_percentage_cash || "0",
       discount_amount_cash: formData.discount_amount_cash || "0",
+      card_type: formData.card_type || "",
     });
     setShowPaymentModal(true);
   }
@@ -1347,6 +1373,11 @@ export function TicketEditor({
           customer_phone: formData.customer_phone,
           client_id: linkedClient?.id || null,
           payment_method: formData.payment_method || null,
+          card_type:
+            formData.payment_method === "Card" ||
+            formData.payment_method === "Mixed"
+              ? formData.card_type || null
+              : null,
           total,
           subtotal: ticketSubtotal,
           tax_gst: ticketTaxGst,
@@ -1513,6 +1544,11 @@ export function TicketEditor({
           customer_phone: formData.customer_phone,
           client_id: linkedClient?.id || null,
           payment_method: formData.payment_method || null,
+          card_type:
+            formData.payment_method === "Card" ||
+            formData.payment_method === "Mixed"
+              ? formData.card_type || null
+              : null,
           total,
           subtotal: ticketSubtotal,
           tax_gst: ticketTaxGst,
@@ -3820,6 +3856,36 @@ export function TicketEditor({
                   <CreditCard className="w-4 h-4 text-blue-600" />
                   Card Payment
                 </label>
+                {enableCardOptions && (
+                  <div className="flex gap-2 mb-2">
+                    {(["interac", "mastercard", "visa"] as const).map(
+                      (type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() =>
+                            setTempPaymentData({
+                              ...tempPaymentData,
+                              card_type: type,
+                            })
+                          }
+                          disabled={isTicketClosed || isReadOnly}
+                          className={`flex-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${
+                            tempPaymentData.card_type === type
+                              ? "border-blue-500 bg-blue-50 text-blue-700"
+                              : "border-gray-300 bg-white text-gray-600 hover:border-blue-400 hover:bg-blue-50"
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {type === "interac"
+                            ? "Interac"
+                            : type === "mastercard"
+                              ? "Mastercard"
+                              : "Visa"}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                )}
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">
                     $
