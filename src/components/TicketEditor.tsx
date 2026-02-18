@@ -147,6 +147,10 @@ export function TicketEditor({
   );
   const enableTax = getSettingBoolean("enable_tax", false);
   const enableCardOptions = getSettingBoolean("enable_card_options", false);
+  const enableMatchCalculation = getSettingBoolean(
+    "enable_match_calculation",
+    false,
+  );
   const taxRateGst = getSettingNumber("tax_rate_gst", 5.0);
   const taxRateQst = getSettingNumber("tax_rate_qst", 9.975);
 
@@ -320,6 +324,7 @@ export function TicketEditor({
     opening_time: "",
   });
 
+  const [matchCalculation, setMatchCalculation] = useState(false);
   const [isEditingOpeningTime, setIsEditingOpeningTime] = useState(false);
   const [tempOpeningTime, setTempOpeningTime] = useState("");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -941,7 +946,7 @@ export function TicketEditor({
     if (!enableTax) return 0;
     const subtotal = calculateSubtotal();
     const taxable =
-      formData.payment_method === "Cash"
+      formData.payment_method === "Cash" || matchCalculation
         ? subtotal
         : Math.max(0, subtotal - calculateTotalDiscount());
     return Math.round(taxable * (taxRateGst / 100) * 100) / 100;
@@ -951,7 +956,7 @@ export function TicketEditor({
     if (!enableTax) return 0;
     const subtotal = calculateSubtotal();
     const taxable =
-      formData.payment_method === "Cash"
+      formData.payment_method === "Cash" || matchCalculation
         ? subtotal
         : Math.max(0, subtotal - calculateTotalDiscount());
     return Math.round(taxable * (taxRateQst / 100) * 100) / 100;
@@ -1041,6 +1046,7 @@ export function TicketEditor({
       card_type:
         method === "Cash" ? "" : existingData ? formData.card_type || "" : "",
     });
+    setMatchCalculation(false);
     setFormData({
       ...formData,
       payment_method: method,
@@ -1112,6 +1118,7 @@ export function TicketEditor({
       discount_amount_cash: formData.discount_amount_cash || "0",
       card_type: formData.card_type || "",
     });
+    setMatchCalculation(false);
     setShowPaymentModal(true);
   }
 
@@ -4271,6 +4278,23 @@ export function TicketEditor({
               </div>
             );
           })()}
+
+          {enableMatchCalculation && enableTax && (
+            <button
+              type="button"
+              onClick={() => setMatchCalculation(!matchCalculation)}
+              disabled={isTicketClosed || isReadOnly}
+              className={`w-full mt-2 px-3 py-2 rounded-lg text-sm font-medium border transition-all duration-200 ${
+                matchCalculation
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                  : "border-gray-300 bg-white text-gray-600 hover:border-emerald-400 hover:bg-emerald-50"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {matchCalculation
+                ? "✓ Match Calculation (Tax on Subtotal)"
+                : "Match Calculation"}
+            </button>
+          )}
 
           <div className="flex gap-3 pt-4">
             <Button
