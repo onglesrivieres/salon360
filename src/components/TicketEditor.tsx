@@ -978,21 +978,6 @@ export function TicketEditor({
     return 0;
   }
 
-  // Compute the tax-inclusive payment base for a given discount amount.
-  // Returns subtotal + GST + QST where tax is calculated on (subtotal - discount).
-  // EOD formula then subtracts discount separately: payment - discount = what customer pays.
-  function calculateTaxInclusivePayment(discountAmount: number = 0): string {
-    const subtotal = calculateSubtotal();
-    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
-    const gst = enableTax
-      ? Math.round(discountedSubtotal * (taxRateGst / 100) * 100) / 100
-      : 0;
-    const qst = enableTax
-      ? Math.round(discountedSubtotal * (taxRateQst / 100) * 100) / 100
-      : 0;
-    return (subtotal + gst + qst).toFixed(2);
-  }
-
   function hasExistingPaymentData(): boolean {
     const hasPaymentAmount =
       parseFloat(formData.payment_cash || "0") > 0 ||
@@ -1013,8 +998,7 @@ export function TicketEditor({
 
   function handlePaymentMethodClick(method: "Cash" | "Card" | "Mixed") {
     const subtotal = calculateSubtotal();
-    const totalWithTax = subtotal + calculateTaxGst() + calculateTaxQst();
-    const amountStr = totalWithTax > 0 ? totalWithTax.toFixed(2) : "";
+    const amountStr = subtotal > 0 ? subtotal.toFixed(2) : "";
     const existingData = hasExistingPaymentData();
 
     setTempPaymentData({
@@ -3816,12 +3800,10 @@ export function TicketEditor({
                 {formData.payment_method === "Cash" &&
                   tempPaymentData.payment_cash &&
                   parseFloat(tempPaymentData.payment_cash) ===
-                    parseFloat(calculateTaxInclusivePayment()) &&
+                    calculateSubtotal() &&
                   calculateSubtotal() > 0 && (
                     <p className="text-xs text-gray-500 mt-1">
-                      {enableTax
-                        ? "Prefilled with subtotal + tax"
-                        : "Prefilled with service subtotal"}
+                      Prefilled with service subtotal
                     </p>
                   )}
               </div>
@@ -3856,12 +3838,10 @@ export function TicketEditor({
                 {formData.payment_method === "Card" &&
                   tempPaymentData.payment_card &&
                   parseFloat(tempPaymentData.payment_card) ===
-                    parseFloat(calculateTaxInclusivePayment()) &&
+                    calculateSubtotal() &&
                   calculateSubtotal() > 0 && (
                     <p className="text-xs text-gray-500 mt-1">
-                      {enableTax
-                        ? "Prefilled with subtotal + tax"
-                        : "Prefilled with service subtotal"}
+                      Prefilled with service subtotal
                     </p>
                   )}
               </div>
@@ -3919,13 +3899,9 @@ export function TicketEditor({
                         min="0"
                         value={tempPaymentData.discount_amount_cash}
                         onChange={(e) => {
-                          const discountAmount =
-                            parseFloat(e.target.value) || 0;
                           setTempPaymentData({
                             ...tempPaymentData,
                             discount_amount_cash: e.target.value,
-                            payment_cash:
-                              calculateTaxInclusivePayment(discountAmount),
                           });
                         }}
                         className="pl-8 pr-3"
@@ -3955,8 +3931,6 @@ export function TicketEditor({
                             ...tempPaymentData,
                             discount_percentage_cash: e.target.value,
                             discount_amount_cash: discountAmount.toFixed(2),
-                            payment_cash:
-                              calculateTaxInclusivePayment(discountAmount),
                           });
                         }}
                         className="pl-3 pr-8"
@@ -3985,12 +3959,9 @@ export function TicketEditor({
                       min="0"
                       value={tempPaymentData.discount_amount}
                       onChange={(e) => {
-                        const discountAmount = parseFloat(e.target.value) || 0;
                         setTempPaymentData({
                           ...tempPaymentData,
                           discount_amount: e.target.value,
-                          payment_card:
-                            calculateTaxInclusivePayment(discountAmount),
                         });
                       }}
                       className="pl-8 pr-3"
@@ -4020,8 +3991,6 @@ export function TicketEditor({
                           ...tempPaymentData,
                           discount_percentage: e.target.value,
                           discount_amount: discountAmount.toFixed(2),
-                          payment_card:
-                            calculateTaxInclusivePayment(discountAmount),
                         });
                       }}
                       className="pl-3 pr-8"

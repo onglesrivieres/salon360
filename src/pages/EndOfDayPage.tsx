@@ -1,15 +1,39 @@
-import { useState, useEffect } from 'react';
-import { Download, Printer, Plus, Save, DollarSign, AlertCircle, AlertTriangle, CheckCircle, Edit, ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Eye, Vault } from 'lucide-react';
-import { supabase, EndOfDayRecord, CashTransaction, CashTransactionType } from '../lib/supabase';
-import { Button } from '../components/ui/Button';
-import { useToast } from '../components/ui/Toast';
-import { TicketEditor } from '../components/TicketEditor';
-import { CashCountModal } from '../components/CashCountModal';
-import { CashTransactionModal, TransactionData } from '../components/CashTransactionModal';
-import { TransactionListModal } from '../components/TransactionListModal';
-import { useAuth } from '../contexts/AuthContext';
-import { Permissions } from '../lib/permissions';
-import { getCurrentDateEST, formatDateTimeEST } from '../lib/timezone';
+import { useState, useEffect } from "react";
+import {
+  Download,
+  Printer,
+  Plus,
+  Save,
+  DollarSign,
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle,
+  Edit,
+  ArrowDownLeft,
+  ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Vault,
+} from "lucide-react";
+import {
+  supabase,
+  EndOfDayRecord,
+  CashTransaction,
+  CashTransactionType,
+} from "../lib/supabase";
+import { Button } from "../components/ui/Button";
+import { useToast } from "../components/ui/Toast";
+import { TicketEditor } from "../components/TicketEditor";
+import { CashCountModal } from "../components/CashCountModal";
+import {
+  CashTransactionModal,
+  TransactionData,
+} from "../components/CashTransactionModal";
+import { TransactionListModal } from "../components/TransactionListModal";
+import { useAuth } from "../contexts/AuthContext";
+import { Permissions } from "../lib/permissions";
+import { getCurrentDateEST, formatDateTimeEST } from "../lib/timezone";
 
 interface EndOfDayPageProps {
   selectedDate: string;
@@ -29,7 +53,10 @@ interface CashDenominations {
   coin_5: number;
 }
 
-export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) {
+export function EndOfDayPage({
+  selectedDate,
+  onDateChange,
+}: EndOfDayPageProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { showToast } = useToast();
@@ -38,48 +65,57 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const [eodRecord, setEodRecord] = useState<EndOfDayRecord | null>(null);
   const [expectedCash, setExpectedCash] = useState(0);
 
-  const [openingDenominations, setOpeningDenominations] = useState<CashDenominations>({
-    bill_100: 0,
-    bill_50: 0,
-    bill_20: 0,
-    bill_10: 0,
-    bill_5: 0,
-    bill_2: 0,
-    bill_1: 0,
-    coin_25: 0,
-    coin_10: 0,
-    coin_5: 0,
-  });
+  const [openingDenominations, setOpeningDenominations] =
+    useState<CashDenominations>({
+      bill_100: 0,
+      bill_50: 0,
+      bill_20: 0,
+      bill_10: 0,
+      bill_5: 0,
+      bill_2: 0,
+      bill_1: 0,
+      coin_25: 0,
+      coin_10: 0,
+      coin_5: 0,
+    });
 
-  const [closingDenominations, setClosingDenominations] = useState<CashDenominations>({
-    bill_100: 0,
-    bill_50: 0,
-    bill_20: 0,
-    bill_10: 0,
-    bill_5: 0,
-    bill_2: 0,
-    bill_1: 0,
-    coin_25: 0,
-    coin_10: 0,
-    coin_5: 0,
-  });
+  const [closingDenominations, setClosingDenominations] =
+    useState<CashDenominations>({
+      bill_100: 0,
+      bill_50: 0,
+      bill_20: 0,
+      bill_10: 0,
+      bill_5: 0,
+      bill_2: 0,
+      bill_1: 0,
+      coin_25: 0,
+      coin_10: 0,
+      coin_5: 0,
+    });
 
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState("");
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   const [isOpeningModalOpen, setIsOpeningModalOpen] = useState(false);
   const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
 
-  const [cashInTransactions, setCashInTransactions] = useState<CashTransaction[]>([]);
-  const [cashOutTransactions, setCashOutTransactions] = useState<CashTransaction[]>([]);
+  const [cashInTransactions, setCashInTransactions] = useState<
+    CashTransaction[]
+  >([]);
+  const [cashOutTransactions, setCashOutTransactions] = useState<
+    CashTransaction[]
+  >([]);
   const [isCashInModalOpen, setIsCashInModalOpen] = useState(false);
   const [isCashOutModalOpen, setIsCashOutModalOpen] = useState(false);
   const [isCashInListModalOpen, setIsCashInListModalOpen] = useState(false);
   const [isCashOutListModalOpen, setIsCashOutListModalOpen] = useState(false);
   const [isSafeDepositModalOpen, setIsSafeDepositModalOpen] = useState(false);
-  const [editingCashTransaction, setEditingCashTransaction] = useState<CashTransaction | null>(null);
-  const [isEditingCashTransaction, setIsEditingCashTransaction] = useState(false);
-  const [isAutoFilledFromPreviousDay, setIsAutoFilledFromPreviousDay] = useState(false);
+  const [editingCashTransaction, setEditingCashTransaction] =
+    useState<CashTransaction | null>(null);
+  const [isEditingCashTransaction, setIsEditingCashTransaction] =
+    useState(false);
+  const [isAutoFilledFromPreviousDay, setIsAutoFilledFromPreviousDay] =
+    useState(false);
 
   useEffect(() => {
     loadEODData();
@@ -93,18 +129,18 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       setIsAutoFilledFromPreviousDay(false);
 
       const { data: existingRecord, error: recordError } = await supabase
-        .from('end_of_day_records')
-        .select('*')
-        .eq('store_id', selectedStoreId)
-        .eq('date', selectedDate)
+        .from("end_of_day_records")
+        .select("*")
+        .eq("store_id", selectedStoreId)
+        .eq("date", selectedDate)
         .maybeSingle();
 
-      if (recordError && recordError.code !== 'PGRST116') throw recordError;
+      if (recordError && recordError.code !== "PGRST116") throw recordError;
 
       if (existingRecord) {
         setEodRecord(existingRecord);
 
-        const hasOpeningCash = (
+        const hasOpeningCash =
           existingRecord.opening_cash_amount > 0 ||
           existingRecord.bill_100 > 0 ||
           existingRecord.bill_50 > 0 ||
@@ -115,8 +151,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           existingRecord.bill_1 > 0 ||
           existingRecord.coin_25 > 0 ||
           existingRecord.coin_10 > 0 ||
-          existingRecord.coin_5 > 0
-        );
+          existingRecord.coin_5 > 0;
 
         if (hasOpeningCash) {
           setOpeningDenominations({
@@ -164,7 +199,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           coin_10: existingRecord.closing_coin_10,
           coin_5: existingRecord.closing_coin_5,
         });
-        setNotes(existingRecord.notes || '');
+        setNotes(existingRecord.notes || "");
       } else {
         setEodRecord(null);
         const previousDayClosing = await fetchPreviousDayClosingCash();
@@ -197,63 +232,54 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           coin_10: 0,
           coin_5: 0,
         });
-        setNotes('');
+        setNotes("");
       }
 
       const { data: tickets, error: ticketsError } = await supabase
-        .from('sale_tickets')
+        .from("sale_tickets")
         .select(
           `
           id,
+          tax_gst,
+          tax_qst,
+          payment_method,
           ticket_items (
             payment_cash,
             discount_amount_cash,
             tip_customer_cash
           )
-        `
+        `,
         )
-        .eq('ticket_date', selectedDate)
-        .eq('store_id', selectedStoreId)
-        .not('closed_at', 'is', null)
-        .is('voided_at', null);
+        .eq("ticket_date", selectedDate)
+        .eq("store_id", selectedStoreId)
+        .not("closed_at", "is", null)
+        .is("voided_at", null);
 
       if (ticketsError) throw ticketsError;
 
-      console.log('EOD Tickets Query Results:', {
-        ticketCount: tickets?.length || 0,
-        sampleTicket: tickets?.[0],
-        selectedDate,
-        selectedStoreId
-      });
-
       let totalCash = 0;
       for (const ticket of tickets || []) {
-        const ticketItems = (ticket as any).ticket_items || [];
-        console.log('Processing ticket:', ticket, 'Items:', ticketItems);
+        // Add ticket-level tax for Cash-only payments
+        // (payment_cash stores subtotal only; tax must be added separately)
+        if ((ticket as any).payment_method === "Cash") {
+          const taxGst = parseFloat((ticket as any).tax_gst) || 0;
+          const taxQst = parseFloat((ticket as any).tax_qst) || 0;
+          totalCash += taxGst + taxQst;
+        }
 
+        const ticketItems = (ticket as any).ticket_items || [];
         for (const item of ticketItems) {
           const paymentCash = parseFloat(item.payment_cash) || 0;
           const discountCash = parseFloat(item.discount_amount_cash) || 0;
           const tipCash = parseFloat(item.tip_customer_cash) || 0;
-          const itemTotal = paymentCash + tipCash - discountCash;
-
-          console.log('Item cash calculation:', {
-            payment_cash: paymentCash,
-            discount_amount_cash: discountCash,
-            tip_customer_cash: tipCash,
-            itemTotal
-          });
-
-          totalCash += itemTotal;
+          totalCash += paymentCash + tipCash - discountCash;
         }
       }
-
-      console.log('Total cash from tickets:', totalCash);
       setExpectedCash(totalCash);
 
       await loadCashTransactions();
     } catch (error) {
-      showToast('Failed to load EOD data', 'error');
+      showToast("Failed to load EOD data", "error");
       console.error(error);
     } finally {
       setLoading(false);
@@ -265,30 +291,34 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
     try {
       const { data, error } = await supabase
-        .from('cash_transactions')
-        .select('*')
-        .eq('store_id', selectedStoreId)
-        .eq('date', selectedDate)
-        .order('created_at', { ascending: false });
+        .from("cash_transactions")
+        .select("*")
+        .eq("store_id", selectedStoreId)
+        .eq("date", selectedDate)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      const cashIn = (data || []).filter(t => t.transaction_type === 'cash_in');
-      const cashOut = (data || []).filter(t => t.transaction_type === 'cash_out');
+      const cashIn = (data || []).filter(
+        (t) => t.transaction_type === "cash_in",
+      );
+      const cashOut = (data || []).filter(
+        (t) => t.transaction_type === "cash_out",
+      );
 
       setCashInTransactions(cashIn);
       setCashOutTransactions(cashOut);
     } catch (error) {
-      console.error('Failed to load cash transactions:', error);
+      console.error("Failed to load cash transactions:", error);
     }
   }
 
   function getPreviousDayDate(dateString: string): string {
-    const date = new Date(dateString + 'T00:00:00');
+    const date = new Date(dateString + "T00:00:00");
     date.setDate(date.getDate() - 1);
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
 
@@ -299,15 +329,15 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       const previousDay = getPreviousDayDate(selectedDate);
 
       const { data: previousRecord, error } = await supabase
-        .from('end_of_day_records')
-        .select('*')
-        .eq('store_id', selectedStoreId)
-        .eq('date', previousDay)
+        .from("end_of_day_records")
+        .select("*")
+        .eq("store_id", selectedStoreId)
+        .eq("date", previousDay)
         .maybeSingle();
 
       if (error || !previousRecord) return null;
 
-      const hasClosingCash = (
+      const hasClosingCash =
         previousRecord.closing_cash_amount > 0 ||
         previousRecord.closing_bill_100 > 0 ||
         previousRecord.closing_bill_50 > 0 ||
@@ -318,8 +348,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         previousRecord.closing_bill_1 > 0 ||
         previousRecord.closing_coin_25 > 0 ||
         previousRecord.closing_coin_10 > 0 ||
-        previousRecord.closing_coin_5 > 0
-      );
+        previousRecord.closing_coin_5 > 0;
 
       if (!hasClosingCash) return null;
 
@@ -336,11 +365,10 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         coin_5: previousRecord.closing_coin_5,
       };
     } catch (error) {
-      console.error('Failed to fetch previous day closing cash:', error);
+      console.error("Failed to fetch previous day closing cash:", error);
       return null;
     }
   }
-
 
   function calculateTotal(denominations: CashDenominations): number {
     return (
@@ -352,7 +380,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       denominations.bill_2 * 2 +
       denominations.bill_1 * 1 +
       denominations.coin_25 * 0.25 +
-      denominations.coin_10 * 0.10 +
+      denominations.coin_10 * 0.1 +
       denominations.coin_5 * 0.05
     );
   }
@@ -361,47 +389,47 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
   const closingCashTotal = calculateTotal(closingDenominations);
 
   const totalCashIn = cashInTransactions
-    .filter(t => t.status === 'approved')
+    .filter((t) => t.status === "approved")
     .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
 
   const totalCashOut = cashOutTransactions
-    .filter(t => t.status === 'approved')
+    .filter((t) => t.status === "approved")
     .reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
 
   const netCashCollected = expectedCash + totalCashIn - totalCashOut;
   const actualCashChange = closingCashTotal - openingCashTotal;
   const cashVariance = actualCashChange - netCashCollected;
   const isBalanced = Math.abs(cashVariance) < 0.01;
-  const isOpeningCashRecorded = eodRecord && (
-    eodRecord.opening_cash_amount > 0 ||
-    eodRecord.bill_100 > 0 ||
-    eodRecord.bill_50 > 0 ||
-    eodRecord.bill_20 > 0 ||
-    eodRecord.bill_10 > 0 ||
-    eodRecord.bill_5 > 0 ||
-    eodRecord.bill_2 > 0 ||
-    eodRecord.bill_1 > 0 ||
-    eodRecord.coin_25 > 0 ||
-    eodRecord.coin_10 > 0 ||
-    eodRecord.coin_5 > 0
-  );
-  const isClosingCashRecorded = eodRecord && (
-    eodRecord.closing_cash_amount > 0 ||
-    eodRecord.closing_bill_100 > 0 ||
-    eodRecord.closing_bill_50 > 0 ||
-    eodRecord.closing_bill_20 > 0 ||
-    eodRecord.closing_bill_10 > 0 ||
-    eodRecord.closing_bill_5 > 0 ||
-    eodRecord.closing_bill_2 > 0 ||
-    eodRecord.closing_bill_1 > 0 ||
-    eodRecord.closing_coin_25 > 0 ||
-    eodRecord.closing_coin_10 > 0 ||
-    eodRecord.closing_coin_5 > 0
-  );
+  const isOpeningCashRecorded =
+    eodRecord &&
+    (eodRecord.opening_cash_amount > 0 ||
+      eodRecord.bill_100 > 0 ||
+      eodRecord.bill_50 > 0 ||
+      eodRecord.bill_20 > 0 ||
+      eodRecord.bill_10 > 0 ||
+      eodRecord.bill_5 > 0 ||
+      eodRecord.bill_2 > 0 ||
+      eodRecord.bill_1 > 0 ||
+      eodRecord.coin_25 > 0 ||
+      eodRecord.coin_10 > 0 ||
+      eodRecord.coin_5 > 0);
+  const isClosingCashRecorded =
+    eodRecord &&
+    (eodRecord.closing_cash_amount > 0 ||
+      eodRecord.closing_bill_100 > 0 ||
+      eodRecord.closing_bill_50 > 0 ||
+      eodRecord.closing_bill_20 > 0 ||
+      eodRecord.closing_bill_10 > 0 ||
+      eodRecord.closing_bill_5 > 0 ||
+      eodRecord.closing_bill_2 > 0 ||
+      eodRecord.closing_bill_1 > 0 ||
+      eodRecord.closing_coin_25 > 0 ||
+      eodRecord.closing_coin_10 > 0 ||
+      eodRecord.closing_coin_5 > 0);
 
   async function handleOpeningSubmit(denominations: CashDenominations) {
     if (!selectedStoreId || !session?.employee_id) {
-      showToast('Missing required information', 'error');
+      showToast("Missing required information", "error");
       return;
     }
 
@@ -409,7 +437,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       setSaving(true);
       setOpeningDenominations(denominations);
 
-      const openingTotal = (
+      const openingTotal =
         denominations.bill_100 * 100 +
         denominations.bill_50 * 50 +
         denominations.bill_20 * 20 +
@@ -418,9 +446,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         denominations.bill_2 * 2 +
         denominations.bill_1 * 1 +
         denominations.coin_25 * 0.25 +
-        denominations.coin_10 * 0.10 +
-        denominations.coin_5 * 0.05
-      );
+        denominations.coin_10 * 0.1 +
+        denominations.coin_5 * 0.05;
 
       const recordData = {
         store_id: selectedStoreId,
@@ -454,26 +481,24 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       if (eodRecord) {
         const { error } = await supabase
-          .from('end_of_day_records')
+          .from("end_of_day_records")
           .update(recordData)
-          .eq('id', eodRecord.id);
+          .eq("id", eodRecord.id);
 
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('end_of_day_records')
-          .insert({
-            ...recordData,
-            created_by: session.employee_id,
-          });
+        const { error } = await supabase.from("end_of_day_records").insert({
+          ...recordData,
+          created_by: session.employee_id,
+        });
 
         if (error) throw error;
       }
 
-      showToast('Opening cash saved successfully', 'success');
+      showToast("Opening cash saved successfully", "success");
       setIsAutoFilledFromPreviousDay(false);
 
-      await supabase.rpc('save_safe_balance_snapshot', {
+      await supabase.rpc("save_safe_balance_snapshot", {
         p_store_id: selectedStoreId,
         p_date: selectedDate,
         p_employee_id: session.employee_id,
@@ -481,9 +506,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       await loadEODData();
 
-      window.dispatchEvent(new CustomEvent('openingCashUpdated'));
+      window.dispatchEvent(new CustomEvent("openingCashUpdated"));
     } catch (error) {
-      showToast('Failed to save opening cash', 'error');
+      showToast("Failed to save opening cash", "error");
       console.error(error);
     } finally {
       setSaving(false);
@@ -496,7 +521,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
   async function saveEODRecord() {
     if (!selectedStoreId || !session?.employee_id) {
-      showToast('Missing required information', 'error');
+      showToast("Missing required information", "error");
       return;
     }
 
@@ -535,25 +560,23 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       if (eodRecord) {
         const { error } = await supabase
-          .from('end_of_day_records')
+          .from("end_of_day_records")
           .update(recordData)
-          .eq('id', eodRecord.id);
+          .eq("id", eodRecord.id);
 
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('end_of_day_records')
-          .insert({
-            ...recordData,
-            created_by: session.employee_id,
-          });
+        const { error } = await supabase.from("end_of_day_records").insert({
+          ...recordData,
+          created_by: session.employee_id,
+        });
 
         if (error) throw error;
       }
 
-      showToast('EOD record saved successfully', 'success');
+      showToast("EOD record saved successfully", "success");
 
-      await supabase.rpc('save_safe_balance_snapshot', {
+      await supabase.rpc("save_safe_balance_snapshot", {
         p_store_id: selectedStoreId,
         p_date: selectedDate,
         p_employee_id: session.employee_id,
@@ -561,7 +584,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       loadEODData();
     } catch (error) {
-      showToast('Failed to save EOD record', 'error');
+      showToast("Failed to save EOD record", "error");
       console.error(error);
     } finally {
       setSaving(false);
@@ -570,88 +593,100 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
   function exportCSV() {
     const rows = [
-      ['Description', 'Amount'],
-      ['Opening Cash', openingCashTotal.toFixed(2)],
-      ['  $100 Bills', `${openingDenominations.bill_100} x $100`],
-      ['  $50 Bills', `${openingDenominations.bill_50} x $50`],
-      ['  $20 Bills', `${openingDenominations.bill_20} x $20`],
-      ['  $10 Bills', `${openingDenominations.bill_10} x $10`],
-      ['  $5 Bills', `${openingDenominations.bill_5} x $5`],
-      ['  $2 Bills', `${openingDenominations.bill_2} x $2`],
-      ['  $1 Bills', `${openingDenominations.bill_1} x $1`],
-      ['  25¢ Coins', `${openingDenominations.coin_25} x $0.25`],
-      ['  10¢ Coins', `${openingDenominations.coin_10} x $0.10`],
-      ['  5¢ Coins', `${openingDenominations.coin_5} x $0.05`],
-      ['', ''],
-      ['Closing Cash', closingCashTotal.toFixed(2)],
-      ['  $100 Bills', `${closingDenominations.bill_100} x $100`],
-      ['  $50 Bills', `${closingDenominations.bill_50} x $50`],
-      ['  $20 Bills', `${closingDenominations.bill_20} x $20`],
-      ['  $10 Bills', `${closingDenominations.bill_10} x $10`],
-      ['  $5 Bills', `${closingDenominations.bill_5} x $5`],
-      ['  $2 Bills', `${closingDenominations.bill_2} x $2`],
-      ['  $1 Bills', `${closingDenominations.bill_1} x $1`],
-      ['  25¢ Coins', `${closingDenominations.coin_25} x $0.25`],
-      ['  10¢ Coins', `${closingDenominations.coin_10} x $0.10`],
-      ['  5¢ Coins', `${closingDenominations.coin_5} x $0.05`],
-      ['', ''],
-      ['Total Cash In (Approved)', totalCashIn.toFixed(2)],
-      ['Total Cash Out (Approved)', totalCashOut.toFixed(2)],
-      ['', ''],
-      ['Net Cash Collected', netCashCollected.toFixed(2)],
-      ['Expected Cash from Tickets', expectedCash.toFixed(2)],
-      ['Cash Variance', cashVariance.toFixed(2)],
-      ['Status', isBalanced ? 'BALANCED' : 'UNBALANCED'],
+      ["Description", "Amount"],
+      ["Opening Cash", openingCashTotal.toFixed(2)],
+      ["  $100 Bills", `${openingDenominations.bill_100} x $100`],
+      ["  $50 Bills", `${openingDenominations.bill_50} x $50`],
+      ["  $20 Bills", `${openingDenominations.bill_20} x $20`],
+      ["  $10 Bills", `${openingDenominations.bill_10} x $10`],
+      ["  $5 Bills", `${openingDenominations.bill_5} x $5`],
+      ["  $2 Bills", `${openingDenominations.bill_2} x $2`],
+      ["  $1 Bills", `${openingDenominations.bill_1} x $1`],
+      ["  25¢ Coins", `${openingDenominations.coin_25} x $0.25`],
+      ["  10¢ Coins", `${openingDenominations.coin_10} x $0.10`],
+      ["  5¢ Coins", `${openingDenominations.coin_5} x $0.05`],
+      ["", ""],
+      ["Closing Cash", closingCashTotal.toFixed(2)],
+      ["  $100 Bills", `${closingDenominations.bill_100} x $100`],
+      ["  $50 Bills", `${closingDenominations.bill_50} x $50`],
+      ["  $20 Bills", `${closingDenominations.bill_20} x $20`],
+      ["  $10 Bills", `${closingDenominations.bill_10} x $10`],
+      ["  $5 Bills", `${closingDenominations.bill_5} x $5`],
+      ["  $2 Bills", `${closingDenominations.bill_2} x $2`],
+      ["  $1 Bills", `${closingDenominations.bill_1} x $1`],
+      ["  25¢ Coins", `${closingDenominations.coin_25} x $0.25`],
+      ["  10¢ Coins", `${closingDenominations.coin_10} x $0.10`],
+      ["  5¢ Coins", `${closingDenominations.coin_5} x $0.05`],
+      ["", ""],
+      ["Total Cash In (Approved)", totalCashIn.toFixed(2)],
+      ["Total Cash Out (Approved)", totalCashOut.toFixed(2)],
+      ["", ""],
+      ["Net Cash Collected", netCashCollected.toFixed(2)],
+      ["Expected Cash from Tickets", expectedCash.toFixed(2)],
+      ["Cash Variance", cashVariance.toFixed(2)],
+      ["Status", isBalanced ? "BALANCED" : "UNBALANCED"],
     ];
 
     if (cashInTransactions.length > 0) {
-      rows.push(['', '']);
-      rows.push(['Cash In Transactions', '']);
-      rows.push(['Status', 'Amount', 'Description', 'Category']);
-      cashInTransactions.forEach(t => {
-        rows.push([t.status, t.amount.toFixed(2), t.description, t.category || '']);
+      rows.push(["", ""]);
+      rows.push(["Cash In Transactions", ""]);
+      rows.push(["Status", "Amount", "Description", "Category"]);
+      cashInTransactions.forEach((t) => {
+        rows.push([
+          t.status,
+          t.amount.toFixed(2),
+          t.description,
+          t.category || "",
+        ]);
       });
     }
 
     if (cashOutTransactions.length > 0) {
-      rows.push(['', '']);
-      rows.push(['Cash Out Transactions', '']);
-      rows.push(['Status', 'Amount', 'Description', 'Category']);
-      cashOutTransactions.forEach(t => {
-        rows.push([t.status, t.amount.toFixed(2), t.description, t.category || '']);
+      rows.push(["", ""]);
+      rows.push(["Cash Out Transactions", ""]);
+      rows.push(["Status", "Amount", "Description", "Category"]);
+      cashOutTransactions.forEach((t) => {
+        rows.push([
+          t.status,
+          t.amount.toFixed(2),
+          t.description,
+          t.category || "",
+        ]);
       });
     }
 
-    const csv = rows.map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csv = rows.map((row) => row.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `eod-cash-reconciliation-${selectedDate}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
 
-    showToast('Cash reconciliation exported successfully', 'success');
+    showToast("Cash reconciliation exported successfully", "success");
   }
 
   function handlePrint() {
     window.print();
-    showToast('Opening print dialog', 'success');
+    showToast("Opening print dialog", "success");
   }
 
   function getMinDate(): string {
-    const canViewUnlimitedHistory = session?.role ? Permissions.endOfDay.canViewAll(session.role) : false;
+    const canViewUnlimitedHistory = session?.role
+      ? Permissions.endOfDay.canViewAll(session.role)
+      : false;
 
     if (canViewUnlimitedHistory) {
-      return '2000-01-01';
+      return "2000-01-01";
     }
 
     const today = getCurrentDateEST();
     const date = new Date(today);
     date.setDate(date.getDate() - 14);
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
 
@@ -659,16 +694,16 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     return getCurrentDateEST();
   }
 
-  function navigateDay(direction: 'prev' | 'next'): void {
-    const currentDate = new Date(selectedDate + 'T00:00:00');
-    if (direction === 'prev') {
+  function navigateDay(direction: "prev" | "next"): void {
+    const currentDate = new Date(selectedDate + "T00:00:00");
+    if (direction === "prev") {
       currentDate.setDate(currentDate.getDate() - 1);
     } else {
       currentDate.setDate(currentDate.getDate() + 1);
     }
     const year = currentDate.getFullYear();
-    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-    const day = String(currentDate.getDate()).padStart(2, '0');
+    const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+    const day = String(currentDate.getDate()).padStart(2, "0");
     onDateChange(`${year}-${month}-${day}`);
   }
 
@@ -686,9 +721,12 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     loadEODData();
   }
 
-  async function handleCashTransactionSubmit(transactionType: CashTransactionType, data: TransactionData) {
+  async function handleCashTransactionSubmit(
+    transactionType: CashTransactionType,
+    data: TransactionData,
+  ) {
     if (!selectedStoreId || !session?.employee_id) {
-      showToast('Missing required information', 'error');
+      showToast("Missing required information", "error");
       return;
     }
 
@@ -697,20 +735,20 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
       if (data.transactionId) {
         const { data: currentTransaction, error: fetchError } = await supabase
-          .from('cash_transactions')
-          .select('*')
-          .eq('id', data.transactionId)
+          .from("cash_transactions")
+          .select("*")
+          .eq("id", data.transactionId)
           .maybeSingle();
 
         if (fetchError) throw fetchError;
 
         if (!currentTransaction) {
-          showToast('Transaction not found', 'error');
+          showToast("Transaction not found", "error");
           return;
         }
 
         const { error: updateError } = await supabase
-          .from('cash_transactions')
+          .from("cash_transactions")
           .update({
             amount: data.amount,
             description: data.description,
@@ -728,31 +766,30 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             coin_10: data.denominations.coin_10,
             coin_5: data.denominations.coin_5,
           })
-          .eq('id', data.transactionId);
+          .eq("id", data.transactionId);
 
         if (updateError) throw updateError;
 
         if (data.editReason) {
-          await supabase
-            .from('cash_transaction_edit_history')
-            .insert({
-              transaction_id: data.transactionId,
-              edited_by_id: session.employee_id,
-              edited_at: new Date().toISOString(),
-              old_amount: currentTransaction.amount,
-              new_amount: data.amount,
-              old_description: currentTransaction.description,
-              new_description: data.description,
-              old_category: currentTransaction.category,
-              new_category: data.category,
-              edit_reason: data.editReason,
-            });
+          await supabase.from("cash_transaction_edit_history").insert({
+            transaction_id: data.transactionId,
+            edited_by_id: session.employee_id,
+            edited_at: new Date().toISOString(),
+            old_amount: currentTransaction.amount,
+            new_amount: data.amount,
+            old_description: currentTransaction.description,
+            new_description: data.description,
+            old_category: currentTransaction.category,
+            new_category: data.category,
+            edit_reason: data.editReason,
+          });
         }
 
-        showToast('Transaction updated successfully', 'success');
+        showToast("Transaction updated successfully", "success");
       } else {
-        const { data: result, error } = await supabase
-          .rpc('create_cash_transaction_with_validation', {
+        const { data: result, error } = await supabase.rpc(
+          "create_cash_transaction_with_validation",
+          {
             p_store_id: selectedStoreId,
             p_date: selectedDate,
             p_transaction_type: transactionType,
@@ -770,21 +807,22 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             p_coin_25: data.denominations.coin_25,
             p_coin_10: data.denominations.coin_10,
             p_coin_5: data.denominations.coin_5,
-          });
+          },
+        );
 
         if (error) throw error;
 
         if (result && !result.success) {
-          showToast(result.error || 'Failed to create transaction', 'error');
+          showToast(result.error || "Failed to create transaction", "error");
           return;
         }
 
-        showToast('Transaction submitted for manager approval', 'success');
+        showToast("Transaction submitted for manager approval", "success");
       }
 
       await loadCashTransactions();
     } catch (error) {
-      showToast('Failed to save transaction', 'error');
+      showToast("Failed to save transaction", "error");
       console.error(error);
     } finally {
       setSaving(false);
@@ -795,7 +833,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     setEditingCashTransaction(transaction);
     setIsEditingCashTransaction(true);
 
-    if (transaction.transaction_type === 'cash_in') {
+    if (transaction.transaction_type === "cash_in") {
       setIsCashInListModalOpen(false);
       setIsCashInModalOpen(true);
     } else {
@@ -809,29 +847,32 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
 
     try {
       setSaving(true);
-      const { data: result, error } = await supabase.rpc('create_cash_transaction_change_proposal', {
-        p_cash_transaction_id: editingCashTransaction.id,
-        p_is_deletion_request: true,
-        p_reason_comment: reason,
-        p_created_by_employee_id: session.employee_id,
-      });
+      const { data: result, error } = await supabase.rpc(
+        "create_cash_transaction_change_proposal",
+        {
+          p_cash_transaction_id: editingCashTransaction.id,
+          p_is_deletion_request: true,
+          p_reason_comment: reason,
+          p_created_by_employee_id: session.employee_id,
+        },
+      );
 
       if (error) {
-        showToast(error.message || 'Failed to submit void request', 'error');
-        console.error('Void request error:', error);
+        showToast(error.message || "Failed to submit void request", "error");
+        console.error("Void request error:", error);
         return;
       }
 
       if (result && !result.success) {
-        showToast(result.error || 'Failed to submit void request', 'error');
+        showToast(result.error || "Failed to submit void request", "error");
         return;
       }
 
-      showToast('Void request submitted for approval', 'success');
+      showToast("Void request submitted for approval", "success");
       await loadCashTransactions();
     } catch (error: any) {
-      showToast(error?.message || 'Failed to submit void request', 'error');
-      console.error('Void request exception:', error);
+      showToast(error?.message || "Failed to submit void request", "error");
+      console.error("Void request exception:", error);
     } finally {
       setSaving(false);
       setIsCashOutModalOpen(false);
@@ -840,7 +881,6 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
     }
   }
 
-
   return (
     <div className="max-w-7xl 2k:max-w-full mx-auto 2k:px-8">
       {!isOpeningCashRecorded && (
@@ -848,7 +888,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           <div className="flex items-start gap-3">
             <AlertCircle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <h3 className="text-sm font-bold text-amber-900 mb-1">Opening Cash Count Required</h3>
+              <h3 className="text-sm font-bold text-amber-900 mb-1">
+                Opening Cash Count Required
+              </h3>
               <p className="text-sm text-amber-800 mb-2">
                 {isAutoFilledFromPreviousDay
                   ? "Opening cash has been pre-filled with yesterday's closing balance. Please verify and adjust if needed."
@@ -861,7 +903,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                 className="bg-amber-600 hover:bg-amber-700"
               >
                 <DollarSign className="w-4 h-4 mr-1" />
-                {isAutoFilledFromPreviousDay ? 'Verify Opening Cash' : 'Count Opening Cash Now'}
+                {isAutoFilledFromPreviousDay
+                  ? "Verify Opening Cash"
+                  : "Count Opening Cash Now"}
               </Button>
             </div>
           </div>
@@ -869,20 +913,23 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
       )}
 
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
-        <h2 className="text-base md:text-lg font-bold text-gray-900">End of Day</h2>
+        <h2 className="text-base md:text-lg font-bold text-gray-900">
+          End of Day
+        </h2>
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
-          {session?.role_permission !== 'Receptionist' && session?.role_permission !== 'Cashier' ? (
+          {session?.role_permission !== "Receptionist" &&
+          session?.role_permission !== "Cashier" ? (
             <div className="flex items-center gap-2 flex-1 md:flex-initial">
               {selectedDate !== getCurrentDateEST() && (
                 <button
                   onClick={() => onDateChange(getCurrentDateEST())}
                   className="px-2 py-1.5 md:py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[44px] md:min-h-[32px] flex items-center justify-center"
                 >
-                  {t('common.today')}
+                  {t("common.today")}
                 </button>
               )}
               <button
-                onClick={() => navigateDay('prev')}
+                onClick={() => navigateDay("prev")}
                 disabled={!canNavigatePrev()}
                 className="p-2 md:p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors min-h-[44px] md:min-h-[32px] min-w-[44px] md:min-w-[32px] flex items-center justify-center"
                 aria-label="Previous day"
@@ -900,7 +947,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                 />
               </div>
               <button
-                onClick={() => navigateDay('next')}
+                onClick={() => navigateDay("next")}
                 disabled={!canNavigateNext()}
                 className="p-2 md:p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors min-h-[44px] md:min-h-[32px] min-w-[44px] md:min-w-[32px] flex items-center justify-center"
                 aria-label="Next day"
@@ -918,18 +965,30 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               />
             </div>
           )}
-          {session && session.role && Permissions.endOfDay.canExport(session.role) && (
-            <>
-              <Button variant="secondary" size="sm" onClick={exportCSV} className="hidden md:flex">
-                <Download className="w-3 h-3 mr-1" />
-                Export
-              </Button>
-              <Button variant="secondary" size="sm" onClick={handlePrint} className="hidden md:flex">
-                <Printer className="w-3 h-3 mr-1" />
-                Print
-              </Button>
-            </>
-          )}
+          {session &&
+            session.role &&
+            Permissions.endOfDay.canExport(session.role) && (
+              <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={exportCSV}
+                  className="hidden md:flex"
+                >
+                  <Download className="w-3 h-3 mr-1" />
+                  Export
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handlePrint}
+                  className="hidden md:flex"
+                >
+                  <Printer className="w-3 h-3 mr-1" />
+                  Print
+                </Button>
+              </>
+            )}
         </div>
       </div>
 
@@ -939,23 +998,27 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
         </div>
       ) : (
         <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 2k:grid-cols-5 gap-2 2k:gap-3 mb-4">
-            <div className={`bg-white rounded-lg shadow p-3 2k:p-4 ${!isOpeningCashRecorded ? 'ring-2 ring-amber-400' : ''}`}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 2k:grid-cols-5 gap-2 2k:gap-3 mb-4">
+            <div
+              className={`bg-white rounded-lg shadow p-3 2k:p-4 ${!isOpeningCashRecorded ? "ring-2 ring-amber-400" : ""}`}
+            >
               <div className="flex items-center gap-2 mb-2">
                 <DollarSign className="w-4 h-4 text-green-600" />
                 <h3 className="text-sm font-semibold text-gray-900">Opening</h3>
               </div>
               <div className="text-center py-2">
                 <p className="text-xs text-gray-600 mb-1">Total Amount</p>
-                <p className="text-xl font-bold text-green-600 mb-2">${openingCashTotal.toFixed(2)}</p>
+                <p className="text-xl font-bold text-green-600 mb-2">
+                  ${openingCashTotal.toFixed(2)}
+                </p>
                 <Button
                   variant={!isOpeningCashRecorded ? "primary" : "secondary"}
                   size="sm"
                   onClick={() => setIsOpeningModalOpen(true)}
-                  className={`w-full ${!isOpeningCashRecorded ? 'bg-amber-600 hover:bg-amber-700 animate-pulse' : ''}`}
+                  className={`w-full ${!isOpeningCashRecorded ? "bg-amber-600 hover:bg-amber-700 animate-pulse" : ""}`}
                 >
                   <Edit className="w-3 h-3 mr-1" />
-                  {isOpeningCashRecorded ? 'Edit Count' : 'Count Bills'}
+                  {isOpeningCashRecorded ? "Edit Count" : "Count Bills"}
                 </Button>
                 {isOpeningCashRecorded ? (
                   <div className="mt-2 flex items-center justify-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded">
@@ -979,11 +1042,15 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             <div className="bg-gray-50 rounded-lg shadow p-3 2k:p-4">
               <div className="flex items-center gap-2 mb-2">
                 <DollarSign className="w-4 h-4 text-gray-700" />
-                <h3 className="text-sm font-semibold text-gray-900">Current Register</h3>
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Current Register
+                </h3>
               </div>
               <div className="text-center py-2">
                 <p className="text-xs text-gray-600 mb-1">Current Amount</p>
-                <p className="text-xl font-bold text-gray-900 mb-2">${netCashCollected.toFixed(2)}</p>
+                <p className="text-xl font-bold text-gray-900 mb-2">
+                  ${netCashCollected.toFixed(2)}
+                </p>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -1016,7 +1083,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                     className="w-full mb-2 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors flex items-center justify-center gap-1"
                   >
                     <Eye className="w-3 h-3" />
-                    View {cashInTransactions.length} Transaction{cashInTransactions.length !== 1 ? 's' : ''}
+                    View {cashInTransactions.length} Transaction
+                    {cashInTransactions.length !== 1 ? "s" : ""}
                   </button>
                 )}
                 <Button
@@ -1034,7 +1102,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             <div className="bg-white rounded-lg shadow p-3 2k:p-4">
               <div className="flex items-center gap-2 mb-2">
                 <ArrowUpRight className="w-4 h-4 text-red-600" />
-                <h3 className="text-sm font-semibold text-gray-900">Cash Out</h3>
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Cash Out
+                </h3>
               </div>
               <div className="text-center py-2">
                 <p className="text-xs text-gray-600 mb-1">Total Amount</p>
@@ -1051,7 +1121,8 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                     className="w-full mb-2 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center justify-center gap-1"
                   >
                     <Eye className="w-3 h-3" />
-                    View {cashOutTransactions.length} Transaction{cashOutTransactions.length !== 1 ? 's' : ''}
+                    View {cashOutTransactions.length} Transaction
+                    {cashOutTransactions.length !== 1 ? "s" : ""}
                   </button>
                 )}
                 <Button
@@ -1073,7 +1144,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
               </div>
               <div className="text-center py-2">
                 <p className="text-xs text-gray-600 mb-1">Total Amount</p>
-                <p className="text-xl font-bold text-blue-600 mb-2">${closingCashTotal.toFixed(2)}</p>
+                <p className="text-xl font-bold text-blue-600 mb-2">
+                  ${closingCashTotal.toFixed(2)}
+                </p>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -1101,7 +1174,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                     <p className="text-2xl font-bold text-gray-900">
                       Expected Cash Collected
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">Cash payments + cash tips from tickets</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Cash payments + cash tips from tickets
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-gray-900">
@@ -1111,13 +1186,15 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                 </div>
               </div>
 
-              <div className={`mt-4 p-4 rounded-lg border-2 ${
-                isBalanced
-                  ? 'bg-green-50 border-green-500'
-                  : cashVariance < 0
-                    ? 'bg-red-50 border-red-500'
-                    : 'bg-yellow-50 border-yellow-500'
-              }`}>
+              <div
+                className={`mt-4 p-4 rounded-lg border-2 ${
+                  isBalanced
+                    ? "bg-green-50 border-green-500"
+                    : cashVariance < 0
+                      ? "bg-red-50 border-red-500"
+                      : "bg-yellow-50 border-yellow-500"
+                }`}
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {isBalanced ? (
@@ -1132,19 +1209,20 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className={`text-2xl font-bold ${
-                      isBalanced
-                        ? 'text-green-600'
-                        : cashVariance < 0
-                          ? 'text-red-600'
-                          : 'text-yellow-600'
-                    }`}>
+                    <p
+                      className={`text-2xl font-bold ${
+                        isBalanced
+                          ? "text-green-600"
+                          : cashVariance < 0
+                            ? "text-red-600"
+                            : "text-yellow-600"
+                      }`}
+                    >
                       {isBalanced
-                        ? 'Balanced'
+                        ? "Balanced"
                         : cashVariance < 0
                           ? `Short by $${Math.abs(cashVariance).toFixed(2)}`
-                          : `Over by $${cashVariance.toFixed(2)}`
-                      }
+                          : `Over by $${cashVariance.toFixed(2)}`}
                     </p>
                   </div>
                 </div>
@@ -1170,7 +1248,7 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                   disabled={saving}
                 >
                   <Save className="w-4 h-4 mr-2" />
-                  {saving ? 'Saving...' : 'Save EOD Record'}
+                  {saving ? "Saving..." : "Save EOD Record"}
                 </Button>
               </div>
 
@@ -1188,7 +1266,9 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                 <div className="p-4 border-b border-gray-200">
                   <div className="flex items-center gap-2">
                     <ArrowDownLeft className="w-5 h-5 text-green-600" />
-                    <h3 className="text-lg font-semibold text-gray-900">Cash In Transactions</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Cash In Transactions
+                    </h3>
                   </div>
                 </div>
                 <div className="p-4">
@@ -1203,27 +1283,34 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-lg font-bold text-green-600">
-                                ${parseFloat(transaction.amount.toString()).toFixed(2)}
+                                $
+                                {parseFloat(
+                                  transaction.amount.toString(),
+                                ).toFixed(2)}
                               </span>
                               <span
                                 className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                  transaction.status === 'approved'
-                                    ? 'bg-green-100 text-green-700'
-                                    : transaction.status === 'rejected'
-                                    ? 'bg-red-100 text-red-700'
-                                    : 'bg-amber-100 text-amber-700'
+                                  transaction.status === "approved"
+                                    ? "bg-green-100 text-green-700"
+                                    : transaction.status === "rejected"
+                                      ? "bg-red-100 text-red-700"
+                                      : "bg-amber-100 text-amber-700"
                                 }`}
                               >
-                                {transaction.status === 'approved'
-                                  ? 'Approved'
-                                  : transaction.status === 'rejected'
-                                  ? 'Rejected'
-                                  : 'Pending'}
+                                {transaction.status === "approved"
+                                  ? "Approved"
+                                  : transaction.status === "rejected"
+                                    ? "Rejected"
+                                    : "Pending"}
                               </span>
                             </div>
-                            <p className="text-sm text-gray-900 font-medium">{transaction.description}</p>
+                            <p className="text-sm text-gray-900 font-medium">
+                              {transaction.description}
+                            </p>
                             {transaction.category && (
-                              <p className="text-xs text-gray-500 mt-1">Category: {transaction.category}</p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Category: {transaction.category}
+                              </p>
                             )}
                             <p className="text-xs text-gray-400 mt-1">
                               {formatDateTimeEST(transaction.created_at)}
@@ -1274,16 +1361,22 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           setEditingCashTransaction(null);
           setIsEditingCashTransaction(false);
         }}
-        onSubmit={(data) => handleCashTransactionSubmit('cash_in', data)}
+        onSubmit={(data) => handleCashTransactionSubmit("cash_in", data)}
         transactionType="cash_in"
-        mode={isEditingCashTransaction && editingCashTransaction?.transaction_type === 'cash_in' ? 'edit' : 'create'}
+        mode={
+          isEditingCashTransaction &&
+          editingCashTransaction?.transaction_type === "cash_in"
+            ? "edit"
+            : "create"
+        }
         transactionId={editingCashTransaction?.id}
         initialData={
-          isEditingCashTransaction && editingCashTransaction?.transaction_type === 'cash_in'
+          isEditingCashTransaction &&
+          editingCashTransaction?.transaction_type === "cash_in"
             ? {
                 amount: parseFloat(editingCashTransaction.amount.toString()),
                 description: editingCashTransaction.description,
-                category: editingCashTransaction.category || '',
+                category: editingCashTransaction.category || "",
                 denominations: {
                   bill_100: editingCashTransaction.bill_100 || 0,
                   bill_50: editingCashTransaction.bill_50 || 0,
@@ -1308,16 +1401,22 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
           setEditingCashTransaction(null);
           setIsEditingCashTransaction(false);
         }}
-        onSubmit={(data) => handleCashTransactionSubmit('cash_out', data)}
+        onSubmit={(data) => handleCashTransactionSubmit("cash_out", data)}
         transactionType="cash_out"
-        mode={isEditingCashTransaction && editingCashTransaction?.transaction_type === 'cash_out' ? 'edit' : 'create'}
+        mode={
+          isEditingCashTransaction &&
+          editingCashTransaction?.transaction_type === "cash_out"
+            ? "edit"
+            : "create"
+        }
         transactionId={editingCashTransaction?.id}
         initialData={
-          isEditingCashTransaction && editingCashTransaction?.transaction_type === 'cash_out'
+          isEditingCashTransaction &&
+          editingCashTransaction?.transaction_type === "cash_out"
             ? {
                 amount: parseFloat(editingCashTransaction.amount.toString()),
                 description: editingCashTransaction.description,
-                category: editingCashTransaction.category || '',
+                category: editingCashTransaction.category || "",
                 denominations: {
                   bill_100: editingCashTransaction.bill_100 || 0,
                   bill_50: editingCashTransaction.bill_50 || 0,
@@ -1334,14 +1433,18 @@ export function EndOfDayPage({ selectedDate, onDateChange }: EndOfDayPageProps) 
             : undefined
         }
         onVoid={handleVoidCashTransaction}
-        canVoid={session?.role ? Permissions.cashTransactions.canCreateChangeProposal(session.role) : false}
+        canVoid={
+          session?.role
+            ? Permissions.cashTransactions.canCreateChangeProposal(session.role)
+            : false
+        }
         transactionStatus={editingCashTransaction?.status}
       />
 
       <CashTransactionModal
         isOpen={isSafeDepositModalOpen}
         onClose={() => setIsSafeDepositModalOpen(false)}
-        onSubmit={(data) => handleCashTransactionSubmit('cash_out', data)}
+        onSubmit={(data) => handleCashTransactionSubmit("cash_out", data)}
         transactionType="cash_out"
         defaultCategory="Safe Deposit"
         defaultDescription="Safe deposit from till"
