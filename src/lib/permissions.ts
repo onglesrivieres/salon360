@@ -1,16 +1,30 @@
-export type RolePermission = 'Admin' | 'Receptionist' | 'Technician' | 'Supervisor' | 'Cashier';
-export type Role = 'Admin' | 'Technician' | 'Trainee' | 'Receptionist' | 'Supervisor' | 'Manager' | 'Owner' | 'Cashier';
+export type RolePermission =
+  | "Admin"
+  | "Receptionist"
+  | "Technician"
+  | "Supervisor"
+  | "Cashier";
+export type Role =
+  | "Admin"
+  | "Technician"
+  | "Trainee"
+  | "Receptionist"
+  | "Supervisor"
+  | "Manager"
+  | "Owner"
+  | "Cashier";
 
 /**
  * Derives the permission level from a role array.
  * Priority: Admin > Supervisor > Receptionist > Cashier > Technician
  */
 export function getRolePermission(roles: Role[]): RolePermission {
-  if (roles.some(r => ['Admin', 'Manager', 'Owner'].includes(r))) return 'Admin';
-  if (roles.includes('Supervisor')) return 'Supervisor';
-  if (roles.includes('Receptionist')) return 'Receptionist';
-  if (roles.includes('Cashier')) return 'Cashier';
-  return 'Technician';
+  if (roles.some((r) => ["Admin", "Manager", "Owner"].includes(r)))
+    return "Admin";
+  if (roles.includes("Supervisor")) return "Supervisor";
+  if (roles.includes("Receptionist")) return "Receptionist";
+  if (roles.includes("Cashier")) return "Cashier";
+  return "Technician";
 }
 
 export interface PermissionCheck {
@@ -21,109 +35,220 @@ export interface PermissionCheck {
   message?: string;
 }
 
-function hasAnyRole(roles: Role[] | RolePermission, allowedRoles: string[]): boolean {
-  if (typeof roles === 'string') {
+function hasAnyRole(
+  roles: Role[] | RolePermission,
+  allowedRoles: string[],
+): boolean {
+  if (typeof roles === "string") {
     return allowedRoles.includes(roles);
   }
-  return roles.some(role => allowedRoles.includes(role));
+  return roles.some((role) => allowedRoles.includes(role));
 }
 
 export const Permissions = {
   tickets: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Trainee', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Technician",
+        "Trainee",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canCreate: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Trainee', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Technician",
+        "Trainee",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     isSelfServiceRole: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Technician', 'Trainee', 'Supervisor']);
+      return hasAnyRole(roles, ["Technician", "Trainee", "Supervisor"]);
     },
-    canViewAllTechniciansInEditor: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+    canViewAllTechniciansInEditor: (
+      roles: Role[] | RolePermission,
+    ): boolean => {
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canReviewSelfServiceTicket: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canEditSelfServiceTicket: (
       roles: Role[] | RolePermission,
       currentEmployeeId: string,
-      ticketCreatedBy?: string
+      ticketCreatedBy?: string,
     ): boolean => {
       // Technicians cannot edit tickets at all, even their own
-      if (hasAnyRole(roles, ['Technician', 'Trainee'])) {
+      if (hasAnyRole(roles, ["Technician", "Trainee"])) {
         return false;
       }
       // Supervisors can edit their own self-service tickets
-      const isSelfServiceRole = hasAnyRole(roles, ['Supervisor']);
+      const isSelfServiceRole = hasAnyRole(roles, ["Supervisor"]);
       if (!isSelfServiceRole || !ticketCreatedBy) {
         return false;
       }
       return currentEmployeeId === ticketCreatedBy;
     },
-    canEdit: (roles: Role[] | RolePermission, isClosed: boolean, isApproved?: boolean): boolean => {
+    canEdit: (
+      roles: Role[] | RolePermission,
+      isClosed: boolean,
+      isApproved?: boolean,
+    ): boolean => {
       if (isClosed) return false;
-      if (hasAnyRole(roles, ['Admin', 'Owner'])) return true;
-      if (hasAnyRole(roles, ['Receptionist', 'Supervisor', 'Manager', 'Cashier'])) return !isApproved;
+      if (hasAnyRole(roles, ["Admin", "Owner"])) return true;
+      if (
+        hasAnyRole(roles, ["Receptionist", "Supervisor", "Manager", "Cashier"])
+      )
+        return !isApproved;
       return false;
     },
-    canEditNotes: (roles: Role[] | RolePermission, isClosed: boolean): boolean => {
+    canEditNotes: (
+      roles: Role[] | RolePermission,
+      isClosed: boolean,
+    ): boolean => {
       if (isClosed) return false;
-      if (hasAnyRole(roles, ['Admin', 'Owner'])) return true;
-      if (hasAnyRole(roles, ['Receptionist', 'Supervisor', 'Manager', 'Cashier'])) return true;
+      if (hasAnyRole(roles, ["Admin", "Owner"])) return true;
+      if (
+        hasAnyRole(roles, ["Receptionist", "Supervisor", "Manager", "Cashier"])
+      )
+        return true;
       // Technicians cannot edit notes
       return false;
     },
     canDelete: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin']);
+      return hasAnyRole(roles, ["Admin"]);
     },
     canVoid: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canViewAll: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canClose: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canMarkCompleted: (roles: Role[] | RolePermission): boolean => {
       // Only roles that can close tickets can also mark them as completed
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canSelectPaymentMethod: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
-    canViewPaymentDetailsWhenClosed: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Cashier']);
+    canViewPaymentDetailsWhenClosed: (
+      roles: Role[] | RolePermission,
+    ): boolean => {
+      return hasAnyRole(roles, [
+        "Admin",
+        "Owner",
+        "Manager",
+        "Supervisor",
+        "Receptionist",
+        "Cashier",
+      ]);
     },
     canReopen: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canRequestChanges: (roles: Role[] | RolePermission): boolean => {
       // Only roles who CANNOT reopen can request changes
-      return hasAnyRole(roles, ['Receptionist', 'Supervisor', 'Cashier']);
+      return hasAnyRole(roles, ["Receptionist", "Supervisor", "Cashier"]);
     },
     canReviewReopenRequests: (roles: Role[] | RolePermission): boolean => {
       // Manager+ can review all; Supervisor can review Receptionist/Cashier requests (filtered in UI)
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner', 'Supervisor']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner", "Supervisor"]);
     },
     canApprove: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Technician', 'Trainee', 'Supervisor', 'Receptionist', 'Owner', 'Manager']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Technician",
+        "Trainee",
+        "Supervisor",
+        "Receptionist",
+        "Owner",
+        "Manager",
+      ]);
     },
     canViewPendingApprovals: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Owner', 'Manager', 'Receptionist', 'Technician', 'Trainee', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Supervisor",
+        "Owner",
+        "Manager",
+        "Receptionist",
+        "Technician",
+        "Trainee",
+        "Cashier",
+      ]);
     },
     canReviewRejected: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Owner"]);
     },
     canEditTodaysColor: (
       roles: Role[] | RolePermission,
       isCompleted: boolean,
       isClosed: boolean,
-      isApproved?: boolean
+      isApproved?: boolean,
     ): boolean => {
       // Technician can edit until completed (and not closed)
-      if (hasAnyRole(roles, ['Technician', 'Trainee'])) {
+      if (hasAnyRole(roles, ["Technician", "Trainee"])) {
         return !isCompleted && !isClosed;
       }
       // Other roles follow normal canEdit logic
@@ -133,106 +258,165 @@ export const Permissions = {
       roles: Role[] | RolePermission,
       isCompleted: boolean,
       isClosed: boolean,
-      _isApproved?: boolean
+      _isApproved?: boolean,
     ): boolean => {
-      if (hasAnyRole(roles, ['Technician', 'Trainee'])) {
+      if (hasAnyRole(roles, ["Technician", "Trainee"])) {
         return !isCompleted;
       }
       return !isClosed;
     },
     canViewFullPhoneWhenClosed: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
+      return hasAnyRole(roles, ["Admin", "Owner", "Manager"]);
     },
   },
 
   endOfDay: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canViewAll: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canExport: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
   },
 
   tipReport: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Trainee', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Technician",
+        "Trainee",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canViewAll: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canViewPeriodReports: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Supervisor", "Manager", "Owner"]);
     },
     canExport: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canViewUnlimitedHistory: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
   },
 
   employees: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canCreate: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
+      return hasAnyRole(roles, ["Admin", "Owner", "Manager"]);
     },
     canEdit: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
+      return hasAnyRole(roles, ["Admin", "Owner", "Manager"]);
     },
     canDelete: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
+      return hasAnyRole(roles, ["Admin", "Owner", "Manager"]);
     },
     canResetPIN: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
+      return hasAnyRole(roles, ["Admin", "Owner", "Manager"]);
     },
     canAssignRoles: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
+      return hasAnyRole(roles, ["Admin", "Owner", "Manager"]);
     },
     // Target-role-aware permissions
-    canEditEmployee: (userRoles: Role[] | RolePermission, targetRoles: Role[]): boolean => {
+    canEditEmployee: (
+      userRoles: Role[] | RolePermission,
+      targetRoles: Role[],
+    ): boolean => {
       // Admin can edit anyone
-      if (hasAnyRole(userRoles, ['Admin'])) return true;
+      if (hasAnyRole(userRoles, ["Admin"])) return true;
       // Owner can edit anyone EXCEPT Admin
-      if (hasAnyRole(userRoles, ['Owner'])) {
-        return !targetRoles.includes('Admin');
+      if (hasAnyRole(userRoles, ["Owner"])) {
+        return !targetRoles.includes("Admin");
       }
       // Manager can edit Supervisor, Receptionist, Cashier, Technician only
-      if (hasAnyRole(userRoles, ['Manager'])) {
-        const hasRestrictedRole = targetRoles.some(r => ['Admin', 'Owner', 'Manager'].includes(r));
+      if (hasAnyRole(userRoles, ["Manager"])) {
+        const hasRestrictedRole = targetRoles.some((r) =>
+          ["Admin", "Owner", "Manager"].includes(r),
+        );
         return !hasRestrictedRole;
       }
       return false;
     },
-    canDeleteEmployee: (userRoles: Role[] | RolePermission, targetRoles: Role[]): boolean => {
+    canDeleteEmployee: (
+      userRoles: Role[] | RolePermission,
+      targetRoles: Role[],
+    ): boolean => {
       // Admin can delete anyone
-      if (hasAnyRole(userRoles, ['Admin'])) return true;
+      if (hasAnyRole(userRoles, ["Admin"])) return true;
       // Owner can delete anyone EXCEPT Admin
-      if (hasAnyRole(userRoles, ['Owner'])) {
-        return !targetRoles.includes('Admin');
+      if (hasAnyRole(userRoles, ["Owner"])) {
+        return !targetRoles.includes("Admin");
       }
       // Manager can delete Supervisor, Receptionist, Cashier, Technician only
-      if (hasAnyRole(userRoles, ['Manager'])) {
-        const hasRestrictedRole = targetRoles.some(r => ['Admin', 'Owner', 'Manager'].includes(r));
+      if (hasAnyRole(userRoles, ["Manager"])) {
+        const hasRestrictedRole = targetRoles.some((r) =>
+          ["Admin", "Owner", "Manager"].includes(r),
+        );
         return !hasRestrictedRole;
       }
       return false;
     },
-    canResetEmployeePIN: (userRoles: Role[] | RolePermission, targetRoles: Role[]): boolean => {
+    canResetEmployeePIN: (
+      userRoles: Role[] | RolePermission,
+      targetRoles: Role[],
+    ): boolean => {
       // Admin can reset anyone's PIN
-      if (hasAnyRole(userRoles, ['Admin'])) return true;
+      if (hasAnyRole(userRoles, ["Admin"])) return true;
       // Owner can reset anyone's PIN EXCEPT Admin
-      if (hasAnyRole(userRoles, ['Owner'])) {
-        return !targetRoles.includes('Admin');
+      if (hasAnyRole(userRoles, ["Owner"])) {
+        return !targetRoles.includes("Admin");
       }
       // Manager can reset PIN for Supervisor, Receptionist, Cashier, Technician only
-      if (hasAnyRole(userRoles, ['Manager'])) {
-        const hasRestrictedRole = targetRoles.some(r => ['Admin', 'Owner', 'Manager'].includes(r));
+      if (hasAnyRole(userRoles, ["Manager"])) {
+        const hasRestrictedRole = targetRoles.some((r) =>
+          ["Admin", "Owner", "Manager"].includes(r),
+        );
         return !hasRestrictedRole;
       }
       return false;
@@ -241,19 +425,19 @@ export const Permissions = {
 
   services: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Supervisor", "Manager", "Owner"]);
     },
     canCreate: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Supervisor', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Supervisor", "Owner"]);
     },
     canEdit: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Supervisor', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Supervisor", "Owner"]);
     },
     canArchive: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Supervisor', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Supervisor", "Owner"]);
     },
     canDelete: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Owner"]);
     },
   },
 
@@ -264,151 +448,242 @@ export const Permissions = {
   },
 
   attendance: {
-    canView: (roles: Role[] | RolePermission, _payType?: 'hourly' | 'daily' | 'commission'): boolean => {
+    canView: (
+      roles: Role[] | RolePermission,
+      _payType?: "hourly" | "daily" | "commission",
+    ): boolean => {
       // Management roles can always view attendance
-      if (hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier'])) {
+      if (
+        hasAnyRole(roles, [
+          "Admin",
+          "Receptionist",
+          "Supervisor",
+          "Manager",
+          "Owner",
+          "Cashier",
+        ])
+      ) {
         return true;
       }
       // All pay types (hourly, daily, commission) can view attendance
-      return hasAnyRole(roles, ['Technician', 'Trainee']);
+      return hasAnyRole(roles, ["Technician", "Trainee"]);
     },
     canComment: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Technician', 'Trainee', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Technician",
+        "Trainee",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canExport: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
   },
 
   inventory: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canCreateItems: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canEditItems: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canDeleteItems: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canCreateTransactions: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canApprove: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canViewLots: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canCreateLots: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canDistribute: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Cashier', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Cashier",
+        "Supervisor",
+        "Manager",
+        "Owner",
+      ]);
     },
     canViewEmployeeInventory: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Supervisor", "Manager", "Owner"]);
     },
     canViewOwnInventory: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Technician', 'Trainee', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Technician",
+        "Trainee",
+        "Supervisor",
+        "Manager",
+        "Owner",
+      ]);
     },
     canCreateAudit: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Supervisor", "Manager", "Owner"]);
     },
     canApproveAudit: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canSelfApprove: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin']);
+      return hasAnyRole(roles, ["Admin"]);
     },
   },
 
   suppliers: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canCreate: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canEdit: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canDelete: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Owner"]);
     },
   },
 
   queue: {
     canViewAllQueueStatuses: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canRemoveTechnicians: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canViewRemovalHistory: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Supervisor", "Manager", "Owner"]);
     },
   },
 
   insights: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Owner"]);
     },
   },
 
   safeBalance: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canManage: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
   },
 
   configuration: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Owner"]);
     },
     canEdit: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Owner"]);
     },
   },
 
   cashTransactions: {
     canEdit: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canViewEditHistory: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canCreateChangeProposal: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canReviewChangeProposal: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Owner', 'Admin']);
+      return hasAnyRole(roles, ["Owner", "Admin"]);
     },
   },
 
   clients: {
     canView: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canCreate: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canEdit: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Receptionist', 'Supervisor', 'Manager', 'Owner', 'Cashier']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Receptionist",
+        "Supervisor",
+        "Manager",
+        "Owner",
+        "Cashier",
+      ]);
     },
     canDelete: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Manager", "Owner"]);
     },
     canBlacklist: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Supervisor", "Manager", "Owner"]);
     },
     canViewFullPhone: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Supervisor", "Manager", "Owner"]);
     },
   },
 
@@ -420,15 +695,15 @@ export const Permissions = {
      */
     canViewTips: (
       roles: Role[] | RolePermission,
-      payType?: 'hourly' | 'daily' | 'commission'
+      payType?: "hourly" | "daily" | "commission",
     ): boolean => {
       // Management roles can ALWAYS see tips regardless of pay_type
-      const MANAGEMENT_ROLES = ['Admin', 'Manager', 'Owner', 'Supervisor'];
+      const MANAGEMENT_ROLES = ["Admin", "Manager", "Owner", "Supervisor"];
       if (hasAnyRole(roles, MANAGEMENT_ROLES)) {
         return true;
       }
       // Commission employees cannot see tips
-      if (payType === 'commission') {
+      if (payType === "commission") {
         return false;
       }
       // All other pay types (hourly, daily, undefined) can see tips
@@ -439,139 +714,183 @@ export const Permissions = {
   photos: {
     canUploadTicketPhotos: (roles: Role[] | RolePermission): boolean => {
       // All users can upload photos and delete pending (unsaved) photos
-      return hasAnyRole(roles, ['Admin', 'Technician', 'Trainee', 'Receptionist', 'Cashier', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Technician",
+        "Trainee",
+        "Receptionist",
+        "Cashier",
+        "Supervisor",
+        "Manager",
+        "Owner",
+      ]);
     },
     canDeleteTicketPhotos: (roles: Role[] | RolePermission): boolean => {
       // Only Supervisor and above can delete saved photos from Supabase
-      return hasAnyRole(roles, ['Admin', 'Supervisor', 'Manager', 'Owner']);
+      return hasAnyRole(roles, ["Admin", "Supervisor", "Manager", "Owner"]);
     },
   },
 
   resources: {
     canView: (roles: Role[] | RolePermission): boolean => {
       // All authenticated roles can view resources
-      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager', 'Supervisor', 'Receptionist', 'Cashier', 'Technician', 'Trainee']);
+      return hasAnyRole(roles, [
+        "Admin",
+        "Owner",
+        "Manager",
+        "Supervisor",
+        "Receptionist",
+        "Cashier",
+        "Technician",
+        "Trainee",
+      ]);
     },
     canCreate: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
+      return hasAnyRole(roles, ["Admin", "Owner", "Manager"]);
     },
     canEdit: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
+      return hasAnyRole(roles, ["Admin", "Owner", "Manager"]);
     },
     canDelete: (roles: Role[] | RolePermission): boolean => {
-      return hasAnyRole(roles, ['Admin', 'Owner', 'Manager']);
+      return hasAnyRole(roles, ["Admin", "Owner", "Manager"]);
+    },
+    canManageTabs: (roles: Role[] | RolePermission): boolean => {
+      return hasAnyRole(roles, ["Admin", "Owner", "Manager"]);
     },
   },
 };
 
 export function getPermissionMessage(
   action: string,
-  requiredRole: RolePermission
+  requiredRole: RolePermission,
 ): string {
   return `Permission required: ${requiredRole} only - ${action}`;
 }
 
 export function canAccessPage(
-  page: 'home' | 'tickets' | 'eod' | 'tipreport' | 'technicians' | 'services' | 'profile' | 'settings' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'configuration' | 'safebalance' | 'queue-removal-history' | 'clients' | 'resources',
+  page:
+    | "home"
+    | "tickets"
+    | "eod"
+    | "tipreport"
+    | "technicians"
+    | "services"
+    | "profile"
+    | "settings"
+    | "attendance"
+    | "approvals"
+    | "inventory"
+    | "insights"
+    | "configuration"
+    | "safebalance"
+    | "queue-removal-history"
+    | "clients"
+    | "resources",
   roles: Role[] | RolePermission,
-  payType?: 'hourly' | 'daily' | 'commission'
+  payType?: "hourly" | "daily" | "commission",
 ): boolean {
   switch (page) {
-    case 'home':
+    case "home":
       return true;
-    case 'tickets':
+    case "tickets":
       return Permissions.tickets.canView(roles);
-    case 'eod':
+    case "eod":
       return Permissions.endOfDay.canView(roles);
-    case 'tipreport':
+    case "tipreport":
       // Commission employees (without management roles) cannot access tip report
-      if (payType === 'commission') {
-        const MANAGEMENT_ROLES = ['Admin', 'Manager', 'Owner', 'Supervisor'];
+      if (payType === "commission") {
+        const MANAGEMENT_ROLES = ["Admin", "Manager", "Owner", "Supervisor"];
         if (!hasAnyRole(roles, MANAGEMENT_ROLES)) {
           return false;
         }
       }
       return Permissions.tipReport.canView(roles);
-    case 'technicians':
+    case "technicians":
       return Permissions.employees.canView(roles);
-    case 'services':
+    case "services":
       return Permissions.services.canView(roles);
-    case 'profile':
+    case "profile":
       return true;
-    case 'settings':
+    case "settings":
       return true;
-    case 'attendance':
+    case "attendance":
       return Permissions.attendance.canView(roles, payType);
-    case 'approvals':
+    case "approvals":
       return Permissions.tickets.canViewPendingApprovals(roles);
-    case 'inventory':
+    case "inventory":
       return Permissions.inventory.canView(roles);
-    case 'insights':
+    case "insights":
       return Permissions.insights.canView(roles);
-    case 'configuration':
+    case "configuration":
       return Permissions.configuration.canView(roles);
-    case 'safebalance':
+    case "safebalance":
       return Permissions.safeBalance.canView(roles);
-    case 'queue-removal-history':
+    case "queue-removal-history":
       return Permissions.queue.canViewRemovalHistory(roles);
-    case 'clients':
+    case "clients":
       return Permissions.clients.canView(roles);
-    case 'resources':
+    case "resources":
       return Permissions.resources.canView(roles);
     default:
       return false;
   }
 }
 
-export function getAccessiblePages(roles: Role[] | RolePermission, payType?: 'hourly' | 'daily' | 'commission'): string[] {
-  const pages: string[] = ['tickets', 'profile'];
+export function getAccessiblePages(
+  roles: Role[] | RolePermission,
+  payType?: "hourly" | "daily" | "commission",
+): string[] {
+  const pages: string[] = ["tickets", "profile"];
 
   if (Permissions.tickets.canViewPendingApprovals(roles)) {
-    pages.push('approvals');
+    pages.push("approvals");
   }
 
-  if (Permissions.tipReport.canView(roles) && Permissions.tips.canViewTips(roles, payType)) {
-    pages.push('tipreport');
+  if (
+    Permissions.tipReport.canView(roles) &&
+    Permissions.tips.canViewTips(roles, payType)
+  ) {
+    pages.push("tipreport");
   }
 
   if (Permissions.endOfDay.canView(roles)) {
-    pages.push('eod');
+    pages.push("eod");
   }
 
   if (Permissions.attendance.canView(roles, payType)) {
-    pages.push('attendance');
+    pages.push("attendance");
   }
 
   if (Permissions.employees.canView(roles)) {
-    pages.push('technicians');
+    pages.push("technicians");
   }
 
   if (Permissions.inventory.canView(roles)) {
-    pages.push('inventory');
+    pages.push("inventory");
   }
 
   if (Permissions.services.canView(roles)) {
-    pages.push('services');
+    pages.push("services");
   }
 
   if (Permissions.insights.canView(roles)) {
-    pages.push('insights');
+    pages.push("insights");
   }
 
   if (Permissions.safeBalance.canView(roles)) {
-    pages.push('safebalance');
+    pages.push("safebalance");
   }
 
   if (Permissions.configuration.canView(roles)) {
-    pages.push('configuration');
+    pages.push("configuration");
   }
 
   if (Permissions.clients.canView(roles)) {
-    pages.push('clients');
+    pages.push("clients");
   }
 
   if (Permissions.resources.canView(roles)) {
-    pages.push('resources');
+    pages.push("resources");
   }
 
   return pages;

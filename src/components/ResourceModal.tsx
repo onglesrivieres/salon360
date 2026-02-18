@@ -1,12 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { Modal } from './ui/Modal';
-import { Button } from './ui/Button';
-import { Input } from './ui/Input';
-import { useToast } from './ui/Toast';
-import { supabase, Resource, ResourceCategory, ResourceSubcategory } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import { Image, ExternalLink, Plus, ChevronDown } from 'lucide-react';
-import { CATEGORY_COLORS, getCategoryBadgeClasses } from '../lib/category-colors';
+import React, { useState, useEffect } from "react";
+import { Modal } from "./ui/Modal";
+import { Button } from "./ui/Button";
+import { Input } from "./ui/Input";
+import { useToast } from "./ui/Toast";
+import {
+  supabase,
+  Resource,
+  ResourceCategory,
+  ResourceSubcategory,
+} from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
+import { Image, ExternalLink, Plus, ChevronDown } from "lucide-react";
+import {
+  CATEGORY_COLORS,
+  getCategoryBadgeClasses,
+} from "../lib/category-colors";
 
 interface ResourceModalProps {
   isOpen: boolean;
@@ -19,12 +27,12 @@ interface ResourceModalProps {
   onCategoriesChanged: () => void;
 }
 
-const CATEGORY_LABELS: Record<ResourceCategory, string> = {
-  sop: 'Standard Operating Procedure',
-  employee_manual: 'Employee Manual',
-  training: 'Training',
-  policy: 'Policy',
-  rules: 'Rules',
+const CATEGORY_LABELS: Record<string, string> = {
+  sop: "Standard Operating Procedure",
+  employee_manual: "Employee Manual",
+  training: "Training",
+  policy: "Policy",
+  rules: "Rules",
 };
 
 export function ResourceModal({
@@ -35,74 +43,74 @@ export function ResourceModal({
   category,
   storeId,
   subcategories,
-  onCategoriesChanged
+  onCategoriesChanged,
 }: ResourceModalProps) {
   const { session } = useAuth();
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    link_url: '',
-    thumbnail_url: '',
-    subcategory: '',
+    title: "",
+    description: "",
+    link_url: "",
+    thumbnail_url: "",
+    subcategory: "",
   });
 
   // New category creation state
   const [showNewCategory, setShowNewCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [newCategoryColor, setNewCategoryColor] = useState('blue');
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryColor, setNewCategoryColor] = useState("blue");
   const [creatingCategory, setCreatingCategory] = useState(false);
 
   useEffect(() => {
     if (resource && isOpen) {
       setFormData({
         title: resource.title,
-        description: resource.description || '',
-        link_url: resource.link_url || '',
-        thumbnail_url: resource.thumbnail_url || '',
-        subcategory: resource.subcategory || '',
+        description: resource.description || "",
+        link_url: resource.link_url || "",
+        thumbnail_url: resource.thumbnail_url || "",
+        subcategory: resource.subcategory || "",
       });
     } else if (!resource && isOpen) {
       setFormData({
-        title: '',
-        description: '',
-        link_url: '',
-        thumbnail_url: '',
-        subcategory: '',
+        title: "",
+        description: "",
+        link_url: "",
+        thumbnail_url: "",
+        subcategory: "",
       });
     }
     setShowNewCategory(false);
-    setNewCategoryName('');
-    setNewCategoryColor('blue');
+    setNewCategoryName("");
+    setNewCategoryColor("blue");
   }, [resource, isOpen]);
 
   function handleClose() {
     setFormData({
-      title: '',
-      description: '',
-      link_url: '',
-      thumbnail_url: '',
-      subcategory: '',
+      title: "",
+      description: "",
+      link_url: "",
+      thumbnail_url: "",
+      subcategory: "",
     });
     setShowNewCategory(false);
-    setNewCategoryName('');
-    setNewCategoryColor('blue');
+    setNewCategoryName("");
+    setNewCategoryColor("blue");
     onClose();
   }
 
   async function handleCreateCategory() {
     if (!newCategoryName.trim()) {
-      showToast('Please enter a category name', 'error');
+      showToast("Please enter a category name", "error");
       return;
     }
 
     // Check for duplicate
     const exists = subcategories.some(
-      (c) => c.name.toLowerCase() === newCategoryName.trim().toLowerCase()
+      (c) => c.name.toLowerCase() === newCategoryName.trim().toLowerCase(),
     );
     if (exists) {
-      showToast('A category with this name already exists', 'error');
+      showToast("A category with this name already exists", "error");
       return;
     }
 
@@ -111,17 +119,17 @@ export function ResourceModal({
 
       // Get max display_order
       const { data: maxOrderData } = await supabase
-        .from('resource_categories')
-        .select('display_order')
-        .eq('store_id', storeId)
-        .eq('tab', category)
-        .order('display_order', { ascending: false })
+        .from("resource_categories")
+        .select("display_order")
+        .eq("store_id", storeId)
+        .eq("tab", category)
+        .order("display_order", { ascending: false })
         .limit(1)
         .maybeSingle();
 
       const newDisplayOrder = (maxOrderData?.display_order ?? -1) + 1;
 
-      const { error } = await supabase.from('resource_categories').insert({
+      const { error } = await supabase.from("resource_categories").insert({
         store_id: storeId,
         tab: category,
         name: newCategoryName.trim(),
@@ -132,18 +140,18 @@ export function ResourceModal({
 
       if (error) throw error;
 
-      showToast('Category created successfully', 'success');
+      showToast("Category created successfully", "success");
       setFormData({ ...formData, subcategory: newCategoryName.trim() });
       setShowNewCategory(false);
-      setNewCategoryName('');
-      setNewCategoryColor('blue');
+      setNewCategoryName("");
+      setNewCategoryColor("blue");
       onCategoriesChanged();
     } catch (error: any) {
-      console.error('Error creating category:', error);
-      if (error.code === '23505') {
-        showToast('A category with this name already exists', 'error');
+      console.error("Error creating category:", error);
+      if (error.code === "23505") {
+        showToast("A category with this name already exists", "error");
       } else {
-        showToast('Failed to create category', 'error');
+        showToast("Failed to create category", "error");
       }
     } finally {
       setCreatingCategory(false);
@@ -154,12 +162,12 @@ export function ResourceModal({
     e.preventDefault();
 
     if (!formData.title.trim()) {
-      showToast('Please enter a title', 'error');
+      showToast("Please enter a title", "error");
       return;
     }
 
     if (formData.title.trim().length < 2) {
-      showToast('Title must be at least 2 characters', 'error');
+      showToast("Title must be at least 2 characters", "error");
       return;
     }
 
@@ -168,7 +176,10 @@ export function ResourceModal({
       try {
         new URL(formData.link_url.trim());
       } catch {
-        showToast('Please enter a valid URL (e.g., https://example.com)', 'error');
+        showToast(
+          "Please enter a valid URL (e.g., https://example.com)",
+          "error",
+        );
         return;
       }
     }
@@ -178,7 +189,7 @@ export function ResourceModal({
       try {
         new URL(formData.thumbnail_url.trim());
       } catch {
-        showToast('Please enter a valid thumbnail URL', 'error');
+        showToast("Please enter a valid thumbnail URL", "error");
         return;
       }
     }
@@ -186,12 +197,12 @@ export function ResourceModal({
     try {
       setSaving(true);
 
-      const thumbnailSource = formData.thumbnail_url.trim() ? 'manual' : 'none';
+      const thumbnailSource = formData.thumbnail_url.trim() ? "manual" : "none";
 
       if (resource) {
         // Update existing resource
         const { error: updateError } = await supabase
-          .from('resources')
+          .from("resources")
           .update({
             title: formData.title.trim(),
             description: formData.description.trim() || null,
@@ -202,55 +213,56 @@ export function ResourceModal({
             updated_by: session?.employee_id || null,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', resource.id);
+          .eq("id", resource.id);
 
         if (updateError) throw updateError;
-        showToast('Resource updated successfully', 'success');
+        showToast("Resource updated successfully", "success");
       } else {
         // Get the max display_order for this category in this store
         const { data: maxOrderData } = await supabase
-          .from('resources')
-          .select('display_order')
-          .eq('store_id', storeId)
-          .eq('category', category)
-          .order('display_order', { ascending: false })
+          .from("resources")
+          .select("display_order")
+          .eq("store_id", storeId)
+          .eq("category", category)
+          .order("display_order", { ascending: false })
           .limit(1)
           .maybeSingle();
 
         const newDisplayOrder = (maxOrderData?.display_order ?? -1) + 1;
 
         // Create new resource
-        const { error: insertError } = await supabase
-          .from('resources')
-          .insert({
-            store_id: storeId,
-            category: category,
-            subcategory: formData.subcategory || null,
-            title: formData.title.trim(),
-            description: formData.description.trim() || null,
-            link_url: formData.link_url.trim() || null,
-            thumbnail_url: formData.thumbnail_url.trim() || null,
-            thumbnail_source: thumbnailSource,
-            display_order: newDisplayOrder,
-            is_active: true,
-            created_by: session?.employee_id || null,
-          });
+        const { error: insertError } = await supabase.from("resources").insert({
+          store_id: storeId,
+          category: category,
+          subcategory: formData.subcategory || null,
+          title: formData.title.trim(),
+          description: formData.description.trim() || null,
+          link_url: formData.link_url.trim() || null,
+          thumbnail_url: formData.thumbnail_url.trim() || null,
+          thumbnail_source: thumbnailSource,
+          display_order: newDisplayOrder,
+          is_active: true,
+          created_by: session?.employee_id || null,
+        });
 
         if (insertError) throw insertError;
-        showToast('Resource added successfully', 'success');
+        showToast("Resource added successfully", "success");
       }
 
       onSuccess();
       handleClose();
     } catch (error: any) {
-      console.error('Error saving resource:', error);
+      console.error("Error saving resource:", error);
 
-      if (error.code === '42501') {
-        showToast('Permission denied. Only Admins, Managers, and Owners can manage resources.', 'error');
+      if (error.code === "42501") {
+        showToast(
+          "Permission denied. Only Admins, Managers, and Owners can manage resources.",
+          "error",
+        );
       } else if (error.message) {
-        showToast(`Error: ${error.message}`, 'error');
+        showToast(`Error: ${error.message}`, "error");
       } else {
-        showToast('Failed to save resource', 'error');
+        showToast("Failed to save resource", "error");
       }
     } finally {
       setSaving(false);
@@ -266,7 +278,11 @@ export function ResourceModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={resource ? 'Edit Resource' : `Add ${CATEGORY_LABELS[category]}`}
+      title={
+        resource
+          ? "Edit Resource"
+          : `Add ${CATEGORY_LABELS[category] || "Resource"}`
+      }
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -276,7 +292,9 @@ export function ResourceModal({
           </label>
           <Input
             value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, title: e.target.value })
+            }
             placeholder="e.g., Opening Procedures Checklist"
             required
             autoFocus
@@ -293,7 +311,9 @@ export function ResourceModal({
               <div className="relative flex-1">
                 <select
                   value={formData.subcategory}
-                  onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, subcategory: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white pr-10"
                 >
                   <option value="">Uncategorized</option>
@@ -317,13 +337,15 @@ export function ResourceModal({
           ) : (
             <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">New Category</span>
+                <span className="text-sm font-medium text-gray-700">
+                  New Category
+                </span>
                 <button
                   type="button"
                   onClick={() => {
                     setShowNewCategory(false);
-                    setNewCategoryName('');
-                    setNewCategoryColor('blue');
+                    setNewCategoryName("");
+                    setNewCategoryColor("blue");
                   }}
                   className="text-xs text-gray-500 hover:text-gray-700"
                 >
@@ -337,7 +359,9 @@ export function ResourceModal({
                 autoFocus
               />
               <div>
-                <label className="block text-xs text-gray-600 mb-1">Color</label>
+                <label className="block text-xs text-gray-600 mb-1">
+                  Color
+                </label>
                 <div className="flex gap-2 flex-wrap">
                   {CATEGORY_COLORS.map((color) => (
                     <button
@@ -346,8 +370,8 @@ export function ResourceModal({
                       onClick={() => setNewCategoryColor(color.key)}
                       className={`px-3 py-1 text-xs rounded-full border-2 transition-all ${getCategoryBadgeClasses(color.key)} ${
                         newCategoryColor === color.key
-                          ? 'border-gray-800 ring-2 ring-offset-1 ring-gray-400'
-                          : 'border-transparent'
+                          ? "border-gray-800 ring-2 ring-offset-1 ring-gray-400"
+                          : "border-transparent"
                       }`}
                     >
                       {color.label}
@@ -362,7 +386,7 @@ export function ResourceModal({
                 size="sm"
                 className="w-full"
               >
-                {creatingCategory ? 'Creating...' : 'Create Category'}
+                {creatingCategory ? "Creating..." : "Create Category"}
               </Button>
             </div>
           )}
@@ -377,7 +401,9 @@ export function ResourceModal({
           </label>
           <textarea
             value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
             placeholder="Brief description of this resource (optional)"
             rows={3}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -391,7 +417,9 @@ export function ResourceModal({
           <div className="flex gap-2">
             <Input
               value={formData.link_url}
-              onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, link_url: e.target.value })
+              }
               placeholder="https://docs.google.com/document/..."
               type="url"
               className="flex-1"
@@ -419,7 +447,9 @@ export function ResourceModal({
           </label>
           <Input
             value={formData.thumbnail_url}
-            onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, thumbnail_url: e.target.value })
+            }
             placeholder="https://example.com/image.jpg"
             type="url"
           />
@@ -440,8 +470,10 @@ export function ResourceModal({
                 alt="Thumbnail preview"
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                  (e.target as HTMLImageElement).style.display = "none";
+                  (
+                    e.target as HTMLImageElement
+                  ).nextElementSibling?.classList.remove("hidden");
                 }}
               />
               <div className="hidden absolute inset-0 flex items-center justify-center text-gray-400">
@@ -456,9 +488,18 @@ export function ResourceModal({
 
         <div className="flex gap-3 pt-4">
           <Button type="submit" disabled={saving} className="flex-1">
-            {saving ? 'Saving...' : resource ? 'Update Resource' : 'Add Resource'}
+            {saving
+              ? "Saving..."
+              : resource
+                ? "Update Resource"
+                : "Add Resource"}
           </Button>
-          <Button type="button" variant="secondary" onClick={handleClose} disabled={saving}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleClose}
+            disabled={saving}
+          >
             Cancel
           </Button>
         </div>

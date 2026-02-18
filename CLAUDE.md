@@ -88,6 +88,7 @@ node scripts/migrations/apply_<migration_name>.mjs
 │   ├── ConfigurationPage.tsx  # Store settings
 │   ├── SettingsPage.tsx       # User preferences
 │   ├── PendingApprovalsPage.tsx # Approval hub (8 tabs)
+│   ├── ResourcesPage.tsx      # Dynamic resource tabs with unread tracking
 │   └── LoginPage.tsx          # PIN authentication
 ├── components/
 │   ├── ui/                    # Base UI primitives (Button, Modal, Input, Toast, etc.)
@@ -155,6 +156,8 @@ ToastProvider → AuthProvider → PermissionsProvider → PermissionsCacheProvi
 **SettingsPage** (`SettingsPage.tsx`): User preferences, display settings, change own PIN.
 
 **PendingApprovalsPage** (`PendingApprovalsPage.tsx`): 8 approval tabs — Tickets, Inventory, Cash Transactions, Transaction Changes, Attendance, Violations (voting system), Queue History, Ticket Changes (reopen requests; Supervisor sees Receptionist/Cashier requests only).
+
+**ResourcesPage** (`ResourcesPage.tsx`): Dynamic resource tabs (from `resource_tabs` table) with per-tab subcategory management. Managers can create/rename/delete tabs with icon picker (10 lucide icons). Unread resource tracking via `resource_read_status` table — blue dots on unread cards, red badge pills on tab headers, sidebar badge via Layout.tsx (60s polling + realtime). "Mark as Read" button in resource view popup. Resources organized by subcategories within each tab, with drag-and-drop reordering.
 
 **LoginPage** (`LoginPage.tsx`): 4-digit PIN entry, check-in/out action, auto-submit on completion.
 
@@ -410,6 +413,10 @@ Technician ready → In queue → (skip turn → back to end of queue) → Assig
 | `queue_leave_log` | Voluntary queue departures with reason/notes |
 | `queue_skip_log` | Skip turn actions with reason/notes |
 | `violation_reports` | Employee violation tracking |
+| `resources` | Resource items (SOPs, manuals, training materials) |
+| `resource_categories` | Subcategories within resource tabs |
+| `resource_tabs` | Dynamic tab definitions per store (slug, icon, order) |
+| `resource_read_status` | Per-employee read tracking for resources |
 
 ### Important Fields
 
@@ -509,6 +516,10 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes (Jan 23 – Feb 18, 2026)
 
 Changes grouped by feature area. All dates in 2026.
+
+### Resources: Dynamic Tabs + Unread Notification System (Feb 18)
+- Replaced hardcoded 2-tab system (SOP, Employee Manual) with fully dynamic tabs. New `resource_tabs` table stores per-store tab definitions (name, slug, icon_name, display_order). Managers can create/rename/delete tabs via Tab Management Modal with icon picker (10 curated lucide icons). Slug auto-generated from name. Existing `sop` and `employee_manual` tabs seeded from current data. Dropped CHECK constraints on `resources.category` and `resource_categories.tab` — both now accept any string matching a `resource_tabs.slug`. `ResourceCategory` TypeScript type widened from union to `string`. Files: `ResourcesPage.tsx`, `ResourceModal.tsx`, `supabase.ts`, `permissions.ts`, `resource-icons.ts` (new), `i18n.ts` + migration
+- Unread resource tracking via `resource_read_status` table (absence = unread). "Mark as Read" button in resource view popup footer (emerald green → disabled "Read" state after click). Blue dot indicator on unread resource cards, red badge pills on tab headers showing per-tab unread count. Sidebar badge in Layout.tsx via `get_unread_resources_count` RPC (60s polling + realtime on `resources` INSERT and `resource_read_status` changes). Optimistic UI updates with rollback. Two new RPCs: `get_unread_resources_count` (sidebar total) and `get_unread_resources_count_by_tab` (per-tab counts). Files: `ResourcesPage.tsx`, `Layout.tsx`, `supabase.ts` + migration
 
 ### Approvals: Inline Ticket Viewer on Tickets and Ticket Changes Tabs (Feb 18)
 - Eye icon "View" button added to Pending Approvals → Tickets tab, reusing the same `handleViewTicket` / `viewingTicketId` state / `<TicketEditor>` drawer already built for the Ticket Changes tab. View button shown for all users (replaces "View only" text); Approve/Reject buttons still gated behind `canTakeActions`. `handleViewTicket` parameter widened from `PendingTicketReopenRequest` to `{ ticket_id: string; ticket_date: string }` so both tabs share one handler. No DB changes. Files: `PendingApprovalsPage.tsx`

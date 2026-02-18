@@ -1,10 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+  throw new Error("Missing Supabase environment variables");
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -14,11 +14,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'x-application-name': 'salon360',
+      "x-application-name": "salon360",
     },
   },
   db: {
-    schema: 'public',
+    schema: "public",
   },
   realtime: {
     params: {
@@ -42,10 +42,18 @@ export interface Technician {
   id: string;
   legal_name: string;
   display_name: string;
-  role: ('Technician' | 'Trainee' | 'Receptionist' | 'Manager' | 'Owner' | 'Supervisor' | 'Cashier')[];
-  status: 'Active' | 'Inactive';
+  role: (
+    | "Technician"
+    | "Trainee"
+    | "Receptionist"
+    | "Manager"
+    | "Owner"
+    | "Supervisor"
+    | "Cashier"
+  )[];
+  status: "Active" | "Inactive";
   store_id?: string;
-  pay_type?: 'hourly' | 'daily' | 'commission';
+  pay_type?: "hourly" | "daily" | "commission";
   payout_rule_type?: string;
   payout_commission_pct?: number;
   payout_hourly_rate?: number;
@@ -65,7 +73,14 @@ export interface Technician {
   updated_at: string;
 }
 
-export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+export type DayOfWeek =
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday"
+  | "sunday";
 
 export interface DaySchedule {
   is_working: boolean;
@@ -138,7 +153,11 @@ export interface StoreServiceCategory {
   updated_at: string;
 }
 
-export type ApprovalStatus = 'pending_approval' | 'approved' | 'rejected' | 'auto_approved';
+export type ApprovalStatus =
+  | "pending_approval"
+  | "approved"
+  | "rejected"
+  | "auto_approved";
 
 export interface SaleTicket {
   id: string;
@@ -152,7 +171,7 @@ export interface SaleTicket {
   customer_name: string;
   customer_phone: string;
 
-  payment_method: 'Cash' | 'Card' | 'Mixed' | 'Other';
+  payment_method: "Cash" | "Card" | "Mixed" | "Other";
   total: number;
   location: string;
   notes: string;
@@ -225,7 +244,15 @@ export interface TicketActivityLog {
   id: string;
   ticket_id: string;
   employee_id?: string;
-  action: 'created' | 'updated' | 'closed' | 'reopened' | 'approved' | 'status_corrected' | 'deleted' | 'voided';
+  action:
+    | "created"
+    | "updated"
+    | "closed"
+    | "reopened"
+    | "approved"
+    | "status_corrected"
+    | "deleted"
+    | "voided";
   description: string;
   changes?: Record<string, any>;
   created_at: string;
@@ -237,7 +264,7 @@ export interface TechnicianReadyQueue {
   employee_id: string;
   store_id: string;
   ready_at: string;
-  status: 'ready' | 'busy';
+  status: "ready" | "busy";
   current_open_ticket_id?: string;
   created_at: string;
   updated_at: string;
@@ -247,7 +274,7 @@ export interface TechnicianWithQueue {
   employee_id: string;
   legal_name: string;
   display_name: string;
-  queue_status: 'ready' | 'busy' | 'small_service' | 'neutral';
+  queue_status: "ready" | "busy" | "small_service" | "neutral";
   queue_position: number;
   ready_at?: string;
   current_open_ticket_id?: string;
@@ -274,8 +301,8 @@ export interface AttendanceRecord {
   check_in_time: string;
   check_out_time?: string;
   last_activity_time?: string;
-  pay_type: 'hourly' | 'daily' | 'commission';
-  status: 'checked_in' | 'checked_out' | 'auto_checked_out';
+  pay_type: "hourly" | "daily" | "commission";
+  status: "checked_in" | "checked_out" | "auto_checked_out";
   total_hours?: number;
   notes: string;
   created_at: string;
@@ -319,7 +346,7 @@ export interface AttendanceComment {
   employee?: Technician;
 }
 
-export type AttendanceProposalStatus = 'pending' | 'approved' | 'rejected';
+export type AttendanceProposalStatus = "pending" | "approved" | "rejected";
 
 export interface AttendanceChangeProposal {
   id: string;
@@ -533,13 +560,13 @@ export interface InventoryItemWithHierarchy extends InventoryItem {
 export interface InventoryTransaction {
   id: string;
   store_id: string;
-  transaction_type: 'in' | 'out' | 'transfer';
+  transaction_type: "in" | "out" | "transfer";
   transaction_number: string;
   requested_by_id: string;
   recipient_id?: string;
   destination_store_id?: string;
   notes: string;
-  status: 'draft' | 'pending' | 'approved' | 'rejected';
+  status: "draft" | "pending" | "approved" | "rejected";
   requires_recipient_approval: boolean;
   requires_manager_approval: boolean;
   recipient_approved: boolean;
@@ -583,8 +610,8 @@ export interface InventoryTransactionItemWithDetails extends InventoryTransactio
 export interface ItemTransactionHistory {
   transaction_id: string;
   transaction_number: string;
-  transaction_type: 'in' | 'out' | 'transfer';
-  status: 'draft' | 'pending' | 'approved' | 'rejected';
+  transaction_type: "in" | "out" | "transfer";
+  status: "draft" | "pending" | "approved" | "rejected";
   created_at: string;
   purchase_unit_name: string;
   purchase_quantity: number;
@@ -597,8 +624,8 @@ export interface ItemTransactionHistory {
 export interface TransactionDetail {
   id: string;
   transaction_number: string;
-  transaction_type: 'in' | 'out' | 'transfer';
-  status: 'draft' | 'pending' | 'approved' | 'rejected';
+  transaction_type: "in" | "out" | "transfer";
+  status: "draft" | "pending" | "approved" | "rejected";
   created_at: string;
   requested_by_id: string;
   requested_by_name: string;
@@ -635,7 +662,7 @@ export interface TransactionDetailItem {
 export interface PendingInventoryApproval {
   id: string;
   transaction_number: string;
-  transaction_type: 'in' | 'out' | 'transfer';
+  transaction_type: "in" | "out" | "transfer";
   requested_by_id: string;
   requested_by_name: string;
   recipient_id: string | null;
@@ -667,7 +694,7 @@ export interface InventoryPurchaseLot {
   batch_number?: string;
   invoice_reference?: string;
   notes: string;
-  status: 'active' | 'depleted' | 'archived';
+  status: "active" | "depleted" | "archived";
   created_by_id?: string;
   created_at: string;
   updated_at: string;
@@ -743,7 +770,7 @@ export interface InventoryDistribution {
   store_id: string;
   item_id: string;
   lot_id: string;
-  from_type: 'store' | 'employee';
+  from_type: "store" | "employee";
   from_employee_id?: string;
   to_employee_id: string;
   quantity: number;
@@ -751,7 +778,13 @@ export interface InventoryDistribution {
   distribution_date: string;
   expected_return_date?: string;
   actual_return_date?: string;
-  status: 'pending' | 'acknowledged' | 'in_use' | 'returned' | 'consumed' | 'cancelled';
+  status:
+    | "pending"
+    | "acknowledged"
+    | "in_use"
+    | "returned"
+    | "consumed"
+    | "cancelled";
   condition_notes: string;
   distributed_by_id: string;
   acknowledged_by_signature?: string;
@@ -788,18 +821,18 @@ export interface PendingDistributionApproval {
   condition_notes: string | null;
   status: string;
   manager_approved: boolean;
-  approval_type: 'acknowledge' | 'manager_approve';
+  approval_type: "acknowledge" | "manager_approve";
 }
 
 export interface InventoryAudit {
   id: string;
   audit_number: string;
   store_id: string;
-  audit_type: 'full_store' | 'employee_specific' | 'spot_check' | 'cycle_count';
+  audit_type: "full_store" | "employee_specific" | "spot_check" | "cycle_count";
   employee_id?: string;
   audit_date: string;
   audited_by_id: string;
-  status: 'scheduled' | 'in_progress' | 'completed' | 'approved';
+  status: "scheduled" | "in_progress" | "completed" | "approved";
   total_variance_value: number;
   notes: string;
   approved_by_id?: string;
@@ -866,8 +899,11 @@ export interface EndOfDayRecord {
   updated_at: string;
 }
 
-export type CashTransactionType = 'cash_in' | 'cash_out' | 'cash_payout';
-export type CashTransactionStatus = 'pending_approval' | 'approved' | 'rejected';
+export type CashTransactionType = "cash_in" | "cash_out" | "cash_payout";
+export type CashTransactionStatus =
+  | "pending_approval"
+  | "approved"
+  | "rejected";
 
 export interface CashTransaction {
   id: string;
@@ -943,7 +979,7 @@ export interface SafeBalanceSummary {
 
 export interface SafeTransaction {
   transaction_date: string;
-  transaction_type: 'deposit' | 'withdrawal';
+  transaction_type: "deposit" | "withdrawal";
   amount: number;
   description: string;
   running_balance: number;
@@ -953,7 +989,10 @@ export interface SafeTransaction {
 }
 
 // Cash Transaction Change Proposals
-export type CashTransactionChangeProposalStatus = 'pending' | 'approved' | 'rejected';
+export type CashTransactionChangeProposalStatus =
+  | "pending"
+  | "approved"
+  | "rejected";
 
 export interface CashTransactionChangeProposal {
   id: string;
@@ -997,7 +1036,7 @@ export interface PendingCashTransactionChangeProposal {
   created_at: string;
 }
 
-export type TicketReopenRequestStatus = 'pending' | 'approved' | 'rejected';
+export type TicketReopenRequestStatus = "pending" | "approved" | "rejected";
 
 export interface TicketReopenRequest {
   id: string;
@@ -1030,9 +1069,19 @@ export interface PendingTicketReopenRequest {
   created_by_roles?: string[];
 }
 
-export type ViolationReportStatus = 'collecting_responses' | 'pending_approval' | 'approved' | 'rejected' | 'expired';
-export type ViolationDecision = 'violation_confirmed' | 'no_violation';
-export type ViolationActionType = 'none' | 'warning' | 'written_warning' | 'queue_removal' | 'suspension';
+export type ViolationReportStatus =
+  | "collecting_responses"
+  | "pending_approval"
+  | "approved"
+  | "rejected"
+  | "expired";
+export type ViolationDecision = "violation_confirmed" | "no_violation";
+export type ViolationActionType =
+  | "none"
+  | "warning"
+  | "written_warning"
+  | "queue_removal"
+  | "suspension";
 
 export interface ViolationResponse {
   employee_id: string;
@@ -1156,7 +1205,7 @@ export interface TicketPhoto {
   storage_path: string;
   filename: string;
   file_size: number;
-  mime_type: 'image/jpeg' | 'image/png' | 'image/webp';
+  mime_type: "image/jpeg" | "image/png" | "image/webp";
   display_order: number;
   uploaded_by: string;
   caption: string;
@@ -1174,7 +1223,7 @@ export interface InventoryItemPhoto {
   storage_path: string;
   filename: string;
   file_size: number;
-  mime_type: 'image/jpeg' | 'image/png' | 'image/webp';
+  mime_type: "image/jpeg" | "image/png" | "image/webp";
   display_order: number;
   uploaded_by: string;
   caption: string;
@@ -1192,7 +1241,7 @@ export interface InventoryTransactionItemPhoto {
   storage_path: string;
   filename: string;
   file_size: number;
-  mime_type: 'image/jpeg' | 'image/png' | 'image/webp';
+  mime_type: "image/jpeg" | "image/png" | "image/webp";
   display_order: number;
   uploaded_by: string;
   caption: string;
@@ -1210,7 +1259,7 @@ export interface InventoryTransactionInvoicePhoto {
   storage_path: string;
   filename: string;
   file_size: number;
-  mime_type: 'image/jpeg' | 'image/png' | 'image/webp';
+  mime_type: "image/jpeg" | "image/png" | "image/webp";
   display_order: number;
   uploaded_by: string;
   caption: string;
@@ -1222,8 +1271,8 @@ export interface InventoryTransactionInvoicePhotoWithUrl extends InventoryTransa
 }
 
 // Resources (Knowledge Base)
-export type ResourceCategory = 'sop' | 'employee_manual' | 'training' | 'policy' | 'rules';
-export type ThumbnailSource = 'auto' | 'manual' | 'none';
+export type ResourceCategory = string;
+export type ThumbnailSource = "auto" | "manual" | "none";
 
 export interface Resource {
   id: string;
@@ -1253,6 +1302,26 @@ export interface ResourceSubcategory {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface ResourceTab {
+  id: string;
+  store_id: string;
+  name: string;
+  slug: string;
+  icon_name: string;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ResourceReadStatus {
+  id: string;
+  employee_id: string;
+  resource_id: string;
+  store_id: string;
+  read_at: string;
 }
 
 // App Global Settings (app-wide settings like branding and storage)

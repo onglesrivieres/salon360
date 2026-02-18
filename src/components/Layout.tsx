@@ -1,83 +1,175 @@
-import { useState, useEffect, useRef } from 'react';
-import { Users, Briefcase, DollarSign, LogOut, Settings, Store as StoreIcon, ChevronDown, Calendar, Menu, X, CheckCircle, Home, Receipt, Star, Coins, AlertCircle, Package, RefreshCw, Circle, TrendingUp, Vault, Flag, UserCircle, FolderOpen } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { useSettings } from '../contexts/SettingsContext';
-import { canAccessPage, Permissions } from '../lib/permissions';
-import { supabase, Store, TechnicianWithQueue, WorkingEmployee, PendingViolationResponse } from '../lib/supabase';
-import { VersionNotification } from './VersionNotification';
-import { useServiceWorkerUpdate } from '../hooks/useServiceWorkerUpdate';
-import { Modal } from './ui/Modal';
-import { TechnicianQueue } from './TechnicianQueue';
-import { getCurrentDateEST } from '../lib/timezone';
-import { RemoveTechnicianModal } from './RemoveTechnicianModal';
-import { QueueReasonModal } from './QueueReasonModal';
-import { ViolationReportModal } from './ViolationReportModal';
-import { ViolationResponseRibbon } from './ViolationResponseRibbon';
-import { useCheckInStatusCheck } from '../hooks/useCheckInStatusCheck';
-import { useToast } from './ui/Toast';
+import { useState, useEffect, useRef } from "react";
+import {
+  Users,
+  Briefcase,
+  DollarSign,
+  LogOut,
+  Settings,
+  Store as StoreIcon,
+  ChevronDown,
+  Calendar,
+  Menu,
+  X,
+  CheckCircle,
+  Home,
+  Receipt,
+  Star,
+  Coins,
+  AlertCircle,
+  Package,
+  RefreshCw,
+  Circle,
+  TrendingUp,
+  Vault,
+  Flag,
+  UserCircle,
+  FolderOpen,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { useSettings } from "../contexts/SettingsContext";
+import { canAccessPage, Permissions } from "../lib/permissions";
+import {
+  supabase,
+  Store,
+  TechnicianWithQueue,
+  WorkingEmployee,
+  PendingViolationResponse,
+} from "../lib/supabase";
+import { VersionNotification } from "./VersionNotification";
+import { useServiceWorkerUpdate } from "../hooks/useServiceWorkerUpdate";
+import { Modal } from "./ui/Modal";
+import { TechnicianQueue } from "./TechnicianQueue";
+import { getCurrentDateEST } from "../lib/timezone";
+import { RemoveTechnicianModal } from "./RemoveTechnicianModal";
+import { QueueReasonModal } from "./QueueReasonModal";
+import { ViolationReportModal } from "./ViolationReportModal";
+import { ViolationResponseRibbon } from "./ViolationResponseRibbon";
+import { useCheckInStatusCheck } from "../hooks/useCheckInStatusCheck";
+import { useToast } from "./ui/Toast";
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentPage: 'home' | 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'configuration' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'clients' | 'resources';
-  onNavigate: (page: 'home' | 'tickets' | 'eod' | 'safebalance' | 'tipreport' | 'technicians' | 'services' | 'settings' | 'configuration' | 'attendance' | 'approvals' | 'inventory' | 'insights' | 'clients' | 'resources') => void;
+  currentPage:
+    | "home"
+    | "tickets"
+    | "eod"
+    | "safebalance"
+    | "tipreport"
+    | "technicians"
+    | "services"
+    | "settings"
+    | "configuration"
+    | "attendance"
+    | "approvals"
+    | "inventory"
+    | "insights"
+    | "clients"
+    | "resources";
+  onNavigate: (
+    page:
+      | "home"
+      | "tickets"
+      | "eod"
+      | "safebalance"
+      | "tipreport"
+      | "technicians"
+      | "services"
+      | "settings"
+      | "configuration"
+      | "attendance"
+      | "approvals"
+      | "inventory"
+      | "insights"
+      | "clients"
+      | "resources",
+  ) => void;
 }
 
 export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
-  const { session, selectedStoreId, selectStore, logout, t, effectiveRole } = useAuth();
+  const { session, selectedStoreId, selectStore, logout, t, effectiveRole } =
+    useAuth();
   const { getSettingBoolean } = useSettings();
   const [currentStore, setCurrentStore] = useState<Store | null>(null);
   const [allStores, setAllStores] = useState<Store[]>([]);
   const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
-  const [perStoreApprovalsCount, setPerStoreApprovalsCount] = useState<Record<string, number>>({});
+  const [perStoreApprovalsCount, setPerStoreApprovalsCount] = useState<
+    Record<string, number>
+  >({});
+  const [unreadResourcesCount, setUnreadResourcesCount] = useState(0);
   const { hasNewVersion, handleUpdate } = useServiceWorkerUpdate();
   const [isOpeningCashMissing, setIsOpeningCashMissing] = useState(false);
   const [showQueueModal, setShowQueueModal] = useState(false);
-  const [sortedTechnicians, setSortedTechnicians] = useState<TechnicianWithQueue[]>([]);
+  const [sortedTechnicians, setSortedTechnicians] = useState<
+    TechnicianWithQueue[]
+  >([]);
   const [loadingQueue, setLoadingQueue] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [leavingQueueEmployeeId, setLeavingQueueEmployeeId] = useState<string | undefined>();
-  const [skippingTurnEmployeeId, setSkippingTurnEmployeeId] = useState<string | undefined>();
+  const [leavingQueueEmployeeId, setLeavingQueueEmployeeId] = useState<
+    string | undefined
+  >();
+  const [skippingTurnEmployeeId, setSkippingTurnEmployeeId] = useState<
+    string | undefined
+  >();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-  const [employeeToRemove, setEmployeeToRemove] = useState<string | undefined>();
+  const [employeeToRemove, setEmployeeToRemove] = useState<
+    string | undefined
+  >();
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const [employeeToSkip, setEmployeeToSkip] = useState<string | undefined>();
-  const [userQueueStatus, setUserQueueStatus] = useState<'ready' | 'neutral' | 'busy'>('neutral');
+  const [userQueueStatus, setUserQueueStatus] = useState<
+    "ready" | "neutral" | "busy"
+  >("neutral");
   const [showRemovalModal, setShowRemovalModal] = useState(false);
-  const [technicianToRemove, setTechnicianToRemove] = useState<{ id: string; name: string } | null>(null);
-  const [removingTechnicianId, setRemovingTechnicianId] = useState<string | undefined>();
+  const [technicianToRemove, setTechnicianToRemove] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [removingTechnicianId, setRemovingTechnicianId] = useState<
+    string | undefined
+  >();
   const [isSubmittingRemoval, setIsSubmittingRemoval] = useState(false);
-  const [showViolationReportModal, setShowViolationReportModal] = useState(false);
-  const [pendingViolationResponses, setPendingViolationResponses] = useState<PendingViolationResponse[]>([]);
-  const [workingEmployees, setWorkingEmployees] = useState<WorkingEmployee[]>([]);
+  const [showViolationReportModal, setShowViolationReportModal] =
+    useState(false);
+  const [pendingViolationResponses, setPendingViolationResponses] = useState<
+    PendingViolationResponse[]
+  >([]);
+  const [workingEmployees, setWorkingEmployees] = useState<WorkingEmployee[]>(
+    [],
+  );
   const [loadingWorkingEmployees, setLoadingWorkingEmployees] = useState(false);
   const [minVotesRequired, setMinVotesRequired] = useState(3);
-  const [employeePayType, setEmployeePayType] = useState<'hourly' | 'daily' | 'commission' | undefined>(undefined);
+  const [employeePayType, setEmployeePayType] = useState<
+    "hourly" | "daily" | "commission" | undefined
+  >(undefined);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const hasAutoShownQueueModal = useRef(false);
 
   const { showToast } = useToast();
 
-  const canViewAllQueueStatuses = effectiveRole && Permissions.queue.canViewAllQueueStatuses(effectiveRole);
-  const canRemoveTechnicians = effectiveRole && Permissions.queue.canRemoveTechnicians(effectiveRole);
+  const canViewAllQueueStatuses =
+    effectiveRole && Permissions.queue.canViewAllQueueStatuses(effectiveRole);
+  const canRemoveTechnicians =
+    effectiveRole && Permissions.queue.canRemoveTechnicians(effectiveRole);
   const canReportViolations = session?.employee_id && selectedStoreId;
 
   // Check if Receptionist/Supervisor/Technician is checked in (to block store switching)
   const checkInStatus = useCheckInStatusCheck(
     session?.employee_id,
     selectedStoreId,
-    session?.role_permission
+    session?.role_permission,
   );
   const isCheckedInEmployee =
-    ['Receptionist', 'Supervisor', 'Technician', 'Cashier'].includes(session?.role_permission ?? '') &&
-    checkInStatus.isCheckedIn;
+    ["Receptionist", "Supervisor", "Technician", "Cashier"].includes(
+      session?.role_permission ?? "",
+    ) && checkInStatus.isCheckedIn;
   const canSwitchStores = !isCheckedInEmployee;
 
   useEffect(() => {
-    if (localStorage.getItem('app_just_updated') === 'true') {
-      localStorage.removeItem('app_just_updated');
-      showToast(t('common.updateSuccess'), 'success');
+    if (localStorage.getItem("app_just_updated") === "true") {
+      localStorage.removeItem("app_just_updated");
+      showToast(t("common.updateSuccess"), "success");
     }
   }, []);
 
@@ -90,14 +182,27 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       fetchAllStores();
       fetchEmployeePayType();
     }
-    if (session?.employee_id && effectiveRole && Permissions.tickets.canViewPendingApprovals(effectiveRole)) {
+    if (
+      session?.employee_id &&
+      effectiveRole &&
+      Permissions.tickets.canViewPendingApprovals(effectiveRole)
+    ) {
       fetchPendingApprovalsCount();
       fetchAllStoresApprovalsCount();
+    }
+    if (session?.employee_id && selectedStoreId) {
+      fetchUnreadResourcesCount();
     }
   }, [selectedStoreId, session, effectiveRole, allStores.length]);
 
   useEffect(() => {
-    if (!session?.employee_id || !effectiveRole || !Permissions.tickets.canViewPendingApprovals(effectiveRole) || !selectedStoreId) return;
+    if (
+      !session?.employee_id ||
+      !effectiveRole ||
+      !Permissions.tickets.canViewPendingApprovals(effectiveRole) ||
+      !selectedStoreId
+    )
+      return;
 
     // Poll every 30 seconds for pending approvals
     const interval = setInterval(() => {
@@ -109,67 +214,79 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     const approvalsChannel = supabase
       .channel(`approvals-${selectedStoreId}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'sale_tickets',
+          event: "*",
+          schema: "public",
+          table: "sale_tickets",
           filter: `store_id=eq.${selectedStoreId}`,
         },
         (payload) => {
           // Refresh count when tickets are closed, approved, or updated
-          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+          if (
+            payload.eventType === "UPDATE" ||
+            payload.eventType === "INSERT"
+          ) {
             fetchPendingApprovalsCount();
             if (allStores.length > 1) fetchAllStoresApprovalsCount();
           }
-        }
+        },
       )
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'inventory_transactions',
+          event: "*",
+          schema: "public",
+          table: "inventory_transactions",
           filter: `store_id=eq.${selectedStoreId}`,
         },
         (payload) => {
           // Refresh count when inventory transactions are updated
-          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+          if (
+            payload.eventType === "UPDATE" ||
+            payload.eventType === "INSERT"
+          ) {
             fetchPendingApprovalsCount();
             if (allStores.length > 1) fetchAllStoresApprovalsCount();
           }
-        }
+        },
       )
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'cash_transactions',
+          event: "*",
+          schema: "public",
+          table: "cash_transactions",
           filter: `store_id=eq.${selectedStoreId}`,
         },
         (payload) => {
           // Refresh count when cash transactions are updated
-          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+          if (
+            payload.eventType === "UPDATE" ||
+            payload.eventType === "INSERT"
+          ) {
             fetchPendingApprovalsCount();
             if (allStores.length > 1) fetchAllStoresApprovalsCount();
           }
-        }
+        },
       )
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'inventory_distributions',
+          event: "*",
+          schema: "public",
+          table: "inventory_distributions",
           filter: `store_id=eq.${selectedStoreId}`,
         },
         (payload) => {
-          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+          if (
+            payload.eventType === "UPDATE" ||
+            payload.eventType === "INSERT"
+          ) {
             fetchPendingApprovalsCount();
             if (allStores.length > 1) fetchAllStoresApprovalsCount();
           }
-        }
+        },
       )
       .subscribe();
 
@@ -178,6 +295,48 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       supabase.removeChannel(approvalsChannel);
     };
   }, [session?.employee_id, effectiveRole, selectedStoreId]);
+
+  // Unread resources badge: poll every 60s + realtime on new resources and read status changes
+  useEffect(() => {
+    if (!session?.employee_id || !selectedStoreId) return;
+
+    const interval = setInterval(() => {
+      fetchUnreadResourcesCount();
+    }, 60000);
+
+    const resourcesChannel = supabase
+      .channel(`resources-unread-${selectedStoreId}-${session.employee_id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "resources",
+          filter: `store_id=eq.${selectedStoreId}`,
+        },
+        () => {
+          fetchUnreadResourcesCount();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "resource_read_status",
+          filter: `store_id=eq.${selectedStoreId}`,
+        },
+        () => {
+          fetchUnreadResourcesCount();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(resourcesChannel);
+    };
+  }, [session?.employee_id, selectedStoreId]);
 
   useEffect(() => {
     if (!session?.employee_id || !selectedStoreId) return;
@@ -193,27 +352,27 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     const violationsChannel = supabase
       .channel(`violations-${selectedStoreId}-${session.employee_id}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'queue_violation_reports',
+          event: "*",
+          schema: "public",
+          table: "queue_violation_reports",
           filter: `store_id=eq.${selectedStoreId}`,
         },
         () => {
           fetchPendingViolationResponses();
-        }
+        },
       )
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'queue_violation_responses',
+          event: "*",
+          schema: "public",
+          table: "queue_violation_responses",
         },
         () => {
           fetchPendingViolationResponses();
-        }
+        },
       )
       .subscribe();
 
@@ -225,13 +384,16 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsStoreDropdownOpen(false);
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -239,19 +401,19 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       checkOpeningCash();
     };
 
-    window.addEventListener('openingCashUpdated', handleOpeningCashUpdate);
+    window.addEventListener("openingCashUpdated", handleOpeningCashUpdate);
 
     return () => {
-      window.removeEventListener('openingCashUpdated', handleOpeningCashUpdate);
+      window.removeEventListener("openingCashUpdated", handleOpeningCashUpdate);
     };
   }, [selectedStoreId]);
 
   async function fetchStore() {
     if (!selectedStoreId) return;
     const { data } = await supabase
-      .from('stores')
-      .select('*')
-      .eq('id', selectedStoreId)
+      .from("stores")
+      .select("*")
+      .eq("id", selectedStoreId)
       .maybeSingle();
     if (data) {
       setCurrentStore(data);
@@ -262,9 +424,9 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   async function fetchEmployeePayType() {
     if (!session?.employee_id) return;
     const { data } = await supabase
-      .from('employees')
-      .select('pay_type')
-      .eq('id', session.employee_id)
+      .from("employees")
+      .select("pay_type")
+      .eq("id", session.employee_id)
       .maybeSingle();
     if (data) {
       setEmployeePayType(data.pay_type);
@@ -275,14 +437,14 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     if (!session?.employee_id) return;
 
     // Admin can see all stores
-    if (session?.role_permission === 'Admin') {
+    if (session?.role_permission === "Admin") {
       const { data } = await supabase
-        .from('stores')
-        .select('*')
-        .eq('active', true)
-        .order('code');
+        .from("stores")
+        .select("*")
+        .eq("active", true)
+        .order("code");
       if (data) {
-        console.log('Admin - Fetched stores:', data);
+        console.log("Admin - Fetched stores:", data);
         setAllStores(data);
       }
       return;
@@ -290,26 +452,26 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
     // Other users see only their assigned stores
     const { data: employeeStores } = await supabase
-      .from('employee_stores')
-      .select('store_id')
-      .eq('employee_id', session.employee_id);
+      .from("employee_stores")
+      .select("store_id")
+      .eq("employee_id", session.employee_id);
 
-    console.log('Employee stores:', employeeStores);
-    const employeeStoreIds = employeeStores?.map(es => es.store_id) || [];
+    console.log("Employee stores:", employeeStores);
+    const employeeStoreIds = employeeStores?.map((es) => es.store_id) || [];
 
     if (employeeStoreIds.length > 0) {
       const { data } = await supabase
-        .from('stores')
-        .select('*')
-        .in('id', employeeStoreIds)
-        .eq('active', true)
-        .order('code');
+        .from("stores")
+        .select("*")
+        .in("id", employeeStoreIds)
+        .eq("active", true)
+        .order("code");
       if (data) {
-        console.log('Non-admin - Fetched stores:', data);
+        console.log("Non-admin - Fetched stores:", data);
         setAllStores(data);
       }
     } else {
-      console.log('No employee stores found');
+      console.log("No employee stores found");
     }
   }
 
@@ -319,14 +481,16 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     try {
       const today = getCurrentDateEST();
       const { data, error } = await supabase
-        .from('end_of_day_records')
-        .select('opening_cash_amount, bill_100, bill_50, bill_20, bill_10, bill_5, bill_2, bill_1, coin_25, coin_10, coin_5')
-        .eq('store_id', selectedStoreId)
-        .eq('date', today)
+        .from("end_of_day_records")
+        .select(
+          "opening_cash_amount, bill_100, bill_50, bill_20, bill_10, bill_5, bill_2, bill_1, coin_25, coin_10, coin_5",
+        )
+        .eq("store_id", selectedStoreId)
+        .eq("date", today)
         .maybeSingle();
 
       if (error) {
-        console.error('Error checking opening cash:', error);
+        console.error("Error checking opening cash:", error);
         return;
       }
 
@@ -335,7 +499,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         return;
       }
 
-      const hasOpeningCash = (
+      const hasOpeningCash =
         (data.opening_cash_amount || 0) > 0 ||
         (data.bill_100 || 0) > 0 ||
         (data.bill_50 || 0) > 0 ||
@@ -346,12 +510,11 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         (data.bill_1 || 0) > 0 ||
         (data.coin_25 || 0) > 0 ||
         (data.coin_10 || 0) > 0 ||
-        (data.coin_5 || 0) > 0
-      );
+        (data.coin_5 || 0) > 0;
 
       setIsOpeningCashMissing(!hasOpeningCash);
     } catch (error) {
-      console.error('Error checking opening cash:', error);
+      console.error("Error checking opening cash:", error);
     }
   }
 
@@ -360,15 +523,21 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
     try {
       const userRoles = session?.role || [];
-      const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
-      const isSupervisorOnly = userRoles.some(role => role === 'Supervisor') && !isManagement;
+      const isManagement = userRoles.some((role) =>
+        ["Owner", "Manager"].includes(role),
+      );
+      const isSupervisorOnly =
+        userRoles.some((role) => role === "Supervisor") && !isManagement;
 
       // Fetch distribution approvals count (available for all roles)
       let distributionCount = 0;
-      const { data: distData, error: distError } = await supabase.rpc('get_pending_distribution_approvals', {
-        p_employee_id: session.employee_id,
-        p_store_id: selectedStoreId,
-      });
+      const { data: distData, error: distError } = await supabase.rpc(
+        "get_pending_distribution_approvals",
+        {
+          p_employee_id: session.employee_id,
+          p_store_id: selectedStoreId,
+        },
+      );
       if (!distError) {
         distributionCount = distData?.length || 0;
       }
@@ -384,24 +553,30 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         let cashTransactionCount = 0;
         let ticketReopenCount = 0;
 
-        const { data: cashData, error: cashError } = await supabase.rpc('get_pending_cash_transaction_approvals', {
-          p_store_id: selectedStoreId,
-        });
+        const { data: cashData, error: cashError } = await supabase.rpc(
+          "get_pending_cash_transaction_approvals",
+          {
+            p_store_id: selectedStoreId,
+          },
+        );
 
         if (!cashError) {
           cashTransactionCount = cashData?.length || 0;
         }
 
-        const { data: ticketReopenData, error: ticketReopenError } = await supabase.rpc('get_pending_ticket_reopen_requests_count', {
-          p_store_id: selectedStoreId,
-          p_reviewer_employee_id: session.employee_id,
-        });
+        const { data: ticketReopenData, error: ticketReopenError } =
+          await supabase.rpc("get_pending_ticket_reopen_requests_count", {
+            p_store_id: selectedStoreId,
+            p_reviewer_employee_id: session.employee_id,
+          });
 
         if (!ticketReopenError) {
           ticketReopenCount = ticketReopenData || 0;
         }
 
-        setPendingApprovalsCount(cashTransactionCount + ticketReopenCount + distributionCount);
+        setPendingApprovalsCount(
+          cashTransactionCount + ticketReopenCount + distributionCount,
+        );
         return;
       }
 
@@ -410,42 +585,57 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       let cashTransactionCount = 0;
       let ticketReopenCount = 0;
 
-      const { data, error } = await supabase.rpc('get_pending_approvals_for_management', {
-        p_store_id: selectedStoreId,
-      });
+      const { data, error } = await supabase.rpc(
+        "get_pending_approvals_for_management",
+        {
+          p_store_id: selectedStoreId,
+        },
+      );
 
       if (error) throw error;
       ticketCount = data?.length || 0;
 
-      const { data: inventoryData, error: inventoryError } = await supabase.rpc('get_pending_inventory_approvals', {
-        p_employee_id: session.employee_id,
-        p_store_id: selectedStoreId,
-      });
+      const { data: inventoryData, error: inventoryError } = await supabase.rpc(
+        "get_pending_inventory_approvals",
+        {
+          p_employee_id: session.employee_id,
+          p_store_id: selectedStoreId,
+        },
+      );
 
       if (!inventoryError) {
         inventoryCount = inventoryData?.length || 0;
       }
 
-      const { data: cashData, error: cashError } = await supabase.rpc('get_pending_cash_transaction_approvals', {
-        p_store_id: selectedStoreId,
-      });
+      const { data: cashData, error: cashError } = await supabase.rpc(
+        "get_pending_cash_transaction_approvals",
+        {
+          p_store_id: selectedStoreId,
+        },
+      );
 
       if (!cashError) {
         cashTransactionCount = cashData?.length || 0;
       }
 
-      const { data: ticketReopenData, error: ticketReopenError } = await supabase.rpc('get_pending_ticket_reopen_requests_count', {
-        p_store_id: selectedStoreId,
-      });
+      const { data: ticketReopenData, error: ticketReopenError } =
+        await supabase.rpc("get_pending_ticket_reopen_requests_count", {
+          p_store_id: selectedStoreId,
+        });
 
       if (!ticketReopenError) {
         ticketReopenCount = ticketReopenData || 0;
       }
 
-      const totalCount = ticketCount + inventoryCount + cashTransactionCount + ticketReopenCount + distributionCount;
+      const totalCount =
+        ticketCount +
+        inventoryCount +
+        cashTransactionCount +
+        ticketReopenCount +
+        distributionCount;
       setPendingApprovalsCount(totalCount);
     } catch (error) {
-      console.error('Error fetching pending approvals count:', error);
+      console.error("Error fetching pending approvals count:", error);
     }
   }
 
@@ -453,78 +643,122 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     if (!session?.employee_id || allStores.length <= 1) return;
 
     const userRoles = session?.role || [];
-    const isManagement = userRoles.some(role => ['Owner', 'Manager'].includes(role));
-    const isSupervisorOnly = userRoles.some(role => role === 'Supervisor') && !isManagement;
+    const isManagement = userRoles.some((role) =>
+      ["Owner", "Manager"].includes(role),
+    );
+    const isSupervisorOnly =
+      userRoles.some((role) => role === "Supervisor") && !isManagement;
 
     try {
       const counts: Record<string, number> = {};
 
-      await Promise.all(allStores.map(async (store) => {
-        try {
-          // Distribution approvals available for all roles
-          let distributionCount = 0;
-          const { data: distData, error: distError } = await supabase.rpc('get_pending_distribution_approvals', {
-            p_employee_id: session.employee_id,
-            p_store_id: store.id,
-          });
-          if (!distError) distributionCount = distData?.length || 0;
+      await Promise.all(
+        allStores.map(async (store) => {
+          try {
+            // Distribution approvals available for all roles
+            let distributionCount = 0;
+            const { data: distData, error: distError } = await supabase.rpc(
+              "get_pending_distribution_approvals",
+              {
+                p_employee_id: session.employee_id,
+                p_store_id: store.id,
+              },
+            );
+            if (!distError) distributionCount = distData?.length || 0;
 
-          if (!isManagement && !isSupervisorOnly) {
-            counts[store.id] = distributionCount;
-          } else if (isSupervisorOnly) {
-            let cashTransactionCount = 0;
-            let ticketReopenCount = 0;
+            if (!isManagement && !isSupervisorOnly) {
+              counts[store.id] = distributionCount;
+            } else if (isSupervisorOnly) {
+              let cashTransactionCount = 0;
+              let ticketReopenCount = 0;
 
-            const { data: cashData, error: cashError } = await supabase.rpc('get_pending_cash_transaction_approvals', {
-              p_store_id: store.id,
-            });
-            if (!cashError) cashTransactionCount = cashData?.length || 0;
+              const { data: cashData, error: cashError } = await supabase.rpc(
+                "get_pending_cash_transaction_approvals",
+                {
+                  p_store_id: store.id,
+                },
+              );
+              if (!cashError) cashTransactionCount = cashData?.length || 0;
 
-            const { data: ticketReopenData, error: ticketReopenError } = await supabase.rpc('get_pending_ticket_reopen_requests_count', {
-              p_store_id: store.id,
-              p_reviewer_employee_id: session.employee_id,
-            });
-            if (!ticketReopenError) ticketReopenCount = ticketReopenData || 0;
+              const { data: ticketReopenData, error: ticketReopenError } =
+                await supabase.rpc("get_pending_ticket_reopen_requests_count", {
+                  p_store_id: store.id,
+                  p_reviewer_employee_id: session.employee_id,
+                });
+              if (!ticketReopenError) ticketReopenCount = ticketReopenData || 0;
 
-            counts[store.id] = cashTransactionCount + ticketReopenCount + distributionCount;
-          } else {
-            let ticketCount = 0;
-            let inventoryCount = 0;
-            let cashTransactionCount = 0;
-            let ticketReopenCount = 0;
+              counts[store.id] =
+                cashTransactionCount + ticketReopenCount + distributionCount;
+            } else {
+              let ticketCount = 0;
+              let inventoryCount = 0;
+              let cashTransactionCount = 0;
+              let ticketReopenCount = 0;
 
-            const { data, error } = await supabase.rpc('get_pending_approvals_for_management', {
-              p_store_id: store.id,
-            });
-            if (!error) ticketCount = data?.length || 0;
+              const { data, error } = await supabase.rpc(
+                "get_pending_approvals_for_management",
+                {
+                  p_store_id: store.id,
+                },
+              );
+              if (!error) ticketCount = data?.length || 0;
 
-            const { data: inventoryData, error: inventoryError } = await supabase.rpc('get_pending_inventory_approvals', {
-              p_employee_id: session.employee_id,
-              p_store_id: store.id,
-            });
-            if (!inventoryError) inventoryCount = inventoryData?.length || 0;
+              const { data: inventoryData, error: inventoryError } =
+                await supabase.rpc("get_pending_inventory_approvals", {
+                  p_employee_id: session.employee_id,
+                  p_store_id: store.id,
+                });
+              if (!inventoryError) inventoryCount = inventoryData?.length || 0;
 
-            const { data: cashData, error: cashError } = await supabase.rpc('get_pending_cash_transaction_approvals', {
-              p_store_id: store.id,
-            });
-            if (!cashError) cashTransactionCount = cashData?.length || 0;
+              const { data: cashData, error: cashError } = await supabase.rpc(
+                "get_pending_cash_transaction_approvals",
+                {
+                  p_store_id: store.id,
+                },
+              );
+              if (!cashError) cashTransactionCount = cashData?.length || 0;
 
-            const { data: ticketReopenData, error: ticketReopenError } = await supabase.rpc('get_pending_ticket_reopen_requests_count', {
-              p_store_id: store.id,
-            });
-            if (!ticketReopenError) ticketReopenCount = ticketReopenData || 0;
+              const { data: ticketReopenData, error: ticketReopenError } =
+                await supabase.rpc("get_pending_ticket_reopen_requests_count", {
+                  p_store_id: store.id,
+                });
+              if (!ticketReopenError) ticketReopenCount = ticketReopenData || 0;
 
-            counts[store.id] = ticketCount + inventoryCount + cashTransactionCount + ticketReopenCount + distributionCount;
+              counts[store.id] =
+                ticketCount +
+                inventoryCount +
+                cashTransactionCount +
+                ticketReopenCount +
+                distributionCount;
+            }
+          } catch (err) {
+            console.error(
+              `Error fetching approvals for store ${store.id}:`,
+              err,
+            );
+            counts[store.id] = 0;
           }
-        } catch (err) {
-          console.error(`Error fetching approvals for store ${store.id}:`, err);
-          counts[store.id] = 0;
-        }
-      }));
+        }),
+      );
 
       setPerStoreApprovalsCount(counts);
     } catch (error) {
-      console.error('Error fetching all stores approvals count:', error);
+      console.error("Error fetching all stores approvals count:", error);
+    }
+  }
+
+  async function fetchUnreadResourcesCount() {
+    if (!session?.employee_id || !selectedStoreId) return;
+    try {
+      const { data, error } = await supabase.rpc("get_unread_resources_count", {
+        p_employee_id: session.employee_id,
+        p_store_id: selectedStoreId,
+      });
+      if (!error) {
+        setUnreadResourcesCount(data || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching unread resources count:", error);
     }
   }
 
@@ -540,15 +774,18 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     setLoadingQueue(true);
     try {
       const today = getCurrentDateEST();
-      const { data, error } = await supabase.rpc('get_sorted_technicians_for_store', {
-        p_store_id: selectedStoreId,
-        p_date: today
-      });
+      const { data, error } = await supabase.rpc(
+        "get_sorted_technicians_for_store",
+        {
+          p_store_id: selectedStoreId,
+          p_date: today,
+        },
+      );
 
       if (error) throw error;
       setSortedTechnicians(data || []);
     } catch (error) {
-      console.error('Error fetching technician queue:', error);
+      console.error("Error fetching technician queue:", error);
     } finally {
       setLoadingQueue(false);
     }
@@ -574,7 +811,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
     setSkippingTurnEmployeeId(employeeToSkip);
     try {
-      const { data, error } = await supabase.rpc('skip_queue_turn', {
+      const { data, error } = await supabase.rpc("skip_queue_turn", {
         p_employee_id: employeeToSkip,
         p_store_id: selectedStoreId,
         p_reason: reason,
@@ -584,15 +821,15 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       if (error) throw error;
 
       if (data && !data.success) {
-        throw new Error(data.message || 'Failed to skip turn');
+        throw new Error(data.message || "Failed to skip turn");
       }
 
       await fetchTechnicianQueue();
       setShowSkipConfirm(false);
       setEmployeeToSkip(undefined);
     } catch (error: any) {
-      console.error('Error skipping turn:', error);
-      alert(error.message || 'Failed to skip turn. Please try again.');
+      console.error("Error skipping turn:", error);
+      alert(error.message || "Failed to skip turn. Please try again.");
     } finally {
       setSkippingTurnEmployeeId(undefined);
     }
@@ -603,11 +840,11 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
     setLeavingQueueEmployeeId(employeeToRemove);
     try {
-      const { error } = await supabase.rpc('leave_ready_queue', {
+      const { error } = await supabase.rpc("leave_ready_queue", {
         p_employee_id: employeeToRemove,
         p_store_id: selectedStoreId,
         p_reason: reason,
-        p_notes: notes || null
+        p_notes: notes || null,
       });
 
       if (error) throw error;
@@ -616,8 +853,8 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       setShowLeaveConfirm(false);
       setEmployeeToRemove(undefined);
     } catch (error) {
-      console.error('Error leaving queue:', error);
-      alert('Failed to leave queue. Please try again.');
+      console.error("Error leaving queue:", error);
+      alert("Failed to leave queue. Please try again.");
     } finally {
       setLeavingQueueEmployeeId(undefined);
     }
@@ -635,18 +872,21 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     setRemovingTechnicianId(technicianToRemove.id);
 
     try {
-      const { data, error } = await supabase.rpc('remove_technician_from_queue_admin', {
-        p_removed_by_employee_id: session?.employee_id,
-        p_employee_id: technicianToRemove.id,
-        p_store_id: selectedStoreId,
-        p_reason: reason,
-        p_notes: notes || null
-      });
+      const { data, error } = await supabase.rpc(
+        "remove_technician_from_queue_admin",
+        {
+          p_removed_by_employee_id: session?.employee_id,
+          p_employee_id: technicianToRemove.id,
+          p_store_id: selectedStoreId,
+          p_reason: reason,
+          p_notes: notes || null,
+        },
+      );
 
       if (error) throw error;
 
       if (data && !data.success) {
-        throw new Error(data.message || 'Failed to remove technician');
+        throw new Error(data.message || "Failed to remove technician");
       }
 
       await fetchTechnicianQueue();
@@ -657,11 +897,13 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       if (data?.has_cooldown === false) {
         alert(`${technicianToRemove.name} has been removed from the queue.`);
       } else {
-        alert(`${technicianToRemove.name} has been removed from the queue for 30 minutes.`);
+        alert(
+          `${technicianToRemove.name} has been removed from the queue for 30 minutes.`,
+        );
       }
     } catch (error: any) {
-      console.error('Error removing technician:', error);
-      alert(error.message || 'Failed to remove technician. Please try again.');
+      console.error("Error removing technician:", error);
+      alert(error.message || "Failed to remove technician. Please try again.");
     } finally {
       setIsSubmittingRemoval(false);
       setRemovingTechnicianId(undefined);
@@ -672,15 +914,18 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     if (!session?.employee_id || !selectedStoreId) return;
 
     try {
-      const { data, error } = await supabase.rpc('get_pending_violation_responses', {
-        p_employee_id: session.employee_id,
-        p_store_id: selectedStoreId
-      });
+      const { data, error } = await supabase.rpc(
+        "get_pending_violation_responses",
+        {
+          p_employee_id: session.employee_id,
+          p_store_id: selectedStoreId,
+        },
+      );
 
       if (error) throw error;
       setPendingViolationResponses(data || []);
     } catch (error) {
-      console.error('Error fetching pending violation responses:', error);
+      console.error("Error fetching pending violation responses:", error);
     }
   }
 
@@ -690,15 +935,18 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     setLoadingWorkingEmployees(true);
     try {
       const today = getCurrentDateEST();
-      const { data, error } = await supabase.rpc('get_employees_working_today', {
-        p_store_id: selectedStoreId,
-        p_date: today
-      });
+      const { data, error } = await supabase.rpc(
+        "get_employees_working_today",
+        {
+          p_store_id: selectedStoreId,
+          p_date: today,
+        },
+      );
 
       if (error) throw error;
       setWorkingEmployees(data || []);
     } catch (error) {
-      console.error('Error fetching working employees:', error);
+      console.error("Error fetching working employees:", error);
     } finally {
       setLoadingWorkingEmployees(false);
     }
@@ -716,21 +964,28 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     if (!session?.employee_id || !selectedStoreId) return;
 
     try {
-      const { data: _result, error } = await supabase.rpc('create_queue_violation_report', {
-        p_reported_employee_id: data.reportedEmployeeId,
-        p_reporter_employee_id: session.employee_id,
-        p_store_id: selectedStoreId,
-        p_violation_description: data.description,
-        p_queue_position_claimed: null
-      });
+      const { data: _result, error } = await supabase.rpc(
+        "create_queue_violation_report",
+        {
+          p_reported_employee_id: data.reportedEmployeeId,
+          p_reporter_employee_id: session.employee_id,
+          p_store_id: selectedStoreId,
+          p_violation_description: data.description,
+          p_queue_position_claimed: null,
+        },
+      );
 
       if (error) throw error;
 
-      alert('Violation report submitted successfully. All employees will be notified to vote.');
+      alert(
+        "Violation report submitted successfully. All employees will be notified to vote.",
+      );
       setShowViolationReportModal(false);
     } catch (error: any) {
-      console.error('Error submitting violation report:', error);
-      alert(error.message || 'Failed to submit violation report. Please try again.');
+      console.error("Error submitting violation report:", error);
+      alert(
+        error.message || "Failed to submit violation report. Please try again.",
+      );
       throw error;
     }
   };
@@ -738,23 +993,26 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const handleViolationResponse = async (
     reportId: string,
     response: boolean,
-    notes?: string
+    notes?: string,
   ) => {
     if (!session?.employee_id) return;
 
     try {
-      const { data: _data, error } = await supabase.rpc('submit_violation_response', {
-        p_violation_report_id: reportId,
-        p_employee_id: session.employee_id,
-        p_response: response,
-        p_response_notes: notes
-      });
+      const { data: _data, error } = await supabase.rpc(
+        "submit_violation_response",
+        {
+          p_violation_report_id: reportId,
+          p_employee_id: session.employee_id,
+          p_response: response,
+          p_response_notes: notes,
+        },
+      );
 
       if (error) throw error;
 
       await fetchPendingViolationResponses();
     } catch (error: any) {
-      console.error('Error submitting violation response:', error);
+      console.error("Error submitting violation response:", error);
       throw error;
     }
   };
@@ -762,14 +1020,18 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   useEffect(() => {
     // Extract current user's queue status from sortedTechnicians
     if (session?.employee_id && sortedTechnicians.length > 0) {
-      const currentUser = sortedTechnicians.find(tech => tech.employee_id === session.employee_id);
+      const currentUser = sortedTechnicians.find(
+        (tech) => tech.employee_id === session.employee_id,
+      );
       if (currentUser) {
-        setUserQueueStatus(currentUser.queue_status as 'ready' | 'neutral' | 'busy');
+        setUserQueueStatus(
+          currentUser.queue_status as "ready" | "neutral" | "busy",
+        );
       } else {
-        setUserQueueStatus('neutral');
+        setUserQueueStatus("neutral");
       }
     } else {
-      setUserQueueStatus('neutral');
+      setUserQueueStatus("neutral");
     }
   }, [sortedTechnicians, session?.employee_id]);
 
@@ -777,9 +1039,9 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   useEffect(() => {
     if (hasAutoShownQueueModal.current) return;
     if (sortedTechnicians.length === 0) return;
-    if (!getSettingBoolean('enable_ready_queue', true)) return;
+    if (!getSettingBoolean("enable_ready_queue", true)) return;
 
-    if (userQueueStatus !== 'neutral') {
+    if (userQueueStatus !== "neutral") {
       hasAutoShownQueueModal.current = true;
       setShowQueueModal(true);
     } else {
@@ -789,26 +1051,37 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
 
   useEffect(() => {
     // Fetch initial queue status on mount
-    if (session?.employee_id && selectedStoreId && effectiveRole && canAccessPage('tickets', effectiveRole)) {
+    if (
+      session?.employee_id &&
+      selectedStoreId &&
+      effectiveRole &&
+      canAccessPage("tickets", effectiveRole)
+    ) {
       fetchTechnicianQueue();
     }
 
     // Set up real-time subscription for queue status updates
-    if (!session?.employee_id || !selectedStoreId || !effectiveRole || !canAccessPage('tickets', effectiveRole)) return;
+    if (
+      !session?.employee_id ||
+      !selectedStoreId ||
+      !effectiveRole ||
+      !canAccessPage("tickets", effectiveRole)
+    )
+      return;
 
     const queueStatusChannel = supabase
       .channel(`queue-status-${selectedStoreId}-${session.employee_id}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'technician_ready_queue',
+          event: "*",
+          schema: "public",
+          table: "technician_ready_queue",
           filter: `store_id=eq.${selectedStoreId}`,
         },
         () => {
           fetchTechnicianQueue();
-        }
+        },
       )
       .subscribe();
 
@@ -831,16 +1104,16 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     const queueChannel = supabase
       .channel(`queue-${selectedStoreId}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'technician_ready_queue',
+          event: "*",
+          schema: "public",
+          table: "technician_ready_queue",
           filter: `store_id=eq.${selectedStoreId}`,
         },
         () => {
           fetchTechnicianQueue();
-        }
+        },
       )
       .subscribe();
 
@@ -855,48 +1128,84 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     if (!currentStore) return null;
 
     const storeName = currentStore.name.toLowerCase();
-    if (storeName.includes('riviere')) {
-      return { rating: '4.8', reviews: '617' };
-    } else if (storeName.includes('maily')) {
-      return { rating: '3.9', reviews: '575' };
-    } else if (storeName.includes('charlesbourg')) {
-      return { rating: '3.9', reviews: '232' };
+    if (storeName.includes("riviere")) {
+      return { rating: "4.8", reviews: "617" };
+    } else if (storeName.includes("maily")) {
+      return { rating: "3.9", reviews: "575" };
+    } else if (storeName.includes("charlesbourg")) {
+      return { rating: "3.9", reviews: "232" };
     }
     return null;
   };
 
   const googleRating = getGoogleRating();
 
-  const showInventory = getSettingBoolean('enable_inventory_module', true);
-  const showVersionNotifications = getSettingBoolean('show_version_notifications', true);
-  const showPendingApprovalBadge = getSettingBoolean('show_pending_approval_badge', true);
-  const enableReadyQueue = getSettingBoolean('enable_ready_queue', true);
-  const showQueueButtonInHeader = getSettingBoolean('show_queue_button_in_header', true);
-  const showOpeningCashBanner = getSettingBoolean('show_opening_cash_missing_banner', true);
-  const requireOpeningCash = getSettingBoolean('require_opening_cash_count', false);
+  const showInventory = getSettingBoolean("enable_inventory_module", true);
+  const showVersionNotifications = getSettingBoolean(
+    "show_version_notifications",
+    true,
+  );
+  const showPendingApprovalBadge = getSettingBoolean(
+    "show_pending_approval_badge",
+    true,
+  );
+  const enableReadyQueue = getSettingBoolean("enable_ready_queue", true);
+  const showQueueButtonInHeader = getSettingBoolean(
+    "show_queue_button_in_header",
+    true,
+  );
+  const showOpeningCashBanner = getSettingBoolean(
+    "show_opening_cash_missing_banner",
+    true,
+  );
+  const requireOpeningCash = getSettingBoolean(
+    "require_opening_cash_count",
+    false,
+  );
 
   const allNavItems = [
-    { id: 'home' as const, label: t('home.title'), icon: Home, hidden: true },
-    { id: 'tickets' as const, label: t('nav.tickets'), icon: Receipt },
-    { id: 'approvals' as const, label: t('approvals.title'), icon: CheckCircle, badge: showPendingApprovalBadge ? pendingApprovalsCount : 0 },
-    { id: 'tipreport' as const, label: t('eod.title'), icon: Coins },
-    { id: 'eod' as const, label: t('cash.title'), icon: DollarSign },
-    { id: 'safebalance' as const, label: t('safe.title'), icon: Vault },
-    { id: 'attendance' as const, label: t('attendance.title'), icon: Calendar },
-    { id: 'technicians' as const, label: t('nav.employees'), icon: Users },
-    { id: 'clients' as const, label: t('clients.title'), icon: UserCircle },
-    { id: 'inventory' as const, label: t('inventory.title'), icon: Package, hidden: !showInventory },
-    { id: 'services' as const, label: t('nav.services'), icon: Briefcase },
-    { id: 'insights' as const, label: t('insights.title'), icon: TrendingUp },
-    { id: 'resources' as const, label: t('common.details'), icon: FolderOpen },
-    { id: 'configuration' as const, label: t('config.title'), icon: Settings },
+    { id: "home" as const, label: t("home.title"), icon: Home, hidden: true },
+    { id: "tickets" as const, label: t("nav.tickets"), icon: Receipt },
+    {
+      id: "approvals" as const,
+      label: t("approvals.title"),
+      icon: CheckCircle,
+      badge: showPendingApprovalBadge ? pendingApprovalsCount : 0,
+    },
+    { id: "tipreport" as const, label: t("eod.title"), icon: Coins },
+    { id: "eod" as const, label: t("cash.title"), icon: DollarSign },
+    { id: "safebalance" as const, label: t("safe.title"), icon: Vault },
+    { id: "attendance" as const, label: t("attendance.title"), icon: Calendar },
+    { id: "technicians" as const, label: t("nav.employees"), icon: Users },
+    { id: "clients" as const, label: t("clients.title"), icon: UserCircle },
+    {
+      id: "inventory" as const,
+      label: t("inventory.title"),
+      icon: Package,
+      hidden: !showInventory,
+    },
+    { id: "services" as const, label: t("nav.services"), icon: Briefcase },
+    { id: "insights" as const, label: t("insights.title"), icon: TrendingUp },
+    {
+      id: "resources" as const,
+      label: t("common.details"),
+      icon: FolderOpen,
+      badge: unreadResourcesCount,
+    },
+    { id: "configuration" as const, label: t("config.title"), icon: Settings },
   ];
 
-  const navItems = allNavItems.filter(item => !item.hidden);
+  const navItems = allNavItems.filter((item) => !item.hidden);
 
   const shouldShowQueueButton = enableReadyQueue && showQueueButtonInHeader;
-  const canAccessEod = effectiveRole ? canAccessPage('eod', effectiveRole, employeePayType) : false;
-  const shouldShowOpeningCashBanner = showOpeningCashBanner && requireOpeningCash && isOpeningCashMissing && canAccessEod;
+  const canAccessEod = effectiveRole
+    ? canAccessPage("eod", effectiveRole, employeePayType)
+    : false;
+  const shouldShowOpeningCashBanner =
+    showOpeningCashBanner &&
+    requireOpeningCash &&
+    isOpeningCashMissing &&
+    canAccessEod;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -906,7 +1215,9 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           onRespond={handleViolationResponse}
         />
       )}
-      {hasNewVersion && showVersionNotifications && <VersionNotification onUpdate={handleUpdate} />}
+      {hasNewVersion && showVersionNotifications && (
+        <VersionNotification onUpdate={handleUpdate} />
+      )}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="px-3 py-2 md:px-4">
           <div className="flex items-center justify-between">
@@ -915,7 +1226,11 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="md:hidden p-1.5 hover:bg-gray-100 rounded transition-colors"
               >
-                {isMobileMenuOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
+                {isMobileMenuOpen ? (
+                  <X className="w-5 h-5 text-gray-700" />
+                ) : (
+                  <Menu className="w-5 h-5 text-gray-700" />
+                )}
               </button>
               {currentStore && allStores.length > 1 && canSwitchStores ? (
                 <div className="relative" ref={dropdownRef}>
@@ -933,16 +1248,21 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                           key={store.id}
                           onClick={() => handleStoreChange(store.id)}
                           className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition-colors flex items-center gap-2 ${
-                            store.id === selectedStoreId ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                            store.id === selectedStoreId
+                              ? "bg-blue-50 text-blue-700 font-medium"
+                              : "text-gray-700"
                           }`}
                         >
                           <StoreIcon className="w-3 h-3" />
                           {store.name}
-                          {showPendingApprovalBadge && (perStoreApprovalsCount[store.id] || 0) > 0 && (
-                            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-600 rounded-full ml-auto">
-                              {(perStoreApprovalsCount[store.id] || 0) > 9 ? '9+' : perStoreApprovalsCount[store.id]}
-                            </span>
-                          )}
+                          {showPendingApprovalBadge &&
+                            (perStoreApprovalsCount[store.id] || 0) > 0 && (
+                              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-600 rounded-full ml-auto">
+                                {(perStoreApprovalsCount[store.id] || 0) > 9
+                                  ? "9+"
+                                  : perStoreApprovalsCount[store.id]}
+                              </span>
+                            )}
                         </button>
                       ))}
                     </div>
@@ -953,54 +1273,80 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   {currentStore.name}
                 </span>
               ) : null}
-              {session && effectiveRole && canAccessPage('tickets', effectiveRole) && shouldShowQueueButton && (
-                <button
-                  onClick={handleOpenQueueModal}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 border-2 border-blue-600 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors"
-                >
-                  <Circle
-                    className={`w-4 h-4 animate-pulse ${
-                      userQueueStatus === 'ready'
-                        ? 'text-green-500 fill-green-500'
-                        : userQueueStatus === 'busy'
-                        ? 'text-red-500 fill-red-500'
-                        : 'text-gray-400 fill-gray-400'
-                    }`}
-                  />
-                  <span>{t('queue.title')}</span>
-                </button>
-              )}
+              {session &&
+                effectiveRole &&
+                canAccessPage("tickets", effectiveRole) &&
+                shouldShowQueueButton && (
+                  <button
+                    onClick={handleOpenQueueModal}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 border-2 border-blue-600 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors"
+                  >
+                    <Circle
+                      className={`w-4 h-4 animate-pulse ${
+                        userQueueStatus === "ready"
+                          ? "text-green-500 fill-green-500"
+                          : userQueueStatus === "busy"
+                            ? "text-red-500 fill-red-500"
+                            : "text-gray-400 fill-gray-400"
+                      }`}
+                    />
+                    <span>{t("queue.title")}</span>
+                  </button>
+                )}
             </div>
             <div className="flex items-center gap-2 md:gap-3">
               {googleRating && (
                 <div className="hidden md:flex items-center gap-2 px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg shadow-sm">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      fill="#4285F4"
+                    />
+                    <path
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      fill="#34A853"
+                    />
+                    <path
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                      fill="#FBBC05"
+                    />
+                    <path
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                      fill="#EA4335"
+                    />
                   </svg>
                   <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  <span className="text-xs font-medium text-gray-700">{googleRating.rating} ({googleRating.reviews})</span>
+                  <span className="text-xs font-medium text-gray-700">
+                    {googleRating.rating} ({googleRating.reviews})
+                  </span>
                 </div>
               )}
-              {session && effectiveRole && canAccessPage('settings', effectiveRole) && (
-                <button
-                  onClick={() => onNavigate('settings')}
-                  className="flex items-center gap-2 px-2 py-1 text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
-                  title={t('nav.settings')}
-                >
-                  <Settings className="w-4 h-4" />
-                  <span className="hidden md:inline">{t('nav.settings')}</span>
-                </button>
-              )}
+              {session &&
+                effectiveRole &&
+                canAccessPage("settings", effectiveRole) && (
+                  <button
+                    onClick={() => onNavigate("settings")}
+                    className="flex items-center gap-2 px-2 py-1 text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
+                    title={t("nav.settings")}
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span className="hidden md:inline">
+                      {t("nav.settings")}
+                    </span>
+                  </button>
+                )}
               <button
                 onClick={logout}
                 className="flex items-center gap-2 px-2 py-1 text-xs text-red-700 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
-                title={t('actions.logout')}
+                title={t("actions.logout")}
               >
                 <LogOut className="w-3 h-3" />
-                <span className="hidden md:inline">{t('actions.logout')}</span>
+                <span className="hidden md:inline">{t("actions.logout")}</span>
               </button>
             </div>
           </div>
@@ -1013,27 +1359,32 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             <div className="flex items-center gap-2 flex-1">
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
               <p className="text-sm font-medium">
-                {t('cash.openingCashRequired')}
+                {t("cash.openingCashRequired")}
               </p>
             </div>
             <button
-              onClick={() => onNavigate('eod')}
+              onClick={() => onNavigate("eod")}
               className="flex-shrink-0 bg-white text-amber-700 px-3 py-1.5 rounded text-xs font-semibold hover:bg-amber-50 transition-colors whitespace-nowrap"
             >
-              {t('cash.countNow')}
+              {t("cash.countNow")}
             </button>
           </div>
         </div>
       )}
 
       <div className="flex">
-        <aside className={`fixed md:sticky md:block w-64 md:w-44 bg-white border-r border-gray-200 min-h-[calc(100vh-49px)] top-[49px] left-0 z-20 transform transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <aside
+          className={`fixed md:sticky md:block w-64 md:w-44 bg-white border-r border-gray-200 min-h-[calc(100vh-49px)] top-[49px] left-0 z-20 transform transition-transform duration-300 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
+        >
           <nav className="p-2">
             <ul className="space-y-0.5">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = currentPage === item.id;
-                const hasAccess = session && effectiveRole && canAccessPage(item.id, effectiveRole, employeePayType);
+                const hasAccess =
+                  session &&
+                  effectiveRole &&
+                  canAccessPage(item.id, effectiveRole, employeePayType);
 
                 if (!hasAccess) return null;
 
@@ -1046,15 +1397,15 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                       }}
                       className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm ${
                         isActive
-                          ? 'bg-blue-50 text-blue-700 font-medium'
-                          : 'text-gray-700 hover:bg-gray-50'
+                          ? "bg-blue-50 text-blue-700 font-medium"
+                          : "text-gray-700 hover:bg-gray-50"
                       }`}
                     >
                       <Icon className="w-4 h-4" />
                       <span className="flex-1 text-left">{item.label}</span>
                       {item.badge !== undefined && item.badge > 0 && (
                         <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-600 rounded-full">
-                          {item.badge > 9 ? '9+' : item.badge}
+                          {item.badge > 9 ? "9+" : item.badge}
                         </span>
                       )}
                     </button>
@@ -1078,35 +1429,37 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       <Modal
         isOpen={showQueueModal}
         onClose={() => setShowQueueModal(false)}
-        title={`Technician Queue - ${currentStore?.name || 'Store'}`}
+        title={`Technician Queue - ${currentStore?.name || "Store"}`}
       >
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-600">
-              {canViewAllQueueStatuses
-                ? t('queue.ready')
-                : t('queue.ready')}
+              {canViewAllQueueStatuses ? t("queue.ready") : t("queue.ready")}
             </p>
             <button
               onClick={fetchTechnicianQueue}
               disabled={loadingQueue}
               className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${loadingQueue ? 'animate-spin' : ''}`} />
-              {t('common.refresh')}
+              <RefreshCw
+                className={`w-4 h-4 ${loadingQueue ? "animate-spin" : ""}`}
+              />
+              {t("common.refresh")}
             </button>
           </div>
 
           {loadingQueue && sortedTechnicians.length === 0 ? (
             <div className="text-center py-8">
               <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-2" />
-              <p className="text-sm text-gray-600">{t('messages.loading')}</p>
+              <p className="text-sm text-gray-600">{t("messages.loading")}</p>
             </div>
           ) : (
             <TechnicianQueue
-              sortedTechnicians={canViewAllQueueStatuses
-                ? sortedTechnicians
-                : sortedTechnicians.filter(t => t.queue_status === 'ready')}
+              sortedTechnicians={
+                canViewAllQueueStatuses
+                  ? sortedTechnicians
+                  : sortedTechnicians.filter((t) => t.queue_status === "ready")
+              }
               isReadOnly={true}
               showLegend={true}
               currentTime={currentTime}
@@ -1130,14 +1483,14 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-lg font-medium hover:bg-red-100 transition-colors"
               >
                 <Flag className="w-4 h-4" />
-                {t('violations.reportViolation')}
+                {t("violations.reportViolation")}
               </button>
             </div>
           )}
 
           <div className="pt-4 border-t border-gray-200">
             <p className="text-xs text-gray-500 text-center">
-              {t('queue.ready')}
+              {t("queue.ready")}
             </p>
           </div>
         </div>
@@ -1148,9 +1501,9 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
         onClose={() => setShowViolationReportModal(false)}
         workingEmployees={workingEmployees}
         loadingEmployees={loadingWorkingEmployees}
-        currentEmployeeId={session?.employee_id || ''}
-        currentEmployeeName={session?.display_name || ''}
-        storeId={selectedStoreId || ''}
+        currentEmployeeId={session?.employee_id || ""}
+        currentEmployeeName={session?.display_name || ""}
+        storeId={selectedStoreId || ""}
         minVotesRequired={minVotesRequired}
         onSubmit={handleSubmitViolationReport}
       />
@@ -1164,9 +1517,9 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           }
         }}
         onConfirm={confirmLeaveQueue}
-        title={t('queue.leaveReasonTitle')}
-        confirmLabel={t('queue.leaveQueue')}
-        confirmingLabel={t('messages.loading')}
+        title={t("queue.leaveReasonTitle")}
+        confirmLabel={t("queue.leaveQueue")}
+        confirmingLabel={t("messages.loading")}
         isSubmitting={!!leavingQueueEmployeeId}
         confirmButtonColor="red"
       />
@@ -1180,9 +1533,9 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           }
         }}
         onConfirm={confirmSkipTurn}
-        title={t('queue.skipReasonTitle')}
-        confirmLabel={t('queue.skipTurn')}
-        confirmingLabel={t('queue.skippingTurn')}
+        title={t("queue.skipReasonTitle")}
+        confirmLabel={t("queue.skipTurn")}
+        confirmingLabel={t("queue.skippingTurn")}
         isSubmitting={!!skippingTurnEmployeeId}
         confirmButtonColor="yellow"
       />
@@ -1194,7 +1547,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
           setTechnicianToRemove(null);
         }}
         onConfirm={confirmRemoveTechnician}
-        technicianName={technicianToRemove?.name || ''}
+        technicianName={technicianToRemove?.name || ""}
         isSubmitting={isSubmittingRemoval}
       />
     </div>
