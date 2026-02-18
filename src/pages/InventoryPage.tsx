@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
   Package,
   Plus,
@@ -28,63 +28,120 @@ import {
   Download,
   Upload,
   RefreshCw,
-} from 'lucide-react';
-import { supabase, InventoryItem, InventoryItemWithHierarchy, InventoryTransactionWithDetails, Supplier, InventoryPurchaseLotWithDetails, InventoryDistributionWithDetails } from '../lib/supabase';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Badge } from '../components/ui/Badge';
-import { useToast } from '../components/ui/Toast';
-import { useAuth } from '../contexts/AuthContext';
-import { Permissions } from '../lib/permissions';
-import { InventoryItemModal } from '../components/InventoryItemModal';
-import { InventoryTransactionModal } from '../components/InventoryTransactionModal';
-import { EmployeeDistributionModal } from '../components/EmployeeDistributionModal';
-import { SupplierModal } from '../components/SupplierModal';
-import { TransactionDetailModal } from '../components/TransactionDetailModal';
-import { CsvImportModal } from '../components/inventory/CsvImportModal';
-import { formatDateTimeEST, formatDateEST } from '../lib/timezone';
+} from "lucide-react";
+import {
+  supabase,
+  InventoryItem,
+  InventoryItemWithHierarchy,
+  InventoryTransactionWithDetails,
+  Supplier,
+  InventoryPurchaseLotWithDetails,
+  InventoryDistributionWithDetails,
+} from "../lib/supabase";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import { Badge } from "../components/ui/Badge";
+import { useToast } from "../components/ui/Toast";
+import { useAuth } from "../contexts/AuthContext";
+import { Permissions } from "../lib/permissions";
+import { InventoryItemModal } from "../components/InventoryItemModal";
+import { InventoryTransactionModal } from "../components/InventoryTransactionModal";
+import { EmployeeDistributionModal } from "../components/EmployeeDistributionModal";
+import { SupplierModal } from "../components/SupplierModal";
+import { TransactionDetailModal } from "../components/TransactionDetailModal";
+import { CsvImportModal } from "../components/inventory/CsvImportModal";
+import { formatDateTimeEST, formatDateEST } from "../lib/timezone";
 
-type Tab = 'items' | 'transactions' | 'lots' | 'distributions' | 'suppliers';
-type ViewMode = 'grid' | 'table';
-type SortColumn = 'supplier' | 'brand' | 'name' | 'quantity_on_hand' | 'reorder_level' | 'unit_cost' | 'total_value';
-type SortDirection = 'asc' | 'desc';
-type LotSortColumn = 'lot_number' | 'item_name' | 'quantity_remaining' | 'unit_cost' | 'purchase_date' | 'status';
-type LotStatus = 'active' | 'depleted' | 'archived';
-type DistributionSortColumn = 'distribution_number' | 'distribution_date' | 'item_name' | 'to_employee_name' | 'quantity' | 'status';
-type DistributionStatus = 'pending' | 'acknowledged' | 'in_use' | 'returned' | 'consumed' | 'cancelled';
+type Tab = "items" | "transactions" | "lots" | "distributions" | "suppliers";
+type ViewMode = "grid" | "table";
+type SortColumn =
+  | "supplier"
+  | "brand"
+  | "name"
+  | "quantity_on_hand"
+  | "reorder_level"
+  | "unit_cost"
+  | "total_value";
+type SortDirection = "asc" | "desc";
+type LotSortColumn =
+  | "lot_number"
+  | "item_name"
+  | "quantity_remaining"
+  | "unit_cost"
+  | "purchase_date"
+  | "status";
+type LotStatus = "active" | "depleted" | "archived";
+type DistributionSortColumn =
+  | "distribution_number"
+  | "distribution_date"
+  | "item_name"
+  | "to_employee_name"
+  | "quantity"
+  | "status";
+type DistributionStatus =
+  | "pending"
+  | "acknowledged"
+  | "in_use"
+  | "returned"
+  | "consumed"
+  | "cancelled";
 
 export function InventoryPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('items');
+  const [activeTab, setActiveTab] = useState<Tab>("transactions");
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [transactions, setTransactions] = useState<InventoryTransactionWithDetails[]>([]);
+  const [transactions, setTransactions] = useState<
+    InventoryTransactionWithDetails[]
+  >([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [supplierSearchQuery, setSupplierSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [supplierFilter, setSupplierFilter] = useState('');
-  const [brandFilter, setBrandFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [supplierSearchQuery, setSupplierSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [supplierFilter, setSupplierFilter] = useState("");
+  const [brandFilter, setBrandFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const [sortColumn, setSortColumn] = useState<SortColumn | null>('name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [showItemModal, setShowItemModal] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showDistributionModal, setShowDistributionModal] = useState(false);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
-  const [showTransactionDetailModal, setShowTransactionDetailModal] = useState(false);
-  const [transactionType, setTransactionType] = useState<'in' | 'out' | 'transfer' | undefined>(undefined);
+  const [showTransactionDetailModal, setShowTransactionDetailModal] =
+    useState(false);
+  const [transactionType, setTransactionType] = useState<
+    "in" | "out" | "transfer" | undefined
+  >(undefined);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
-  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
-  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
-  const [expandedMasterItems, setExpandedMasterItems] = useState<Set<string>>(new Set());
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
+    null,
+  );
+  const [selectedTransactionId, setSelectedTransactionId] = useState<
+    string | null
+  >(null);
+  const [expandedMasterItems, setExpandedMasterItems] = useState<Set<string>>(
+    new Set(),
+  );
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(
+    new Set(),
+  );
   const categoriesInitializedRef = useRef(false);
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [draftToEdit, setDraftToEdit] = useState<any>(null);
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
-  const [subItemLotsMap, setSubItemLotsMap] = useState<Record<string, Array<{ id: string; lot_number: string; supplier_name: string | null; quantity_received: number; quantity_remaining: number }>>>({});
+  const [subItemLotsMap, setSubItemLotsMap] = useState<
+    Record<
+      string,
+      Array<{
+        id: string;
+        lot_number: string;
+        supplier_name: string | null;
+        quantity_received: number;
+        quantity_remaining: number;
+      }>
+    >
+  >({});
 
   // State for responsive tab dropdown
   const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
@@ -93,69 +150,111 @@ export function InventoryPage() {
   // Lots tab state
   const [lots, setLots] = useState<InventoryPurchaseLotWithDetails[]>([]);
   const [lotsLoading, setLotsLoading] = useState(false);
-  const [lotSearchQuery, setLotSearchQuery] = useState('');
-  const [lotItemFilter, setLotItemFilter] = useState('');
-  const [lotSupplierFilter, setLotSupplierFilter] = useState('');
-  const [lotStatusFilter, setLotStatusFilter] = useState<LotStatus | ''>('');
-  const [lotDateRangeStart, setLotDateRangeStart] = useState('');
-  const [lotDateRangeEnd, setLotDateRangeEnd] = useState('');
-  const [lotSortColumn, setLotSortColumn] = useState<LotSortColumn | null>('purchase_date');
-  const [lotSortDirection, setLotSortDirection] = useState<SortDirection>('desc');
+  const [lotSearchQuery, setLotSearchQuery] = useState("");
+  const [lotItemFilter, setLotItemFilter] = useState("");
+  const [lotSupplierFilter, setLotSupplierFilter] = useState("");
+  const [lotStatusFilter, setLotStatusFilter] = useState<LotStatus | "">("");
+  const [lotDateRangeStart, setLotDateRangeStart] = useState("");
+  const [lotDateRangeEnd, setLotDateRangeEnd] = useState("");
+  const [lotSortColumn, setLotSortColumn] = useState<LotSortColumn | null>(
+    "purchase_date",
+  );
+  const [lotSortDirection, setLotSortDirection] =
+    useState<SortDirection>("desc");
   const [expandedLotIds, setExpandedLotIds] = useState<Set<string>>(new Set());
   const [isLotFilterPanelOpen, setIsLotFilterPanelOpen] = useState(false);
 
   // Distributions tab state
-  const [distributions, setDistributions] = useState<InventoryDistributionWithDetails[]>([]);
+  const [distributions, setDistributions] = useState<
+    InventoryDistributionWithDetails[]
+  >([]);
   const [distributionsLoading, setDistributionsLoading] = useState(false);
-  const [distributionSearchQuery, setDistributionSearchQuery] = useState('');
-  const [distributionEmployeeFilter, setDistributionEmployeeFilter] = useState('');
-  const [distributionItemFilter, setDistributionItemFilter] = useState('');
-  const [distributionStatusFilter, setDistributionStatusFilter] = useState<DistributionStatus | ''>('');
-  const [distributionDateRangeStart, setDistributionDateRangeStart] = useState('');
-  const [distributionDateRangeEnd, setDistributionDateRangeEnd] = useState('');
-  const [distributionSortColumn, setDistributionSortColumn] = useState<DistributionSortColumn | null>('distribution_date');
-  const [distributionSortDirection, setDistributionSortDirection] = useState<SortDirection>('desc');
-  const [expandedDistributionIds, setExpandedDistributionIds] = useState<Set<string>>(new Set());
-  const [isDistributionFilterPanelOpen, setIsDistributionFilterPanelOpen] = useState(false);
+  const [distributionSearchQuery, setDistributionSearchQuery] = useState("");
+  const [distributionEmployeeFilter, setDistributionEmployeeFilter] =
+    useState("");
+  const [distributionItemFilter, setDistributionItemFilter] = useState("");
+  const [distributionStatusFilter, setDistributionStatusFilter] = useState<
+    DistributionStatus | ""
+  >("");
+  const [distributionDateRangeStart, setDistributionDateRangeStart] =
+    useState("");
+  const [distributionDateRangeEnd, setDistributionDateRangeEnd] = useState("");
+  const [distributionSortColumn, setDistributionSortColumn] =
+    useState<DistributionSortColumn | null>("distribution_date");
+  const [distributionSortDirection, setDistributionSortDirection] =
+    useState<SortDirection>("desc");
+  const [expandedDistributionIds, setExpandedDistributionIds] = useState<
+    Set<string>
+  >(new Set());
+  const [isDistributionFilterPanelOpen, setIsDistributionFilterPanelOpen] =
+    useState(false);
 
   const { showToast } = useToast();
   const { selectedStoreId, session, t } = useAuth();
 
-  const canCreateItems = session?.role && Permissions.inventory.canCreateItems(session.role);
-  const canEditItems = session?.role && Permissions.inventory.canEditItems(session.role);
-  const canDeleteItems = session?.role && Permissions.inventory.canDeleteItems(session.role);
+  const canCreateItems =
+    session?.role && Permissions.inventory.canCreateItems(session.role);
+  const canEditItems =
+    session?.role && Permissions.inventory.canEditItems(session.role);
+  const canDeleteItems =
+    session?.role && Permissions.inventory.canDeleteItems(session.role);
   const canCreateTransactions =
     session?.role && Permissions.inventory.canCreateTransactions(session.role);
-  const canDistribute = session?.role && Permissions.inventory.canDistribute(session.role);
-  const canViewSuppliers = session?.role && Permissions.suppliers.canView(session.role);
-  const canEditSuppliers = session?.role && Permissions.suppliers.canEdit(session.role);
+  const canDistribute =
+    session?.role && Permissions.inventory.canDistribute(session.role);
+  const canViewSuppliers =
+    session?.role && Permissions.suppliers.canView(session.role);
+  const canEditSuppliers =
+    session?.role && Permissions.suppliers.canEdit(session.role);
 
   // Tab configuration for responsive dropdown
-  const tabConfig: Array<{ key: Tab; label: string; icon: typeof Package; getCount?: () => number }> = [
-    { key: 'items', label: t('inventory.items'), icon: Package, getCount: () => items.length },
-    { key: 'transactions', label: t('inventory.transactions'), icon: ArrowUpDown, getCount: () => transactions.length },
-    { key: 'lots', label: t('inventory.lots'), icon: PackagePlus },
-    { key: 'distributions', label: t('inventory.distributions'), icon: PackageMinus },
-    { key: 'suppliers', label: t('inventory.suppliers'), icon: Building2 },
+  const tabConfig: Array<{
+    key: Tab;
+    label: string;
+    icon: typeof Package;
+    getCount?: () => number;
+  }> = [
+    {
+      key: "transactions",
+      label: t("inventory.transactions"),
+      icon: ArrowUpDown,
+      getCount: () => transactions.length,
+    },
+    {
+      key: "items",
+      label: t("inventory.items"),
+      icon: Package,
+      getCount: () => items.length,
+    },
+    { key: "lots", label: t("inventory.lots"), icon: PackagePlus },
+    {
+      key: "distributions",
+      label: t("inventory.distributions"),
+      icon: PackageMinus,
+    },
+    { key: "suppliers", label: t("inventory.suppliers"), icon: Building2 },
   ];
-  const visibleTabs = tabConfig.filter(tab => {
-    if (['lots', 'distributions'].includes(tab.key)) return canDistribute;
-    if (tab.key === 'suppliers') return canViewSuppliers;
+  const visibleTabs = tabConfig.filter((tab) => {
+    if (["lots", "distributions"].includes(tab.key)) return canDistribute;
+    if (tab.key === "suppliers") return canViewSuppliers;
     return true;
   });
-  const currentTabConfig = tabConfig.find(tab => tab.key === activeTab);
+  const currentTabConfig = tabConfig.find((tab) => tab.key === activeTab);
 
   // Click-outside handler for tab dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (tabDropdownRef.current && !tabDropdownRef.current.contains(event.target as Node)) {
+      if (
+        tabDropdownRef.current &&
+        !tabDropdownRef.current.contains(event.target as Node)
+      ) {
         setIsTabDropdownOpen(false);
       }
     }
     if (isTabDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isTabDropdownOpen]);
 
   useEffect(() => {
@@ -169,7 +268,9 @@ export function InventoryPage() {
   // Collapse all categories by default on first load
   useEffect(() => {
     if (categoriesInitializedRef.current || items.length === 0) return;
-    const allCategories = new Set(items.map(item => item.category || 'Uncategorized'));
+    const allCategories = new Set(
+      items.map((item) => item.category || "Uncategorized"),
+    );
     setCollapsedCategories(allCategories);
     categoriesInitializedRef.current = true;
   }, [items]);
@@ -177,25 +278,36 @@ export function InventoryPage() {
   // Auto-refresh data when page becomes visible (e.g., returning from PendingApprovalsPage after approval)
   useEffect(() => {
     function handleVisibilityChange() {
-      if (document.visibilityState === 'visible' && selectedStoreId) {
+      if (document.visibilityState === "visible" && selectedStoreId) {
         fetchItems();
         fetchTransactions();
       }
     }
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [selectedStoreId]);
 
   // Fetch lots when tab changes to 'lots' (lazy loading)
   useEffect(() => {
-    if (activeTab === 'lots' && selectedStoreId && canDistribute && lots.length === 0) {
+    if (
+      activeTab === "lots" &&
+      selectedStoreId &&
+      canDistribute &&
+      lots.length === 0
+    ) {
       fetchLots();
     }
   }, [activeTab, selectedStoreId, canDistribute]);
 
   // Fetch distributions when tab changes to 'distributions' (lazy loading)
   useEffect(() => {
-    if (activeTab === 'distributions' && selectedStoreId && canDistribute && distributions.length === 0) {
+    if (
+      activeTab === "distributions" &&
+      selectedStoreId &&
+      canDistribute &&
+      distributions.length === 0
+    ) {
       fetchDistributions();
     }
   }, [activeTab, selectedStoreId, canDistribute]);
@@ -212,23 +324,34 @@ export function InventoryPage() {
       // Fetch items via store_inventory_levels JOIN inventory_items and lots in parallel
       const [levelsResult, lotsResult] = await Promise.all([
         supabase
-          .from('store_inventory_levels')
-          .select('*, item:inventory_items!inner(*)')
-          .eq('store_id', selectedStoreId)
-          .eq('is_active', true)
-          .order('created_at', { referencedTable: 'inventory_items' }),
+          .from("store_inventory_levels")
+          .select("*, item:inventory_items!inner(*)")
+          .eq("store_id", selectedStoreId)
+          .eq("is_active", true)
+          .order("created_at", { referencedTable: "inventory_items" }),
         supabase
-          .from('inventory_purchase_lots')
-          .select('id, lot_number, item_id, quantity_received, quantity_remaining, suppliers(name)')
-          .eq('store_id', selectedStoreId)
-          .in('status', ['active', 'archived'])
-          .order('purchase_date', { ascending: false }),
+          .from("inventory_purchase_lots")
+          .select(
+            "id, lot_number, item_id, quantity_received, quantity_remaining, suppliers(name)",
+          )
+          .eq("store_id", selectedStoreId)
+          .in("status", ["active", "archived"])
+          .order("purchase_date", { ascending: false }),
       ]);
 
       if (levelsResult.error) throw levelsResult.error;
 
       // Build lots lookup by item_id (for sub-item lot display)
-      const lotsLookup: Record<string, Array<{ id: string; lot_number: string; supplier_name: string | null; quantity_received: number; quantity_remaining: number }>> = {};
+      const lotsLookup: Record<
+        string,
+        Array<{
+          id: string;
+          lot_number: string;
+          supplier_name: string | null;
+          quantity_received: number;
+          quantity_remaining: number;
+        }>
+      > = {};
       if (lotsResult.data) {
         for (const lot of lotsResult.data as any[]) {
           const entry = {
@@ -257,15 +380,15 @@ export function InventoryPage() {
       }));
       setItems(flatItems);
     } catch (error) {
-      console.error('Error fetching items:', error);
-      showToast(t('inventory.failedToLoadItems'), 'error');
+      console.error("Error fetching items:", error);
+      showToast(t("inventory.failedToLoadItems"), "error");
     } finally {
       setLoading(false);
     }
   }
 
   function toggleMasterItem(masterId: string) {
-    setExpandedMasterItems(prev => {
+    setExpandedMasterItems((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(masterId)) {
         newSet.delete(masterId);
@@ -277,7 +400,7 @@ export function InventoryPage() {
   }
 
   function toggleCategory(category: string) {
-    setCollapsedCategories(prev => {
+    setCollapsedCategories((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(category)) {
         newSet.delete(category);
@@ -295,7 +418,7 @@ export function InventoryPage() {
 
     try {
       const { data, error } = await supabase
-        .from('inventory_transactions')
+        .from("inventory_transactions")
         .select(
           `
           *,
@@ -303,41 +426,43 @@ export function InventoryPage() {
           recipient:employees!inventory_transactions_recipient_id_fkey(display_name),
           destination_store:stores!inventory_transactions_destination_store_id_fkey(name),
           source_store:stores!inventory_transactions_store_id_fkey(name)
-        `
+        `,
         )
-        .or(`store_id.eq.${selectedStoreId},destination_store_id.eq.${selectedStoreId}`)
-        .order('created_at', { ascending: false })
+        .or(
+          `store_id.eq.${selectedStoreId},destination_store_id.eq.${selectedStoreId}`,
+        )
+        .order("created_at", { ascending: false })
         .limit(50);
 
       if (error) throw error;
 
       const transactionsWithDetails = (data || []).map((t: any) => ({
         ...t,
-        requested_by_name: t.requested_by?.display_name || '',
-        recipient_name: t.recipient?.display_name || '',
-        destination_store_name: t.destination_store?.name || '',
-        source_store_name: t.source_store?.name || '',
+        requested_by_name: t.requested_by?.display_name || "",
+        recipient_name: t.recipient?.display_name || "",
+        destination_store_name: t.destination_store?.name || "",
+        source_store_name: t.source_store?.name || "",
       }));
 
       setTransactions(transactionsWithDetails);
     } catch (error) {
-      console.error('Error fetching transactions:', error);
-      showToast(t('inventory.failedToLoadTransactions'), 'error');
+      console.error("Error fetching transactions:", error);
+      showToast(t("inventory.failedToLoadTransactions"), "error");
     }
   }
 
   async function fetchSuppliers() {
     try {
       const { data, error } = await supabase
-        .from('suppliers')
-        .select('*')
-        .order('name');
+        .from("suppliers")
+        .select("*")
+        .order("name");
 
       if (error) throw error;
       setSuppliers(data || []);
     } catch (error) {
-      console.error('Error fetching suppliers:', error);
-      showToast(t('inventory.failedToLoadSuppliers'), 'error');
+      console.error("Error fetching suppliers:", error);
+      showToast(t("inventory.failedToLoadSuppliers"), "error");
     }
   }
 
@@ -348,8 +473,9 @@ export function InventoryPage() {
       setLotsLoading(true);
 
       const { data, error } = await supabase
-        .from('inventory_purchase_lots')
-        .select(`
+        .from("inventory_purchase_lots")
+        .select(
+          `
           *,
           inventory_items!item_id (
             id,
@@ -368,26 +494,31 @@ export function InventoryPage() {
           inventory_transaction_items!lot_id (
             inventory_transactions ( transaction_number )
           )
-        `)
-        .eq('store_id', selectedStoreId)
-        .order('purchase_date', { ascending: false });
+        `,
+        )
+        .eq("store_id", selectedStoreId)
+        .order("purchase_date", { ascending: false });
 
       if (error) throw error;
 
       // Map to InventoryPurchaseLotWithDetails
-      const lotsWithDetails: InventoryPurchaseLotWithDetails[] = (data || []).map((lot: any) => ({
+      const lotsWithDetails: InventoryPurchaseLotWithDetails[] = (
+        data || []
+      ).map((lot: any) => ({
         ...lot,
-        item_name: lot.inventory_items?.name || 'Unknown Item',
+        item_name: lot.inventory_items?.name || "Unknown Item",
         item: lot.inventory_items,
         supplier_name: lot.suppliers?.name || null,
         created_by_name: lot.created_by?.display_name || null,
-        transaction_number: lot.inventory_transaction_items?.[0]?.inventory_transactions?.transaction_number || null,
+        transaction_number:
+          lot.inventory_transaction_items?.[0]?.inventory_transactions
+            ?.transaction_number || null,
       }));
 
       setLots(lotsWithDetails);
     } catch (error) {
-      console.error('Error fetching lots:', error);
-      showToast(t('inventory.failedToLoadLots'), 'error');
+      console.error("Error fetching lots:", error);
+      showToast(t("inventory.failedToLoadLots"), "error");
     } finally {
       setLotsLoading(false);
     }
@@ -400,8 +531,9 @@ export function InventoryPage() {
       setDistributionsLoading(true);
 
       const { data, error } = await supabase
-        .from('inventory_distributions')
-        .select(`
+        .from("inventory_distributions")
+        .select(
+          `
           *,
           inventory_items!item_id (
             id,
@@ -425,27 +557,31 @@ export function InventoryPage() {
           manager_approved_by:employees!manager_approved_by_id (
             display_name
           )
-        `)
-        .eq('store_id', selectedStoreId)
-        .order('distribution_date', { ascending: false });
+        `,
+        )
+        .eq("store_id", selectedStoreId)
+        .order("distribution_date", { ascending: false });
 
       if (error) throw error;
 
       // Map to InventoryDistributionWithDetails
-      const distributionsWithDetails: InventoryDistributionWithDetails[] = (data || []).map((dist: any) => ({
+      const distributionsWithDetails: InventoryDistributionWithDetails[] = (
+        data || []
+      ).map((dist: any) => ({
         ...dist,
-        item_name: dist.inventory_items?.name || 'Unknown Item',
+        item_name: dist.inventory_items?.name || "Unknown Item",
         lot_number: dist.inventory_purchase_lots?.lot_number || null,
-        to_employee_name: dist.to_employee?.display_name || 'Unknown',
+        to_employee_name: dist.to_employee?.display_name || "Unknown",
         from_employee_name: dist.from_employee?.display_name || null,
         distributed_by_name: dist.distributed_by?.display_name || null,
-        manager_approved_by_name: dist.manager_approved_by?.display_name || null,
+        manager_approved_by_name:
+          dist.manager_approved_by?.display_name || null,
       }));
 
       setDistributions(distributionsWithDetails);
     } catch (error) {
-      console.error('Error fetching distributions:', error);
-      showToast(t('inventory.failedToLoadDistributions'), 'error');
+      console.error("Error fetching distributions:", error);
+      showToast(t("inventory.failedToLoadDistributions"), "error");
     } finally {
       setDistributionsLoading(false);
     }
@@ -454,19 +590,24 @@ export function InventoryPage() {
   async function handleToggleSupplier(supplier: Supplier) {
     try {
       const { error } = await supabase
-        .from('suppliers')
+        .from("suppliers")
         .update({
           is_active: !supplier.is_active,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', supplier.id);
+        .eq("id", supplier.id);
 
       if (error) throw error;
-      showToast(supplier.is_active ? t('inventory.supplierDeactivated') : t('inventory.supplierActivated'), 'success');
+      showToast(
+        supplier.is_active
+          ? t("inventory.supplierDeactivated")
+          : t("inventory.supplierActivated"),
+        "success",
+      );
       fetchSuppliers();
     } catch (error) {
-      console.error('Error updating supplier:', error);
-      showToast(t('inventory.failedToLoadSuppliers'), 'error');
+      console.error("Error updating supplier:", error);
+      showToast(t("inventory.failedToLoadSuppliers"), "error");
     }
   }
 
@@ -490,41 +631,55 @@ export function InventoryPage() {
   }
 
   function handleDownloadCsv() {
-    const headers = ['name', 'brand', 'category', 'size', 'item_type', 'parent_name', 'quantity', 'unit_cost', 'reorder_level'];
-    const parentNames = new Map(items.filter(i => i.is_master_item).map(i => [i.id, i.name]));
+    const headers = [
+      "name",
+      "brand",
+      "category",
+      "size",
+      "item_type",
+      "parent_name",
+      "quantity",
+      "unit_cost",
+      "reorder_level",
+    ];
+    const parentNames = new Map(
+      items.filter((i) => i.is_master_item).map((i) => [i.id, i.name]),
+    );
 
     function escapeCsvField(field: string): string {
-      if (field.includes(',') || field.includes('"') || field.includes('\n')) {
+      if (field.includes(",") || field.includes('"') || field.includes("\n")) {
         return '"' + field.replace(/"/g, '""') + '"';
       }
       return field;
     }
 
-    const rows = items.map(item => {
-      const itemType = item.is_master_item ? 'master' : 'sub';
-      const parentName = item.parent_id ? (parentNames.get(item.parent_id) || '') : '';
+    const rows = items.map((item) => {
+      const itemType = item.is_master_item ? "master" : "sub";
+      const parentName = item.parent_id
+        ? parentNames.get(item.parent_id) || ""
+        : "";
       return [
         escapeCsvField(item.name),
-        escapeCsvField(item.brand || ''),
+        escapeCsvField(item.brand || ""),
         escapeCsvField(item.category),
-        escapeCsvField(item.size || ''),
+        escapeCsvField(item.size || ""),
         itemType,
         escapeCsvField(parentName),
         item.quantity_on_hand.toString(),
         item.unit_cost.toString(),
         item.reorder_level.toString(),
-      ].join(',');
+      ].join(",");
     });
 
-    const csv = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `inventory-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-    showToast('Inventory CSV downloaded', 'success');
+    showToast("Inventory CSV downloaded", "success");
   }
 
   function handleTransactionSuccess() {
@@ -533,29 +688,30 @@ export function InventoryPage() {
   }
 
   function handleDownloadTransactionTemplate() {
-    const header = 'item_name,brand,parent_name,purchase_unit,multiplier,purchase_qty,purchase_unit_price,notes';
+    const header =
+      "item_name,brand,parent_name,purchase_unit,multiplier,purchase_qty,purchase_unit_price,notes";
     const rows = [
-      'DND DC Original 066,,,,,2,45.00,First batch',
-      'New Polish Color,DND,DND DC,Box,12,5,12.50,',
-      'Acetone 32oz,La Palm,,Gallon,128,2,25.00,Bulk order',
+      "DND DC Original 066,,,,,2,45.00,First batch",
+      "New Polish Color,DND,DND DC,Box,12,5,12.50,",
+      "Acetone 32oz,La Palm,,Gallon,128,2,25.00,Bulk order",
     ];
-    const csv = header + '\n' + rows.join('\n') + '\n';
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csv = header + "\n" + rows.join("\n") + "\n";
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'inventory_transaction_template.csv';
+    a.download = "inventory_transaction_template.csv";
     a.click();
     URL.revokeObjectURL(url);
   }
 
   function handleOpenInventoryIn() {
-    setTransactionType('in');
+    setTransactionType("in");
     setShowTransactionModal(true);
   }
 
   function handleOpenTransfer() {
-    setTransactionType('transfer');
+    setTransactionType("transfer");
     setShowTransactionModal(true);
   }
 
@@ -571,10 +727,10 @@ export function InventoryPage() {
 
   function handleSort(column: SortColumn) {
     if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortColumn(column);
-      setSortDirection('asc');
+      setSortDirection("asc");
     }
   }
 
@@ -583,52 +739,67 @@ export function InventoryPage() {
     if (categoryFilter) count++;
     if (supplierFilter) count++;
     if (brandFilter) count++;
-    if (activeTab === 'transactions' && statusFilter) count++;
+    if (activeTab === "transactions" && statusFilter) count++;
     return count;
   }
 
   function clearAllFilters(): void {
-    setCategoryFilter('');
-    setSupplierFilter('');
-    setBrandFilter('');
-    setStatusFilter('');
+    setCategoryFilter("");
+    setSupplierFilter("");
+    setBrandFilter("");
+    setStatusFilter("");
   }
 
   // Organize items into hierarchy
-  const masterItems = items.filter(item => item.is_master_item);
-  const subItems = items.filter(item => item.parent_id);
+  const masterItems = items.filter((item) => item.is_master_item);
+  const subItems = items.filter((item) => item.parent_id);
 
   // Identify orphaned sub-items whose parent master is not in the current results
-  const masterItemIds = new Set(masterItems.map(m => m.id));
-  const orphanedSubItems = subItems.filter(sub => !masterItemIds.has(sub.parent_id!));
-  const validSubItems = subItems.filter(sub => masterItemIds.has(sub.parent_id!));
+  const masterItemIds = new Set(masterItems.map((m) => m.id));
+  const orphanedSubItems = subItems.filter(
+    (sub) => !masterItemIds.has(sub.parent_id!),
+  );
+  const validSubItems = subItems.filter((sub) =>
+    masterItemIds.has(sub.parent_id!),
+  );
 
   // Build hierarchical items with sub-items attached
-  const hierarchicalItems: InventoryItemWithHierarchy[] = masterItems.map(master => {
-    const children = validSubItems.filter(sub => sub.parent_id === master.id);
-    return {
-      ...master,
-      sub_items: children,
-      total_sub_item_quantity: master.quantity_on_hand,
-      has_low_stock_sub_items: master.quantity_on_hand <= master.reorder_level,
-    };
-  });
+  const hierarchicalItems: InventoryItemWithHierarchy[] = masterItems.map(
+    (master) => {
+      const children = validSubItems.filter(
+        (sub) => sub.parent_id === master.id,
+      );
+      return {
+        ...master,
+        sub_items: children,
+        total_sub_item_quantity: master.quantity_on_hand,
+        has_low_stock_sub_items:
+          master.quantity_on_hand <= master.reorder_level,
+      };
+    },
+  );
 
   // Orphaned sub-items displayed as flat rows (no hierarchy)
-  const orphanedDisplayItems: InventoryItemWithHierarchy[] = orphanedSubItems.map(item => ({
-    ...item,
-    sub_items: [],
-    total_sub_item_quantity: item.quantity_on_hand,
-    has_low_stock_sub_items: item.quantity_on_hand <= item.reorder_level,
-  }));
+  const orphanedDisplayItems: InventoryItemWithHierarchy[] =
+    orphanedSubItems.map((item) => ({
+      ...item,
+      sub_items: [],
+      total_sub_item_quantity: item.quantity_on_hand,
+      has_low_stock_sub_items: item.quantity_on_hand <= item.reorder_level,
+    }));
 
-  const displayItems: InventoryItemWithHierarchy[] = [...hierarchicalItems, ...orphanedDisplayItems];
+  const displayItems: InventoryItemWithHierarchy[] = [
+    ...hierarchicalItems,
+    ...orphanedDisplayItems,
+  ];
 
   const filteredItems = displayItems.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.supplier && item.supplier.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (item.brand && item.brand.toLowerCase().includes(searchQuery.toLowerCase()));
+      (item.supplier &&
+        item.supplier.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.brand &&
+        item.brand.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesCategory = !categoryFilter || item.category === categoryFilter;
     const matchesSupplier = !supplierFilter || item.supplier === supplierFilter;
     const matchesBrand = !brandFilter || item.brand === brandFilter;
@@ -637,46 +808,56 @@ export function InventoryPage() {
     const isLowStock = item.quantity_on_hand <= item.reorder_level;
     const matchesLowStock = !showLowStockOnly || isLowStock;
 
-    return matchesSearch && matchesCategory && matchesSupplier && matchesBrand && matchesLowStock;
+    return (
+      matchesSearch &&
+      matchesCategory &&
+      matchesSupplier &&
+      matchesBrand &&
+      matchesLowStock
+    );
   });
 
-  const sortedItems = sortColumn ? [...filteredItems].sort((a, b) => {
-    let aVal: any;
-    let bVal: any;
+  const sortedItems = sortColumn
+    ? [...filteredItems].sort((a, b) => {
+        let aVal: any;
+        let bVal: any;
 
-    if (sortColumn === 'total_value') {
-      aVal = a.quantity_on_hand * a.unit_cost;
-      bVal = b.quantity_on_hand * b.unit_cost;
-    } else {
-      aVal = a[sortColumn];
-      bVal = b[sortColumn];
-    }
+        if (sortColumn === "total_value") {
+          aVal = a.quantity_on_hand * a.unit_cost;
+          bVal = b.quantity_on_hand * b.unit_cost;
+        } else {
+          aVal = a[sortColumn];
+          bVal = b[sortColumn];
+        }
 
-    if (aVal == null) return 1;
-    if (bVal == null) return -1;
+        if (aVal == null) return 1;
+        if (bVal == null) return -1;
 
-    if (typeof aVal === 'string' && typeof bVal === 'string') {
-      aVal = aVal.toLowerCase();
-      bVal = bVal.toLowerCase();
-    }
+        if (typeof aVal === "string" && typeof bVal === "string") {
+          aVal = aVal.toLowerCase();
+          bVal = bVal.toLowerCase();
+        }
 
-    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
-    return 0;
-  }) : filteredItems;
+        if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      })
+    : filteredItems;
 
   // Group sorted items by category for collapsible sections
   const itemsByCategory = (() => {
     const groups: { category: string; items: typeof sortedItems }[] = [];
     const categoryMap = new Map<string, typeof sortedItems>();
     for (const item of sortedItems) {
-      const cat = item.category || 'Uncategorized';
+      const cat = item.category || "Uncategorized";
       if (!categoryMap.has(cat)) {
         categoryMap.set(cat, []);
       }
       categoryMap.get(cat)!.push(item);
     }
-    const sortedCategories = [...categoryMap.keys()].sort((a, b) => a.localeCompare(b));
+    const sortedCategories = [...categoryMap.keys()].sort((a, b) =>
+      a.localeCompare(b),
+    );
     for (const cat of sortedCategories) {
       groups.push({ category: cat, items: categoryMap.get(cat)! });
     }
@@ -691,7 +872,8 @@ export function InventoryPage() {
   // Lots filtering
   const filteredLots = lots.filter((lot) => {
     // Search filter - lot number or item name
-    const matchesSearch = !lotSearchQuery ||
+    const matchesSearch =
+      !lotSearchQuery ||
       lot.lot_number.toLowerCase().includes(lotSearchQuery.toLowerCase()) ||
       lot.item_name?.toLowerCase().includes(lotSearchQuery.toLowerCase());
 
@@ -699,7 +881,8 @@ export function InventoryPage() {
     const matchesItem = !lotItemFilter || lot.item_id === lotItemFilter;
 
     // Supplier filter
-    const matchesSupplier = !lotSupplierFilter || lot.supplier_id === lotSupplierFilter;
+    const matchesSupplier =
+      !lotSupplierFilter || lot.supplier_id === lotSupplierFilter;
 
     // Status filter
     const matchesStatus = !lotStatusFilter || lot.status === lotStatusFilter;
@@ -707,93 +890,113 @@ export function InventoryPage() {
     // Date range filter
     let matchesDateRange = true;
     if (lotDateRangeStart && lot.purchase_date) {
-      matchesDateRange = new Date(lot.purchase_date) >= new Date(lotDateRangeStart);
+      matchesDateRange =
+        new Date(lot.purchase_date) >= new Date(lotDateRangeStart);
     }
     if (lotDateRangeEnd && lot.purchase_date && matchesDateRange) {
-      matchesDateRange = new Date(lot.purchase_date) <= new Date(lotDateRangeEnd + 'T23:59:59');
+      matchesDateRange =
+        new Date(lot.purchase_date) <= new Date(lotDateRangeEnd + "T23:59:59");
     }
 
-    return matchesSearch && matchesItem && matchesSupplier && matchesStatus && matchesDateRange;
+    return (
+      matchesSearch &&
+      matchesItem &&
+      matchesSupplier &&
+      matchesStatus &&
+      matchesDateRange
+    );
   });
 
   // Lots sorting
-  const sortedLots = lotSortColumn ? [...filteredLots].sort((a, b) => {
-    let aVal: any;
-    let bVal: any;
+  const sortedLots = lotSortColumn
+    ? [...filteredLots].sort((a, b) => {
+        let aVal: any;
+        let bVal: any;
 
-    switch (lotSortColumn) {
-      case 'lot_number':
-        aVal = a.lot_number;
-        bVal = b.lot_number;
-        break;
-      case 'item_name':
-        aVal = a.item_name || '';
-        bVal = b.item_name || '';
-        break;
-      case 'quantity_remaining':
-        aVal = a.quantity_remaining;
-        bVal = b.quantity_remaining;
-        break;
-      case 'unit_cost':
-        aVal = a.unit_cost;
-        bVal = b.unit_cost;
-        break;
-      case 'purchase_date':
-        aVal = new Date(a.purchase_date).getTime();
-        bVal = new Date(b.purchase_date).getTime();
-        break;
-      case 'status':
-        aVal = a.status;
-        bVal = b.status;
-        break;
-      default:
-        aVal = a.purchase_date;
-        bVal = b.purchase_date;
-    }
+        switch (lotSortColumn) {
+          case "lot_number":
+            aVal = a.lot_number;
+            bVal = b.lot_number;
+            break;
+          case "item_name":
+            aVal = a.item_name || "";
+            bVal = b.item_name || "";
+            break;
+          case "quantity_remaining":
+            aVal = a.quantity_remaining;
+            bVal = b.quantity_remaining;
+            break;
+          case "unit_cost":
+            aVal = a.unit_cost;
+            bVal = b.unit_cost;
+            break;
+          case "purchase_date":
+            aVal = new Date(a.purchase_date).getTime();
+            bVal = new Date(b.purchase_date).getTime();
+            break;
+          case "status":
+            aVal = a.status;
+            bVal = b.status;
+            break;
+          default:
+            aVal = a.purchase_date;
+            bVal = b.purchase_date;
+        }
 
-    if (aVal == null) return 1;
-    if (bVal == null) return -1;
+        if (aVal == null) return 1;
+        if (bVal == null) return -1;
 
-    if (typeof aVal === 'string' && typeof bVal === 'string') {
-      aVal = aVal.toLowerCase();
-      bVal = bVal.toLowerCase();
-    }
+        if (typeof aVal === "string" && typeof bVal === "string") {
+          aVal = aVal.toLowerCase();
+          bVal = bVal.toLowerCase();
+        }
 
-    if (aVal < bVal) return lotSortDirection === 'asc' ? -1 : 1;
-    if (aVal > bVal) return lotSortDirection === 'asc' ? 1 : -1;
-    return 0;
-  }) : filteredLots;
+        if (aVal < bVal) return lotSortDirection === "asc" ? -1 : 1;
+        if (aVal > bVal) return lotSortDirection === "asc" ? 1 : -1;
+        return 0;
+      })
+    : filteredLots;
 
   // Calculate lot statistics
   const lotStats = {
-    totalActiveLots: lots.filter(l => l.status === 'active').length,
+    totalActiveLots: lots.filter((l) => l.status === "active").length,
     totalValue: lots
-      .filter(l => l.status === 'active')
-      .reduce((sum, lot) => sum + (lot.quantity_remaining * lot.unit_cost), 0),
-    lowQuantityLots: lots.filter(l =>
-      l.status === 'active' && l.quantity_remaining <= l.quantity_received * 0.1
+      .filter((l) => l.status === "active")
+      .reduce((sum, lot) => sum + lot.quantity_remaining * lot.unit_cost, 0),
+    lowQuantityLots: lots.filter(
+      (l) =>
+        l.status === "active" &&
+        l.quantity_remaining <= l.quantity_received * 0.1,
     ).length,
   };
 
   // Get unique items and suppliers from lots for filter dropdowns
   const lotItemOptions = Array.from(
-    new Map(lots.map(l => [l.item_id, { id: l.item_id, name: l.item_name }])).values()
-  ).filter(item => item.name).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    new Map(
+      lots.map((l) => [l.item_id, { id: l.item_id, name: l.item_name }]),
+    ).values(),
+  )
+    .filter((item) => item.name)
+    .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
   const lotSupplierOptions = Array.from(
     new Map(
-      lots.filter(l => l.supplier_id && l.supplier_name)
-        .map(l => [l.supplier_id, { id: l.supplier_id!, name: l.supplier_name! }])
-    ).values()
+      lots
+        .filter((l) => l.supplier_id && l.supplier_name)
+        .map((l) => [
+          l.supplier_id,
+          { id: l.supplier_id!, name: l.supplier_name! },
+        ]),
+    ).values(),
   ).sort((a, b) => a.name.localeCompare(b.name));
 
   // Lot helper functions
   function handleLotSort(column: LotSortColumn) {
     if (lotSortColumn === column) {
-      setLotSortDirection(lotSortDirection === 'asc' ? 'desc' : 'asc');
+      setLotSortDirection(lotSortDirection === "asc" ? "desc" : "asc");
     } else {
       setLotSortColumn(column);
-      setLotSortDirection('asc');
+      setLotSortDirection("asc");
     }
   }
 
@@ -817,122 +1020,166 @@ export function InventoryPage() {
   }
 
   function clearLotFilters() {
-    setLotItemFilter('');
-    setLotSupplierFilter('');
-    setLotStatusFilter('');
-    setLotDateRangeStart('');
-    setLotDateRangeEnd('');
+    setLotItemFilter("");
+    setLotSupplierFilter("");
+    setLotStatusFilter("");
+    setLotDateRangeStart("");
+    setLotDateRangeEnd("");
   }
 
   // Distributions filtering
   const filteredDistributions = distributions.filter((dist) => {
     // Search filter - distribution number or employee name
-    const matchesSearch = !distributionSearchQuery ||
-      dist.distribution_number.toLowerCase().includes(distributionSearchQuery.toLowerCase()) ||
-      dist.to_employee_name?.toLowerCase().includes(distributionSearchQuery.toLowerCase()) ||
-      dist.from_employee_name?.toLowerCase().includes(distributionSearchQuery.toLowerCase());
+    const matchesSearch =
+      !distributionSearchQuery ||
+      dist.distribution_number
+        .toLowerCase()
+        .includes(distributionSearchQuery.toLowerCase()) ||
+      dist.to_employee_name
+        ?.toLowerCase()
+        .includes(distributionSearchQuery.toLowerCase()) ||
+      dist.from_employee_name
+        ?.toLowerCase()
+        .includes(distributionSearchQuery.toLowerCase());
 
     // Employee filter (to_employee)
-    const matchesEmployee = !distributionEmployeeFilter || dist.to_employee_id === distributionEmployeeFilter;
+    const matchesEmployee =
+      !distributionEmployeeFilter ||
+      dist.to_employee_id === distributionEmployeeFilter;
 
     // Item filter
-    const matchesItem = !distributionItemFilter || dist.item_id === distributionItemFilter;
+    const matchesItem =
+      !distributionItemFilter || dist.item_id === distributionItemFilter;
 
     // Status filter
-    const matchesStatus = !distributionStatusFilter || dist.status === distributionStatusFilter;
+    const matchesStatus =
+      !distributionStatusFilter || dist.status === distributionStatusFilter;
 
     // Date range filter
     let matchesDateRange = true;
     if (distributionDateRangeStart && dist.distribution_date) {
-      matchesDateRange = new Date(dist.distribution_date) >= new Date(distributionDateRangeStart);
+      matchesDateRange =
+        new Date(dist.distribution_date) >=
+        new Date(distributionDateRangeStart);
     }
-    if (distributionDateRangeEnd && dist.distribution_date && matchesDateRange) {
-      matchesDateRange = new Date(dist.distribution_date) <= new Date(distributionDateRangeEnd + 'T23:59:59');
+    if (
+      distributionDateRangeEnd &&
+      dist.distribution_date &&
+      matchesDateRange
+    ) {
+      matchesDateRange =
+        new Date(dist.distribution_date) <=
+        new Date(distributionDateRangeEnd + "T23:59:59");
     }
 
-    return matchesSearch && matchesEmployee && matchesItem && matchesStatus && matchesDateRange;
+    return (
+      matchesSearch &&
+      matchesEmployee &&
+      matchesItem &&
+      matchesStatus &&
+      matchesDateRange
+    );
   });
 
   // Distributions sorting
-  const sortedDistributions = distributionSortColumn ? [...filteredDistributions].sort((a, b) => {
-    let aVal: any;
-    let bVal: any;
+  const sortedDistributions = distributionSortColumn
+    ? [...filteredDistributions].sort((a, b) => {
+        let aVal: any;
+        let bVal: any;
 
-    switch (distributionSortColumn) {
-      case 'distribution_number':
-        aVal = a.distribution_number;
-        bVal = b.distribution_number;
-        break;
-      case 'distribution_date':
-        aVal = new Date(a.distribution_date).getTime();
-        bVal = new Date(b.distribution_date).getTime();
-        break;
-      case 'item_name':
-        aVal = a.item_name || '';
-        bVal = b.item_name || '';
-        break;
-      case 'to_employee_name':
-        aVal = a.to_employee_name || '';
-        bVal = b.to_employee_name || '';
-        break;
-      case 'quantity':
-        aVal = a.quantity;
-        bVal = b.quantity;
-        break;
-      case 'status':
-        aVal = a.status;
-        bVal = b.status;
-        break;
-      default:
-        aVal = a.distribution_date;
-        bVal = b.distribution_date;
-    }
+        switch (distributionSortColumn) {
+          case "distribution_number":
+            aVal = a.distribution_number;
+            bVal = b.distribution_number;
+            break;
+          case "distribution_date":
+            aVal = new Date(a.distribution_date).getTime();
+            bVal = new Date(b.distribution_date).getTime();
+            break;
+          case "item_name":
+            aVal = a.item_name || "";
+            bVal = b.item_name || "";
+            break;
+          case "to_employee_name":
+            aVal = a.to_employee_name || "";
+            bVal = b.to_employee_name || "";
+            break;
+          case "quantity":
+            aVal = a.quantity;
+            bVal = b.quantity;
+            break;
+          case "status":
+            aVal = a.status;
+            bVal = b.status;
+            break;
+          default:
+            aVal = a.distribution_date;
+            bVal = b.distribution_date;
+        }
 
-    if (aVal == null) return 1;
-    if (bVal == null) return -1;
+        if (aVal == null) return 1;
+        if (bVal == null) return -1;
 
-    if (typeof aVal === 'string' && typeof bVal === 'string') {
-      aVal = aVal.toLowerCase();
-      bVal = bVal.toLowerCase();
-    }
+        if (typeof aVal === "string" && typeof bVal === "string") {
+          aVal = aVal.toLowerCase();
+          bVal = bVal.toLowerCase();
+        }
 
-    if (aVal < bVal) return distributionSortDirection === 'asc' ? -1 : 1;
-    if (aVal > bVal) return distributionSortDirection === 'asc' ? 1 : -1;
-    return 0;
-  }) : filteredDistributions;
+        if (aVal < bVal) return distributionSortDirection === "asc" ? -1 : 1;
+        if (aVal > bVal) return distributionSortDirection === "asc" ? 1 : -1;
+        return 0;
+      })
+    : filteredDistributions;
 
   // Calculate distribution statistics
   const distributionStats = {
     totalDistributions: distributions.length,
-    pendingAcknowledgment: distributions.filter(d => d.status === 'pending').length,
-    currentlyInUse: distributions.filter(d => d.status === 'in_use').length,
-    returnedThisMonth: distributions.filter(d => {
-      if (d.status !== 'returned' || !d.actual_return_date) return false;
+    pendingAcknowledgment: distributions.filter((d) => d.status === "pending")
+      .length,
+    currentlyInUse: distributions.filter((d) => d.status === "in_use").length,
+    returnedThisMonth: distributions.filter((d) => {
+      if (d.status !== "returned" || !d.actual_return_date) return false;
       const returnDate = new Date(d.actual_return_date);
       const now = new Date();
-      return returnDate.getMonth() === now.getMonth() &&
-             returnDate.getFullYear() === now.getFullYear();
+      return (
+        returnDate.getMonth() === now.getMonth() &&
+        returnDate.getFullYear() === now.getFullYear()
+      );
     }).length,
   };
 
   // Get unique employees and items from distributions for filter dropdowns
   const distributionEmployeeOptions = Array.from(
     new Map(
-      distributions.map(d => [d.to_employee_id, { id: d.to_employee_id, name: d.to_employee_name }])
-    ).values()
-  ).filter(emp => emp.name).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      distributions.map((d) => [
+        d.to_employee_id,
+        { id: d.to_employee_id, name: d.to_employee_name },
+      ]),
+    ).values(),
+  )
+    .filter((emp) => emp.name)
+    .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
   const distributionItemOptions = Array.from(
-    new Map(distributions.map(d => [d.item_id, { id: d.item_id, name: d.item_name }])).values()
-  ).filter(item => item.name).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    new Map(
+      distributions.map((d) => [
+        d.item_id,
+        { id: d.item_id, name: d.item_name },
+      ]),
+    ).values(),
+  )
+    .filter((item) => item.name)
+    .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
   // Distribution helper functions
   function handleDistributionSort(column: DistributionSortColumn) {
     if (distributionSortColumn === column) {
-      setDistributionSortDirection(distributionSortDirection === 'asc' ? 'desc' : 'asc');
+      setDistributionSortDirection(
+        distributionSortDirection === "asc" ? "desc" : "asc",
+      );
     } else {
       setDistributionSortColumn(column);
-      setDistributionSortDirection('asc');
+      setDistributionSortDirection("asc");
     }
   }
 
@@ -956,38 +1203,58 @@ export function InventoryPage() {
   }
 
   function clearDistributionFilters() {
-    setDistributionEmployeeFilter('');
-    setDistributionItemFilter('');
-    setDistributionStatusFilter('');
-    setDistributionDateRangeStart('');
-    setDistributionDateRangeEnd('');
+    setDistributionEmployeeFilter("");
+    setDistributionItemFilter("");
+    setDistributionStatusFilter("");
+    setDistributionDateRangeStart("");
+    setDistributionDateRangeEnd("");
   }
 
-  function getDistributionStatusBadgeVariant(status: DistributionStatus): 'warning' | 'info' | 'success' | 'default' | 'danger' {
+  function getDistributionStatusBadgeVariant(
+    status: DistributionStatus,
+  ): "warning" | "info" | "success" | "default" | "danger" {
     switch (status) {
-      case 'pending': return 'warning';
-      case 'acknowledged': return 'info';
-      case 'in_use': return 'success';
-      case 'returned': return 'default';
-      case 'consumed': return 'info';
-      case 'cancelled': return 'danger';
-      default: return 'default';
+      case "pending":
+        return "warning";
+      case "acknowledged":
+        return "info";
+      case "in_use":
+        return "success";
+      case "returned":
+        return "default";
+      case "consumed":
+        return "info";
+      case "cancelled":
+        return "danger";
+      default:
+        return "default";
     }
   }
 
-  const categories = Array.from(new Set(items.map((item) => item.category))).sort();
-  const supplierNames = Array.from(new Set(items.map((item) => item.supplier).filter(Boolean))).sort();
-  const brands = Array.from(new Set(items.map((item) => item.brand).filter(Boolean))).sort();
+  const categories = Array.from(
+    new Set(items.map((item) => item.category)),
+  ).sort();
+  const supplierNames = Array.from(
+    new Set(items.map((item) => item.supplier).filter(Boolean)),
+  ).sort();
+  const brands = Array.from(
+    new Set(items.map((item) => item.brand).filter(Boolean)),
+  ).sort();
   // Low stock items - exclude master items (they don't have direct inventory)
-  const lowStockItems = items.filter((item) => !item.is_master_item && item.quantity_on_hand <= item.reorder_level);
+  const lowStockItems = items.filter(
+    (item) =>
+      !item.is_master_item && item.quantity_on_hand <= item.reorder_level,
+  );
 
   if (!selectedStoreId) {
     return (
       <div className="p-6 max-w-7xl mx-auto">
         <div className="text-center py-12">
           <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">{t('inventory.noStoreSelected')}</h2>
-          <p className="text-gray-500">{t('inventory.pleaseSelectStore')}</p>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">
+            {t("inventory.noStoreSelected")}
+          </h2>
+          <p className="text-gray-500">{t("inventory.pleaseSelectStore")}</p>
         </div>
       </div>
     );
@@ -996,8 +1263,10 @@ export function InventoryPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('inventory.title')}</h1>
-        <p className="text-gray-600">{t('common.trackAndManage')}</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          {t("inventory.title")}
+        </h1>
+        <p className="text-gray-600">{t("common.trackAndManage")}</p>
       </div>
 
       {lowStockItems.length > 0 && (
@@ -1006,18 +1275,20 @@ export function InventoryPage() {
             onClick={() => setShowLowStockOnly(!showLowStockOnly)}
             className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
               showLowStockOnly
-                ? 'bg-amber-600 text-white'
-                : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                ? "bg-amber-600 text-white"
+                : "bg-amber-100 text-amber-700 hover:bg-amber-200"
             }`}
           >
             <Eye className="w-4 h-4" />
-            {showLowStockOnly ? t('common.showAll') : t('common.view')}
+            {showLowStockOnly ? t("common.showAll") : t("common.view")}
           </button>
           <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
           <div>
-            <p className="font-medium text-amber-900">{t('common.lowStockAlert')}</p>
+            <p className="font-medium text-amber-900">
+              {t("common.lowStockAlert")}
+            </p>
             <p className="text-sm text-amber-700">
-              {lowStockItems.length} {t('common.itemsBelowReorder')}
+              {lowStockItems.length} {t("common.itemsBelowReorder")}
             </p>
           </div>
         </div>
@@ -1037,12 +1308,15 @@ export function InventoryPage() {
                     <currentTabConfig.icon className="w-4 h-4" />
                     <span>
                       {currentTabConfig.label}
-                      {currentTabConfig.getCount && ` (${currentTabConfig.getCount()})`}
+                      {currentTabConfig.getCount &&
+                        ` (${currentTabConfig.getCount()})`}
                     </span>
                   </>
                 )}
               </div>
-              <ChevronDown className={`w-4 h-4 transition-transform ${isTabDropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown
+                className={`w-4 h-4 transition-transform ${isTabDropdownOpen ? "rotate-180" : ""}`}
+              />
             </button>
             {isTabDropdownOpen && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
@@ -1052,9 +1326,14 @@ export function InventoryPage() {
                   return (
                     <button
                       key={tab.key}
-                      onClick={() => { setActiveTab(tab.key); setIsTabDropdownOpen(false); }}
+                      onClick={() => {
+                        setActiveTab(tab.key);
+                        setIsTabDropdownOpen(false);
+                      }}
                       className={`w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium transition-colors ${
-                        isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+                        isActive
+                          ? "bg-blue-50 text-blue-700"
+                          : "text-gray-600 hover:bg-gray-50"
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -1064,7 +1343,9 @@ export function InventoryPage() {
                           {tab.getCount && ` (${tab.getCount()})`}
                         </span>
                       </div>
-                      {isActive && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                      {isActive && (
+                        <CheckCircle className="w-4 h-4 text-blue-600" />
+                      )}
                     </button>
                   );
                 })}
@@ -1084,8 +1365,8 @@ export function InventoryPage() {
                 onClick={() => setActiveTab(tab.key)}
                 className={`px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap ${
                   isActive
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-600 hover:text-gray-900"
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -1101,7 +1382,7 @@ export function InventoryPage() {
         </div>
       </div>
 
-      {activeTab === 'items' && (
+      {activeTab === "items" && (
         <div>
           <div className="mb-4 flex flex-col gap-3">
             <div className="flex flex-col sm:flex-row gap-3">
@@ -1126,8 +1407,8 @@ export function InventoryPage() {
                   onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
                   className={`px-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 ${
                     getActiveFilterCount() > 0
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   <Filter className="w-4 h-4" />
@@ -1148,7 +1429,9 @@ export function InventoryPage() {
                     <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                       <div className="p-4 space-y-4">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
+                          <h3 className="text-sm font-semibold text-gray-900">
+                            Filters
+                          </h3>
                           <button
                             onClick={() => setIsFilterPanelOpen(false)}
                             className="text-gray-400 hover:text-gray-600"
@@ -1228,22 +1511,22 @@ export function InventoryPage() {
             <div className="flex gap-3">
               <div className="flex gap-1 border border-gray-300 rounded-lg p-1">
                 <button
-                  onClick={() => toggleViewMode('grid')}
+                  onClick={() => toggleViewMode("grid")}
                   className={`p-2 rounded transition-colors ${
-                    viewMode === 'grid'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
+                    viewMode === "grid"
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-600 hover:bg-gray-100"
                   }`}
                   title="Grid view"
                 >
                   <LayoutGrid className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => toggleViewMode('table')}
+                  onClick={() => toggleViewMode("table")}
                   className={`p-2 rounded transition-colors ${
-                    viewMode === 'table'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
+                    viewMode === "table"
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-600 hover:bg-gray-100"
                   }`}
                   title="Table view"
                 >
@@ -1256,7 +1539,10 @@ export function InventoryPage() {
                     <Download className="w-4 h-4 mr-2" />
                     Download CSV
                   </Button>
-                  <Button variant="secondary" onClick={() => setShowCsvImportModal(true)}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowCsvImportModal(true)}
+                  >
                     <Upload className="w-4 h-4 mr-2" />
                     Import CSV
                   </Button>
@@ -1273,27 +1559,40 @@ export function InventoryPage() {
             <div className="text-center py-12 text-gray-500">Loading...</div>
           ) : sortedItems.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              {searchQuery || categoryFilter || supplierFilter || brandFilter ? 'No items match your filters' : 'No items yet'}
+              {searchQuery || categoryFilter || supplierFilter || brandFilter
+                ? "No items match your filters"
+                : "No items yet"}
             </div>
-          ) : viewMode === 'grid' ? (
+          ) : viewMode === "grid" ? (
             <div className="space-y-4">
               {itemsByCategory.map(({ category, items: categoryItems }) => {
-                const isCategoryCollapsed = !searchQuery && collapsedCategories.has(category);
+                const isCategoryCollapsed =
+                  !searchQuery && collapsedCategories.has(category);
                 return (
                   <div key={category}>
                     <button
                       onClick={() => toggleCategory(category)}
                       className="flex items-center gap-2 w-full text-left px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors"
                     >
-                      {isCategoryCollapsed ? <ChevronRight className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
-                      <span className="font-semibold text-gray-800">{category}</span>
-                      <Badge variant="default" className="text-xs">{categoryItems.length}</Badge>
+                      {isCategoryCollapsed ? (
+                        <ChevronRight className="w-4 h-4 text-gray-500" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-gray-500" />
+                      )}
+                      <span className="font-semibold text-gray-800">
+                        {category}
+                      </span>
+                      <Badge variant="default" className="text-xs">
+                        {categoryItems.length}
+                      </Badge>
                     </button>
                     {!isCategoryCollapsed && (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
                         {categoryItems.map((item) => {
-                          const isLowStock = item.quantity_on_hand <= item.reorder_level;
-                          const totalValue = item.quantity_on_hand * item.unit_cost;
+                          const isLowStock =
+                            item.quantity_on_hand <= item.reorder_level;
+                          const totalValue =
+                            item.quantity_on_hand * item.unit_cost;
 
                           return (
                             <div
@@ -1305,9 +1604,13 @@ export function InventoryPage() {
                                   <div className="flex items-start gap-2">
                                     <Package className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
                                     <div>
-                                      <h3 className="font-semibold text-gray-900">{item.name}</h3>
+                                      <h3 className="font-semibold text-gray-900">
+                                        {item.name}
+                                      </h3>
                                       {item.brand && (
-                                        <p className="text-xs text-gray-500 mt-0.5">Brand: {item.brand}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">
+                                          Brand: {item.brand}
+                                        </p>
                                       )}
                                     </div>
                                   </div>
@@ -1324,9 +1627,14 @@ export function InventoryPage() {
 
                               <div className="space-y-2 text-sm">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <Badge variant="default">{item.supplier}</Badge>
+                                  <Badge variant="default">
+                                    {item.supplier}
+                                  </Badge>
                                   {isLowStock && (
-                                    <Badge variant="warning" className="flex items-center gap-1">
+                                    <Badge
+                                      variant="warning"
+                                      className="flex items-center gap-1"
+                                    >
                                       <AlertTriangle className="w-3 h-3" />
                                       Low Stock
                                     </Badge>
@@ -1337,24 +1645,30 @@ export function InventoryPage() {
                                   <div>
                                     <p className="text-gray-500">On Hand</p>
                                     <p
-                                      className={`font-semibold ${isLowStock ? 'text-amber-600' : 'text-gray-900'}`}
+                                      className={`font-semibold ${isLowStock ? "text-amber-600" : "text-gray-900"}`}
                                     >
                                       {item.quantity_on_hand} {item.unit}
                                     </p>
                                   </div>
                                   <div>
-                                    <p className="text-gray-500">Reorder Level</p>
+                                    <p className="text-gray-500">
+                                      Reorder Level
+                                    </p>
                                     <p className="font-semibold text-gray-900">
                                       {item.reorder_level} {item.unit}
                                     </p>
                                   </div>
                                   <div>
                                     <p className="text-gray-500">Unit Cost</p>
-                                    <p className="font-semibold text-gray-900">${item.unit_cost.toFixed(2)}</p>
+                                    <p className="font-semibold text-gray-900">
+                                      ${item.unit_cost.toFixed(2)}
+                                    </p>
                                   </div>
                                   <div>
                                     <p className="text-gray-500">Total Value</p>
-                                    <p className="font-semibold text-gray-900">${totalValue.toFixed(2)}</p>
+                                    <p className="font-semibold text-gray-900">
+                                      ${totalValue.toFixed(2)}
+                                    </p>
                                   </div>
                                 </div>
 
@@ -1380,79 +1694,100 @@ export function InventoryPage() {
                   <tr>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 min-w-[200px]"
-                      onClick={() => handleSort('name')}
+                      onClick={() => handleSort("name")}
                     >
                       <div className="flex items-center gap-1">
                         Name
-                        {sortColumn === 'name' && (
-                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {sortColumn === "name" &&
+                          (sortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('supplier')}
+                      onClick={() => handleSort("supplier")}
                     >
                       <div className="flex items-center gap-1">
                         Supplier
-                        {sortColumn === 'supplier' && (
-                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {sortColumn === "supplier" &&
+                          (sortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('brand')}
+                      onClick={() => handleSort("brand")}
                     >
                       <div className="flex items-center gap-1">
                         Brand
-                        {sortColumn === 'brand' && (
-                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {sortColumn === "brand" &&
+                          (sortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('quantity_on_hand')}
+                      onClick={() => handleSort("quantity_on_hand")}
                     >
                       <div className="flex items-center justify-end gap-1">
                         Qty (Store)
-                        {sortColumn === 'quantity_on_hand' && (
-                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {sortColumn === "quantity_on_hand" &&
+                          (sortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('reorder_level')}
+                      onClick={() => handleSort("reorder_level")}
                     >
                       <div className="flex items-center justify-end gap-1">
                         Reorder
-                        {sortColumn === 'reorder_level' && (
-                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {sortColumn === "reorder_level" &&
+                          (sortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('unit_cost')}
+                      onClick={() => handleSort("unit_cost")}
                     >
                       <div className="flex items-center justify-end gap-1">
                         Unit Cost
-                        {sortColumn === 'unit_cost' && (
-                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {sortColumn === "unit_cost" &&
+                          (sortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('total_value')}
+                      onClick={() => handleSort("total_value")}
                     >
                       <div className="flex items-center justify-end gap-1">
                         Total Value
-                        {sortColumn === 'total_value' && (
-                          sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {sortColumn === "total_value" &&
+                          (sortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
@@ -1462,7 +1797,8 @@ export function InventoryPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {itemsByCategory.map(({ category, items: categoryItems }) => {
-                    const isCategoryCollapsed = !searchQuery && collapsedCategories.has(category);
+                    const isCategoryCollapsed =
+                      !searchQuery && collapsedCategories.has(category);
                     return (
                       <React.Fragment key={`cat-${category}`}>
                         <tr
@@ -1471,161 +1807,247 @@ export function InventoryPage() {
                         >
                           <td colSpan={8} className="px-4 py-2">
                             <div className="flex items-center gap-2">
-                              {isCategoryCollapsed ? <ChevronRight className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
-                              <span className="font-semibold text-gray-800">{category}</span>
-                              <Badge variant="default" className="text-xs">{categoryItems.length}</Badge>
-                            </div>
-                          </td>
-                        </tr>
-                        {!isCategoryCollapsed && categoryItems.map((item) => {
-                    const hierarchyItem = item as InventoryItemWithHierarchy;
-                    const isMasterItem = item.is_master_item;
-                    const isExpanded = expandedMasterItems.has(item.id);
-                    const isLowStock = item.quantity_on_hand <= item.reorder_level;
-                    const masterLots = subItemLotsMap[item.id] || [];
-                    const isExpandable = isMasterItem && ((hierarchyItem.sub_items?.length || 0) > 0 || masterLots.length > 0);
-
-                    // For master items, use aggregated values
-                    const displayQty = isMasterItem
-                      ? hierarchyItem.total_sub_item_quantity || 0
-                      : item.quantity_on_hand;
-                    const totalValue = displayQty * item.unit_cost;
-
-                    return (
-                      <React.Fragment key={item.id}>
-                        <tr
-                          className={`hover:bg-gray-50 ${isLowStock ? 'bg-amber-50' : ''} ${isExpandable ? 'cursor-pointer' : ''}`}
-                          onClick={() => isExpandable && toggleMasterItem(item.id)}
-                        >
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                            <div className="flex items-center gap-2">
-                              {isExpandable && (
-                                <span className="text-gray-400">
-                                  {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                </span>
+                              {isCategoryCollapsed ? (
+                                <ChevronRight className="w-4 h-4 text-gray-500" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-gray-500" />
                               )}
-                              <span className={isMasterItem ? 'font-semibold' : ''}>
-                                {item.name}
+                              <span className="font-semibold text-gray-800">
+                                {category}
                               </span>
-                              {isMasterItem && hierarchyItem.sub_items && hierarchyItem.sub_items.length > 0 && (
-                                <Badge variant="default" className="text-xs">
-                                  {hierarchyItem.sub_items.length} variants
-                                </Badge>
-                              )}
-                              {isMasterItem && (!hierarchyItem.sub_items || hierarchyItem.sub_items.length === 0) && masterLots.length > 0 && (
-                                <Badge variant="default" className="text-xs">
-                                  {masterLots.length} {masterLots.length === 1 ? 'lot' : 'lots'}
-                                </Badge>
-                              )}
+                              <Badge variant="default" className="text-xs">
+                                {categoryItems.length}
+                              </Badge>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
-                            {isMasterItem ? '-' : item.supplier}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900">
-                            {isMasterItem ? '-' : (item.brand || '-')}
-                          </td>
-                          <td className={`px-4 py-3 text-sm text-right font-semibold ${isLowStock ? 'text-amber-600' : 'text-gray-900'}`}>
-                            {displayQty} {item.unit}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right text-gray-900">
-                            {item.reorder_level} {item.unit}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right text-gray-900">
-                            ${item.unit_cost.toFixed(2)}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
-                            ${totalValue.toFixed(2)}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-center">
-                            {canEditItems && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleEditItem(item); }}
-                                className="text-blue-600 hover:text-blue-800"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </td>
                         </tr>
-                        {/* Sub-items for expanded master items */}
-                        {isMasterItem && isExpanded && hierarchyItem.sub_items?.map((subItem) => {
-                          const subItemLots = subItemLotsMap[subItem.id] || [];
-                          return (
-                            <React.Fragment key={subItem.id}>
-                              <tr
-                                className="bg-gray-50/50 hover:bg-gray-100"
-                              >
-                                <td className="px-4 py-2 text-sm text-gray-700 pl-10">
-                                  <div className="flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
-                                    {subItem.color_code && <span className="font-medium">{subItem.color_code}</span>}
-                                    {subItem.size && <span className="text-gray-500">({subItem.size})</span>}
-                                    {!subItem.color_code && !subItem.size && <span>{subItem.name}</span>}
-                                  </div>
-                                </td>
-                                <td className="px-4 py-2 text-sm text-gray-600">{subItem.supplier}</td>
-                                <td className="px-4 py-2 text-sm text-gray-600">{subItem.brand || '-'}</td>
-                                <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
-                                <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
-                                <td className="px-4 py-2 text-sm text-right text-gray-600">
-                                  ${subItem.unit_cost.toFixed(2)}
-                                </td>
-                                <td className="px-4 py-2 text-sm text-right text-gray-500">-</td>
-                                <td className="px-4 py-2 text-sm text-center">
-                                  {canEditItems && (
-                                    <button
-                                      onClick={() => handleEditItem(subItem)}
-                                      className="text-blue-600 hover:text-blue-800"
-                                    >
-                                      <Edit2 className="w-4 h-4" />
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                              {subItemLots.map((lot) => (
-                                <tr key={lot.id} className="bg-blue-50/30">
-                                  <td className="pl-16 pr-4 py-1.5 text-xs text-blue-700">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="w-1 h-1 bg-blue-400 rounded-full" />
-                                      <span className="font-mono">{lot.lot_number}</span>
+                        {!isCategoryCollapsed &&
+                          categoryItems.map((item) => {
+                            const hierarchyItem =
+                              item as InventoryItemWithHierarchy;
+                            const isMasterItem = item.is_master_item;
+                            const isExpanded = expandedMasterItems.has(item.id);
+                            const isLowStock =
+                              item.quantity_on_hand <= item.reorder_level;
+                            const masterLots = subItemLotsMap[item.id] || [];
+                            const isExpandable =
+                              isMasterItem &&
+                              ((hierarchyItem.sub_items?.length || 0) > 0 ||
+                                masterLots.length > 0);
+
+                            // For master items, use aggregated values
+                            const displayQty = isMasterItem
+                              ? hierarchyItem.total_sub_item_quantity || 0
+                              : item.quantity_on_hand;
+                            const totalValue = displayQty * item.unit_cost;
+
+                            return (
+                              <React.Fragment key={item.id}>
+                                <tr
+                                  className={`hover:bg-gray-50 ${isLowStock ? "bg-amber-50" : ""} ${isExpandable ? "cursor-pointer" : ""}`}
+                                  onClick={() =>
+                                    isExpandable && toggleMasterItem(item.id)
+                                  }
+                                >
+                                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                    <div className="flex items-center gap-2">
+                                      {isExpandable && (
+                                        <span className="text-gray-400">
+                                          {isExpanded ? (
+                                            <ChevronDown className="w-4 h-4" />
+                                          ) : (
+                                            <ChevronRight className="w-4 h-4" />
+                                          )}
+                                        </span>
+                                      )}
+                                      <span
+                                        className={
+                                          isMasterItem ? "font-semibold" : ""
+                                        }
+                                      >
+                                        {item.name}
+                                      </span>
+                                      {isMasterItem &&
+                                        hierarchyItem.sub_items &&
+                                        hierarchyItem.sub_items.length > 0 && (
+                                          <Badge
+                                            variant="default"
+                                            className="text-xs"
+                                          >
+                                            {hierarchyItem.sub_items.length}{" "}
+                                            variants
+                                          </Badge>
+                                        )}
+                                      {isMasterItem &&
+                                        (!hierarchyItem.sub_items ||
+                                          hierarchyItem.sub_items.length ===
+                                            0) &&
+                                        masterLots.length > 0 && (
+                                          <Badge
+                                            variant="default"
+                                            className="text-xs"
+                                          >
+                                            {masterLots.length}{" "}
+                                            {masterLots.length === 1
+                                              ? "lot"
+                                              : "lots"}
+                                          </Badge>
+                                        )}
                                     </div>
                                   </td>
-                                  <td className="px-4 py-1.5 text-xs text-gray-500">{lot.supplier_name || '-'}</td>
-                                  <td className="px-4 py-1.5"></td>
-                                  <td className="px-4 py-1.5 text-xs text-right text-blue-700 font-medium">{lot.quantity_remaining}</td>
-                                  <td className="px-4 py-1.5"></td>
-                                  <td className="px-4 py-1.5"></td>
-                                  <td className="px-4 py-1.5"></td>
-                                  <td className="px-4 py-1.5"></td>
+                                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                                    {isMasterItem ? "-" : item.supplier}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-gray-900">
+                                    {isMasterItem ? "-" : item.brand || "-"}
+                                  </td>
+                                  <td
+                                    className={`px-4 py-3 text-sm text-right font-semibold ${isLowStock ? "text-amber-600" : "text-gray-900"}`}
+                                  >
+                                    {displayQty} {item.unit}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-right text-gray-900">
+                                    {item.reorder_level} {item.unit}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-right text-gray-900">
+                                    ${item.unit_cost.toFixed(2)}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
+                                    ${totalValue.toFixed(2)}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-center">
+                                    {canEditItems && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleEditItem(item);
+                                        }}
+                                        className="text-blue-600 hover:text-blue-800"
+                                      >
+                                        <Edit2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </td>
                                 </tr>
-                              ))}
-                            </React.Fragment>
-                          );
-                        })}
-                        {/* Lots directly under master when no sub-items exist */}
-                        {isMasterItem && isExpanded && (!hierarchyItem.sub_items || hierarchyItem.sub_items.length === 0) && (
-                          masterLots.map((lot) => (
-                            <tr key={lot.id} className="bg-blue-50/30">
-                              <td className="pl-10 pr-4 py-1.5 text-xs text-blue-700">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="w-1 h-1 bg-blue-400 rounded-full" />
-                                  <span className="font-mono">{lot.lot_number}</span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-1.5 text-xs text-gray-500">{lot.supplier_name || '-'}</td>
-                              <td className="px-4 py-1.5"></td>
-                              <td className="px-4 py-1.5 text-xs text-right text-blue-700 font-medium">{lot.quantity_remaining}</td>
-                              <td className="px-4 py-1.5"></td>
-                              <td className="px-4 py-1.5"></td>
-                              <td className="px-4 py-1.5"></td>
-                              <td className="px-4 py-1.5"></td>
-                            </tr>
-                          ))
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
+                                {/* Sub-items for expanded master items */}
+                                {isMasterItem &&
+                                  isExpanded &&
+                                  hierarchyItem.sub_items?.map((subItem) => {
+                                    const subItemLots =
+                                      subItemLotsMap[subItem.id] || [];
+                                    return (
+                                      <React.Fragment key={subItem.id}>
+                                        <tr className="bg-gray-50/50 hover:bg-gray-100">
+                                          <td className="px-4 py-2 text-sm text-gray-700 pl-10">
+                                            <div className="flex items-center gap-2">
+                                              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+                                              {subItem.color_code && (
+                                                <span className="font-medium">
+                                                  {subItem.color_code}
+                                                </span>
+                                              )}
+                                              {subItem.size && (
+                                                <span className="text-gray-500">
+                                                  ({subItem.size})
+                                                </span>
+                                              )}
+                                              {!subItem.color_code &&
+                                                !subItem.size && (
+                                                  <span>{subItem.name}</span>
+                                                )}
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-2 text-sm text-gray-600">
+                                            {subItem.supplier}
+                                          </td>
+                                          <td className="px-4 py-2 text-sm text-gray-600">
+                                            {subItem.brand || "-"}
+                                          </td>
+                                          <td className="px-4 py-2 text-sm text-right text-gray-500">
+                                            -
+                                          </td>
+                                          <td className="px-4 py-2 text-sm text-right text-gray-500">
+                                            -
+                                          </td>
+                                          <td className="px-4 py-2 text-sm text-right text-gray-600">
+                                            ${subItem.unit_cost.toFixed(2)}
+                                          </td>
+                                          <td className="px-4 py-2 text-sm text-right text-gray-500">
+                                            -
+                                          </td>
+                                          <td className="px-4 py-2 text-sm text-center">
+                                            {canEditItems && (
+                                              <button
+                                                onClick={() =>
+                                                  handleEditItem(subItem)
+                                                }
+                                                className="text-blue-600 hover:text-blue-800"
+                                              >
+                                                <Edit2 className="w-4 h-4" />
+                                              </button>
+                                            )}
+                                          </td>
+                                        </tr>
+                                        {subItemLots.map((lot) => (
+                                          <tr
+                                            key={lot.id}
+                                            className="bg-blue-50/30"
+                                          >
+                                            <td className="pl-16 pr-4 py-1.5 text-xs text-blue-700">
+                                              <div className="flex items-center gap-1.5">
+                                                <span className="w-1 h-1 bg-blue-400 rounded-full" />
+                                                <span className="font-mono">
+                                                  {lot.lot_number}
+                                                </span>
+                                              </div>
+                                            </td>
+                                            <td className="px-4 py-1.5 text-xs text-gray-500">
+                                              {lot.supplier_name || "-"}
+                                            </td>
+                                            <td className="px-4 py-1.5"></td>
+                                            <td className="px-4 py-1.5 text-xs text-right text-blue-700 font-medium">
+                                              {lot.quantity_remaining}
+                                            </td>
+                                            <td className="px-4 py-1.5"></td>
+                                            <td className="px-4 py-1.5"></td>
+                                            <td className="px-4 py-1.5"></td>
+                                            <td className="px-4 py-1.5"></td>
+                                          </tr>
+                                        ))}
+                                      </React.Fragment>
+                                    );
+                                  })}
+                                {/* Lots directly under master when no sub-items exist */}
+                                {isMasterItem &&
+                                  isExpanded &&
+                                  (!hierarchyItem.sub_items ||
+                                    hierarchyItem.sub_items.length === 0) &&
+                                  masterLots.map((lot) => (
+                                    <tr key={lot.id} className="bg-blue-50/30">
+                                      <td className="pl-10 pr-4 py-1.5 text-xs text-blue-700">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="w-1 h-1 bg-blue-400 rounded-full" />
+                                          <span className="font-mono">
+                                            {lot.lot_number}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-1.5 text-xs text-gray-500">
+                                        {lot.supplier_name || "-"}
+                                      </td>
+                                      <td className="px-4 py-1.5"></td>
+                                      <td className="px-4 py-1.5 text-xs text-right text-blue-700 font-medium">
+                                        {lot.quantity_remaining}
+                                      </td>
+                                      <td className="px-4 py-1.5"></td>
+                                      <td className="px-4 py-1.5"></td>
+                                      <td className="px-4 py-1.5"></td>
+                                      <td className="px-4 py-1.5"></td>
+                                    </tr>
+                                  ))}
+                              </React.Fragment>
+                            );
+                          })}
                       </React.Fragment>
                     );
                   })}
@@ -1636,7 +2058,7 @@ export function InventoryPage() {
         </div>
       )}
 
-      {activeTab === 'transactions' && (
+      {activeTab === "transactions" && (
         <div>
           <div className="mb-4 flex flex-col sm:flex-row gap-3">
             <div className="relative">
@@ -1644,8 +2066,8 @@ export function InventoryPage() {
                 onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
                 className={`px-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 ${
                   getActiveFilterCount() > 0
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 <Filter className="w-4 h-4" />
@@ -1666,7 +2088,9 @@ export function InventoryPage() {
                   <div className="absolute left-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                     <div className="p-4 space-y-4">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
+                        <h3 className="text-sm font-semibold text-gray-900">
+                          Filters
+                        </h3>
                         <button
                           onClick={() => setIsFilterPanelOpen(false)}
                           className="text-gray-400 hover:text-gray-600"
@@ -1707,7 +2131,10 @@ export function InventoryPage() {
             </div>
             {canCreateTransactions && (
               <div className="flex gap-2 ml-auto flex-wrap">
-                <Button variant="secondary" onClick={handleDownloadTransactionTemplate}>
+                <Button
+                  variant="secondary"
+                  onClick={handleDownloadTransactionTemplate}
+                >
                   <Download className="w-4 h-4 mr-2" />
                   CSV Template
                 </Button>
@@ -1723,7 +2150,7 @@ export function InventoryPage() {
                   className="bg-purple-600 hover:bg-purple-700 text-white"
                 >
                   <ArrowLeftRight className="w-4 h-4 mr-2" />
-                  {t('inventory.storeToStore')}
+                  {t("inventory.storeToStore")}
                 </Button>
                 {canDistribute && (
                   <Button
@@ -1740,7 +2167,9 @@ export function InventoryPage() {
 
           {filteredTransactions.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              {statusFilter ? 'No transactions match your filter' : 'No transactions yet'}
+              {statusFilter
+                ? "No transactions match your filter"
+                : "No transactions yet"}
             </div>
           ) : (
             <div className="space-y-3">
@@ -1748,13 +2177,14 @@ export function InventoryPage() {
                 <div
                   key={transaction.id}
                   onClick={async () => {
-                    if (transaction.status === 'draft') {
+                    if (transaction.status === "draft") {
                       // Fetch full draft data (header + items) and open in edit mode
                       try {
-                        const { data: itemsData, error: itemsError } = await supabase
-                          .from('inventory_transaction_items')
-                          .select('*')
-                          .eq('transaction_id', transaction.id);
+                        const { data: itemsData, error: itemsError } =
+                          await supabase
+                            .from("inventory_transaction_items")
+                            .select("*")
+                            .eq("transaction_id", transaction.id);
 
                         if (itemsError) throw itemsError;
 
@@ -1764,24 +2194,28 @@ export function InventoryPage() {
                           transaction_type: transaction.transaction_type,
                           supplier_id: txn.supplier_id || undefined,
                           recipient_id: transaction.recipient_id || undefined,
-                          destination_store_id: transaction.destination_store_id || undefined,
+                          destination_store_id:
+                            transaction.destination_store_id || undefined,
                           invoice_reference: txn.invoice_reference || undefined,
-                          notes: transaction.notes || '',
+                          notes: transaction.notes || "",
                           items: (itemsData || []).map((item: any) => ({
                             item_id: item.item_id,
-                            purchase_unit_id: item.purchase_unit_id || undefined,
-                            purchase_quantity: item.purchase_quantity || undefined,
-                            purchase_unit_price: item.purchase_unit_price || undefined,
+                            purchase_unit_id:
+                              item.purchase_unit_id || undefined,
+                            purchase_quantity:
+                              item.purchase_quantity || undefined,
+                            purchase_unit_price:
+                              item.purchase_unit_price || undefined,
                             quantity: item.quantity,
                             unit_cost: item.unit_cost,
-                            notes: item.notes || '',
+                            notes: item.notes || "",
                           })),
                         });
                         setTransactionType(transaction.transaction_type);
                         setShowTransactionModal(true);
                       } catch (error) {
-                        console.error('Error loading draft:', error);
-                        showToast('Failed to load draft', 'error');
+                        console.error("Error loading draft:", error);
+                        showToast("Failed to load draft", "error");
                       }
                     } else {
                       setSelectedTransactionId(transaction.id);
@@ -1792,11 +2226,11 @@ export function InventoryPage() {
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <div className="flex items-center gap-3">
-                      {transaction.transaction_type === 'in' ? (
+                      {transaction.transaction_type === "in" ? (
                         <div className="p-2 bg-green-50 rounded-lg">
                           <PackagePlus className="w-5 h-5 text-green-600" />
                         </div>
-                      ) : transaction.transaction_type === 'transfer' ? (
+                      ) : transaction.transaction_type === "transfer" ? (
                         <div className="p-2 bg-purple-50 rounded-lg">
                           <ArrowLeftRight className="w-5 h-5 text-purple-600" />
                         </div>
@@ -1808,34 +2242,42 @@ export function InventoryPage() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-gray-900">
-                            {transaction.status === 'draft'
-                              ? 'Draft'
+                            {transaction.status === "draft"
+                              ? "Draft"
                               : transaction.transaction_number}
                           </span>
                           <Badge
                             variant={
-                              transaction.transaction_type === 'in' ? 'success' :
-                              transaction.transaction_type === 'transfer' ? 'info' : 'default'
+                              transaction.transaction_type === "in"
+                                ? "success"
+                                : transaction.transaction_type === "transfer"
+                                  ? "info"
+                                  : "default"
                             }
                           >
-                            {transaction.transaction_type === 'transfer' ? t('inventory.transfer').toUpperCase() : transaction.transaction_type.toUpperCase()}
+                            {transaction.transaction_type === "transfer"
+                              ? t("inventory.transfer").toUpperCase()
+                              : transaction.transaction_type.toUpperCase()}
                           </Badge>
                         </div>
                         <p className="text-sm text-gray-600">
-                          {transaction.transaction_type === 'transfer' ? (
+                          {transaction.transaction_type === "transfer" ? (
                             transaction.store_id === selectedStoreId ? (
                               <>
-                                {t('inventory.transfer')} → {transaction.destination_store_name}
+                                {t("inventory.transfer")} →{" "}
+                                {transaction.destination_store_name}
                               </>
                             ) : (
                               <>
-                                {t('inventory.transfer')} ← {transaction.source_store_name}
+                                {t("inventory.transfer")} ←{" "}
+                                {transaction.source_store_name}
                               </>
                             )
                           ) : (
                             <>
                               Requested by {transaction.requested_by_name}
-                              {transaction.recipient_name && ` → ${transaction.recipient_name}`}
+                              {transaction.recipient_name &&
+                                ` → ${transaction.recipient_name}`}
                             </>
                           )}
                         </p>
@@ -1843,54 +2285,71 @@ export function InventoryPage() {
                     </div>
 
                     <div className="flex items-center gap-2 sm:ml-auto">
-                      {transaction.status === 'draft' && (
-                        <Badge variant="default" className="flex items-center gap-1">
+                      {transaction.status === "draft" && (
+                        <Badge
+                          variant="default"
+                          className="flex items-center gap-1"
+                        >
                           <FileEdit className="w-3 h-3" />
                           Draft
                         </Badge>
                       )}
-                      {transaction.status === 'pending' && (
-                        <Badge variant="warning" className="flex items-center gap-1">
+                      {transaction.status === "pending" && (
+                        <Badge
+                          variant="warning"
+                          className="flex items-center gap-1"
+                        >
                           <Clock className="w-3 h-3" />
                           Pending
                         </Badge>
                       )}
-                      {transaction.status === 'approved' && (
-                        <Badge variant="success" className="flex items-center gap-1">
+                      {transaction.status === "approved" && (
+                        <Badge
+                          variant="success"
+                          className="flex items-center gap-1"
+                        >
                           <CheckCircle className="w-3 h-3" />
                           Approved
                         </Badge>
                       )}
-                      {transaction.status === 'rejected' && (
-                        <Badge variant="danger" className="flex items-center gap-1">
+                      {transaction.status === "rejected" && (
+                        <Badge
+                          variant="danger"
+                          className="flex items-center gap-1"
+                        >
                           <XCircle className="w-3 h-3" />
                           Rejected
                         </Badge>
                       )}
-                      {transaction.status === 'draft' && transaction.requested_by_id === session?.employee_id && (
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            if (!confirm('Delete this draft?')) return;
-                            try {
-                              const { error } = await supabase.rpc('delete_draft_transaction', {
-                                p_transaction_id: transaction.id,
-                                p_employee_id: session?.employee_id,
-                              });
-                              if (error) throw error;
-                              showToast('Draft deleted', 'success');
-                              fetchTransactions();
-                            } catch (error: any) {
-                              console.error('Error deleting draft:', error);
-                              showToast('Failed to delete draft', 'error');
-                            }
-                          }}
-                          className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                          title="Delete draft"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                      {transaction.status === "draft" &&
+                        transaction.requested_by_id ===
+                          session?.employee_id && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!confirm("Delete this draft?")) return;
+                              try {
+                                const { error } = await supabase.rpc(
+                                  "delete_draft_transaction",
+                                  {
+                                    p_transaction_id: transaction.id,
+                                    p_employee_id: session?.employee_id,
+                                  },
+                                );
+                                if (error) throw error;
+                                showToast("Draft deleted", "success");
+                                fetchTransactions();
+                              } catch (error: any) {
+                                console.error("Error deleting draft:", error);
+                                showToast("Failed to delete draft", "error");
+                              }
+                            }}
+                            className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                            title="Delete draft"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       <span className="text-sm text-gray-500">
                         {formatDateTimeEST(transaction.created_at)}
                       </span>
@@ -1898,7 +2357,9 @@ export function InventoryPage() {
                   </div>
 
                   {transaction.notes && (
-                    <p className="text-sm text-gray-600 mt-2 pl-14">{transaction.notes}</p>
+                    <p className="text-sm text-gray-600 mt-2 pl-14">
+                      {transaction.notes}
+                    </p>
                   )}
                 </div>
               ))}
@@ -1907,7 +2368,7 @@ export function InventoryPage() {
         </div>
       )}
 
-      {activeTab === 'lots' && (
+      {activeTab === "lots" && (
         <div>
           {/* Summary Stats Cards */}
           <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1916,7 +2377,9 @@ export function InventoryPage() {
                 <PackagePlus className="w-4 h-4" />
                 <span className="text-sm">Active Lots</span>
               </div>
-              <p className="text-2xl font-bold text-gray-900">{lotStats.totalActiveLots}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {lotStats.totalActiveLots}
+              </p>
             </div>
 
             <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -1924,7 +2387,9 @@ export function InventoryPage() {
                 <Package className="w-4 h-4" />
                 <span className="text-sm">Total Value</span>
               </div>
-              <p className="text-2xl font-bold text-gray-900">${lotStats.totalValue.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                ${lotStats.totalValue.toFixed(2)}
+              </p>
             </div>
 
             <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -1932,7 +2397,9 @@ export function InventoryPage() {
                 <AlertTriangle className="w-4 h-4" />
                 <span className="text-sm">Low Quantity</span>
               </div>
-              <p className={`text-2xl font-bold ${lotStats.lowQuantityLots > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
+              <p
+                className={`text-2xl font-bold ${lotStats.lowQuantityLots > 0 ? "text-amber-600" : "text-gray-900"}`}
+              >
                 {lotStats.lowQuantityLots}
               </p>
             </div>
@@ -1955,8 +2422,8 @@ export function InventoryPage() {
                 onClick={() => setIsLotFilterPanelOpen(!isLotFilterPanelOpen)}
                 className={`px-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 ${
                   getLotActiveFilterCount() > 0
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 <Filter className="w-4 h-4" />
@@ -1977,7 +2444,9 @@ export function InventoryPage() {
                   <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                     <div className="p-4 space-y-4">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
+                        <h3 className="text-sm font-semibold text-gray-900">
+                          Filters
+                        </h3>
                         <button
                           onClick={() => setIsLotFilterPanelOpen(false)}
                           className="text-gray-400 hover:text-gray-600"
@@ -1987,7 +2456,9 @@ export function InventoryPage() {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Item</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Item
+                        </label>
                         <select
                           value={lotItemFilter}
                           onChange={(e) => setLotItemFilter(e.target.value)}
@@ -1995,13 +2466,17 @@ export function InventoryPage() {
                         >
                           <option value="">All Items</option>
                           {lotItemOptions.map((item) => (
-                            <option key={item.id} value={item.id}>{item.name}</option>
+                            <option key={item.id} value={item.id}>
+                              {item.name}
+                            </option>
                           ))}
                         </select>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Supplier</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Supplier
+                        </label>
                         <select
                           value={lotSupplierFilter}
                           onChange={(e) => setLotSupplierFilter(e.target.value)}
@@ -2009,16 +2484,22 @@ export function InventoryPage() {
                         >
                           <option value="">All Suppliers</option>
                           {lotSupplierOptions.map((supplier) => (
-                            <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                            <option key={supplier.id} value={supplier.id}>
+                              {supplier.name}
+                            </option>
                           ))}
                         </select>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Status
+                        </label>
                         <select
                           value={lotStatusFilter}
-                          onChange={(e) => setLotStatusFilter(e.target.value as LotStatus | '')}
+                          onChange={(e) =>
+                            setLotStatusFilter(e.target.value as LotStatus | "")
+                          }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="">All Status</option>
@@ -2030,16 +2511,22 @@ export function InventoryPage() {
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">From Date</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            From Date
+                          </label>
                           <input
                             type="date"
                             value={lotDateRangeStart}
-                            onChange={(e) => setLotDateRangeStart(e.target.value)}
+                            onChange={(e) =>
+                              setLotDateRangeStart(e.target.value)
+                            }
                             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">To Date</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            To Date
+                          </label>
                           <input
                             type="date"
                             value={lotDateRangeEnd}
@@ -2083,8 +2570,8 @@ export function InventoryPage() {
               <PackagePlus className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p>
                 {lotSearchQuery || getLotActiveFilterCount() > 0
-                  ? 'No lots match your filters'
-                  : 'No purchase lots yet'}
+                  ? "No lots match your filters"
+                  : "No purchase lots yet"}
               </p>
             </div>
           ) : (
@@ -2097,35 +2584,44 @@ export function InventoryPage() {
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleLotSort('lot_number')}
+                      onClick={() => handleLotSort("lot_number")}
                     >
                       <div className="flex items-center gap-1">
                         Lot Number
-                        {lotSortColumn === 'lot_number' && (
-                          lotSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {lotSortColumn === "lot_number" &&
+                          (lotSortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleLotSort('item_name')}
+                      onClick={() => handleLotSort("item_name")}
                     >
                       <div className="flex items-center gap-1">
                         Item
-                        {lotSortColumn === 'item_name' && (
-                          lotSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {lotSortColumn === "item_name" &&
+                          (lotSortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleLotSort('quantity_remaining')}
+                      onClick={() => handleLotSort("quantity_remaining")}
                     >
                       <div className="flex items-center justify-end gap-1">
                         Qty Remaining
-                        {lotSortColumn === 'quantity_remaining' && (
-                          lotSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {lotSortColumn === "quantity_remaining" &&
+                          (lotSortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
@@ -2133,13 +2629,16 @@ export function InventoryPage() {
                     </th>
                     <th
                       className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleLotSort('unit_cost')}
+                      onClick={() => handleLotSort("unit_cost")}
                     >
                       <div className="flex items-center justify-end gap-1">
                         Unit Cost
-                        {lotSortColumn === 'unit_cost' && (
-                          lotSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {lotSortColumn === "unit_cost" &&
+                          (lotSortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
@@ -2147,24 +2646,30 @@ export function InventoryPage() {
                     </th>
                     <th
                       className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleLotSort('purchase_date')}
+                      onClick={() => handleLotSort("purchase_date")}
                     >
                       <div className="flex items-center justify-center gap-1">
                         Purchase Date
-                        {lotSortColumn === 'purchase_date' && (
-                          lotSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {lotSortColumn === "purchase_date" &&
+                          (lotSortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleLotSort('status')}
+                      onClick={() => handleLotSort("status")}
                     >
                       <div className="flex items-center justify-center gap-1">
                         Status
-                        {lotSortColumn === 'status' && (
-                          lotSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {lotSortColumn === "status" &&
+                          (lotSortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                   </tr>
@@ -2173,17 +2678,19 @@ export function InventoryPage() {
                   {sortedLots.map((lot) => {
                     const isExpanded = expandedLotIds.has(lot.id);
                     const lotValue = lot.quantity_remaining * lot.unit_cost;
-                    const isLowQuantity = lot.quantity_remaining <= lot.quantity_received * 0.1 && lot.status === 'active';
+                    const isLowQuantity =
+                      lot.quantity_remaining <= lot.quantity_received * 0.1 &&
+                      lot.status === "active";
 
                     return (
                       <React.Fragment key={lot.id}>
                         <tr
-                          className={`hover:bg-gray-50 cursor-pointer transition-colors ${isExpanded ? 'bg-blue-50' : ''} ${isLowQuantity ? 'bg-amber-50' : ''}`}
+                          className={`hover:bg-gray-50 cursor-pointer transition-colors ${isExpanded ? "bg-blue-50" : ""} ${isLowQuantity ? "bg-amber-50" : ""}`}
                           onClick={() => toggleLotExpand(lot.id)}
                         >
                           <td className="px-2 py-3 text-center">
                             <ChevronRight
-                              className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-90 text-blue-600' : ''}`}
+                              className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${isExpanded ? "rotate-90 text-blue-600" : ""}`}
                             />
                           </td>
                           <td className="px-4 py-3 text-sm font-mono text-gray-900">
@@ -2191,20 +2698,26 @@ export function InventoryPage() {
                           </td>
                           <td className="px-4 py-3">
                             <div>
-                              <p className="text-sm font-medium text-gray-900">{lot.item_name}</p>
+                              <p className="text-sm font-medium text-gray-900">
+                                {lot.item_name}
+                              </p>
                               {lot.item?.brand && (
-                                <p className="text-xs text-gray-500">{lot.item.brand}</p>
+                                <p className="text-xs text-gray-500">
+                                  {lot.item.brand}
+                                </p>
                               )}
                             </div>
                           </td>
-                          <td className={`px-4 py-3 text-sm text-right font-semibold ${isLowQuantity ? 'text-amber-600' : 'text-gray-900'}`}>
-                            {lot.quantity_remaining} {lot.item?.unit || ''}
+                          <td
+                            className={`px-4 py-3 text-sm text-right font-semibold ${isLowQuantity ? "text-amber-600" : "text-gray-900"}`}
+                          >
+                            {lot.quantity_remaining} {lot.item?.unit || ""}
                             {isLowQuantity && (
                               <AlertTriangle className="w-3 h-3 inline ml-1 text-amber-500" />
                             )}
                           </td>
                           <td className="px-4 py-3 text-sm text-right text-gray-600">
-                            {lot.quantity_received} {lot.item?.unit || ''}
+                            {lot.quantity_received} {lot.item?.unit || ""}
                           </td>
                           <td className="px-4 py-3 text-sm text-right text-gray-900">
                             ${lot.unit_cost.toFixed(2)}
@@ -2218,9 +2731,11 @@ export function InventoryPage() {
                           <td className="px-4 py-3 text-center">
                             <Badge
                               variant={
-                                lot.status === 'active' ? 'success' :
-                                lot.status === 'depleted' ? 'default' :
-                                'warning'
+                                lot.status === "active"
+                                  ? "success"
+                                  : lot.status === "depleted"
+                                    ? "default"
+                                    : "warning"
                               }
                             >
                               {lot.status}
@@ -2234,31 +2749,53 @@ export function InventoryPage() {
                             <td colSpan={9} className="px-0 py-0">
                               <div className="border-t border-gray-200 overflow-hidden">
                                 <div className="px-6 py-4">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Lot Details</h4>
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                                    Lot Details
+                                  </h4>
                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                     <div>
-                                      <p className="text-gray-500">Transaction #</p>
-                                      <p className="font-medium text-gray-900">{lot.transaction_number || '-'}</p>
+                                      <p className="text-gray-500">
+                                        Transaction #
+                                      </p>
+                                      <p className="font-medium text-gray-900">
+                                        {lot.transaction_number || "-"}
+                                      </p>
                                     </div>
                                     <div>
-                                      <p className="text-gray-500">Invoice Reference</p>
-                                      <p className="font-medium text-gray-900">{lot.invoice_reference || '-'}</p>
+                                      <p className="text-gray-500">
+                                        Invoice Reference
+                                      </p>
+                                      <p className="font-medium text-gray-900">
+                                        {lot.invoice_reference || "-"}
+                                      </p>
                                     </div>
                                     <div>
                                       <p className="text-gray-500">Supplier</p>
-                                      <p className="font-medium text-gray-900">{lot.supplier_name || '-'}</p>
+                                      <p className="font-medium text-gray-900">
+                                        {lot.supplier_name || "-"}
+                                      </p>
                                     </div>
                                     <div>
-                                      <p className="text-gray-500">Created By</p>
-                                      <p className="font-medium text-gray-900">{lot.created_by_name || '-'}</p>
+                                      <p className="text-gray-500">
+                                        Created By
+                                      </p>
+                                      <p className="font-medium text-gray-900">
+                                        {lot.created_by_name || "-"}
+                                      </p>
                                     </div>
                                     <div>
-                                      <p className="text-gray-500">Created At</p>
-                                      <p className="font-medium text-gray-900">{formatDateTimeEST(lot.created_at)}</p>
+                                      <p className="text-gray-500">
+                                        Created At
+                                      </p>
+                                      <p className="font-medium text-gray-900">
+                                        {formatDateTimeEST(lot.created_at)}
+                                      </p>
                                     </div>
                                     <div className="col-span-2">
                                       <p className="text-gray-500">Notes</p>
-                                      <p className="font-medium text-gray-900">{lot.notes || '-'}</p>
+                                      <p className="font-medium text-gray-900">
+                                        {lot.notes || "-"}
+                                      </p>
                                     </div>
                                   </div>
                                 </div>
@@ -2276,7 +2813,7 @@ export function InventoryPage() {
         </div>
       )}
 
-      {activeTab === 'distributions' && (
+      {activeTab === "distributions" && (
         <div>
           {/* Summary Stats Cards */}
           <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -2285,7 +2822,9 @@ export function InventoryPage() {
                 <PackageMinus className="w-4 h-4" />
                 <span className="text-sm">Total Distributions</span>
               </div>
-              <p className="text-2xl font-bold text-gray-900">{distributionStats.totalDistributions}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {distributionStats.totalDistributions}
+              </p>
             </div>
 
             <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -2293,7 +2832,9 @@ export function InventoryPage() {
                 <Clock className="w-4 h-4" />
                 <span className="text-sm">Pending Acknowledgment</span>
               </div>
-              <p className={`text-2xl font-bold ${distributionStats.pendingAcknowledgment > 0 ? 'text-amber-600' : 'text-gray-900'}`}>
+              <p
+                className={`text-2xl font-bold ${distributionStats.pendingAcknowledgment > 0 ? "text-amber-600" : "text-gray-900"}`}
+              >
                 {distributionStats.pendingAcknowledgment}
               </p>
             </div>
@@ -2303,7 +2844,9 @@ export function InventoryPage() {
                 <CheckCircle className="w-4 h-4" />
                 <span className="text-sm">Currently In Use</span>
               </div>
-              <p className="text-2xl font-bold text-green-600">{distributionStats.currentlyInUse}</p>
+              <p className="text-2xl font-bold text-green-600">
+                {distributionStats.currentlyInUse}
+              </p>
             </div>
 
             <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -2311,7 +2854,9 @@ export function InventoryPage() {
                 <Package className="w-4 h-4" />
                 <span className="text-sm">Returned This Month</span>
               </div>
-              <p className="text-2xl font-bold text-gray-900">{distributionStats.returnedThisMonth}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {distributionStats.returnedThisMonth}
+              </p>
             </div>
           </div>
 
@@ -2329,11 +2874,15 @@ export function InventoryPage() {
 
             <div className="relative">
               <button
-                onClick={() => setIsDistributionFilterPanelOpen(!isDistributionFilterPanelOpen)}
+                onClick={() =>
+                  setIsDistributionFilterPanelOpen(
+                    !isDistributionFilterPanelOpen,
+                  )
+                }
                 className={`px-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 ${
                   getDistributionActiveFilterCount() > 0
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 <Filter className="w-4 h-4" />
@@ -2354,9 +2903,13 @@ export function InventoryPage() {
                   <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                     <div className="p-4 space-y-4">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
+                        <h3 className="text-sm font-semibold text-gray-900">
+                          Filters
+                        </h3>
                         <button
-                          onClick={() => setIsDistributionFilterPanelOpen(false)}
+                          onClick={() =>
+                            setIsDistributionFilterPanelOpen(false)
+                          }
                           className="text-gray-400 hover:text-gray-600"
                         >
                           <X className="w-4 h-4" />
@@ -2364,38 +2917,56 @@ export function InventoryPage() {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Employee (To)</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Employee (To)
+                        </label>
                         <select
                           value={distributionEmployeeFilter}
-                          onChange={(e) => setDistributionEmployeeFilter(e.target.value)}
+                          onChange={(e) =>
+                            setDistributionEmployeeFilter(e.target.value)
+                          }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="">All Employees</option>
                           {distributionEmployeeOptions.map((emp) => (
-                            <option key={emp.id} value={emp.id}>{emp.name}</option>
+                            <option key={emp.id} value={emp.id}>
+                              {emp.name}
+                            </option>
                           ))}
                         </select>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Item</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Item
+                        </label>
                         <select
                           value={distributionItemFilter}
-                          onChange={(e) => setDistributionItemFilter(e.target.value)}
+                          onChange={(e) =>
+                            setDistributionItemFilter(e.target.value)
+                          }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="">All Items</option>
                           {distributionItemOptions.map((item) => (
-                            <option key={item.id} value={item.id}>{item.name}</option>
+                            <option key={item.id} value={item.id}>
+                              {item.name}
+                            </option>
                           ))}
                         </select>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Status
+                        </label>
                         <select
                           value={distributionStatusFilter}
-                          onChange={(e) => setDistributionStatusFilter(e.target.value as DistributionStatus | '')}
+                          onChange={(e) =>
+                            setDistributionStatusFilter(
+                              e.target.value as DistributionStatus | "",
+                            )
+                          }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="">All Status</option>
@@ -2410,20 +2981,28 @@ export function InventoryPage() {
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">From Date</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            From Date
+                          </label>
                           <input
                             type="date"
                             value={distributionDateRangeStart}
-                            onChange={(e) => setDistributionDateRangeStart(e.target.value)}
+                            onChange={(e) =>
+                              setDistributionDateRangeStart(e.target.value)
+                            }
                             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">To Date</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            To Date
+                          </label>
                           <input
                             type="date"
                             value={distributionDateRangeEnd}
-                            onChange={(e) => setDistributionDateRangeEnd(e.target.value)}
+                            onChange={(e) =>
+                              setDistributionDateRangeEnd(e.target.value)
+                            }
                             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
@@ -2462,9 +3041,10 @@ export function InventoryPage() {
             <div className="text-center py-12 text-gray-500 bg-white rounded-lg border border-gray-200">
               <PackageMinus className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p>
-                {distributionSearchQuery || getDistributionActiveFilterCount() > 0
-                  ? 'No distributions match your filters'
-                  : 'No distributions yet'}
+                {distributionSearchQuery ||
+                getDistributionActiveFilterCount() > 0
+                  ? "No distributions match your filters"
+                  : "No distributions yet"}
               </p>
             </div>
           ) : (
@@ -2477,35 +3057,48 @@ export function InventoryPage() {
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleDistributionSort('distribution_number')}
+                      onClick={() =>
+                        handleDistributionSort("distribution_number")
+                      }
                     >
                       <div className="flex items-center gap-1">
                         Distribution #
-                        {distributionSortColumn === 'distribution_number' && (
-                          distributionSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {distributionSortColumn === "distribution_number" &&
+                          (distributionSortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleDistributionSort('distribution_date')}
+                      onClick={() =>
+                        handleDistributionSort("distribution_date")
+                      }
                     >
                       <div className="flex items-center justify-center gap-1">
                         Date
-                        {distributionSortColumn === 'distribution_date' && (
-                          distributionSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {distributionSortColumn === "distribution_date" &&
+                          (distributionSortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleDistributionSort('item_name')}
+                      onClick={() => handleDistributionSort("item_name")}
                     >
                       <div className="flex items-center gap-1">
                         Item
-                        {distributionSortColumn === 'item_name' && (
-                          distributionSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {distributionSortColumn === "item_name" &&
+                          (distributionSortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
@@ -2516,35 +3109,44 @@ export function InventoryPage() {
                     </th>
                     <th
                       className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleDistributionSort('to_employee_name')}
+                      onClick={() => handleDistributionSort("to_employee_name")}
                     >
                       <div className="flex items-center gap-1">
                         To
-                        {distributionSortColumn === 'to_employee_name' && (
-                          distributionSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {distributionSortColumn === "to_employee_name" &&
+                          (distributionSortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleDistributionSort('quantity')}
+                      onClick={() => handleDistributionSort("quantity")}
                     >
                       <div className="flex items-center justify-end gap-1">
                         Qty
-                        {distributionSortColumn === 'quantity' && (
-                          distributionSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {distributionSortColumn === "quantity" &&
+                          (distributionSortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                     <th
                       className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleDistributionSort('status')}
+                      onClick={() => handleDistributionSort("status")}
                     >
                       <div className="flex items-center justify-center gap-1">
                         Status
-                        {distributionSortColumn === 'status' && (
-                          distributionSortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                        )}
+                        {distributionSortColumn === "status" &&
+                          (distributionSortDirection === "asc" ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          ))}
                       </div>
                     </th>
                   </tr>
@@ -2557,12 +3159,12 @@ export function InventoryPage() {
                     return (
                       <React.Fragment key={dist.id}>
                         <tr
-                          className={`hover:bg-gray-50 cursor-pointer transition-colors ${isExpanded ? 'bg-blue-50' : ''}`}
+                          className={`hover:bg-gray-50 cursor-pointer transition-colors ${isExpanded ? "bg-blue-50" : ""}`}
                           onClick={() => toggleDistributionExpand(dist.id)}
                         >
                           <td className="px-2 py-3 text-center">
                             <ChevronRight
-                              className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-90 text-blue-600' : ''}`}
+                              className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${isExpanded ? "rotate-90 text-blue-600" : ""}`}
                             />
                           </td>
                           <td className="px-4 py-3 text-sm font-mono text-gray-900">
@@ -2572,19 +3174,21 @@ export function InventoryPage() {
                             {formatDateEST(dist.distribution_date)}
                           </td>
                           <td className="px-4 py-3">
-                            <p className="text-sm font-medium text-gray-900">{dist.item_name}</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {dist.item_name}
+                            </p>
                           </td>
                           <td className="px-4 py-3 text-sm font-mono text-gray-600">
-                            {dist.lot_number || '-'}
+                            {dist.lot_number || "-"}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-600">
-                            {dist.from_type === 'store' ? (
+                            {dist.from_type === "store" ? (
                               <span className="flex items-center gap-1">
                                 <Building2 className="w-3 h-3" />
                                 Store
                               </span>
                             ) : (
-                              dist.from_employee_name || '-'
+                              dist.from_employee_name || "-"
                             )}
                           </td>
                           <td className="px-4 py-3 text-sm font-medium text-gray-900">
@@ -2595,14 +3199,24 @@ export function InventoryPage() {
                           </td>
                           <td className="px-4 py-3 text-center">
                             <div className="flex flex-col items-center gap-1">
-                              <Badge variant={getDistributionStatusBadgeVariant(dist.status as DistributionStatus)}>
-                                {dist.status.replace('_', ' ')}
+                              <Badge
+                                variant={getDistributionStatusBadgeVariant(
+                                  dist.status as DistributionStatus,
+                                )}
+                              >
+                                {dist.status.replace("_", " ")}
                               </Badge>
-                              {dist.status !== 'cancelled' && (
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                  dist.manager_approved ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                                }`}>
-                                  {dist.manager_approved ? 'Mgr Approved' : 'Mgr Pending'}
+                              {dist.status !== "cancelled" && (
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full ${
+                                    dist.manager_approved
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-yellow-100 text-yellow-700"
+                                  }`}
+                                >
+                                  {dist.manager_approved
+                                    ? "Mgr Approved"
+                                    : "Mgr Pending"}
                                 </span>
                               )}
                             </div>
@@ -2615,49 +3229,85 @@ export function InventoryPage() {
                             <td colSpan={9} className="px-0 py-0">
                               <div className="border-t border-gray-200 overflow-hidden">
                                 <div className="px-6 py-4">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Distribution Details</h4>
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                                    Distribution Details
+                                  </h4>
                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                     <div>
                                       <p className="text-gray-500">Unit Cost</p>
-                                      <p className="font-medium text-gray-900">${dist.unit_cost.toFixed(2)}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-gray-500">Total Value</p>
-                                      <p className="font-medium text-gray-900">${totalValue.toFixed(2)}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-gray-500">Expected Return</p>
                                       <p className="font-medium text-gray-900">
-                                        {dist.expected_return_date ? formatDateEST(dist.expected_return_date) : '-'}
+                                        ${dist.unit_cost.toFixed(2)}
                                       </p>
                                     </div>
                                     <div>
-                                      <p className="text-gray-500">Actual Return</p>
+                                      <p className="text-gray-500">
+                                        Total Value
+                                      </p>
                                       <p className="font-medium text-gray-900">
-                                        {dist.actual_return_date ? formatDateEST(dist.actual_return_date) : '-'}
+                                        ${totalValue.toFixed(2)}
                                       </p>
                                     </div>
                                     <div>
-                                      <p className="text-gray-500">Distributed By</p>
-                                      <p className="font-medium text-gray-900">{dist.distributed_by_name || '-'}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-gray-500">Acknowledged At</p>
+                                      <p className="text-gray-500">
+                                        Expected Return
+                                      </p>
                                       <p className="font-medium text-gray-900">
-                                        {dist.acknowledged_at ? formatDateTimeEST(dist.acknowledged_at) : '-'}
+                                        {dist.expected_return_date
+                                          ? formatDateEST(
+                                              dist.expected_return_date,
+                                            )
+                                          : "-"}
                                       </p>
                                     </div>
                                     <div>
-                                      <p className="text-gray-500">Manager Approved</p>
+                                      <p className="text-gray-500">
+                                        Actual Return
+                                      </p>
+                                      <p className="font-medium text-gray-900">
+                                        {dist.actual_return_date
+                                          ? formatDateEST(
+                                              dist.actual_return_date,
+                                            )
+                                          : "-"}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-500">
+                                        Distributed By
+                                      </p>
+                                      <p className="font-medium text-gray-900">
+                                        {dist.distributed_by_name || "-"}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-500">
+                                        Acknowledged At
+                                      </p>
+                                      <p className="font-medium text-gray-900">
+                                        {dist.acknowledged_at
+                                          ? formatDateTimeEST(
+                                              dist.acknowledged_at,
+                                            )
+                                          : "-"}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-500">
+                                        Manager Approved
+                                      </p>
                                       <p className="font-medium text-gray-900">
                                         {dist.manager_approved
-                                          ? `${dist.manager_approved_by_name || 'Unknown'} — ${dist.manager_approved_at ? formatDateTimeEST(dist.manager_approved_at) : ''}`
-                                          : '-'}
+                                          ? `${dist.manager_approved_by_name || "Unknown"} — ${dist.manager_approved_at ? formatDateTimeEST(dist.manager_approved_at) : ""}`
+                                          : "-"}
                                       </p>
                                     </div>
                                     <div className="col-span-2">
-                                      <p className="text-gray-500">Condition Notes</p>
-                                      <p className="font-medium text-gray-900">{dist.condition_notes || '-'}</p>
+                                      <p className="text-gray-500">
+                                        Condition Notes
+                                      </p>
+                                      <p className="font-medium text-gray-900">
+                                        {dist.condition_notes || "-"}
+                                      </p>
                                     </div>
                                   </div>
                                 </div>
@@ -2675,7 +3325,7 @@ export function InventoryPage() {
         </div>
       )}
 
-      {activeTab === 'suppliers' && (
+      {activeTab === "suppliers" && (
         <div>
           <div className="mb-4 flex flex-col sm:flex-row gap-3 justify-between">
             <div className="flex-1 relative max-w-md">
@@ -2708,17 +3358,21 @@ export function InventoryPage() {
                 <p className="mt-2 text-gray-500">Loading suppliers...</p>
               </div>
             ) : suppliers.filter((s) =>
-                s.name.toLowerCase().includes(supplierSearchQuery.toLowerCase())
+                s.name
+                  .toLowerCase()
+                  .includes(supplierSearchQuery.toLowerCase()),
               ).length === 0 ? (
               <div className="text-center py-12">
                 <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                  {supplierSearchQuery ? 'No suppliers found' : 'No suppliers yet'}
+                  {supplierSearchQuery
+                    ? "No suppliers found"
+                    : "No suppliers yet"}
                 </h3>
                 <p className="text-gray-500">
                   {supplierSearchQuery
-                    ? 'Try adjusting your search'
-                    : 'Add your first supplier to get started'}
+                    ? "Try adjusting your search"
+                    : "Add your first supplier to get started"}
                 </p>
               </div>
             ) : (
@@ -2746,7 +3400,9 @@ export function InventoryPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {suppliers
                       .filter((s) =>
-                        s.name.toLowerCase().includes(supplierSearchQuery.toLowerCase())
+                        s.name
+                          .toLowerCase()
+                          .includes(supplierSearchQuery.toLowerCase()),
                       )
                       .map((supplier) => (
                         <tr key={supplier.id} className="hover:bg-gray-50">
@@ -2757,17 +3413,21 @@ export function InventoryPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-600">
-                              {supplier.contact || '-'}
+                              {supplier.contact || "-"}
                             </div>
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm text-gray-600 max-w-xs truncate">
-                              {supplier.notes || '-'}
+                              {supplier.notes || "-"}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <Badge variant={supplier.is_active ? 'success' : 'default'}>
-                              {supplier.is_active ? 'Active' : 'Inactive'}
+                            <Badge
+                              variant={
+                                supplier.is_active ? "success" : "default"
+                              }
+                            >
+                              {supplier.is_active ? "Active" : "Inactive"}
                             </Badge>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -2784,13 +3444,19 @@ export function InventoryPage() {
                                     <Edit2 className="w-4 h-4" />
                                   </button>
                                   <button
-                                    onClick={() => handleToggleSupplier(supplier)}
+                                    onClick={() =>
+                                      handleToggleSupplier(supplier)
+                                    }
                                     className={`${
                                       supplier.is_active
-                                        ? 'text-red-600 hover:text-red-900'
-                                        : 'text-green-600 hover:text-green-900'
+                                        ? "text-red-600 hover:text-red-900"
+                                        : "text-green-600 hover:text-green-900"
                                     }`}
-                                    title={supplier.is_active ? 'Deactivate' : 'Activate'}
+                                    title={
+                                      supplier.is_active
+                                        ? "Deactivate"
+                                        : "Activate"
+                                    }
                                   >
                                     {supplier.is_active ? (
                                       <PowerOff className="w-4 h-4" />
@@ -2834,7 +3500,7 @@ export function InventoryPage() {
         onSuccess={() => {
           fetchItems();
           fetchTransactions();
-          if (activeTab === 'distributions') {
+          if (activeTab === "distributions") {
             fetchDistributions();
           }
         }}
@@ -2858,7 +3524,7 @@ export function InventoryPage() {
           setShowTransactionDetailModal(false);
           setSelectedTransactionId(null);
         }}
-        transactionId={selectedTransactionId || ''}
+        transactionId={selectedTransactionId || ""}
       />
 
       <CsvImportModal

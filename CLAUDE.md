@@ -517,6 +517,9 @@ Always filter by `store_id` when querying store-specific data:
 
 Changes grouped by feature area. All dates in 2026.
 
+### Inventory: Tab Reorder — Transactions Before Items (Feb 18)
+- Swapped tab order in `tabConfig` array so Transactions appears first. Default `activeTab` changed from `'items'` to `'transactions'`. Final order: Transactions, Items, Lots, Distributions, Suppliers. No migration. Files: `InventoryPage.tsx`
+
 ### Resources: Login Redirect for Unread Content (Feb 18)
 - On login, if the employee has unread resources at the selected store, auto-redirect to Resources page instead of Tickets. Uses existing `get_unread_resources_count` RPC. `useRef` flag (`hasCheckedUnreadRef`) ensures the check fires exactly once per login session — not on store switches or re-renders. Ref resets on logout so next login triggers a fresh check. If the RPC fails, silently falls through to default Tickets page. No migration. Files: `App.tsx`
 
