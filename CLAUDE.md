@@ -157,7 +157,7 @@ ToastProvider → AuthProvider → PermissionsProvider → PermissionsCacheProvi
 
 **PendingApprovalsPage** (`PendingApprovalsPage.tsx`): 8 approval tabs — Tickets, Inventory, Cash Transactions, Transaction Changes, Attendance, Violations (voting system), Queue History, Ticket Changes (reopen requests; Supervisor sees Receptionist/Cashier requests only).
 
-**ResourcesPage** (`ResourcesPage.tsx`): Dynamic resource tabs (from `resource_tabs` table) with per-tab subcategory management. Managers can create/rename/delete tabs with icon picker (10 lucide icons). Unread resource tracking via `resource_read_status` table — blue dots on unread cards, red badge pills on tab headers, sidebar badge via Layout.tsx (60s polling + realtime). "Mark as Read" button in resource view popup. Resources organized by subcategories within each tab, with drag-and-drop reordering.
+**ResourcesPage** (`ResourcesPage.tsx`): Dynamic resource tabs (from `resource_tabs` table) with per-tab subcategory management. Managers can create/rename/delete tabs with icon picker (10 lucide icons). Unread resource tracking via `resource_read_status` table — blue dots on unread cards, red badge pills on tab headers, sidebar badge via Layout.tsx (60s polling + realtime). "Mark as Read" button in resource view popup. Resources organized by subcategories within each tab. Tab reordering via up/down arrow buttons in Manage Tabs modal.
 
 **LoginPage** (`LoginPage.tsx`): 4-digit PIN entry, check-in/out action, auto-submit on completion.
 
@@ -519,6 +519,9 @@ Changes grouped by feature area. All dates in 2026.
 
 ### Tax Calculation Base Fix (Feb 18)
 - Tax (GST/QST) now calculated on subtotal only — discount no longer reduces the tax base. Previously `calculateTaxGst`/`calculateTaxQst` used `max(0, subtotal - discount)` as the taxable amount; now they use `subtotal` directly. Removed `discountOverride` parameter from both functions and updated all call sites. No DB changes. Files: `TicketEditor.tsx`
+
+### Resources: Tab Reordering in Manage Tabs Modal (Feb 18)
+- Up/down arrow buttons on each tab row in TabManagementModal to swap adjacent tabs' `display_order` values. Arrows disabled at boundaries (first/last), during active edit, or during in-progress reorder. Swaps actual `display_order` values (not array indices) to correctly handle non-contiguous orders after deletions. No migration — uses existing `display_order` column and RLS policies. Files: `ResourcesPage.tsx`
 
 ### Resources: Dynamic Tabs + Unread Notification System (Feb 18)
 - Replaced hardcoded 2-tab system (SOP, Employee Manual) with fully dynamic tabs. New `resource_tabs` table stores per-store tab definitions (name, slug, icon_name, display_order). Managers can create/rename/delete tabs via Tab Management Modal with icon picker (10 curated lucide icons). Slug auto-generated from name. Existing `sop` and `employee_manual` tabs seeded from current data. Dropped CHECK constraints on `resources.category` and `resource_categories.tab` — both now accept any string matching a `resource_tabs.slug`. `ResourceCategory` TypeScript type widened from union to `string`. Files: `ResourcesPage.tsx`, `ResourceModal.tsx`, `supabase.ts`, `permissions.ts`, `resource-icons.ts` (new), `i18n.ts` + migration
