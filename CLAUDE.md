@@ -157,7 +157,7 @@ ToastProvider → AuthProvider → PermissionsProvider → PermissionsCacheProvi
 
 **PendingApprovalsPage** (`PendingApprovalsPage.tsx`): 8 approval tabs — Tickets, Inventory, Cash Transactions, Transaction Changes, Attendance, Violations (voting system), Queue History, Ticket Changes (reopen requests; Supervisor sees Receptionist/Cashier requests only).
 
-**ResourcesPage** (`ResourcesPage.tsx`): Dynamic resource tabs (from `resource_tabs` table) with per-tab subcategory management. Managers can create/rename/delete tabs with icon picker (10 lucide icons). Unread resource tracking via `resource_read_status` table — blue dots on unread cards, red badge pills on tab headers, sidebar badge via Layout.tsx (60s polling + realtime). "Mark as Read" button in resource view popup. Resources organized by subcategories within each tab. Tab reordering via up/down arrow buttons in Manage Tabs modal.
+**ResourcesPage** (`ResourcesPage.tsx`): Dynamic resource tabs (from `resource_tabs` table) with per-tab subcategory management. Managers can create/rename/delete tabs with icon picker (10 lucide icons). Unread resource tracking via `resource_read_status` table — blue dots on unread cards, red badge pills on tab headers, sidebar badge via Layout.tsx (60s polling + realtime). "Mark as Read" button in resource view popup. Resources organized by subcategories within each tab. Tab reordering via up/down arrow buttons in Manage Tabs modal. Auto-redirect to Resources on login when unread content exists (once per session, via `get_unread_resources_count` RPC in App.tsx).
 
 **LoginPage** (`LoginPage.tsx`): 4-digit PIN entry, check-in/out action, auto-submit on completion.
 
@@ -516,6 +516,9 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes (Jan 23 – Feb 18, 2026)
 
 Changes grouped by feature area. All dates in 2026.
+
+### Resources: Login Redirect for Unread Content (Feb 18)
+- On login, if the employee has unread resources at the selected store, auto-redirect to Resources page instead of Tickets. Uses existing `get_unread_resources_count` RPC. `useRef` flag (`hasCheckedUnreadRef`) ensures the check fires exactly once per login session — not on store switches or re-renders. Ref resets on logout so next login triggers a fresh check. If the RPC fails, silently falls through to default Tickets page. No migration. Files: `App.tsx`
 
 ### Tax Base Branching by Payment Method (Feb 18)
 - Tax (GST/QST) base now depends on payment method: **Cash** uses `subtotal` (discount does NOT reduce tax base); **Card/Mixed/Gift Card** uses `max(0, subtotal - discount)` (discount reduces tax base). `calculateTaxGst()`/`calculateTaxQst()` read `formData.payment_method` and call `calculateTotalDiscount()` for non-Cash methods. Functions remain parameterless closures. No DB changes. Files: `TicketEditor.tsx`
