@@ -945,20 +945,18 @@ export function TicketEditor({
   function calculateTaxGst(): number {
     if (!enableTax) return 0;
     const subtotal = calculateSubtotal();
-    const taxable =
-      formData.payment_method === "Cash" || matchCalculation
-        ? subtotal
-        : Math.max(0, subtotal - calculateTotalDiscount());
+    const taxable = matchCalculation
+      ? subtotal
+      : Math.max(0, subtotal - calculateTotalDiscount());
     return Math.round(taxable * (taxRateGst / 100) * 100) / 100;
   }
 
   function calculateTaxQst(): number {
     if (!enableTax) return 0;
     const subtotal = calculateSubtotal();
-    const taxable =
-      formData.payment_method === "Cash" || matchCalculation
-        ? subtotal
-        : Math.max(0, subtotal - calculateTotalDiscount());
+    const taxable = matchCalculation
+      ? subtotal
+      : Math.max(0, subtotal - calculateTotalDiscount());
     return Math.round(taxable * (taxRateQst / 100) * 100) / 100;
   }
 

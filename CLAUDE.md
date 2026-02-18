@@ -303,7 +303,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 ### 6.4.1 Tax Rules
 
 - **Configurable**: Toggle `enable_tax` setting per store (off by default). Rates: `tax_rate_gst` (5%), `tax_rate_qst` (9.975%)
-- **Additive**: Tax calculated on top of service prices. Tax base depends on payment method: **Cash** → `subtotal` (discount does NOT reduce the tax base); **Card/Mixed/Gift Card** → `max(0, subtotal - discount)` (discount reduces the tax base)
+- **Additive**: Tax calculated on top of service prices. Tax base = `max(0, subtotal - discount)` for all payment methods. `matchCalculation` toggle (gated behind `enable_match_calculation`) overrides to use full `subtotal` (ignoring discounts)
 - **Tips NOT taxed**: Tax applies to service charges only
 - **Payment pre-fill**: Subtotal only (tax-exclusive). Payment Summary section shows full breakdown (Subtotal, GST, QST, Grand Total) for cashier reference. Discount entry does NOT auto-update payment fields
 - **`payment_cash` semantics**: Stores **subtotal only** (tax-exclusive). EOD computes Cash ticket expected cash from `sale_tickets.subtotal` (not `payment_cash`), making it independent of pre-fill behavior. Fallback to `payment_cash` when `subtotal = 0` (old tickets). Discount % always calculated from `subtotal`
@@ -548,8 +548,8 @@ Changes grouped by feature area. All dates in 2026.
 ### Resources: Login Redirect for Unread Content (Feb 18)
 - On login, if the employee has unread resources at the selected store, auto-redirect to Resources page instead of Tickets. Uses existing `get_unread_resources_count` RPC. `useRef` flag (`hasCheckedUnreadRef`) ensures the check fires exactly once per login session — not on store switches or re-renders. Ref resets on logout so next login triggers a fresh check. If the RPC fails, silently falls through to default Tickets page. No migration. Files: `App.tsx`
 
-### Tax Base Branching by Payment Method (Feb 18)
-- Tax (GST/QST) base now depends on payment method: **Cash** uses `subtotal` (discount does NOT reduce tax base); **Card/Mixed/Gift Card** uses `max(0, subtotal - discount)` (discount reduces tax base). `calculateTaxGst()`/`calculateTaxQst()` read `formData.payment_method` and call `calculateTotalDiscount()` for non-Cash methods. Functions remain parameterless closures. No DB changes. Files: `TicketEditor.tsx`
+### Unified Tax Base — Always `subtotal - discount` (Feb 19)
+- Reverted Feb 18 payment-method branching. Tax base is now `max(0, subtotal - discount)` for **all** payment methods (Cash, Card, Mixed, Gift Card). Discount always reduces the tax base. The `matchCalculation` toggle (gated behind `enable_match_calculation`) remains as an override to force tax on full `subtotal` when needed. No DB changes. Files: `TicketEditor.tsx`
 
 ### Resources: Tab Reordering in Manage Tabs Modal (Feb 18)
 - Up/down arrow buttons on each tab row in TabManagementModal to swap adjacent tabs' `display_order` values. Arrows disabled at boundaries (first/last), during active edit, or during in-progress reorder. Swaps actual `display_order` values (not array indices) to correctly handle non-contiguous orders after deletions. No migration — uses existing `display_order` column and RLS policies. Files: `ResourcesPage.tsx`
