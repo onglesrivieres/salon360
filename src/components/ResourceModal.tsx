@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { Drawer } from "./ui/Drawer";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
@@ -22,6 +22,10 @@ import { PhotoUpload } from "./photos/PhotoUpload";
 import { PhotoThumbnail } from "./photos/PhotoThumbnail";
 import { PendingPhoto } from "./photos/useTicketPhotos";
 import { getStorageService } from "../lib/storage";
+
+const LazyRichTextEditor = lazy(() =>
+  import("./RichTextEditor").then((m) => ({ default: m.RichTextEditor })),
+);
 
 const MAX_PHOTOS = 3;
 const MAX_FILE_SIZE_MB = 5;
@@ -62,6 +66,7 @@ export function ResourceModal({
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    description_text: "",
     link_url: "",
     thumbnail_url: "",
     subcategory: "",
@@ -87,6 +92,7 @@ export function ResourceModal({
       setFormData({
         title: resource.title,
         description: resource.description || "",
+        description_text: resource.description_text || "",
         link_url: resource.link_url || "",
         thumbnail_url: resource.thumbnail_url || "",
         subcategory: resource.subcategory || "",
@@ -96,6 +102,7 @@ export function ResourceModal({
       setFormData({
         title: "",
         description: "",
+        description_text: "",
         link_url: "",
         thumbnail_url: "",
         subcategory: "",
@@ -164,6 +171,7 @@ export function ResourceModal({
     setFormData({
       title: "",
       description: "",
+      description_text: "",
       link_url: "",
       thumbnail_url: "",
       subcategory: "",
@@ -189,9 +197,7 @@ export function ResourceModal({
 
     // Check total count
     const totalPhotos =
-      existingPhotos.length -
-      photosToDelete.length +
-      pendingPhotos.length;
+      existingPhotos.length - photosToDelete.length + pendingPhotos.length;
     if (totalPhotos >= MAX_PHOTOS) {
       showToast(`Maximum ${MAX_PHOTOS} photos allowed`, "error");
       return;
@@ -355,7 +361,8 @@ export function ResourceModal({
           .from("resources")
           .update({
             title: formData.title.trim(),
-            description: formData.description.trim() || null,
+            description: formData.description || null,
+            description_text: formData.description_text.trim() || null,
             link_url: formData.link_url.trim() || null,
             thumbnail_url: thumbnailPhotoId
               ? null
@@ -390,7 +397,8 @@ export function ResourceModal({
             category: category,
             subcategory: formData.subcategory || null,
             title: formData.title.trim(),
-            description: formData.description.trim() || null,
+            description: formData.description || null,
+            description_text: formData.description_text.trim() || null,
             link_url: formData.link_url.trim() || null,
             thumbnail_url: formData.thumbnail_url.trim() || null,
             thumbnail_source: thumbnailSource,
@@ -461,9 +469,13 @@ export function ResourceModal({
       const uuid = crypto.randomUUID();
       const storagePath = `resources/${storeId}/${resourceId}/${timestamp}_${uuid}.jpg`;
 
-      const uploadResult = await storage.upload(storagePath, pending.compressedBlob, {
-        contentType: "image/jpeg",
-      });
+      const uploadResult = await storage.upload(
+        storagePath,
+        pending.compressedBlob,
+        {
+          contentType: "image/jpeg",
+        },
+      );
 
       if (!uploadResult.success) {
         console.error("Failed to upload photo:", uploadResult.error);
@@ -682,15 +694,24 @@ export function ResourceModal({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Description
           </label>
-          <textarea
-            value={formData.description}
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
+          <Suspense
+            fallback={
+              <div className="h-[180px] border border-gray-300 rounded-lg bg-gray-50 animate-pulse" />
             }
-            placeholder="Brief description of this resource (optional)"
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          >
+            <LazyRichTextEditor
+              content={formData.description}
+              onChange={(html, text) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  description: html,
+                  description_text: text,
+                }))
+              }
+              storeId={storeId}
+              placeholder="Brief description of this resource (optional)"
+            />
+          </Suspense>
         </div>
 
         {/* Photos Section */}
@@ -732,9 +753,7 @@ export function ResourceModal({
                     <Star
                       className="w-3 h-3"
                       fill={
-                        thumbnailPhotoId === photo.id
-                          ? "currentColor"
-                          : "none"
+                        thumbnailPhotoId === photo.id ? "currentColor" : "none"
                       }
                     />
                   </button>
@@ -774,9 +793,7 @@ export function ResourceModal({
                     <Star
                       className="w-3 h-3"
                       fill={
-                        thumbnailPhotoId === photo.id
-                          ? "currentColor"
-                          : "none"
+                        thumbnailPhotoId === photo.id ? "currentColor" : "none"
                       }
                     />
                   </button>

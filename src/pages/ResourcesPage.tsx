@@ -9,6 +9,7 @@ import {
 } from "../lib/supabase";
 import { useToast } from "../components/ui/Toast";
 import { ResourceModal } from "../components/ResourceModal";
+import { RichTextContent } from "../components/RichTextContent";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import {
@@ -246,9 +247,12 @@ export function ResourcesPage() {
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesTitle = resource.title.toLowerCase().includes(query);
-        const matchesDescription = resource.description
-          ?.toLowerCase()
-          .includes(query);
+        const searchText = (
+          resource.description_text ||
+          resource.description ||
+          ""
+        ).toLowerCase();
+        const matchesDescription = searchText.includes(query);
         if (!matchesTitle && !matchesDescription) return false;
       }
 
@@ -880,12 +884,12 @@ function ResourceCard({
         >
           {resource.title}
         </h3>
-        {resource.description && (
+        {(resource.description_text || resource.description) && (
           <p
             className="text-sm text-gray-600 mb-3 line-clamp-2"
-            title={resource.description}
+            title={resource.description_text || resource.description || ""}
           >
-            {resource.description}
+            {resource.description_text || resource.description}
           </p>
         )}
 
@@ -1062,9 +1066,10 @@ function ResourceViewModal({
               {resource.title}
             </h2>
             {resource.description && (
-              <p className="text-gray-600 whitespace-pre-wrap">
-                {resource.description}
-              </p>
+              <RichTextContent
+                html={resource.description}
+                className="text-gray-600"
+              />
             )}
           </div>
 

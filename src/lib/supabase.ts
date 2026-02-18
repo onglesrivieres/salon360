@@ -1319,6 +1319,7 @@ export interface Resource {
   subcategory: string | null;
   title: string;
   description: string | null;
+  description_text: string | null;
   link_url: string | null;
   thumbnail_url: string | null;
   thumbnail_source: ThumbnailSource;
