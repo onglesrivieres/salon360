@@ -959,11 +959,36 @@ function ResourceViewModal({
   onEdit,
 }: ResourceViewModalProps) {
   const [imageError, setImageError] = useState(false);
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  // Reset imageError when resource changes
+  // Reset imageError and scroll state when resource changes
   useEffect(() => {
     setImageError(false);
+    setHasScrolledToBottom(false);
   }, [resource?.id]);
+
+  // Check if content is short enough that no scrolling is needed
+  useEffect(() => {
+    if (!isOpen || !resource || isRead) return;
+    const el = contentRef.current;
+    if (!el) return;
+    // Use requestAnimationFrame to ensure layout is complete
+    const raf = requestAnimationFrame(() => {
+      if (el.scrollHeight <= el.clientHeight) {
+        setHasScrolledToBottom(true);
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [isOpen, resource?.id, isRead]);
+
+  const handleContentScroll = useCallback(() => {
+    const el = contentRef.current;
+    if (!el || hasScrolledToBottom) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 5) {
+      setHasScrolledToBottom(true);
+    }
+  }, [hasScrolledToBottom]);
 
   if (!isOpen || !resource) return null;
 
@@ -1028,7 +1053,11 @@ function ResourceViewModal({
           </div>
 
           {/* Content */}
-          <div className="p-6 overflow-y-auto flex-1">
+          <div
+            ref={contentRef}
+            onScroll={handleContentScroll}
+            className="p-6 overflow-y-auto flex-1"
+          >
             <h2 className="text-xl font-semibold text-gray-900 mb-3">
               {resource.title}
             </h2>
@@ -1049,6 +1078,15 @@ function ResourceViewModal({
               >
                 <Check className="w-4 h-4" />
                 Read
+              </button>
+            ) : !hasScrolledToBottom ? (
+              <button
+                disabled
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-300 text-gray-500 rounded-lg font-medium cursor-not-allowed"
+                title="Scroll to bottom to mark as read"
+              >
+                <ChevronDown className="w-4 h-4" />
+                Scroll to Read
               </button>
             ) : (
               <button

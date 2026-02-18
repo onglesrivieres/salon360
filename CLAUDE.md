@@ -519,6 +519,9 @@ Always filter by `store_id` when querying store-specific data:
 
 Changes grouped by feature area. All dates in 2026.
 
+### Resources: Scroll-Gated "Mark as Read" Button (Feb 19)
+- "Mark as Read" button in resource view popup now requires scrolling to the bottom of the content before becoming clickable. Three button states: disabled-gray with `ChevronDown` icon ("Scroll to Read") when unread and not scrolled, active-emerald ("Mark as Read") when scrolled to bottom, and disabled-emerald ("Read") for already-read resources. Short content that doesn't overflow auto-enables the button via a post-render `scrollHeight` check. 5px threshold accounts for sub-pixel rounding. State resets on resource change. No DB changes. Files: `ResourcesPage.tsx`
+
 ### Resources: Photo Upload in Add/Edit Resource Modal (Feb 19)
 - Up to 3 photos per resource via camera capture or file picker in ResourceModal. Photos staged locally as compressed blobs, uploaded to R2 on save. Star button on each photo thumbnail lets user designate one as the resource card thumbnail (sets `thumbnail_url` on the resource). Mutually exclusive with the Thumbnail URL text field — selecting a photo clears the URL and vice versa. Edit mode loads existing photos from `resource_photos` table, supports remove + add + change thumbnail. Storage path: `resources/{storeId}/{resourceId}/{ts}_{uuid}.jpg`. New `resource_photos` table (same schema as `ticket_photos`/`cash_transaction_photos`). `ResourcePhoto`/`ResourcePhotoWithUrl` interfaces added. Files: `ResourceModal.tsx`, `supabase.ts` + migration
 
