@@ -302,8 +302,8 @@ When a user has multiple roles, the highest-ranking role determines their permis
 - **Configurable**: Toggle `enable_tax` setting per store (off by default). Rates: `tax_rate_gst` (5%), `tax_rate_qst` (9.975%)
 - **Additive**: Tax calculated on top of service prices, on `max(0, subtotal - discount)`
 - **Tips NOT taxed**: Tax applies to service charges only
-- **Payment pre-fill**: Tax-inclusive (subtotal + GST + QST). Cashier enters what's actually collected
-- **EOD unaffected**: `payment_cash` already contains tax portion, so Expected Cash formula unchanged
+- **Payment pre-fill**: Tax-inclusive (`subtotal + GST + QST`). When discount entered, `payment_cash`/`payment_card` auto-recalculates to `subtotal + tax_on_discounted` via `calculateTaxInclusivePayment()` helper
+- **`payment_cash` semantics**: Pre-discount base including tax. EOD formula `payment_cash - discount + tips` subtracts discount separately. Discount % always calculated from `subtotal` (not from `payment_cash`)
 - **Stored on ticket**: `tax_gst`, `tax_qst`, `tax` (sum), `subtotal` columns on `sale_tickets`
 - **Rounding**: GST and QST rounded independently to nearest cent
 - **Insights**: "Tax Collected" metric card appears when `taxCollected > 0`
@@ -509,6 +509,9 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes (Jan 23 – Feb 17, 2026)
 
 Changes grouped by feature area. All dates in 2026.
+
+### Tax + Discount Payment Fix (Feb 18)
+- Fix cash discount handlers storing tax-exclusive `payment_cash`, causing EOD Expected Cash discrepancy. Root cause: cash discount % handler computed discount from `payment_cash` (circular when tax-inclusive) instead of `subtotal`, and no handler recalculated the payment field after discount entry. Added `calculateTaxInclusivePayment(discountAmount)` helper that returns `subtotal + GST + QST` where tax is on `(subtotal - discount)`. All 4 discount handlers (cash amount, cash %, card amount, card %) now auto-update `payment_cash`/`payment_card` via this helper. Updated pre-fill hint to show "Prefilled with subtotal + tax" when tax enabled. DB fix: corrected 8 Feb-17 Salon365 cash tickets' `payment_cash` to `subtotal + tax_gst + tax_qst`. No DB migration. Files: `TicketEditor.tsx`
 
 ### Tickets — High Add-On Photo Requirement (Feb 17)
 - Require photos and notes when any ticket item has an add-on price > $15. Reuses existing `requires_photos` validation (min 1 photo + notes on close). Photo upload section and required indicators shown on new tickets with high add-ons. No DB changes. Files: `TicketEditor.tsx`
