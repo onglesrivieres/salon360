@@ -293,7 +293,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 ### 6.4 EOD Cash Rules
 
 - **Opening Cash**: Required before first ticket of the day
-- **Expected Cash** = Cash payments + Cash tips - Discounts
+- **Expected Cash**: Cash tickets use `subtotal - discount + tax + tips` (Grand Total + tips); Mixed tickets use `payment_cash + tips`; Card/gift_card skipped
 - **Variance** = Actual Count - Expected Cash; Balanced when < $0.01
 - **Transaction Categories**: Expenses, safe deposit, refunds, HQ deposit, etc.
 
@@ -303,7 +303,7 @@ When a user has multiple roles, the highest-ranking role determines their permis
 - **Additive**: Tax calculated on top of service prices, on `max(0, subtotal - discount)`
 - **Tips NOT taxed**: Tax applies to service charges only
 - **Payment pre-fill**: Subtotal only (tax-exclusive). Payment Summary section shows full breakdown (Subtotal, GST, QST, Grand Total) for cashier reference. Discount entry does NOT auto-update payment fields
-- **`payment_cash` semantics**: Stores **subtotal only** (tax-exclusive). EOD formula adds `tax_gst + tax_qst` from `sale_tickets` for Cash-only tickets, then `payment_cash + tax + tips - discount`. Discount % always calculated from `subtotal`
+- **`payment_cash` semantics**: Stores **subtotal only** (tax-exclusive). EOD computes Cash ticket expected cash from `sale_tickets.subtotal` (not `payment_cash`), making it independent of pre-fill behavior. Fallback to `payment_cash` when `subtotal = 0` (old tickets). Discount % always calculated from `subtotal`
 - **Stored on ticket**: `tax_gst`, `tax_qst`, `tax` (sum), `subtotal` columns on `sale_tickets`
 - **Rounding**: GST and QST rounded independently to nearest cent
 - **Insights**: "Tax Collected" metric card appears when `taxCollected > 0`
@@ -506,12 +506,15 @@ Always filter by `store_id` when querying store-specific data:
 
 ---
 
-## Recent Changes (Jan 23 – Feb 17, 2026)
+## Recent Changes (Jan 23 – Feb 18, 2026)
 
 Changes grouped by feature area. All dates in 2026.
 
+### EOD Expected Cash: Grand Total for Cash Tickets (Feb 18)
+- EOD "Expected Cash Collected" now branches by `payment_method`. Cash tickets: computes Grand Total from `sale_tickets.subtotal - discount + tax_gst + tax_qst + cash_tips`, independent of `payment_cash` pre-fill. Mixed tickets: uses `payment_cash + cash_tips` (user-entered cash portion). Card/gift_card: skipped. Fallback for old tickets (`subtotal = 0`): uses `payment_cash` as base. No DB changes. Files: `EndOfDayPage.tsx`
+
 ### Payment Prefill: Subtotal Only (Feb 18)
-- Changed payment field prefill from `subtotal + tax` to subtotal only (tax-exclusive). Payment Summary section already shows full Grand Total breakdown, so cashiers reference that for collection amount. Removed `calculateTaxInclusivePayment()` helper — discount handlers no longer auto-update `payment_cash`/`payment_card`. EOD formula updated: adds `tax_gst + tax_qst` from `sale_tickets` for Cash-only tickets to compensate. DB backfill: subtracted stored tax from `payment_cash`/`payment_card` on Feb 17-18 closed tickets. Files: `TicketEditor.tsx`, `EndOfDayPage.tsx`
+- Changed payment field prefill from `subtotal + tax` to subtotal only (tax-exclusive). Payment Summary section already shows full Grand Total breakdown, so cashiers reference that for collection amount. Removed `calculateTaxInclusivePayment()` helper — discount handlers no longer auto-update `payment_cash`/`payment_card`. DB backfill: subtracted stored tax from `payment_cash`/`payment_card` on Feb 17-18 closed tickets. Files: `TicketEditor.tsx`, `EndOfDayPage.tsx`
 
 ### Tickets — High Add-On Photo Requirement (Feb 17)
 - Require photos and notes when any ticket item has an add-on price > $15. Reuses existing `requires_photos` validation (min 1 photo + notes on close). Photo upload section and required indicators shown on new tickets with high add-ons. No DB changes. Files: `TicketEditor.tsx`

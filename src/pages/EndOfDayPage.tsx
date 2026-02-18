@@ -240,6 +240,7 @@ export function EndOfDayPage({
         .select(
           `
           id,
+          subtotal,
           tax_gst,
           tax_qst,
           payment_method,
@@ -259,21 +260,31 @@ export function EndOfDayPage({
 
       let totalCash = 0;
       for (const ticket of tickets || []) {
-        // Add ticket-level tax for Cash-only payments
-        // (payment_cash stores subtotal only; tax must be added separately)
-        if ((ticket as any).payment_method === "Cash") {
-          const taxGst = parseFloat((ticket as any).tax_gst) || 0;
-          const taxQst = parseFloat((ticket as any).tax_qst) || 0;
-          totalCash += taxGst + taxQst;
-        }
+        const paymentMethod = (ticket as any).payment_method;
+        const subtotal = parseFloat((ticket as any).subtotal) || 0;
+        const taxGst = parseFloat((ticket as any).tax_gst) || 0;
+        const taxQst = parseFloat((ticket as any).tax_qst) || 0;
 
         const ticketItems = (ticket as any).ticket_items || [];
+        let paymentCash = 0;
+        let discountCash = 0;
+        let tipCash = 0;
         for (const item of ticketItems) {
-          const paymentCash = parseFloat(item.payment_cash) || 0;
-          const discountCash = parseFloat(item.discount_amount_cash) || 0;
-          const tipCash = parseFloat(item.tip_customer_cash) || 0;
-          totalCash += paymentCash + tipCash - discountCash;
+          paymentCash += parseFloat(item.payment_cash) || 0;
+          discountCash += parseFloat(item.discount_amount_cash) || 0;
+          tipCash += parseFloat(item.tip_customer_cash) || 0;
         }
+
+        if (paymentMethod === "Cash") {
+          // Grand Total = subtotal - discount + tax; then add cash tips
+          // Fallback to payment_cash for old tickets where subtotal = 0
+          const base = subtotal > 0 ? subtotal : paymentCash;
+          totalCash += base - discountCash + taxGst + taxQst + tipCash;
+        } else if (paymentMethod === "Mixed") {
+          // payment_cash is the user-entered cash portion
+          totalCash += paymentCash + tipCash;
+        }
+        // Card / gift_card: no cash contribution
       }
       setExpectedCash(totalCash);
 
@@ -1175,7 +1186,7 @@ export function EndOfDayPage({
                       Expected Cash Collected
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Cash payments + cash tips from tickets
+                      Cash grand totals + mixed cash payments + cash tips
                     </p>
                   </div>
                   <div className="text-right">
