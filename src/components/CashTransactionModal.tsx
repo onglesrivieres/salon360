@@ -279,6 +279,7 @@ export function CashTransactionModal({
     <Drawer
       isOpen={isOpen}
       onClose={handleClose}
+      size="lg"
       title={isVoidMode ? "Void Transaction" : title}
       footer={footerContent}
     >

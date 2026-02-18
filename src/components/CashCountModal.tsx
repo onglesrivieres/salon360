@@ -123,7 +123,7 @@ export function CashCountModal({
       isOpen={isOpen}
       onClose={handleCancel}
       title={title}
-      size="md"
+      size="lg"
       footer={
         <div className="flex gap-3">
           <Button
