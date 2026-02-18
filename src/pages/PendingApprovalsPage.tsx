@@ -1,13 +1,68 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Clock, CheckCircle, XCircle, AlertTriangle, AlertCircle, Package, PackagePlus, PackageMinus, ArrowLeftRight, ArrowDownLeft, ArrowUpRight, DollarSign, Flag, ThumbsUp, ThumbsDown, AlertOctagon, FileText, Timer, ChevronLeft, ChevronRight, ChevronDown, Bell, User, Calendar, History, Download, Eye, RotateCcw } from 'lucide-react';
-import { supabase, PendingApprovalTicket, ApprovalStatistics, PendingInventoryApproval, PendingCashTransactionApproval, PendingCashTransactionChangeProposal, ViolationReportForApproval, ViolationDecision, ViolationActionType, HistoricalApprovalTicket, HistoricalInventoryApproval, HistoricalCashTransactionApproval, HistoricalTransactionChangeApproval, HistoricalTicketReopenApproval, AttendanceChangeProposalWithDetails, PendingTicketReopenRequest, PendingDistributionApproval } from '../lib/supabase';
-import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
-import { useToast } from '../components/ui/Toast';
-import { useAuth } from '../contexts/AuthContext';
-import { Modal } from '../components/ui/Modal';
-import { getCurrentDateEST, formatDateOnly, formatDateTimeEST, formatTimeEST, formatDateEST, formatDateISOEST } from '../lib/timezone';
-import { Permissions } from '../lib/permissions';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  AlertCircle,
+  Package,
+  PackagePlus,
+  PackageMinus,
+  ArrowLeftRight,
+  ArrowDownLeft,
+  ArrowUpRight,
+  DollarSign,
+  Flag,
+  ThumbsUp,
+  ThumbsDown,
+  AlertOctagon,
+  FileText,
+  Timer,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Bell,
+  User,
+  Calendar,
+  History,
+  Download,
+  Eye,
+  RotateCcw,
+} from "lucide-react";
+import {
+  supabase,
+  PendingApprovalTicket,
+  ApprovalStatistics,
+  PendingInventoryApproval,
+  PendingCashTransactionApproval,
+  PendingCashTransactionChangeProposal,
+  ViolationReportForApproval,
+  ViolationDecision,
+  ViolationActionType,
+  HistoricalApprovalTicket,
+  HistoricalInventoryApproval,
+  HistoricalCashTransactionApproval,
+  HistoricalTransactionChangeApproval,
+  HistoricalTicketReopenApproval,
+  AttendanceChangeProposalWithDetails,
+  PendingTicketReopenRequest,
+  PendingDistributionApproval,
+} from "../lib/supabase";
+import { Button } from "../components/ui/Button";
+import { Badge } from "../components/ui/Badge";
+import { useToast } from "../components/ui/Toast";
+import { useAuth } from "../contexts/AuthContext";
+import { Modal } from "../components/ui/Modal";
+import {
+  getCurrentDateEST,
+  formatDateOnly,
+  formatDateTimeEST,
+  formatTimeEST,
+  formatDateEST,
+  formatDateISOEST,
+} from "../lib/timezone";
+import { Permissions } from "../lib/permissions";
+import { TicketEditor } from "../components/TicketEditor";
 
 interface ViolationHistoryReport {
   report_id: string;
@@ -45,7 +100,15 @@ interface ProposalWithAttendance extends AttendanceChangeProposalWithDetails {
   work_date?: string;
 }
 
-type TabType = 'tickets' | 'inventory' | 'cash' | 'transaction-changes' | 'attendance' | 'violations' | 'queue-history' | 'ticket-changes';
+type TabType =
+  | "tickets"
+  | "inventory"
+  | "cash"
+  | "transaction-changes"
+  | "attendance"
+  | "violations"
+  | "queue-history"
+  | "ticket-changes";
 
 interface QueueRemovalRecord {
   id: string;
@@ -71,64 +134,133 @@ interface PendingApprovalsPageProps {
   onQueueHistoryEndDateChange: (date: string) => void;
 }
 
-export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queueHistoryStartDate, onQueueHistoryStartDateChange, queueHistoryEndDate, onQueueHistoryEndDateChange }: PendingApprovalsPageProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('tickets');
+export function PendingApprovalsPage({
+  selectedDate,
+  onSelectedDateChange,
+  queueHistoryStartDate,
+  onQueueHistoryStartDateChange,
+  queueHistoryEndDate,
+  onQueueHistoryEndDateChange,
+}: PendingApprovalsPageProps) {
+  const [activeTab, setActiveTab] = useState<TabType>("tickets");
   const [tickets, setTickets] = useState<PendingApprovalTicket[]>([]);
-  const [historicalManagerTickets, setHistoricalManagerTickets] = useState<HistoricalApprovalTicket[]>([]);
-  const [historicalSupervisorTickets, setHistoricalSupervisorTickets] = useState<HistoricalApprovalTicket[]>([]);
-  const [inventoryApprovals, setInventoryApprovals] = useState<PendingInventoryApproval[]>([]);
-  const [distributionApprovals, setDistributionApprovals] = useState<PendingDistributionApproval[]>([]);
-  const [cashTransactionApprovals, setCashTransactionApprovals] = useState<PendingCashTransactionApproval[]>([]);
-  const [processedCashTransactions, setProcessedCashTransactions] = useState<Array<PendingCashTransactionApproval & {
-    processed_status: 'approved' | 'rejected';
-    processed_by_name: string;
-    processed_at: string;
-    rejection_reason?: string;
-  }>>([]);
-  const [violationReports, setViolationReports] = useState<ViolationReportForApproval[]>([]);
-  const [violationHistory, setViolationHistory] = useState<ViolationHistoryReport[]>([]);
-  const [attendanceProposals, setAttendanceProposals] = useState<ProposalWithAttendance[]>([]);
+  const [historicalManagerTickets, setHistoricalManagerTickets] = useState<
+    HistoricalApprovalTicket[]
+  >([]);
+  const [historicalSupervisorTickets, setHistoricalSupervisorTickets] =
+    useState<HistoricalApprovalTicket[]>([]);
+  const [inventoryApprovals, setInventoryApprovals] = useState<
+    PendingInventoryApproval[]
+  >([]);
+  const [distributionApprovals, setDistributionApprovals] = useState<
+    PendingDistributionApproval[]
+  >([]);
+  const [cashTransactionApprovals, setCashTransactionApprovals] = useState<
+    PendingCashTransactionApproval[]
+  >([]);
+  const [processedCashTransactions, setProcessedCashTransactions] = useState<
+    Array<
+      PendingCashTransactionApproval & {
+        processed_status: "approved" | "rejected";
+        processed_by_name: string;
+        processed_at: string;
+        rejection_reason?: string;
+      }
+    >
+  >([]);
+  const [violationReports, setViolationReports] = useState<
+    ViolationReportForApproval[]
+  >([]);
+  const [violationHistory, setViolationHistory] = useState<
+    ViolationHistoryReport[]
+  >([]);
+  const [attendanceProposals, setAttendanceProposals] = useState<
+    ProposalWithAttendance[]
+  >([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTicket, setSelectedTicket] = useState<PendingApprovalTicket | null>(null);
-  const [selectedInventory, setSelectedInventory] = useState<PendingInventoryApproval | null>(null);
-  const [selectedCashTransaction, setSelectedCashTransaction] = useState<PendingCashTransactionApproval | null>(null);
-  const [selectedViolationReport, setSelectedViolationReport] = useState<ViolationReportForApproval | null>(null);
+  const [selectedTicket, setSelectedTicket] =
+    useState<PendingApprovalTicket | null>(null);
+  const [selectedInventory, setSelectedInventory] =
+    useState<PendingInventoryApproval | null>(null);
+  const [selectedCashTransaction, setSelectedCashTransaction] =
+    useState<PendingCashTransactionApproval | null>(null);
+  const [selectedViolationReport, setSelectedViolationReport] =
+    useState<ViolationReportForApproval | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [showInventoryRejectModal, setShowInventoryRejectModal] = useState(false);
-  const [showTransferApprovalModal, setShowTransferApprovalModal] = useState(false);
-  const [transferApprovalItems, setTransferApprovalItems] = useState<{item_id: string; item_name: string; sent_quantity: number; received_quantity: string}[]>([]);
-  const [showCashTransactionRejectModal, setShowCashTransactionRejectModal] = useState(false);
-  const [showViolationDecisionModal, setShowViolationDecisionModal] = useState(false);
-  const [violationDecision, setViolationDecision] = useState<ViolationDecision>('violation_confirmed');
-  const [violationNotes, setViolationNotes] = useState('');
-  const [violationAction, setViolationAction] = useState<ViolationActionType>('none');
-  const [violationActionDetails, setViolationActionDetails] = useState('');
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [reviewComment, setReviewComment] = useState('');
-  const [selectedProposal, setSelectedProposal] = useState<ProposalWithAttendance | null>(null);
+  const [showInventoryRejectModal, setShowInventoryRejectModal] =
+    useState(false);
+  const [showTransferApprovalModal, setShowTransferApprovalModal] =
+    useState(false);
+  const [transferApprovalItems, setTransferApprovalItems] = useState<
+    {
+      item_id: string;
+      item_name: string;
+      sent_quantity: number;
+      received_quantity: string;
+    }[]
+  >([]);
+  const [showCashTransactionRejectModal, setShowCashTransactionRejectModal] =
+    useState(false);
+  const [showViolationDecisionModal, setShowViolationDecisionModal] =
+    useState(false);
+  const [violationDecision, setViolationDecision] = useState<ViolationDecision>(
+    "violation_confirmed",
+  );
+  const [violationNotes, setViolationNotes] = useState("");
+  const [violationAction, setViolationAction] =
+    useState<ViolationActionType>("none");
+  const [violationActionDetails, setViolationActionDetails] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [reviewComment, setReviewComment] = useState("");
+  const [selectedProposal, setSelectedProposal] =
+    useState<ProposalWithAttendance | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [approvalStats, setApprovalStats] = useState<ApprovalStatistics | null>(null);
-  const [violationStatusFilter, setViolationStatusFilter] = useState<string>('all');
-  const [violationSearchTerm] = useState('');
-  const [queueRemovalRecords, setQueueRemovalRecords] = useState<QueueRemovalRecord[]>([]);
+  const [approvalStats, setApprovalStats] = useState<ApprovalStatistics | null>(
+    null,
+  );
+  const [violationStatusFilter, setViolationStatusFilter] =
+    useState<string>("all");
+  const [violationSearchTerm] = useState("");
+  const [queueRemovalRecords, setQueueRemovalRecords] = useState<
+    QueueRemovalRecord[]
+  >([]);
   const [queueHistoryLoading, setQueueHistoryLoading] = useState(false);
-  const [transactionChangeProposals, setTransactionChangeProposals] = useState<PendingCashTransactionChangeProposal[]>([]);
-  const [selectedTransactionChangeProposal, setSelectedTransactionChangeProposal] = useState<PendingCashTransactionChangeProposal | null>(null);
-  const [transactionChangeReviewComment, setTransactionChangeReviewComment] = useState('');
-  const [ticketReopenRequests, setTicketReopenRequests] = useState<PendingTicketReopenRequest[]>([]);
-  const [selectedTicketReopenRequest, setSelectedTicketReopenRequest] = useState<PendingTicketReopenRequest | null>(null);
-  const [ticketReopenReviewComment, setTicketReopenReviewComment] = useState('');
-  const [viewingRequest, setViewingRequest] = useState<PendingTicketReopenRequest | null>(null);
-  const [historicalInventoryApprovals, setHistoricalInventoryApprovals] = useState<HistoricalInventoryApproval[]>([]);
-  const [historicalCashApprovals, setHistoricalCashApprovals] = useState<HistoricalCashTransactionApproval[]>([]);
-  const [historicalTransactionChanges, setHistoricalTransactionChanges] = useState<HistoricalTransactionChangeApproval[]>([]);
-  const [historicalTicketReopenRequests, setHistoricalTicketReopenRequests] = useState<HistoricalTicketReopenApproval[]>([]);
+  const [transactionChangeProposals, setTransactionChangeProposals] = useState<
+    PendingCashTransactionChangeProposal[]
+  >([]);
+  const [
+    selectedTransactionChangeProposal,
+    setSelectedTransactionChangeProposal,
+  ] = useState<PendingCashTransactionChangeProposal | null>(null);
+  const [transactionChangeReviewComment, setTransactionChangeReviewComment] =
+    useState("");
+  const [ticketReopenRequests, setTicketReopenRequests] = useState<
+    PendingTicketReopenRequest[]
+  >([]);
+  const [selectedTicketReopenRequest, setSelectedTicketReopenRequest] =
+    useState<PendingTicketReopenRequest | null>(null);
+  const [ticketReopenReviewComment, setTicketReopenReviewComment] =
+    useState("");
+  const [viewingRequest, setViewingRequest] =
+    useState<PendingTicketReopenRequest | null>(null);
+  const [viewingTicketId, setViewingTicketId] = useState<string | null>(null);
+  const [viewingTicketDate, setViewingTicketDate] = useState<string>("");
+  const [historicalInventoryApprovals, setHistoricalInventoryApprovals] =
+    useState<HistoricalInventoryApproval[]>([]);
+  const [historicalCashApprovals, setHistoricalCashApprovals] = useState<
+    HistoricalCashTransactionApproval[]
+  >([]);
+  const [historicalTransactionChanges, setHistoricalTransactionChanges] =
+    useState<HistoricalTransactionChangeApproval[]>([]);
+  const [historicalTicketReopenRequests, setHistoricalTicketReopenRequests] =
+    useState<HistoricalTicketReopenApproval[]>([]);
   const [rejectedTickets, setRejectedTickets] = useState<any[]>([]);
   // Additional info request state
-  const [additionalInfoText, setAdditionalInfoText] = useState('');
-  const [infoRequestMessage, setInfoRequestMessage] = useState('');
+  const [additionalInfoText, setAdditionalInfoText] = useState("");
+  const [infoRequestMessage, setInfoRequestMessage] = useState("");
   const [showInfoRequestModal, setShowInfoRequestModal] = useState(false);
-  const [selectedReportForInfoRequest, setSelectedReportForInfoRequest] = useState<ViolationReportForApproval | null>(null);
+  const [selectedReportForInfoRequest, setSelectedReportForInfoRequest] =
+    useState<ViolationReportForApproval | null>(null);
   const [tabCounts, setTabCounts] = useState<{
     tickets: number;
     inventory: number;
@@ -137,7 +269,15 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     attendance: number;
     violations: number;
     ticketChanges: number;
-  }>({ tickets: 0, inventory: 0, cash: 0, transactionChanges: 0, attendance: 0, violations: 0, ticketChanges: 0 });
+  }>({
+    tickets: 0,
+    inventory: 0,
+    cash: 0,
+    transactionChanges: 0,
+    attendance: 0,
+    violations: 0,
+    ticketChanges: 0,
+  });
   const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
   const tabDropdownRef = useRef<HTMLDivElement>(null);
   const [initialTabSet, setInitialTabSet] = useState(false);
@@ -145,40 +285,57 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
   const { session, selectedStoreId, effectiveRole, t } = useAuth();
 
   const userRoles = session?.role || [];
-  const isManagement = userRoles.some(role => ['Admin', 'Owner', 'Manager', 'Supervisor'].includes(role));
-  const isSupervisor = session?.role_permission === 'Supervisor';
-  const isTechnician = session?.role_permission === 'Technician';
-  const isReceptionist = session?.role_permission === 'Receptionist';
-  const isCashier = session?.role_permission === 'Cashier';
+  const isManagement = userRoles.some((role) =>
+    ["Admin", "Owner", "Manager", "Supervisor"].includes(role),
+  );
+  const isSupervisor = session?.role_permission === "Supervisor";
+  const isTechnician = session?.role_permission === "Technician";
+  const isReceptionist = session?.role_permission === "Receptionist";
+  const isCashier = session?.role_permission === "Cashier";
 
   // Access levels
   const canViewAllRecords = isManagement || isReceptionist || isCashier;
   const canViewOwnRecordsOnly = isTechnician && !isManagement;
-  const hasPageAccess = isManagement || isReceptionist || isTechnician || isCashier;
+  const hasPageAccess =
+    isManagement || isReceptionist || isTechnician || isCashier;
   const canTakeActions = isManagement; // Only management can approve/reject
 
-  const canViewQueueHistory = effectiveRole && Permissions.queue.canViewRemovalHistory(effectiveRole);
-  const canReviewTransactionChanges = effectiveRole && Permissions.cashTransactions.canReviewChangeProposal(effectiveRole);
-  const canReviewReopenRequests = effectiveRole && Permissions.tickets.canReviewReopenRequests(effectiveRole);
+  const canViewQueueHistory =
+    effectiveRole && Permissions.queue.canViewRemovalHistory(effectiveRole);
+  const canReviewTransactionChanges =
+    effectiveRole &&
+    Permissions.cashTransactions.canReviewChangeProposal(effectiveRole);
+  const canReviewReopenRequests =
+    effectiveRole && Permissions.tickets.canReviewReopenRequests(effectiveRole);
 
   // Helper function to determine which tabs each role can see
   function canViewTab(tabKey: TabType): boolean {
     // Supervisor: Cash tab + inventory (for distribution approvals) + ticket-changes (for Receptionist/Cashier requests)
-    if (isSupervisor) return tabKey === 'cash' || tabKey === 'inventory' || (tabKey === 'ticket-changes' && !!canReviewReopenRequests);
+    if (isSupervisor)
+      return (
+        tabKey === "cash" ||
+        tabKey === "inventory" ||
+        (tabKey === "ticket-changes" && !!canReviewReopenRequests)
+      );
 
     // Management and Receptionist: all tabs (with existing permission checks)
     if (canViewAllRecords) {
-      if (tabKey === 'transaction-changes') return !!canReviewTransactionChanges;
-      if (tabKey === 'ticket-changes') return !!canReviewReopenRequests;
-      if (tabKey === 'queue-history') return !!canViewQueueHistory;
+      if (tabKey === "transaction-changes")
+        return !!canReviewTransactionChanges;
+      if (tabKey === "ticket-changes") return !!canReviewReopenRequests;
+      if (tabKey === "queue-history") return !!canViewQueueHistory;
       return true;
     }
 
     // Technician: only specific tabs with own records
     if (isTechnician) {
       const allowedTabs: TabType[] = [
-        'tickets', 'inventory', 'attendance',
-        'violations', 'ticket-changes', 'queue-history'
+        "tickets",
+        "inventory",
+        "attendance",
+        "violations",
+        "ticket-changes",
+        "queue-history",
       ];
       return allowedTabs.includes(tabKey);
     }
@@ -191,42 +348,125 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     key: TabType;
     label: string;
     icon: typeof FileText;
-    badgeVariant: 'danger' | 'warning' | 'default';
+    badgeVariant: "danger" | "warning" | "default";
     getCount: () => number;
   }> = [
-    { key: 'tickets', label: t('approvals.tabTickets'), icon: FileText, badgeVariant: 'danger', getCount: () => activeTab === 'tickets' ? tickets.length : tabCounts.tickets },
-    { key: 'inventory', label: t('approvals.tabInventory'), icon: Package, badgeVariant: 'warning', getCount: () => activeTab === 'inventory' ? (inventoryApprovals.length + distributionApprovals.length) : tabCounts.inventory },
-    { key: 'cash', label: t('approvals.tabCash'), icon: DollarSign, badgeVariant: 'warning', getCount: () => activeTab === 'cash' ? cashTransactionApprovals.length : tabCounts.cash },
-    { key: 'transaction-changes', label: t('approvals.tabTransactionChanges'), icon: FileText, badgeVariant: 'warning', getCount: () => activeTab === 'transaction-changes' ? transactionChangeProposals.length : tabCounts.transactionChanges },
-    { key: 'attendance', label: t('approvals.tabShiftRequest'), icon: Bell, badgeVariant: 'warning', getCount: () => activeTab === 'attendance' ? attendanceProposals.filter(p => p.status === 'pending').length : tabCounts.attendance },
-    { key: 'violations', label: t('approvals.tabTurnViolation'), icon: Flag, badgeVariant: 'danger', getCount: () => activeTab === 'violations' ? violationReports.length : tabCounts.violations },
-    { key: 'ticket-changes', label: t('approvals.tabTicketChanges'), icon: FileText, badgeVariant: 'warning', getCount: () => activeTab === 'ticket-changes' ? ticketReopenRequests.length : tabCounts.ticketChanges },
-    { key: 'queue-history', label: t('approvals.tabQueueHistory'), icon: History, badgeVariant: 'default', getCount: () => queueRemovalRecords.length },
+    {
+      key: "tickets",
+      label: t("approvals.tabTickets"),
+      icon: FileText,
+      badgeVariant: "danger",
+      getCount: () =>
+        activeTab === "tickets" ? tickets.length : tabCounts.tickets,
+    },
+    {
+      key: "inventory",
+      label: t("approvals.tabInventory"),
+      icon: Package,
+      badgeVariant: "warning",
+      getCount: () =>
+        activeTab === "inventory"
+          ? inventoryApprovals.length + distributionApprovals.length
+          : tabCounts.inventory,
+    },
+    {
+      key: "cash",
+      label: t("approvals.tabCash"),
+      icon: DollarSign,
+      badgeVariant: "warning",
+      getCount: () =>
+        activeTab === "cash" ? cashTransactionApprovals.length : tabCounts.cash,
+    },
+    {
+      key: "transaction-changes",
+      label: t("approvals.tabTransactionChanges"),
+      icon: FileText,
+      badgeVariant: "warning",
+      getCount: () =>
+        activeTab === "transaction-changes"
+          ? transactionChangeProposals.length
+          : tabCounts.transactionChanges,
+    },
+    {
+      key: "attendance",
+      label: t("approvals.tabShiftRequest"),
+      icon: Bell,
+      badgeVariant: "warning",
+      getCount: () =>
+        activeTab === "attendance"
+          ? attendanceProposals.filter((p) => p.status === "pending").length
+          : tabCounts.attendance,
+    },
+    {
+      key: "violations",
+      label: t("approvals.tabTurnViolation"),
+      icon: Flag,
+      badgeVariant: "danger",
+      getCount: () =>
+        activeTab === "violations"
+          ? violationReports.length
+          : tabCounts.violations,
+    },
+    {
+      key: "ticket-changes",
+      label: t("approvals.tabTicketChanges"),
+      icon: FileText,
+      badgeVariant: "warning",
+      getCount: () =>
+        activeTab === "ticket-changes"
+          ? ticketReopenRequests.length
+          : tabCounts.ticketChanges,
+    },
+    {
+      key: "queue-history",
+      label: t("approvals.tabQueueHistory"),
+      icon: History,
+      badgeVariant: "default",
+      getCount: () => queueRemovalRecords.length,
+    },
   ];
 
-  const visibleTabs = tabConfig.filter(tab => canViewTab(tab.key));
-  const currentTabConfig = tabConfig.find(tab => tab.key === activeTab);
+  const visibleTabs = tabConfig.filter((tab) => canViewTab(tab.key));
+  const currentTabConfig = tabConfig.find((tab) => tab.key === activeTab);
 
   // Determine if Reporter info should be visible for a violation report
-  function canSeeReporterInfo(report: { reporter_employee_id: string; reported_employee_id: string }): boolean {
+  function canSeeReporterInfo(report: {
+    reporter_employee_id: string;
+    reported_employee_id: string;
+  }): boolean {
     // Only Owner, Admin, Manager can see reporter info
-    const canSeeAsManagement = userRoles.some(role =>
-      ['Owner', 'Admin', 'Manager'].includes(role)
+    const canSeeAsManagement = userRoles.some((role) =>
+      ["Owner", "Admin", "Manager"].includes(role),
     );
     // If current user is the reported employee, always hide reporter
-    const isReportedEmployee = session?.employee_id === report.reported_employee_id;
+    const isReportedEmployee =
+      session?.employee_id === report.reported_employee_id;
     return canSeeAsManagement && !isReportedEmployee;
   }
 
   // Determine if individual vote details (who voted Yes/No) should be visible
   function canSeeVoteDetails(): boolean {
-    return userRoles.some(role => ['Owner', 'Admin', 'Manager'].includes(role));
+    return userRoles.some((role) =>
+      ["Owner", "Admin", "Manager"].includes(role),
+    );
   }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const tab = params.get('tab');
-    if (tab && ['tickets', 'inventory', 'cash', 'transaction-changes', 'attendance', 'violations', 'queue-history', 'ticket-changes'].includes(tab)) {
+    const tab = params.get("tab");
+    if (
+      tab &&
+      [
+        "tickets",
+        "inventory",
+        "cash",
+        "transaction-changes",
+        "attendance",
+        "violations",
+        "queue-history",
+        "ticket-changes",
+      ].includes(tab)
+    ) {
       setActiveTab(tab as TabType);
       setInitialTabSet(true);
     }
@@ -234,15 +474,21 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
   // Fetch all tab counts and auto-navigate to first tab with pending items
   useEffect(() => {
-    if (!hasPageAccess || !session?.employee_id || !selectedStoreId || initialTabSet) return;
+    if (
+      !hasPageAccess ||
+      !session?.employee_id ||
+      !selectedStoreId ||
+      initialTabSet
+    )
+      return;
 
     // Supervisors: navigate to first tab with items (cash or ticket-changes)
     if (isSupervisor) {
-      fetchAllTabCounts().then(counts => {
+      fetchAllTabCounts().then((counts) => {
         if (counts && counts.ticketChanges > 0) {
-          handleTabChange('ticket-changes');
+          handleTabChange("ticket-changes");
         } else {
-          handleTabChange('cash');
+          handleTabChange("cash");
         }
         setInitialTabSet(true);
       });
@@ -251,13 +497,14 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
     // Technicians: fetch counts then navigate to first tab with items
     if (canViewOwnRecordsOnly) {
-      fetchAllTabCounts().then(counts => {
+      fetchAllTabCounts().then((counts) => {
         if (counts) {
-          const techTabPriority: { tab: TabType; key: keyof typeof counts }[] = [
-            { tab: 'inventory', key: 'inventory' },
-            { tab: 'tickets', key: 'tickets' },
-            { tab: 'violations', key: 'violations' },
-          ];
+          const techTabPriority: { tab: TabType; key: keyof typeof counts }[] =
+            [
+              { tab: "inventory", key: "inventory" },
+              { tab: "tickets", key: "tickets" },
+              { tab: "violations", key: "violations" },
+            ];
           let found = false;
           for (const { tab, key } of techTabPriority) {
             if (counts[key] > 0) {
@@ -266,14 +513,14 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
               break;
             }
           }
-          if (!found) handleTabChange('tickets');
+          if (!found) handleTabChange("tickets");
         }
         setInitialTabSet(true);
       });
       return;
     }
 
-    fetchAllTabCounts().then(counts => {
+    fetchAllTabCounts().then((counts) => {
       if (!counts) {
         setInitialTabSet(true);
         return;
@@ -281,12 +528,12 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
       // Priority order for auto-navigation
       const tabPriority: { tab: TabType; key: keyof typeof counts }[] = [
-        { tab: 'tickets', key: 'tickets' },
-        { tab: 'violations', key: 'violations' },
-        { tab: 'cash', key: 'cash' },
-        { tab: 'inventory', key: 'inventory' },
-        { tab: 'transaction-changes', key: 'transactionChanges' },
-        { tab: 'attendance', key: 'attendance' },
+        { tab: "tickets", key: "tickets" },
+        { tab: "violations", key: "violations" },
+        { tab: "cash", key: "cash" },
+        { tab: "inventory", key: "inventory" },
+        { tab: "transaction-changes", key: "transactionChanges" },
+        { tab: "attendance", key: "attendance" },
       ];
 
       for (const { tab, key } of tabPriority) {
@@ -297,40 +544,62 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       }
       setInitialTabSet(true);
     });
-  }, [hasPageAccess, session?.employee_id, selectedStoreId, initialTabSet, isSupervisor, canViewOwnRecordsOnly]);
+  }, [
+    hasPageAccess,
+    session?.employee_id,
+    selectedStoreId,
+    initialTabSet,
+    isSupervisor,
+    canViewOwnRecordsOnly,
+  ]);
 
   useEffect(() => {
     if (!hasPageAccess) return;
 
     if (session?.employee_id) {
-      if (activeTab === 'tickets' && canViewTab('tickets')) {
+      if (activeTab === "tickets" && canViewTab("tickets")) {
         fetchPendingApprovals();
         fetchApprovalStats();
         fetchHistoricalApprovals();
         fetchRejectedTickets();
-      } else if (activeTab === 'inventory' && canViewTab('inventory')) {
+      } else if (activeTab === "inventory" && canViewTab("inventory")) {
         fetchInventoryApprovals();
         fetchDistributionApprovals();
         fetchHistoricalInventoryApprovals();
-      } else if (activeTab === 'cash' && canViewTab('cash')) {
+      } else if (activeTab === "cash" && canViewTab("cash")) {
         fetchCashTransactionApprovals();
         fetchHistoricalCashApprovals();
-      } else if (activeTab === 'attendance' && canViewTab('attendance')) {
+      } else if (activeTab === "attendance" && canViewTab("attendance")) {
         fetchAttendanceProposals();
-      } else if (activeTab === 'violations' && canViewTab('violations')) {
+      } else if (activeTab === "violations" && canViewTab("violations")) {
         fetchViolationReports();
         fetchViolationHistory();
-      } else if (activeTab === 'transaction-changes' && canViewTab('transaction-changes')) {
+      } else if (
+        activeTab === "transaction-changes" &&
+        canViewTab("transaction-changes")
+      ) {
         fetchTransactionChangeProposals();
         fetchHistoricalTransactionChanges();
-      } else if (activeTab === 'ticket-changes' && canViewTab('ticket-changes')) {
+      } else if (
+        activeTab === "ticket-changes" &&
+        canViewTab("ticket-changes")
+      ) {
         fetchTicketReopenRequests();
         fetchHistoricalTicketReopenRequests();
-      } else if (activeTab === 'queue-history' && canViewTab('queue-history')) {
+      } else if (activeTab === "queue-history" && canViewTab("queue-history")) {
         fetchQueueRemovalHistory();
       }
     }
-  }, [session?.employee_id, selectedStoreId, selectedDate, activeTab, hasPageAccess, canViewQueueHistory, canReviewTransactionChanges, canReviewReopenRequests]);
+  }, [
+    session?.employee_id,
+    selectedStoreId,
+    selectedDate,
+    activeTab,
+    hasPageAccess,
+    canViewQueueHistory,
+    canReviewTransactionChanges,
+    canReviewReopenRequests,
+  ]);
 
   useEffect(() => {
     if (!hasPageAccess) return;
@@ -340,43 +609,63 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         // Refresh all tab counts
         fetchAllTabCounts();
 
-        if (activeTab === 'tickets' && canViewTab('tickets')) {
+        if (activeTab === "tickets" && canViewTab("tickets")) {
           fetchPendingApprovals();
           fetchApprovalStats();
           fetchRejectedTickets();
-        } else if (activeTab === 'inventory' && canViewTab('inventory')) {
+        } else if (activeTab === "inventory" && canViewTab("inventory")) {
           fetchInventoryApprovals();
           fetchDistributionApprovals();
           fetchHistoricalInventoryApprovals();
-        } else if (activeTab === 'cash' && canViewTab('cash')) {
+        } else if (activeTab === "cash" && canViewTab("cash")) {
           fetchCashTransactionApprovals();
           fetchHistoricalCashApprovals();
-        } else if (activeTab === 'attendance' && canViewTab('attendance')) {
+        } else if (activeTab === "attendance" && canViewTab("attendance")) {
           fetchAttendanceProposals();
-        } else if (activeTab === 'violations' && canViewTab('violations')) {
+        } else if (activeTab === "violations" && canViewTab("violations")) {
           fetchViolationReports();
           fetchViolationHistory();
-        } else if (activeTab === 'transaction-changes' && canViewTab('transaction-changes')) {
+        } else if (
+          activeTab === "transaction-changes" &&
+          canViewTab("transaction-changes")
+        ) {
           fetchTransactionChangeProposals();
           fetchHistoricalTransactionChanges();
-        } else if (activeTab === 'ticket-changes' && canViewTab('ticket-changes')) {
+        } else if (
+          activeTab === "ticket-changes" &&
+          canViewTab("ticket-changes")
+        ) {
           fetchTicketReopenRequests();
           fetchHistoricalTicketReopenRequests();
-        } else if (activeTab === 'queue-history' && canViewTab('queue-history')) {
+        } else if (
+          activeTab === "queue-history" &&
+          canViewTab("queue-history")
+        ) {
           fetchQueueRemovalHistory();
         }
       }
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [session?.employee_id, selectedStoreId, activeTab, hasPageAccess, canViewQueueHistory, canReviewTransactionChanges, canReviewReopenRequests]);
+  }, [
+    session?.employee_id,
+    selectedStoreId,
+    activeTab,
+    hasPageAccess,
+    canViewQueueHistory,
+    canReviewTransactionChanges,
+    canReviewReopenRequests,
+  ]);
 
   // Reset initialTabSet when store changes to allow auto-navigation to re-run
   // This enables smart tab navigation when Owner/Admin switches between stores
   const previousStoreIdRef = React.useRef<string | null>(null);
   useEffect(() => {
     // Skip on initial mount (when previousStoreIdRef is null)
-    if (previousStoreIdRef.current !== null && selectedStoreId !== previousStoreIdRef.current) {
+    if (
+      previousStoreIdRef.current !== null &&
+      selectedStoreId !== previousStoreIdRef.current
+    ) {
       setInitialTabSet(false);
     }
     previousStoreIdRef.current = selectedStoreId;
@@ -385,28 +674,35 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
   // Click-outside handler for mobile tab dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (tabDropdownRef.current && !tabDropdownRef.current.contains(event.target as Node)) {
+      if (
+        tabDropdownRef.current &&
+        !tabDropdownRef.current.contains(event.target as Node)
+      ) {
         setIsTabDropdownOpen(false);
       }
     }
     if (isTabDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isTabDropdownOpen]);
 
   function handleTabChange(tab: TabType) {
     setActiveTab(tab);
     const params = new URLSearchParams(window.location.search);
-    params.set('tab', tab);
-    window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+    params.set("tab", tab);
+    window.history.replaceState(
+      {},
+      "",
+      `${window.location.pathname}?${params.toString()}`,
+    );
   }
 
   async function fetchApprovalStats() {
     if (!selectedStoreId) return;
 
     try {
-      const { data, error } = await supabase.rpc('get_approval_statistics', {
+      const { data, error } = await supabase.rpc("get_approval_statistics", {
         p_store_id: selectedStoreId,
         p_start_date: selectedDate,
         p_end_date: selectedDate,
@@ -417,7 +713,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         setApprovalStats(data[0]);
       }
     } catch (error) {
-      console.error('Error fetching approval stats:', error);
+      console.error("Error fetching approval stats:", error);
     }
   }
 
@@ -425,42 +721,90 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     if (!selectedStoreId || !session?.employee_id) return;
 
     try {
-      const [ticketsRes, inventoryRes, cashRes, transactionChangesRes, attendanceRes, violationsRes, ticketChangesRes, distributionRes] = await Promise.all([
-        supabase.rpc('get_pending_approvals_for_management', { p_store_id: selectedStoreId }),
-        supabase.rpc('get_pending_inventory_approvals', { p_employee_id: session.employee_id, p_store_id: selectedStoreId }),
-        supabase.rpc('get_pending_cash_transaction_approvals', { p_store_id: selectedStoreId }),
-        canReviewTransactionChanges ? supabase.rpc('get_pending_cash_transaction_change_proposals', { p_store_id: selectedStoreId }) : Promise.resolve({ data: [] }),
-        supabase.from('attendance_change_proposals').select('id, attendance_records!inner(store_id)').eq('attendance_records.store_id', selectedStoreId).eq('status', 'pending'),
-        supabase.rpc('get_violation_reports_for_approval', { p_store_id: selectedStoreId }),
-        canReviewReopenRequests ? supabase.rpc('get_pending_ticket_reopen_requests', { p_store_id: selectedStoreId }) : Promise.resolve({ data: [] }),
-        supabase.rpc('get_pending_distribution_approvals', { p_employee_id: session.employee_id, p_store_id: selectedStoreId }),
+      const [
+        ticketsRes,
+        inventoryRes,
+        cashRes,
+        transactionChangesRes,
+        attendanceRes,
+        violationsRes,
+        ticketChangesRes,
+        distributionRes,
+      ] = await Promise.all([
+        supabase.rpc("get_pending_approvals_for_management", {
+          p_store_id: selectedStoreId,
+        }),
+        supabase.rpc("get_pending_inventory_approvals", {
+          p_employee_id: session.employee_id,
+          p_store_id: selectedStoreId,
+        }),
+        supabase.rpc("get_pending_cash_transaction_approvals", {
+          p_store_id: selectedStoreId,
+        }),
+        canReviewTransactionChanges
+          ? supabase.rpc("get_pending_cash_transaction_change_proposals", {
+              p_store_id: selectedStoreId,
+            })
+          : Promise.resolve({ data: [] }),
+        supabase
+          .from("attendance_change_proposals")
+          .select("id, attendance_records!inner(store_id)")
+          .eq("attendance_records.store_id", selectedStoreId)
+          .eq("status", "pending"),
+        supabase.rpc("get_violation_reports_for_approval", {
+          p_store_id: selectedStoreId,
+        }),
+        canReviewReopenRequests
+          ? supabase.rpc("get_pending_ticket_reopen_requests", {
+              p_store_id: selectedStoreId,
+            })
+          : Promise.resolve({ data: [] }),
+        supabase.rpc("get_pending_distribution_approvals", {
+          p_employee_id: session.employee_id,
+          p_store_id: selectedStoreId,
+        }),
       ]);
 
       // Apply Receptionist/Cashier filters to counts
       let ticketCount = ticketsRes.data?.length || 0;
       let cashCount = cashRes.data?.length || 0;
       if ((isReceptionist || isCashier) && session?.employee_id) {
-        ticketCount = (ticketsRes.data || []).filter((t: { closed_by?: string }) => t.closed_by === session.employee_id).length;
-        cashCount = (cashRes.data || []).filter((t: { created_by_id?: string }) => t.created_by_id === session.employee_id).length;
+        ticketCount = (ticketsRes.data || []).filter(
+          (t: { closed_by?: string }) => t.closed_by === session.employee_id,
+        ).length;
+        cashCount = (cashRes.data || []).filter(
+          (t: { created_by_id?: string }) =>
+            t.created_by_id === session.employee_id,
+        ).length;
       }
 
       // Apply Technician filter to ticket count: only tickets they performed a service on
       if (canViewOwnRecordsOnly && session?.employee_id) {
-        ticketCount = (ticketsRes.data || []).filter((t: { technician_ids?: string[] }) => t.technician_ids?.includes(session.employee_id)).length;
+        ticketCount = (ticketsRes.data || []).filter(
+          (t: { technician_ids?: string[] }) =>
+            t.technician_ids?.includes(session.employee_id),
+        ).length;
       }
 
       // Apply Supervisor filter to ticket changes count
       let ticketChangesCount = ticketChangesRes.data?.length || 0;
-      const isUpperManagementForCount = userRoles.some(role => ['Admin', 'Owner', 'Manager'].includes(role));
+      const isUpperManagementForCount = userRoles.some((role) =>
+        ["Admin", "Owner", "Manager"].includes(role),
+      );
       if (isSupervisor && !isUpperManagementForCount) {
         ticketChangesCount = (ticketChangesRes.data || []).filter(
-          (r: { created_by_roles?: string[] }) => r.created_by_roles?.some(role => ['Receptionist', 'Cashier'].includes(role))
+          (r: { created_by_roles?: string[] }) =>
+            r.created_by_roles?.some((role) =>
+              ["Receptionist", "Cashier"].includes(role),
+            ),
         ).length;
       }
 
       const counts = {
         tickets: ticketCount,
-        inventory: (inventoryRes.data?.length || 0) + (distributionRes.data?.length || 0),
+        inventory:
+          (inventoryRes.data?.length || 0) +
+          (distributionRes.data?.length || 0),
         cash: cashCount,
         transactionChanges: transactionChangesRes.data?.length || 0,
         attendance: attendanceRes.data?.length || 0,
@@ -471,7 +815,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       setTabCounts(counts);
       return counts;
     } catch (error) {
-      console.error('Error fetching tab counts:', error);
+      console.error("Error fetching tab counts:", error);
     }
   }
 
@@ -484,31 +828,36 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         return;
       }
 
-      const { data, error } = await supabase.rpc('get_pending_approvals_for_management', {
-        p_store_id: selectedStoreId,
-      });
+      const { data, error } = await supabase.rpc(
+        "get_pending_approvals_for_management",
+        {
+          p_store_id: selectedStoreId,
+        },
+      );
 
       if (error) throw error;
 
       // Filter for Technician: only show tickets where they performed a service
       let filteredData = data || [];
       if (canViewOwnRecordsOnly && session?.employee_id) {
-        filteredData = filteredData.filter((ticket: { technician_ids?: string[] }) =>
-          ticket.technician_ids?.includes(session.employee_id)
+        filteredData = filteredData.filter(
+          (ticket: { technician_ids?: string[] }) =>
+            ticket.technician_ids?.includes(session.employee_id),
         );
       }
 
       // Filter for Receptionist/Cashier: only show tickets they closed
       if ((isReceptionist || isCashier) && session?.employee_id) {
-        filteredData = filteredData.filter((ticket: { closed_by?: string }) =>
-          ticket.closed_by === session.employee_id
+        filteredData = filteredData.filter(
+          (ticket: { closed_by?: string }) =>
+            ticket.closed_by === session.employee_id,
         );
       }
 
       setTickets(filteredData);
     } catch (error) {
-      console.error('Error fetching pending approvals:', error);
-      showToast('Failed to load pending approvals', 'error');
+      console.error("Error fetching pending approvals:", error);
+      showToast("Failed to load pending approvals", "error");
     } finally {
       setLoading(false);
     }
@@ -517,29 +866,34 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
   async function fetchRejectedTickets() {
     if (!selectedStoreId) return;
     try {
-      const { data, error } = await supabase.rpc('get_rejected_tickets_for_admin', {
-        p_store_id: selectedStoreId,
-      });
+      const { data, error } = await supabase.rpc(
+        "get_rejected_tickets_for_admin",
+        {
+          p_store_id: selectedStoreId,
+        },
+      );
       if (error) throw error;
 
       // Filter for Technician: only show their own rejected tickets
       let filteredData = data || [];
       if (canViewOwnRecordsOnly && session?.employee_id) {
-        filteredData = filteredData.filter((ticket: { technician_ids?: string[] }) =>
-          ticket.technician_ids?.includes(session.employee_id)
+        filteredData = filteredData.filter(
+          (ticket: { technician_ids?: string[] }) =>
+            ticket.technician_ids?.includes(session.employee_id),
         );
       }
 
       // Filter for Receptionist/Cashier: only show tickets they closed
       if ((isReceptionist || isCashier) && session?.employee_id) {
-        filteredData = filteredData.filter((ticket: { closed_by?: string }) =>
-          ticket.closed_by === session.employee_id
+        filteredData = filteredData.filter(
+          (ticket: { closed_by?: string }) =>
+            ticket.closed_by === session.employee_id,
         );
       }
 
       setRejectedTickets(filteredData);
     } catch (error) {
-      console.error('Error fetching rejected tickets:', error);
+      console.error("Error fetching rejected tickets:", error);
     }
   }
 
@@ -547,16 +901,16 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     try {
       setProcessing(true);
       const { error } = await supabase
-        .from('sale_tickets')
+        .from("sale_tickets")
         .update({ requires_admin_review: false })
-        .eq('id', ticketId);
+        .eq("id", ticketId);
       if (error) throw error;
-      showToast('Ticket marked as reviewed', 'success');
+      showToast("Ticket marked as reviewed", "success");
       fetchRejectedTickets();
       fetchApprovalStats();
     } catch (error) {
-      console.error('Error clearing admin review:', error);
-      showToast('Failed to update ticket', 'error');
+      console.error("Error clearing admin review:", error);
+      showToast("Failed to update ticket", "error");
     } finally {
       setProcessing(false);
     }
@@ -567,24 +921,28 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
     try {
       setLoading(true);
-      const { data, error } = await supabase.rpc('get_pending_inventory_approvals', {
-        p_employee_id: session.employee_id,
-        p_store_id: selectedStoreId,
-      });
+      const { data, error } = await supabase.rpc(
+        "get_pending_inventory_approvals",
+        {
+          p_employee_id: session.employee_id,
+          p_store_id: selectedStoreId,
+        },
+      );
 
       if (error) throw error;
 
       // Filter for Technician: only show where they are the recipient
       let filteredData = data || [];
       if (canViewOwnRecordsOnly && session?.employee_id) {
-        filteredData = filteredData.filter((approval: { recipient_id?: string }) =>
-          approval.recipient_id === session.employee_id
+        filteredData = filteredData.filter(
+          (approval: { recipient_id?: string }) =>
+            approval.recipient_id === session.employee_id,
         );
       }
 
       setInventoryApprovals(filteredData);
     } catch (error) {
-      console.error('Error fetching inventory approvals:', error);
+      console.error("Error fetching inventory approvals:", error);
     } finally {
       setLoading(false);
     }
@@ -594,60 +952,67 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     if (!selectedStoreId || !session?.employee_id) return;
 
     try {
-      const { data, error } = await supabase.rpc('get_pending_distribution_approvals', {
-        p_employee_id: session.employee_id,
-        p_store_id: selectedStoreId,
-      });
+      const { data, error } = await supabase.rpc(
+        "get_pending_distribution_approvals",
+        {
+          p_employee_id: session.employee_id,
+          p_store_id: selectedStoreId,
+        },
+      );
 
       if (error) throw error;
       setDistributionApprovals(data || []);
     } catch (error) {
-      console.error('Error fetching distribution approvals:', error);
+      console.error("Error fetching distribution approvals:", error);
     }
   }
 
-  async function handleAcknowledgeDistribution(approval: PendingDistributionApproval) {
+  async function handleAcknowledgeDistribution(
+    approval: PendingDistributionApproval,
+  ) {
     if (!session?.employee_id) return;
 
     try {
       setProcessing(true);
-      const { error } = await supabase.rpc('acknowledge_distribution', {
+      const { error } = await supabase.rpc("acknowledge_distribution", {
         p_batch_id: approval.batch_id,
         p_employee_id: session.employee_id,
       });
 
       if (error) throw error;
-      showToast('Distribution acknowledged', 'success');
+      showToast("Distribution acknowledged", "success");
       fetchDistributionApprovals();
       fetchAllTabCounts();
     } catch (error: any) {
-      showToast(error.message || 'Failed to acknowledge distribution', 'error');
+      showToast(error.message || "Failed to acknowledge distribution", "error");
     } finally {
       setProcessing(false);
     }
   }
 
-  async function handleApproveDistribution(approval: PendingDistributionApproval) {
+  async function handleApproveDistribution(
+    approval: PendingDistributionApproval,
+  ) {
     if (!session?.employee_id) return;
 
     if (approval.distributed_by_id === session.employee_id) {
-      showToast('You cannot approve your own distribution', 'error');
+      showToast("You cannot approve your own distribution", "error");
       return;
     }
 
     try {
       setProcessing(true);
-      const { error } = await supabase.rpc('approve_distribution_by_manager', {
+      const { error } = await supabase.rpc("approve_distribution_by_manager", {
         p_batch_id: approval.batch_id,
         p_employee_id: session.employee_id,
       });
 
       if (error) throw error;
-      showToast('Distribution approved', 'success');
+      showToast("Distribution approved", "success");
       fetchDistributionApprovals();
       fetchAllTabCounts();
     } catch (error: any) {
-      showToast(error.message || 'Failed to approve distribution', 'error');
+      showToast(error.message || "Failed to approve distribution", "error");
     } finally {
       setProcessing(false);
     }
@@ -658,27 +1023,37 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
     try {
       setLoading(true);
-      const { data, error } = await supabase.rpc('get_pending_cash_transaction_approvals', {
-        p_store_id: selectedStoreId,
-      });
+      const { data, error } = await supabase.rpc(
+        "get_pending_cash_transaction_approvals",
+        {
+          p_store_id: selectedStoreId,
+        },
+      );
 
       if (error) throw error;
 
       // Filter for Supervisors: only show Receptionist/Cashier-created transactions
       let filteredData = data || [];
       if (isSupervisor) {
-        filteredData = filteredData.filter((approval: PendingCashTransactionApproval) => approval.created_by_role === 'Receptionist' || approval.created_by_role === 'Cashier');
+        filteredData = filteredData.filter(
+          (approval: PendingCashTransactionApproval) =>
+            approval.created_by_role === "Receptionist" ||
+            approval.created_by_role === "Cashier",
+        );
       }
 
       // Filter for Receptionist/Cashier: only show their own transactions
       if ((isReceptionist || isCashier) && session?.employee_id) {
-        filteredData = filteredData.filter((approval: PendingCashTransactionApproval) => approval.created_by_id === session.employee_id);
+        filteredData = filteredData.filter(
+          (approval: PendingCashTransactionApproval) =>
+            approval.created_by_id === session.employee_id,
+        );
       }
 
       setCashTransactionApprovals(filteredData);
       setProcessedCashTransactions([]);
     } catch (error) {
-      console.error('Error fetching cash transaction approvals:', error);
+      console.error("Error fetching cash transaction approvals:", error);
     } finally {
       setLoading(false);
     }
@@ -688,23 +1063,27 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     if (!selectedStoreId) return;
 
     try {
-      const { data, error } = await supabase.rpc('get_violation_reports_for_approval', {
-        p_store_id: selectedStoreId,
-      });
+      const { data, error } = await supabase.rpc(
+        "get_violation_reports_for_approval",
+        {
+          p_store_id: selectedStoreId,
+        },
+      );
 
       if (error) throw error;
 
       // Filter for Technician: only show reports where they are the reported employee
       let filteredData = data || [];
       if (canViewOwnRecordsOnly && session?.employee_id) {
-        filteredData = filteredData.filter((report: { reported_employee_id?: string }) =>
-          report.reported_employee_id === session.employee_id
+        filteredData = filteredData.filter(
+          (report: { reported_employee_id?: string }) =>
+            report.reported_employee_id === session.employee_id,
         );
       }
 
       setViolationReports(filteredData);
     } catch (error) {
-      console.error('Error fetching violation reports:', error);
+      console.error("Error fetching violation reports:", error);
     }
   }
 
@@ -712,11 +1091,15 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     if (!selectedStoreId) return;
 
     try {
-      const { data, error } = await supabase.rpc('get_all_violation_reports_for_management', {
-        p_store_id: selectedStoreId,
-        p_status: violationStatusFilter === 'all' ? null : violationStatusFilter,
-        p_search_employee: violationSearchTerm.trim() || null
-      });
+      const { data, error } = await supabase.rpc(
+        "get_all_violation_reports_for_management",
+        {
+          p_store_id: selectedStoreId,
+          p_status:
+            violationStatusFilter === "all" ? null : violationStatusFilter,
+          p_search_employee: violationSearchTerm.trim() || null,
+        },
+      );
 
       if (error) throw error;
 
@@ -724,8 +1107,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
       // Filter for Technician: only show their own violation history (where they are reported)
       if (canViewOwnRecordsOnly && session?.employee_id) {
-        filteredData = filteredData.filter((report: { reported_employee_id?: string }) =>
-          report.reported_employee_id === session.employee_id
+        filteredData = filteredData.filter(
+          (report: { reported_employee_id?: string }) =>
+            report.reported_employee_id === session.employee_id,
         );
       }
 
@@ -742,16 +1126,16 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
           // If user voted, filter based on their vote
           if (report.responses) {
             const userVote = report.responses.find(
-              (v: any) => v.responder_employee_id === session.employee_id
+              (v: any) => v.responder_employee_id === session.employee_id,
             );
             if (userVote) {
               // Show only if user voted "Yes" (violation)
-              return userVote.vote === 'violation';
+              return userVote.vote === "violation";
             }
           }
 
           // If user hasn't voted yet (collecting responses), show it
-          if (report.status === 'collecting_responses') return true;
+          if (report.status === "collecting_responses") return true;
 
           // Otherwise hide
           return false;
@@ -760,7 +1144,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
       setViolationHistory(filteredData);
     } catch (error) {
-      console.error('Error fetching violation history:', error);
+      console.error("Error fetching violation history:", error);
     }
   }
 
@@ -770,14 +1154,16 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('attendance_change_proposals')
-        .select(`
+        .from("attendance_change_proposals")
+        .select(
+          `
           *,
           employee:employees!attendance_change_proposals_employee_id_fkey(id, display_name, legal_name),
           attendance_records!inner(work_date, store_id)
-        `)
-        .eq('attendance_records.store_id', selectedStoreId)
-        .order('created_at', { ascending: false });
+        `,
+        )
+        .eq("attendance_records.store_id", selectedStoreId)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
@@ -788,15 +1174,15 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
       // Filter for Technician: only show their own attendance proposals
       if (canViewOwnRecordsOnly && session?.employee_id) {
-        transformedData = transformedData.filter((proposal: any) =>
-          proposal.employee_id === session.employee_id
+        transformedData = transformedData.filter(
+          (proposal: any) => proposal.employee_id === session.employee_id,
         );
       }
 
       setAttendanceProposals(transformedData);
     } catch (error: any) {
-      console.error('Error fetching attendance proposals:', error);
-      showToast('Failed to load attendance proposals', 'error');
+      console.error("Error fetching attendance proposals:", error);
+      showToast("Failed to load attendance proposals", "error");
     } finally {
       setLoading(false);
     }
@@ -807,10 +1193,10 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
     try {
       const [managerData, supervisorData] = await Promise.all([
-        supabase.rpc('get_historical_approvals_for_manager', {
+        supabase.rpc("get_historical_approvals_for_manager", {
           p_store_id: selectedStoreId,
         }),
-        supabase.rpc('get_historical_approvals_for_supervisor', {
+        supabase.rpc("get_historical_approvals_for_supervisor", {
           p_store_id: selectedStoreId,
         }),
       ]);
@@ -823,77 +1209,98 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       let supervisorTickets = supervisorData.data || [];
 
       if (canViewOwnRecordsOnly && session?.employee_id) {
-        managerTickets = managerTickets.filter((ticket: { technician_ids?: string[] }) =>
-          ticket.technician_ids?.includes(session.employee_id)
+        managerTickets = managerTickets.filter(
+          (ticket: { technician_ids?: string[] }) =>
+            ticket.technician_ids?.includes(session.employee_id),
         );
-        supervisorTickets = supervisorTickets.filter((ticket: { technician_ids?: string[] }) =>
-          ticket.technician_ids?.includes(session.employee_id)
+        supervisorTickets = supervisorTickets.filter(
+          (ticket: { technician_ids?: string[] }) =>
+            ticket.technician_ids?.includes(session.employee_id),
         );
       }
 
       setHistoricalManagerTickets(managerTickets);
       setHistoricalSupervisorTickets(supervisorTickets);
     } catch (error) {
-      console.error('Error fetching historical approvals:', error);
+      console.error("Error fetching historical approvals:", error);
     }
   }
 
   async function fetchHistoricalInventoryApprovals() {
     if (!selectedStoreId) return;
     try {
-      const { data, error } = await supabase.rpc('get_historical_inventory_approvals', {
-        p_store_id: selectedStoreId,
-      });
+      const { data, error } = await supabase.rpc(
+        "get_historical_inventory_approvals",
+        {
+          p_store_id: selectedStoreId,
+        },
+      );
       if (error) throw error;
       setHistoricalInventoryApprovals(data || []);
     } catch (error) {
-      console.error('Error fetching historical inventory approvals:', error);
+      console.error("Error fetching historical inventory approvals:", error);
     }
   }
 
   async function fetchHistoricalCashApprovals() {
     if (!selectedStoreId) return;
     try {
-      const { data, error } = await supabase.rpc('get_historical_cash_transaction_approvals', {
-        p_store_id: selectedStoreId,
-      });
+      const { data, error } = await supabase.rpc(
+        "get_historical_cash_transaction_approvals",
+        {
+          p_store_id: selectedStoreId,
+        },
+      );
       if (error) throw error;
       let filtered = data || [];
       if (isSupervisor) {
-        filtered = filtered.filter((a: HistoricalCashTransactionApproval) => a.created_by_role === 'Receptionist' || a.created_by_role === 'Cashier');
+        filtered = filtered.filter(
+          (a: HistoricalCashTransactionApproval) =>
+            a.created_by_role === "Receptionist" ||
+            a.created_by_role === "Cashier",
+        );
       }
       if ((isReceptionist || isCashier) && session?.employee_id) {
-        filtered = filtered.filter((a: HistoricalCashTransactionApproval) => a.created_by_id === session.employee_id);
+        filtered = filtered.filter(
+          (a: HistoricalCashTransactionApproval) =>
+            a.created_by_id === session.employee_id,
+        );
       }
       setHistoricalCashApprovals(filtered);
     } catch (error) {
-      console.error('Error fetching historical cash approvals:', error);
+      console.error("Error fetching historical cash approvals:", error);
     }
   }
 
   async function fetchHistoricalTransactionChanges() {
     if (!selectedStoreId) return;
     try {
-      const { data, error } = await supabase.rpc('get_historical_transaction_change_approvals', {
-        p_store_id: selectedStoreId,
-      });
+      const { data, error } = await supabase.rpc(
+        "get_historical_transaction_change_approvals",
+        {
+          p_store_id: selectedStoreId,
+        },
+      );
       if (error) throw error;
       setHistoricalTransactionChanges(data || []);
     } catch (error) {
-      console.error('Error fetching historical transaction changes:', error);
+      console.error("Error fetching historical transaction changes:", error);
     }
   }
 
   async function fetchHistoricalTicketReopenRequests() {
     if (!selectedStoreId) return;
     try {
-      const { data, error } = await supabase.rpc('get_historical_ticket_reopen_approvals', {
-        p_store_id: selectedStoreId,
-      });
+      const { data, error } = await supabase.rpc(
+        "get_historical_ticket_reopen_approvals",
+        {
+          p_store_id: selectedStoreId,
+        },
+      );
       if (error) throw error;
       setHistoricalTicketReopenRequests(data || []);
     } catch (error) {
-      console.error('Error fetching historical ticket reopen requests:', error);
+      console.error("Error fetching historical ticket reopen requests:", error);
     }
   }
 
@@ -902,27 +1309,31 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
     setQueueHistoryLoading(true);
     try {
-      const { data, error: fetchError } = await supabase.rpc('get_queue_removal_history', {
-        p_employee_id: session.employee_id,
-        p_store_id: selectedStoreId,
-        p_start_date: queueHistoryStartDate || null,
-        p_end_date: queueHistoryEndDate || null
-      });
+      const { data, error: fetchError } = await supabase.rpc(
+        "get_queue_removal_history",
+        {
+          p_employee_id: session.employee_id,
+          p_store_id: selectedStoreId,
+          p_start_date: queueHistoryStartDate || null,
+          p_end_date: queueHistoryEndDate || null,
+        },
+      );
 
       if (fetchError) throw fetchError;
 
       // Filter for Technician: only show their own queue removals
       let filteredData = data || [];
       if (canViewOwnRecordsOnly && session?.employee_id) {
-        filteredData = filteredData.filter((record: { employee_id?: string }) =>
-          record.employee_id === session.employee_id
+        filteredData = filteredData.filter(
+          (record: { employee_id?: string }) =>
+            record.employee_id === session.employee_id,
         );
       }
 
       setQueueRemovalRecords(filteredData);
     } catch (err: any) {
-      console.error('Error fetching queue removal history:', err);
-      showToast(err.message || 'Failed to load queue removal history', 'error');
+      console.error("Error fetching queue removal history:", err);
+      showToast(err.message || "Failed to load queue removal history", "error");
     } finally {
       setQueueHistoryLoading(false);
     }
@@ -933,14 +1344,17 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
     try {
       setLoading(true);
-      const { data, error } = await supabase.rpc('get_pending_cash_transaction_change_proposals', {
-        p_store_id: selectedStoreId,
-      });
+      const { data, error } = await supabase.rpc(
+        "get_pending_cash_transaction_change_proposals",
+        {
+          p_store_id: selectedStoreId,
+        },
+      );
 
       if (error) throw error;
       setTransactionChangeProposals(data || []);
     } catch (error) {
-      console.error('Error fetching transaction change proposals:', error);
+      console.error("Error fetching transaction change proposals:", error);
     } finally {
       setLoading(false);
     }
@@ -951,46 +1365,50 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
     try {
       setLoading(true);
-      const { data, error } = await supabase.rpc('get_pending_ticket_reopen_requests', {
-        p_store_id: selectedStoreId,
-      });
+      const { data, error } = await supabase.rpc(
+        "get_pending_ticket_reopen_requests",
+        {
+          p_store_id: selectedStoreId,
+        },
+      );
 
       if (error) throw error;
 
       // Filter for Technician: only show requests they created or tickets they worked on
       let filteredData = data || [];
       if (canViewOwnRecordsOnly && session?.employee_id) {
-        filteredData = filteredData.filter((request: { created_by_id?: string; technician_ids?: string[] }) =>
-          request.created_by_id === session.employee_id ||
-          request.technician_ids?.includes(session.employee_id)
+        filteredData = filteredData.filter(
+          (request: { created_by_id?: string; technician_ids?: string[] }) =>
+            request.created_by_id === session.employee_id ||
+            request.technician_ids?.includes(session.employee_id),
         );
       }
 
       // Supervisor (without Manager+): only show requests from Receptionist/Cashier
-      const isUpperManagement = userRoles.some(role => ['Admin', 'Owner', 'Manager'].includes(role));
+      const isUpperManagement = userRoles.some((role) =>
+        ["Admin", "Owner", "Manager"].includes(role),
+      );
       if (isSupervisor && !isUpperManagement) {
-        filteredData = filteredData.filter((request: { created_by_roles?: string[] }) =>
-          request.created_by_roles?.some(role => ['Receptionist', 'Cashier'].includes(role))
+        filteredData = filteredData.filter(
+          (request: { created_by_roles?: string[] }) =>
+            request.created_by_roles?.some((role) =>
+              ["Receptionist", "Cashier"].includes(role),
+            ),
         );
       }
 
       setTicketReopenRequests(filteredData);
     } catch (error) {
-      console.error('Error fetching ticket reopen requests:', error);
+      console.error("Error fetching ticket reopen requests:", error);
     } finally {
       setLoading(false);
     }
   }
 
-  // Navigate to ticket without approval (just view)
+  // Open ticket as inline drawer overlay (no page navigation)
   function handleViewTicket(request: PendingTicketReopenRequest) {
-    const navState = {
-      ticketId: request.ticket_id,
-      ticketDate: request.ticket_date,
-      timestamp: Date.now()
-    };
-    sessionStorage.setItem('ticket_navigation_state', JSON.stringify(navState));
-    window.dispatchEvent(new CustomEvent('navigateToTicket', { detail: navState }));
+    setViewingTicketId(request.ticket_id);
+    setViewingTicketDate(request.ticket_date);
   }
 
   // Approve and reopen the ticket, then navigate to it
@@ -1001,17 +1419,25 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       setProcessing(true);
 
       // Step 1: Approve the request
-      const { data, error } = await supabase.rpc('approve_ticket_reopen_request', {
-        p_request_id: request.request_id,
-        p_reviewer_employee_id: session.employee_id,
-        p_review_comment: 'Approved and reopened',
-      });
+      const { data, error } = await supabase.rpc(
+        "approve_ticket_reopen_request",
+        {
+          p_request_id: request.request_id,
+          p_reviewer_employee_id: session.employee_id,
+          p_review_comment: "Approved and reopened",
+        },
+      );
 
       if (error) throw error;
 
-      const result = data as { success: boolean; error?: string; message?: string; ticket_id?: string };
+      const result = data as {
+        success: boolean;
+        error?: string;
+        message?: string;
+        ticket_id?: string;
+      };
       if (!result.success) {
-        showToast(result.error || 'Failed to approve request', 'error');
+        showToast(result.error || "Failed to approve request", "error");
         return;
       }
 
@@ -1019,31 +1445,31 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       // (clearing completed_at/closed_at removes the implicit timer end time,
       // so we must set explicit timer_stopped_at first to prevent timers restarting)
       const { error: timerError } = await supabase
-        .from('ticket_items')
+        .from("ticket_items")
         .update({ timer_stopped_at: new Date().toISOString() })
-        .eq('sale_ticket_id', request.ticket_id)
-        .not('started_at', 'is', null)
-        .is('timer_stopped_at', null);
+        .eq("sale_ticket_id", request.ticket_id)
+        .not("started_at", "is", null)
+        .is("timer_stopped_at", null);
 
       if (timerError) {
-        console.error('Error stopping timers:', timerError);
-        showToast('Request approved but failed to stop timers', 'error');
+        console.error("Error stopping timers:", timerError);
+        showToast("Request approved but failed to stop timers", "error");
         return;
       }
 
       // Step 3: Now safe to clear closed_at and completed_at
       const { error: reopenError } = await supabase
-        .from('sale_tickets')
+        .from("sale_tickets")
         .update({ closed_at: null, completed_at: null })
-        .eq('id', request.ticket_id);
+        .eq("id", request.ticket_id);
 
       if (reopenError) {
-        console.error('Error reopening ticket:', reopenError);
-        showToast('Request approved but failed to reopen ticket', 'error');
+        console.error("Error reopening ticket:", reopenError);
+        showToast("Request approved but failed to reopen ticket", "error");
         return;
       }
 
-      showToast('Request approved and ticket reopened', 'success');
+      showToast("Request approved and ticket reopened", "success");
       fetchTicketReopenRequests();
       fetchHistoricalTicketReopenRequests();
 
@@ -1051,13 +1477,18 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       const navState = {
         ticketId: request.ticket_id,
         ticketDate: request.ticket_date,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
-      sessionStorage.setItem('ticket_navigation_state', JSON.stringify(navState));
-      window.dispatchEvent(new CustomEvent('navigateToTicket', { detail: navState }));
+      sessionStorage.setItem(
+        "ticket_navigation_state",
+        JSON.stringify(navState),
+      );
+      window.dispatchEvent(
+        new CustomEvent("navigateToTicket", { detail: navState }),
+      );
     } catch (error: any) {
-      console.error('Error approving ticket reopen request:', error);
-      showToast(error.message || 'Failed to approve request', 'error');
+      console.error("Error approving ticket reopen request:", error);
+      showToast(error.message || "Failed to approve request", "error");
     } finally {
       setProcessing(false);
     }
@@ -1067,103 +1498,131 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     if (!selectedTicketReopenRequest || !session?.employee_id) return;
 
     if (!ticketReopenReviewComment.trim()) {
-      showToast('Please provide a rejection reason', 'error');
+      showToast("Please provide a rejection reason", "error");
       return;
     }
 
     try {
       setProcessing(true);
-      const { data, error } = await supabase.rpc('reject_ticket_reopen_request', {
-        p_request_id: selectedTicketReopenRequest.request_id,
-        p_reviewer_employee_id: session.employee_id,
-        p_review_comment: ticketReopenReviewComment.trim(),
-      });
+      const { data, error } = await supabase.rpc(
+        "reject_ticket_reopen_request",
+        {
+          p_request_id: selectedTicketReopenRequest.request_id,
+          p_reviewer_employee_id: session.employee_id,
+          p_review_comment: ticketReopenReviewComment.trim(),
+        },
+      );
 
       if (error) throw error;
 
-      const result = data as { success: boolean; error?: string; message?: string };
+      const result = data as {
+        success: boolean;
+        error?: string;
+        message?: string;
+      };
       if (!result.success) {
-        showToast(result.error || 'Failed to reject request', 'error');
+        showToast(result.error || "Failed to reject request", "error");
         return;
       }
 
-      showToast(result.message || 'Request rejected', 'success');
+      showToast(result.message || "Request rejected", "success");
       setSelectedTicketReopenRequest(null);
-      setTicketReopenReviewComment('');
+      setTicketReopenReviewComment("");
       fetchTicketReopenRequests();
       fetchHistoricalTicketReopenRequests();
     } catch (error: any) {
-      console.error('Error rejecting ticket reopen request:', error);
-      showToast(error.message || 'Failed to reject request', 'error');
+      console.error("Error rejecting ticket reopen request:", error);
+      showToast(error.message || "Failed to reject request", "error");
     } finally {
       setProcessing(false);
     }
   }
 
-  async function handleApproveTransactionChangeProposal(proposal: PendingCashTransactionChangeProposal) {
+  async function handleApproveTransactionChangeProposal(
+    proposal: PendingCashTransactionChangeProposal,
+  ) {
     if (!session?.employee_id) return;
 
     try {
       setProcessing(true);
-      const { data, error } = await supabase.rpc('approve_cash_transaction_change_proposal', {
-        p_proposal_id: proposal.proposal_id,
-        p_reviewer_employee_id: session.employee_id,
-        p_review_comment: transactionChangeReviewComment || null,
-      });
+      const { data, error } = await supabase.rpc(
+        "approve_cash_transaction_change_proposal",
+        {
+          p_proposal_id: proposal.proposal_id,
+          p_reviewer_employee_id: session.employee_id,
+          p_review_comment: transactionChangeReviewComment || null,
+        },
+      );
 
       if (error) throw error;
 
-      const result = data as { success: boolean; error?: string; message?: string };
+      const result = data as {
+        success: boolean;
+        error?: string;
+        message?: string;
+      };
       if (!result.success) {
-        showToast(result.error || 'Failed to approve proposal', 'error');
+        showToast(result.error || "Failed to approve proposal", "error");
         return;
       }
 
-      showToast(result.message || 'Transaction change approved', 'success');
+      showToast(result.message || "Transaction change approved", "success");
       setSelectedTransactionChangeProposal(null);
-      setTransactionChangeReviewComment('');
+      setTransactionChangeReviewComment("");
       fetchTransactionChangeProposals();
       fetchHistoricalTransactionChanges();
     } catch (error: any) {
-      console.error('Error approving transaction change proposal:', error);
-      showToast(error.message || 'Failed to approve proposal', 'error');
+      console.error("Error approving transaction change proposal:", error);
+      showToast(error.message || "Failed to approve proposal", "error");
     } finally {
       setProcessing(false);
     }
   }
 
-  async function handleRejectTransactionChangeProposal(proposal: PendingCashTransactionChangeProposal) {
+  async function handleRejectTransactionChangeProposal(
+    proposal: PendingCashTransactionChangeProposal,
+  ) {
     if (!session?.employee_id) return;
 
     if (!transactionChangeReviewComment.trim()) {
-      showToast('Please provide a rejection reason', 'error');
+      showToast("Please provide a rejection reason", "error");
       return;
     }
 
     try {
       setProcessing(true);
-      const { data, error } = await supabase.rpc('reject_cash_transaction_change_proposal', {
-        p_proposal_id: proposal.proposal_id,
-        p_reviewer_employee_id: session.employee_id,
-        p_review_comment: transactionChangeReviewComment.trim(),
-      });
+      const { data, error } = await supabase.rpc(
+        "reject_cash_transaction_change_proposal",
+        {
+          p_proposal_id: proposal.proposal_id,
+          p_reviewer_employee_id: session.employee_id,
+          p_review_comment: transactionChangeReviewComment.trim(),
+        },
+      );
 
       if (error) throw error;
 
-      const result = data as { success: boolean; error?: string; message?: string };
+      const result = data as {
+        success: boolean;
+        error?: string;
+        message?: string;
+      };
       if (!result.success) {
-        showToast(result.error || 'Failed to reject proposal', 'error');
+        showToast(result.error || "Failed to reject proposal", "error");
         return;
       }
 
-      showToast(result.message || 'Transaction change request rejected', 'success');
+      showToast(
+        result.message || "Transaction change request rejected",
+        "success",
+      );
       setSelectedTransactionChangeProposal(null);
-      setTransactionChangeReviewComment('');
+      setTransactionChangeReviewComment("");
       fetchTransactionChangeProposals();
       fetchHistoricalTransactionChanges();
     } catch (error: any) {
-      console.error('Error rejecting transaction change proposal:', error);
-      showToast(error.message || 'Failed to reject proposal', 'error');
+      console.error("Error rejecting transaction change proposal:", error);
+      showToast(error.message || "Failed to reject proposal", "error");
     } finally {
       setProcessing(false);
     }
@@ -1171,14 +1630,14 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
   function formatQueueRemovalDateTime(dateString: string) {
     const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      timeZone: 'America/New_York',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
+    return date.toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
     });
   }
 
@@ -1186,35 +1645,37 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     if (queueRemovalRecords.length === 0) return;
 
     const headers = [
-      'Date/Time',
-      'Technician',
-      'Removed By',
-      'Reason',
-      'Notes',
-      'Has Cooldown',
-      'Cooldown Status',
-      'Minutes Remaining'
+      "Date/Time",
+      "Technician",
+      "Removed By",
+      "Reason",
+      "Notes",
+      "Has Cooldown",
+      "Cooldown Status",
+      "Minutes Remaining",
     ];
 
-    const rows = queueRemovalRecords.map(record => [
+    const rows = queueRemovalRecords.map((record) => [
       formatDateTimeEST(record.removed_at),
       record.employee_name,
       record.removed_by_name,
       record.reason,
-      record.notes || '',
-      record.has_cooldown ? 'Yes' : 'No',
-      record.has_cooldown ? (record.is_active ? 'Active' : 'Expired') : 'N/A',
-      record.has_cooldown ? (record.minutes_remaining?.toString() || 'N/A') : 'N/A'
+      record.notes || "",
+      record.has_cooldown ? "Yes" : "No",
+      record.has_cooldown ? (record.is_active ? "Active" : "Expired") : "N/A",
+      record.has_cooldown
+        ? record.minutes_remaining?.toString() || "N/A"
+        : "N/A",
     ]);
 
     const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
+      headers.join(","),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
+    ].join("\n");
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `queue-removals-${queueHistoryStartDate}-${queueHistoryEndDate}.csv`;
     document.body.appendChild(a);
@@ -1227,7 +1688,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     if (!session?.employee_id) return;
 
     if (approval.requested_by_id === session.employee_id) {
-      showToast('You cannot approve transactions you created', 'error');
+      showToast("You cannot approve transactions you created", "error");
       return;
     }
 
@@ -1240,38 +1701,40 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       updates.manager_approved_by_id = session.employee_id;
 
       const { error } = await supabase
-        .from('inventory_transactions')
+        .from("inventory_transactions")
         .update(updates)
-        .eq('id', approval.id);
+        .eq("id", approval.id);
 
       if (error) throw error;
 
-      showToast('Inventory transaction approved', 'success');
+      showToast("Inventory transaction approved", "success");
       fetchInventoryApprovals();
       fetchHistoricalInventoryApprovals();
     } catch (error: any) {
-      showToast(error.message || 'Failed to approve transaction', 'error');
+      showToast(error.message || "Failed to approve transaction", "error");
     } finally {
       setProcessing(false);
     }
   }
 
-  async function handleRejectInventoryClick(approval: PendingInventoryApproval) {
+  async function handleRejectInventoryClick(
+    approval: PendingInventoryApproval,
+  ) {
     if (!session?.employee_id) return;
 
     if (approval.requested_by_id === session.employee_id) {
-      showToast('You cannot reject transactions you created', 'error');
+      showToast("You cannot reject transactions you created", "error");
       return;
     }
 
     setSelectedInventory(approval);
-    setRejectionReason('');
+    setRejectionReason("");
     setShowInventoryRejectModal(true);
   }
 
   async function handleRejectInventory() {
     if (!selectedInventory || !rejectionReason.trim()) {
-      showToast('Please provide a rejection reason', 'error');
+      showToast("Please provide a rejection reason", "error");
       return;
     }
 
@@ -1279,36 +1742,38 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       setProcessing(true);
 
       const { error } = await supabase
-        .from('inventory_transactions')
+        .from("inventory_transactions")
         .update({
-          status: 'rejected',
+          status: "rejected",
           rejection_reason: rejectionReason.trim(),
           manager_approved_by_id: session?.employee_id,
           manager_approved_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('id', selectedInventory.id);
+        .eq("id", selectedInventory.id);
 
       if (error) throw error;
 
-      showToast('Inventory transaction rejected', 'success');
+      showToast("Inventory transaction rejected", "success");
       setShowInventoryRejectModal(false);
       setSelectedInventory(null);
       fetchInventoryApprovals();
       fetchHistoricalInventoryApprovals();
     } catch (error) {
-      console.error('Error rejecting inventory:', error);
-      showToast('Failed to reject transaction', 'error');
+      console.error("Error rejecting inventory:", error);
+      showToast("Failed to reject transaction", "error");
     } finally {
       setProcessing(false);
     }
   }
 
-  async function handleOpenTransferApproval(approval: PendingInventoryApproval) {
+  async function handleOpenTransferApproval(
+    approval: PendingInventoryApproval,
+  ) {
     if (!session?.employee_id) return;
 
     if (approval.requested_by_id === session.employee_id) {
-      showToast('You cannot approve transfers you created', 'error');
+      showToast("You cannot approve transfers you created", "error");
       return;
     }
 
@@ -1316,15 +1781,15 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       setProcessing(true);
       // Fetch the transaction items for this transfer
       const { data: items, error } = await supabase
-        .from('inventory_transaction_items')
-        .select('item_id, quantity, inventory_items!inner(name)')
-        .eq('transaction_id', approval.id);
+        .from("inventory_transaction_items")
+        .select("item_id, quantity, inventory_items!inner(name)")
+        .eq("transaction_id", approval.id);
 
       if (error) throw error;
 
       const transferItems = (items || []).map((item: any) => ({
         item_id: item.item_id,
-        item_name: item.inventory_items?.name || 'Unknown',
+        item_name: item.inventory_items?.name || "Unknown",
         sent_quantity: item.quantity,
         received_quantity: item.quantity.toString(),
       }));
@@ -1333,7 +1798,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       setSelectedInventory(approval);
       setShowTransferApprovalModal(true);
     } catch (error: any) {
-      showToast(error.message || 'Failed to load transfer items', 'error');
+      showToast(error.message || "Failed to load transfer items", "error");
     } finally {
       setProcessing(false);
     }
@@ -1345,7 +1810,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     try {
       setProcessing(true);
 
-      const receivedItems = transferApprovalItems.map(item => ({
+      const receivedItems = transferApprovalItems.map((item) => ({
         item_id: item.item_id,
         received_quantity: parseFloat(item.received_quantity) || 0,
       }));
@@ -1354,16 +1819,22 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       for (const item of transferApprovalItems) {
         const received = parseFloat(item.received_quantity) || 0;
         if (received < 0) {
-          showToast(`Received quantity cannot be negative for ${item.item_name}`, 'error');
+          showToast(
+            `Received quantity cannot be negative for ${item.item_name}`,
+            "error",
+          );
           return;
         }
         if (received > item.sent_quantity) {
-          showToast(`Received quantity cannot exceed sent quantity for ${item.item_name}`, 'error');
+          showToast(
+            `Received quantity cannot exceed sent quantity for ${item.item_name}`,
+            "error",
+          );
           return;
         }
       }
 
-      const { error } = await supabase.rpc('approve_inventory_transfer', {
+      const { error } = await supabase.rpc("approve_inventory_transfer", {
         p_transaction_id: selectedInventory.id,
         p_employee_id: session.employee_id,
         p_received_items: receivedItems,
@@ -1372,12 +1843,14 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       if (error) throw error;
 
       const isPartial = transferApprovalItems.some(
-        item => parseFloat(item.received_quantity) < item.sent_quantity
+        (item) => parseFloat(item.received_quantity) < item.sent_quantity,
       );
 
       showToast(
-        isPartial ? t('inventory.partialReceiptRecorded') : t('inventory.transferApproved'),
-        'success'
+        isPartial
+          ? t("inventory.partialReceiptRecorded")
+          : t("inventory.transferApproved"),
+        "success",
       );
       setShowTransferApprovalModal(false);
       setSelectedInventory(null);
@@ -1385,20 +1858,22 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       fetchInventoryApprovals();
       fetchHistoricalInventoryApprovals();
     } catch (error: any) {
-      showToast(error.message || 'Failed to approve transfer', 'error');
+      showToast(error.message || "Failed to approve transfer", "error");
     } finally {
       setProcessing(false);
     }
   }
 
-  async function handleApproveCashTransaction(approval: PendingCashTransactionApproval) {
+  async function handleApproveCashTransaction(
+    approval: PendingCashTransactionApproval,
+  ) {
     if (!session?.employee_id) {
-      showToast('Session expired. Please log in again.', 'error');
+      showToast("Session expired. Please log in again.", "error");
       return;
     }
 
     if (approval.created_by_id === session.employee_id) {
-      showToast('You cannot approve transactions you created', 'error');
+      showToast("You cannot approve transactions you created", "error");
       return;
     }
 
@@ -1406,51 +1881,58 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       setProcessing(true);
 
       const { error } = await supabase
-        .from('cash_transactions')
+        .from("cash_transactions")
         .update({
-          status: 'approved',
+          status: "approved",
           manager_approved: true,
           manager_approved_by_id: session.employee_id,
           manager_approved_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('id', approval.transaction_id);
+        .eq("id", approval.transaction_id);
 
       if (error) throw error;
 
-      showToast('Cash transaction approved', 'success');
-      setCashTransactionApprovals(prev => prev.filter(a => a.transaction_id !== approval.transaction_id));
-      setProcessedCashTransactions(prev => [...prev, {
-        ...approval,
-        processed_status: 'approved',
-        processed_by_name: session.display_name || 'Unknown',
-        processed_at: new Date().toISOString(),
-      }]);
+      showToast("Cash transaction approved", "success");
+      setCashTransactionApprovals((prev) =>
+        prev.filter((a) => a.transaction_id !== approval.transaction_id),
+      );
+      setProcessedCashTransactions((prev) => [
+        ...prev,
+        {
+          ...approval,
+          processed_status: "approved",
+          processed_by_name: session.display_name || "Unknown",
+          processed_at: new Date().toISOString(),
+        },
+      ]);
       fetchAllTabCounts();
       fetchHistoricalCashApprovals();
     } catch (error: any) {
-      showToast(error.message || 'Failed to approve transaction', 'error');
+      showToast(error.message || "Failed to approve transaction", "error");
     } finally {
       setProcessing(false);
     }
   }
 
-  function handleRejectCashTransactionClick(approval: PendingCashTransactionApproval) {
+  function handleRejectCashTransactionClick(
+    approval: PendingCashTransactionApproval,
+  ) {
     if (!session?.employee_id) return;
 
     if (approval.created_by_id === session.employee_id) {
-      showToast('You cannot reject transactions you created', 'error');
+      showToast("You cannot reject transactions you created", "error");
       return;
     }
 
     setSelectedCashTransaction(approval);
-    setRejectionReason('');
+    setRejectionReason("");
     setShowCashTransactionRejectModal(true);
   }
 
   async function handleRejectCashTransaction() {
     if (!selectedCashTransaction || !rejectionReason.trim()) {
-      showToast('Please provide a rejection reason', 'error');
+      showToast("Please provide a rejection reason", "error");
       return;
     }
 
@@ -1458,34 +1940,41 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       setProcessing(true);
 
       const { error } = await supabase
-        .from('cash_transactions')
+        .from("cash_transactions")
         .update({
-          status: 'rejected',
+          status: "rejected",
           rejection_reason: rejectionReason.trim(),
           manager_approved_by_id: session?.employee_id,
           manager_approved_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq('id', selectedCashTransaction.transaction_id);
+        .eq("id", selectedCashTransaction.transaction_id);
 
       if (error) throw error;
 
-      showToast('Cash transaction rejected', 'success');
+      showToast("Cash transaction rejected", "success");
       setShowCashTransactionRejectModal(false);
-      setCashTransactionApprovals(prev => prev.filter(a => a.transaction_id !== selectedCashTransaction.transaction_id));
-      setProcessedCashTransactions(prev => [...prev, {
-        ...selectedCashTransaction,
-        processed_status: 'rejected',
-        processed_by_name: session?.display_name || 'Unknown',
-        processed_at: new Date().toISOString(),
-        rejection_reason: rejectionReason.trim(),
-      }]);
+      setCashTransactionApprovals((prev) =>
+        prev.filter(
+          (a) => a.transaction_id !== selectedCashTransaction.transaction_id,
+        ),
+      );
+      setProcessedCashTransactions((prev) => [
+        ...prev,
+        {
+          ...selectedCashTransaction,
+          processed_status: "rejected",
+          processed_by_name: session?.display_name || "Unknown",
+          processed_at: new Date().toISOString(),
+          rejection_reason: rejectionReason.trim(),
+        },
+      ]);
       setSelectedCashTransaction(null);
       fetchAllTabCounts();
       fetchHistoricalCashApprovals();
     } catch (error) {
-      console.error('Error rejecting cash transaction:', error);
-      showToast('Failed to reject transaction', 'error');
+      console.error("Error rejecting cash transaction:", error);
+      showToast("Failed to reject transaction", "error");
     } finally {
       setProcessing(false);
     }
@@ -1494,39 +1983,42 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
   function handleViolationDecisionClick(report: ViolationReportForApproval) {
     setSelectedViolationReport(report);
     setShowViolationDecisionModal(true);
-    setViolationDecision('violation_confirmed');
-    setViolationNotes('');
-    setViolationAction('none');
-    setViolationActionDetails('');
+    setViolationDecision("violation_confirmed");
+    setViolationNotes("");
+    setViolationAction("none");
+    setViolationActionDetails("");
   }
 
   async function handleSubmitViolationDecision() {
     if (!selectedViolationReport || !session?.employee_id) return;
 
     if (!violationNotes.trim()) {
-      showToast('Please provide manager notes', 'error');
+      showToast("Please provide manager notes", "error");
       return;
     }
 
     try {
       setProcessing(true);
 
-      const { error } = await supabase.rpc('approve_violation_report', {
+      const { error } = await supabase.rpc("approve_violation_report", {
         p_violation_report_id: selectedViolationReport.report_id,
         p_reviewer_employee_id: session.employee_id,
         p_decision: violationDecision,
         p_manager_notes: violationNotes.trim(),
-        p_action_type: violationDecision === 'violation_confirmed' ? violationAction : 'none',
-        p_action_details: violationActionDetails.trim() || null
+        p_action_type:
+          violationDecision === "violation_confirmed"
+            ? violationAction
+            : "none",
+        p_action_details: violationActionDetails.trim() || null,
       });
 
       if (error) throw error;
 
       showToast(
-        violationDecision === 'violation_confirmed'
-          ? 'Violation confirmed and recorded'
-          : 'Violation report rejected',
-        'success'
+        violationDecision === "violation_confirmed"
+          ? "Violation confirmed and recorded"
+          : "Violation report rejected",
+        "success",
       );
 
       await fetchViolationReports();
@@ -1534,8 +2026,8 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       setShowViolationDecisionModal(false);
       setSelectedViolationReport(null);
     } catch (error: any) {
-      console.error('Error processing violation decision:', error);
-      showToast(error.message || 'Failed to process decision', 'error');
+      console.error("Error processing violation decision:", error);
+      showToast(error.message || "Failed to process decision", "error");
     } finally {
       setProcessing(false);
     }
@@ -1547,49 +2039,54 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
     try {
       setProcessing(true);
-      const { error } = await supabase.rpc('request_violation_additional_info', {
-        p_violation_report_id: selectedReportForInfoRequest.report_id,
-        p_requested_by: session.employee_id,
-        p_message: infoRequestMessage.trim() || null
-      });
+      const { error } = await supabase.rpc(
+        "request_violation_additional_info",
+        {
+          p_violation_report_id: selectedReportForInfoRequest.report_id,
+          p_requested_by: session.employee_id,
+          p_message: infoRequestMessage.trim() || null,
+        },
+      );
 
       if (error) throw error;
 
-      showToast('Information request sent to reporter', 'success');
+      showToast("Information request sent to reporter", "success");
       setShowInfoRequestModal(false);
-      setInfoRequestMessage('');
+      setInfoRequestMessage("");
       setSelectedReportForInfoRequest(null);
       await fetchViolationReports();
       await fetchViolationHistory();
     } catch (error: any) {
-      console.error('Error requesting more info:', error);
-      showToast(error.message || 'Failed to send request', 'error');
+      console.error("Error requesting more info:", error);
+      showToast(error.message || "Failed to send request", "error");
     } finally {
       setProcessing(false);
     }
   }
 
   // Handler for reporter to submit additional info
-  async function handleSubmitAdditionalInfo(report: ViolationReportForApproval | ViolationHistoryReport) {
+  async function handleSubmitAdditionalInfo(
+    report: ViolationReportForApproval | ViolationHistoryReport,
+  ) {
     if (!session?.employee_id || !additionalInfoText.trim()) return;
 
     try {
       setProcessing(true);
-      const { error } = await supabase.rpc('submit_violation_additional_info', {
+      const { error } = await supabase.rpc("submit_violation_additional_info", {
         p_violation_report_id: report.report_id,
         p_reporter_id: session.employee_id,
-        p_additional_info: additionalInfoText.trim()
+        p_additional_info: additionalInfoText.trim(),
       });
 
       if (error) throw error;
 
-      showToast('Additional information submitted', 'success');
-      setAdditionalInfoText('');
+      showToast("Additional information submitted", "success");
+      setAdditionalInfoText("");
       await fetchViolationReports();
       await fetchViolationHistory();
     } catch (error: any) {
-      console.error('Error submitting additional info:', error);
-      showToast(error.message || 'Failed to submit information', 'error');
+      console.error("Error submitting additional info:", error);
+      showToast(error.message || "Failed to submit information", "error");
     } finally {
       setProcessing(false);
     }
@@ -1600,30 +2097,33 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
     return session?.employee_id === report.reporter_employee_id;
   }
 
-  async function handleReviewAttendanceProposal(proposalId: string, action: 'approve' | 'reject') {
+  async function handleReviewAttendanceProposal(
+    proposalId: string,
+    action: "approve" | "reject",
+  ) {
     if (!session?.employee_id) return;
 
     try {
       setProcessing(true);
 
-      const proposal = attendanceProposals.find(p => p.id === proposalId);
+      const proposal = attendanceProposals.find((p) => p.id === proposalId);
       if (!proposal) return;
 
-      const newStatus = action === 'approve' ? 'approved' : 'rejected';
+      const newStatus = action === "approve" ? "approved" : "rejected";
 
       const { error: updateError } = await supabase
-        .from('attendance_change_proposals')
+        .from("attendance_change_proposals")
         .update({
           status: newStatus,
           reviewed_by_employee_id: session.employee_id,
           reviewed_at: new Date().toISOString(),
           review_comment: reviewComment || null,
         })
-        .eq('id', proposalId);
+        .eq("id", proposalId);
 
       if (updateError) throw updateError;
 
-      if (action === 'approve') {
+      if (action === "approve") {
         const updates: any = {};
 
         if (proposal.proposed_check_in_time) {
@@ -1634,8 +2134,10 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
           updates.check_out_time = proposal.proposed_check_out_time;
         }
 
-        const finalCheckInTime = proposal.proposed_check_in_time || proposal.current_check_in_time;
-        const finalCheckOutTime = proposal.proposed_check_out_time || proposal.current_check_out_time;
+        const finalCheckInTime =
+          proposal.proposed_check_in_time || proposal.current_check_in_time;
+        const finalCheckOutTime =
+          proposal.proposed_check_out_time || proposal.current_check_out_time;
 
         if (finalCheckInTime && finalCheckOutTime) {
           const checkIn = new Date(finalCheckInTime);
@@ -1647,40 +2149,42 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
         if (Object.keys(updates).length > 0) {
           const { error: attendanceError } = await supabase
-            .from('attendance_records')
+            .from("attendance_records")
             .update(updates)
-            .eq('id', proposal.attendance_record_id);
+            .eq("id", proposal.attendance_record_id);
 
           if (attendanceError) throw attendanceError;
         }
       }
 
       showToast(
-        action === 'approve'
-          ? 'Proposal approved successfully'
-          : 'Proposal rejected successfully',
-        'success'
+        action === "approve"
+          ? "Proposal approved successfully"
+          : "Proposal rejected successfully",
+        "success",
       );
 
-      setReviewComment('');
+      setReviewComment("");
       setSelectedProposal(null);
       await fetchAttendanceProposals();
     } catch (error: any) {
-      console.error('Error reviewing proposal:', error);
-      showToast(error.message || 'Failed to review proposal', 'error');
+      console.error("Error reviewing proposal:", error);
+      showToast(error.message || "Failed to review proposal", "error");
     } finally {
       setProcessing(false);
     }
   }
 
-  function getUrgencyLevel(hoursRemaining: number): 'urgent' | 'warning' | 'normal' {
-    if (hoursRemaining < 6) return 'urgent';
-    if (hoursRemaining < 24) return 'warning';
-    return 'normal';
+  function getUrgencyLevel(
+    hoursRemaining: number,
+  ): "urgent" | "warning" | "normal" {
+    if (hoursRemaining < 6) return "urgent";
+    if (hoursRemaining < 24) return "warning";
+    return "normal";
   }
 
   function formatTimeRemaining(hoursRemaining: number): string {
-    if (hoursRemaining < 0) return 'Expired';
+    if (hoursRemaining < 0) return "Expired";
     if (hoursRemaining < 1) {
       const minutes = Math.floor(hoursRemaining * 60);
       return `${minutes} min`;
@@ -1693,7 +2197,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
   async function handleApproveClick(ticket: PendingApprovalTicket) {
     try {
       setProcessing(true);
-      const { data, error } = await supabase.rpc('approve_ticket', {
+      const { data, error } = await supabase.rpc("approve_ticket", {
         p_ticket_id: ticket.ticket_id,
         p_employee_id: session?.employee_id,
       });
@@ -1702,15 +2206,15 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
       const result = data as { success: boolean; message: string };
       if (!result.success) {
-        showToast(result.message, 'error');
+        showToast(result.message, "error");
         return;
       }
 
-      showToast('Ticket approved successfully', 'success');
+      showToast("Ticket approved successfully", "success");
       fetchPendingApprovals();
       fetchHistoricalApprovals();
     } catch (error: any) {
-      showToast(error.message || 'Failed to approve ticket', 'error');
+      showToast(error.message || "Failed to approve ticket", "error");
     } finally {
       setProcessing(false);
     }
@@ -1718,19 +2222,19 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
   function handleRejectClick(ticket: PendingApprovalTicket) {
     setSelectedTicket(ticket);
-    setRejectionReason('');
+    setRejectionReason("");
     setShowRejectModal(true);
   }
 
   async function handleReject() {
     if (!selectedTicket || !rejectionReason.trim()) {
-      showToast('Please provide a rejection reason', 'error');
+      showToast("Please provide a rejection reason", "error");
       return;
     }
 
     try {
       setProcessing(true);
-      const { data, error } = await supabase.rpc('reject_ticket', {
+      const { data, error } = await supabase.rpc("reject_ticket", {
         p_ticket_id: selectedTicket.ticket_id,
         p_employee_id: session?.employee_id,
         p_rejection_reason: rejectionReason,
@@ -1740,18 +2244,18 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
       const result = data as { success: boolean; message: string };
       if (!result.success) {
-        showToast(result.message, 'error');
+        showToast(result.message, "error");
         return;
       }
 
-      showToast('Ticket rejected and sent for admin review', 'success');
+      showToast("Ticket rejected and sent for admin review", "success");
       setShowRejectModal(false);
       setSelectedTicket(null);
-      setRejectionReason('');
+      setRejectionReason("");
       fetchPendingApprovals();
       fetchHistoricalApprovals();
     } catch (error: any) {
-      showToast(error.message || 'Failed to reject ticket', 'error');
+      showToast(error.message || "Failed to reject ticket", "error");
     } finally {
       setProcessing(false);
     }
@@ -1760,24 +2264,31 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
   const getViolationStatusCounts = () => {
     return {
       all: violationHistory.length,
-      collecting_responses: violationHistory.filter(v => v.status === 'collecting_responses').length,
-      pending_approval: violationHistory.filter(v => v.status === 'pending_approval').length,
-      approved: violationHistory.filter(v => v.status === 'approved').length,
-      rejected: violationHistory.filter(v => v.status === 'rejected').length,
-      expired: violationHistory.filter(v => v.status === 'expired').length,
+      collecting_responses: violationHistory.filter(
+        (v) => v.status === "collecting_responses",
+      ).length,
+      pending_approval: violationHistory.filter(
+        (v) => v.status === "pending_approval",
+      ).length,
+      approved: violationHistory.filter((v) => v.status === "approved").length,
+      rejected: violationHistory.filter((v) => v.status === "rejected").length,
+      expired: violationHistory.filter((v) => v.status === "expired").length,
     };
   };
 
-  const filteredViolationHistory = violationHistory.filter(report => {
-    if (violationStatusFilter !== 'all' && report.status !== violationStatusFilter) {
+  const filteredViolationHistory = violationHistory.filter((report) => {
+    if (
+      violationStatusFilter !== "all" &&
+      report.status !== violationStatusFilter
+    ) {
       return false;
     }
     return true;
   });
 
-  function navigateDay(direction: 'prev' | 'next') {
-    const d = new Date(selectedDate + 'T00:00:00');
-    d.setDate(d.getDate() + (direction === 'prev' ? -1 : 1));
+  function navigateDay(direction: "prev" | "next") {
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() + (direction === "prev" ? -1 : 1));
     onSelectedDateChange(formatDateISOEST(d));
   }
 
@@ -1790,18 +2301,20 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
   }
 
   function getMinDate(): string {
-    const canViewUnlimitedHistory = session?.role ? Permissions.tipReport.canViewUnlimitedHistory(session.role) : false;
+    const canViewUnlimitedHistory = session?.role
+      ? Permissions.tipReport.canViewUnlimitedHistory(session.role)
+      : false;
 
     if (canViewUnlimitedHistory) {
-      return '2000-01-01';
+      return "2000-01-01";
     }
 
     const today = getCurrentDateEST();
     const date = new Date(today);
     date.setDate(date.getDate() - 14);
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
 
@@ -1814,12 +2327,15 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       <div className="max-w-4xl mx-auto">
         <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center">
           <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Access Denied
+          </h2>
           <p className="text-gray-700 mb-4">
             This page is restricted to management personnel only.
           </p>
           <p className="text-sm text-gray-600">
-            If you believe you should have access, please contact your administrator.
+            If you believe you should have access, please contact your
+            administrator.
           </p>
         </div>
       </div>
@@ -1842,12 +2358,12 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-2">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              {canTakeActions ? 'Management Approvals' : 'My Pending Items'}
+              {canTakeActions ? "Management Approvals" : "My Pending Items"}
             </h2>
             <p className="text-sm text-gray-600">
               {canTakeActions
-                ? 'Review and approve pending requests across all categories'
-                : 'View status of your pending requests and records'}
+                ? "Review and approve pending requests across all categories"
+                : "View status of your pending requests and records"}
             </p>
           </div>
           <div className="flex items-center gap-1">
@@ -1856,13 +2372,13 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                 onClick={() => onSelectedDateChange(getCurrentDateEST())}
                 className="px-2 py-1.5 md:py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[44px] md:min-h-[32px] flex items-center justify-center"
               >
-                {t('common.today')}
+                {t("common.today")}
               </button>
             )}
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => navigateDay('prev')}
+              onClick={() => navigateDay("prev")}
               disabled={!canNavigatePrev()}
               className="p-1 h-[44px] md:h-8 w-10 flex items-center justify-center"
               aria-label="Previous day"
@@ -1880,7 +2396,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => navigateDay('next')}
+              onClick={() => navigateDay("next")}
               disabled={!canNavigateNext()}
               className="p-1 h-[44px] md:h-8 w-10 flex items-center justify-center"
               aria-label="Next day"
@@ -1906,14 +2422,19 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                       <currentTabConfig.icon className="w-4 h-4" />
                       <span>{currentTabConfig.label}</span>
                       {currentTabConfig.getCount() > 0 && (
-                        <Badge variant={currentTabConfig.badgeVariant} className="ml-1">
+                        <Badge
+                          variant={currentTabConfig.badgeVariant}
+                          className="ml-1"
+                        >
                           {currentTabConfig.getCount()}
                         </Badge>
                       )}
                     </>
                   )}
                 </div>
-                <ChevronDown className={`w-4 h-4 transition-transform ${isTabDropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform ${isTabDropdownOpen ? "rotate-180" : ""}`}
+                />
               </button>
 
               {isTabDropdownOpen && (
@@ -1925,9 +2446,14 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                     return (
                       <button
                         key={tab.key}
-                        onClick={() => { handleTabChange(tab.key); setIsTabDropdownOpen(false); }}
+                        onClick={() => {
+                          handleTabChange(tab.key);
+                          setIsTabDropdownOpen(false);
+                        }}
                         className={`w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium transition-colors ${
-                          isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+                          isActive
+                            ? "bg-blue-50 text-blue-700"
+                            : "text-gray-600 hover:bg-gray-50"
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -1935,8 +2461,12 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                           <span>{tab.label}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          {count > 0 && <Badge variant={tab.badgeVariant}>{count}</Badge>}
-                          {isActive && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                          {count > 0 && (
+                            <Badge variant={tab.badgeVariant}>{count}</Badge>
+                          )}
+                          {isActive && (
+                            <CheckCircle className="w-4 h-4 text-blue-600" />
+                          )}
                         </div>
                       </button>
                     );
@@ -1957,13 +2487,17 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                   onClick={() => handleTabChange(tab.key)}
                   className={`flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                     activeTab === tab.key
-                      ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      ? "bg-blue-50 text-blue-700 border-b-2 border-blue-600"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                   }`}
                 >
                   <Icon className="w-4 h-4" />
                   {tab.label}
-                  {count > 0 && <Badge variant={tab.badgeVariant} className="ml-1">{count}</Badge>}
+                  {count > 0 && (
+                    <Badge variant={tab.badgeVariant} className="ml-1">
+                      {count}
+                    </Badge>
+                  )}
                 </button>
               );
             })}
@@ -1971,53 +2505,78 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         </div>
 
         <div className="p-6">
-          {activeTab === 'tickets' && (
+          {activeTab === "tickets" && (
             <div>
               {approvalStats && approvalStats.total_closed > 0 && (
                 <div className="bg-gray-50 rounded-lg p-4 mb-6">
                   <h3 className="text-base font-semibold text-gray-900 mb-3">
-                    {selectedDate === getCurrentDateEST() ? "Today's" : formatDateEST(selectedDate)} Approval Status
+                    {selectedDate === getCurrentDateEST()
+                      ? "Today's"
+                      : formatDateEST(selectedDate)}{" "}
+                    Approval Status
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                     <div className="bg-white rounded-lg p-3 border border-gray-200">
                       <p className="text-xs text-gray-500 mb-1">Total Closed</p>
-                      <p className="text-xl font-bold text-gray-900">{approvalStats.total_closed}</p>
+                      <p className="text-xl font-bold text-gray-900">
+                        {approvalStats.total_closed}
+                      </p>
                     </div>
                     <div className="bg-orange-50 rounded-lg p-3 border border-orange-200">
                       <div className="flex items-center gap-2 mb-1">
                         <Clock className="w-3 h-3 text-orange-600" />
-                        <p className="text-xs text-orange-700 font-medium">Pending</p>
+                        <p className="text-xs text-orange-700 font-medium">
+                          Pending
+                        </p>
                       </div>
-                      <p className="text-xl font-bold text-orange-900">{approvalStats.pending_approval}</p>
+                      <p className="text-xl font-bold text-orange-900">
+                        {approvalStats.pending_approval}
+                      </p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-3 border border-green-200">
                       <div className="flex items-center gap-2 mb-1">
                         <CheckCircle className="w-3 h-3 text-green-600" />
-                        <p className="text-xs text-green-700 font-medium">Approved</p>
+                        <p className="text-xs text-green-700 font-medium">
+                          Approved
+                        </p>
                       </div>
-                      <p className="text-xl font-bold text-green-900">{approvalStats.approved}</p>
+                      <p className="text-xl font-bold text-green-900">
+                        {approvalStats.approved}
+                      </p>
                     </div>
                     <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                       <div className="flex items-center gap-2 mb-1">
                         <Clock className="w-3 h-3 text-blue-600" />
-                        <p className="text-xs text-blue-700 font-medium">Auto-Approved</p>
+                        <p className="text-xs text-blue-700 font-medium">
+                          Auto-Approved
+                        </p>
                       </div>
-                      <p className="text-xl font-bold text-blue-900">{approvalStats.auto_approved}</p>
+                      <p className="text-xl font-bold text-blue-900">
+                        {approvalStats.auto_approved}
+                      </p>
                     </div>
                     <div className="bg-red-50 rounded-lg p-3 border border-red-200">
                       <div className="flex items-center gap-2 mb-1">
                         <AlertCircle className="w-3 h-3 text-red-600" />
-                        <p className="text-xs text-red-700 font-medium">Rejected</p>
+                        <p className="text-xs text-red-700 font-medium">
+                          Rejected
+                        </p>
                       </div>
-                      <p className="text-xl font-bold text-red-900">{approvalStats.rejected}</p>
+                      <p className="text-xl font-bold text-red-900">
+                        {approvalStats.rejected}
+                      </p>
                     </div>
                     {approvalStats.requires_review > 0 && (
                       <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
                         <div className="flex items-center gap-2 mb-1">
                           <AlertCircle className="w-3 h-3 text-yellow-600" />
-                          <p className="text-xs text-yellow-700 font-medium">Needs Review</p>
+                          <p className="text-xs text-yellow-700 font-medium">
+                            Needs Review
+                          </p>
                         </div>
-                        <p className="text-xl font-bold text-yellow-900">{approvalStats.requires_review}</p>
+                        <p className="text-xl font-bold text-yellow-900">
+                          {approvalStats.requires_review}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -2027,34 +2586,53 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
               {tickets.length === 0 ? (
                 <div className="text-center py-12">
                   <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-3" />
-                  <p className="text-lg font-medium text-gray-900 mb-1">All caught up!</p>
-                  <p className="text-sm text-gray-500">No tickets requiring management approval</p>
+                  <p className="text-lg font-medium text-gray-900 mb-1">
+                    All caught up!
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    No tickets requiring management approval
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {tickets.map((ticket) => {
                     const urgency = getUrgencyLevel(ticket.hours_remaining);
-                    const timeRemaining = formatTimeRemaining(ticket.hours_remaining);
-                    const totalTips = ticket.tip_customer + ticket.tip_receptionist;
+                    const timeRemaining = formatTimeRemaining(
+                      ticket.hours_remaining,
+                    );
+                    const totalTips =
+                      ticket.tip_customer + ticket.tip_receptionist;
                     const isHighTip = totalTips > 20;
 
                     return (
                       <div
                         key={ticket.ticket_id}
                         className={`bg-white rounded-lg border-2 p-4 ${
-                          urgency === 'urgent'
-                            ? 'border-red-500'
-                            : urgency === 'warning'
-                            ? 'border-yellow-500'
-                            : 'border-gray-200'
+                          urgency === "urgent"
+                            ? "border-red-500"
+                            : urgency === "warning"
+                              ? "border-yellow-500"
+                              : "border-gray-200"
                         }`}
                       >
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <Badge variant={urgency === 'urgent' ? 'danger' : urgency === 'warning' ? 'warning' : 'default'}>
-                                {urgency === 'urgent' && <AlertTriangle className="w-3 h-3 mr-1" />}
-                                {urgency === 'warning' && <Clock className="w-3 h-3 mr-1" />}
+                              <Badge
+                                variant={
+                                  urgency === "urgent"
+                                    ? "danger"
+                                    : urgency === "warning"
+                                      ? "warning"
+                                      : "default"
+                                }
+                              >
+                                {urgency === "urgent" && (
+                                  <AlertTriangle className="w-3 h-3 mr-1" />
+                                )}
+                                {urgency === "warning" && (
+                                  <Clock className="w-3 h-3 mr-1" />
+                                )}
                                 {timeRemaining}
                               </Badge>
                               {ticket.requires_higher_approval && (
@@ -2064,25 +2642,41 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                 </Badge>
                               )}
                               {isHighTip && (
-                                <Badge variant="danger" className="bg-orange-100 text-orange-800 border-orange-300">
+                                <Badge
+                                  variant="danger"
+                                  className="bg-orange-100 text-orange-800 border-orange-300"
+                                >
                                   <DollarSign className="w-3 h-3 mr-1" />
                                   High Tips: ${totalTips.toFixed(2)}
                                 </Badge>
                               )}
                             </div>
                             <p className="text-sm text-gray-600">
-                              Ticket: <span className="font-medium">{ticket.ticket_no}</span>
+                              Ticket:{" "}
+                              <span className="font-medium">
+                                {ticket.ticket_no}
+                              </span>
                             </p>
                             <p className="text-sm text-gray-600">
-                              Completed by: <span className="font-medium">{ticket.completed_by_name || 'N/A'}</span>
+                              Completed by:{" "}
+                              <span className="font-medium">
+                                {ticket.completed_by_name || "N/A"}
+                              </span>
                             </p>
                             <p className="text-sm text-gray-600">
-                              Closed by: <span className="font-medium">{ticket.closed_by_name}</span>
+                              Closed by:{" "}
+                              <span className="font-medium">
+                                {ticket.closed_by_name}
+                              </span>
                             </p>
                             {ticket.reason && (
-                              <p className={`text-xs mt-1 flex items-center gap-1 ${
-                                isHighTip ? 'text-orange-600 font-medium' : 'text-blue-600'
-                              }`}>
+                              <p
+                                className={`text-xs mt-1 flex items-center gap-1 ${
+                                  isHighTip
+                                    ? "text-orange-600 font-medium"
+                                    : "text-blue-600"
+                                }`}
+                              >
                                 <AlertCircle className="w-3 h-3" />
                                 {ticket.reason}
                               </p>
@@ -2093,35 +2687,61 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                         <div className="grid grid-cols-2 md:grid-cols-6 gap-3 p-3 bg-gray-50 rounded-lg mb-3">
                           <div>
                             <p className="text-xs text-gray-500">Service</p>
-                            <p className="text-sm font-semibold text-gray-900">{ticket.service_name}</p>
+                            <p className="text-sm font-semibold text-gray-900">
+                              {ticket.service_name}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500">Bill Total</p>
-                            <p className="text-sm font-semibold text-gray-900">${ticket.total.toFixed(2)}</p>
+                            <p className="text-sm font-semibold text-gray-900">
+                              ${ticket.total.toFixed(2)}
+                            </p>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-500">Tip (Customer) Card</p>
+                            <p className="text-xs text-gray-500">
+                              Tip (Customer) Card
+                            </p>
                             <p className="text-sm font-semibold text-blue-600">
-                              ${(ticket.payment_method === 'Card' ? ticket.tip_customer : 0).toFixed(2)}
+                              $
+                              {(ticket.payment_method === "Card"
+                                ? ticket.tip_customer
+                                : 0
+                              ).toFixed(2)}
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-500">Tip (Customer) Cash</p>
+                            <p className="text-xs text-gray-500">
+                              Tip (Customer) Cash
+                            </p>
                             <p className="text-sm font-semibold text-green-600">
-                              ${(ticket.payment_method === 'Cash' ? ticket.tip_customer : 0).toFixed(2)}
+                              $
+                              {(ticket.payment_method === "Cash"
+                                ? ticket.tip_customer
+                                : 0
+                              ).toFixed(2)}
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-500">Tip (Receptionist)</p>
+                            <p className="text-xs text-gray-500">
+                              Tip (Receptionist)
+                            </p>
                             <p className="text-sm font-semibold text-green-600">
                               ${ticket.tip_receptionist.toFixed(2)}
                             </p>
                           </div>
-                          <div className={isHighTip ? 'bg-orange-50 rounded px-2 -mx-2' : ''}>
-                            <p className={`text-xs font-medium ${isHighTip ? 'text-orange-700' : 'text-gray-500'}`}>
+                          <div
+                            className={
+                              isHighTip ? "bg-orange-50 rounded px-2 -mx-2" : ""
+                            }
+                          >
+                            <p
+                              className={`text-xs font-medium ${isHighTip ? "text-orange-700" : "text-gray-500"}`}
+                            >
                               Total Tips
                             </p>
-                            <p className={`text-sm font-bold ${isHighTip ? 'text-orange-700' : 'text-gray-900'}`}>
+                            <p
+                              className={`text-sm font-bold ${isHighTip ? "text-orange-700" : "text-gray-900"}`}
+                            >
                               ${totalTips.toFixed(2)}
                             </p>
                           </div>
@@ -2151,7 +2771,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                             </Button>
                           </div>
                         ) : (
-                          <div className="text-sm text-gray-500 italic">View only</div>
+                          <div className="text-sm text-gray-500 italic">
+                            View only
+                          </div>
                         )}
                       </div>
                     );
@@ -2159,9 +2781,12 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                 </div>
               )}
 
-              {(historicalManagerTickets.length > 0 || historicalSupervisorTickets.length > 0) && (
+              {(historicalManagerTickets.length > 0 ||
+                historicalSupervisorTickets.length > 0) && (
                 <div className="mt-8 pt-8 border-t border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Historical Approvals</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Historical Approvals
+                  </h3>
 
                   {historicalManagerTickets.length > 0 && (
                     <div className="mb-6">
@@ -2174,7 +2799,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                           <div
                             key={ticket.ticket_id}
                             className={`bg-gray-50 rounded-lg border p-3 ${
-                              ticket.approval_status === 'approved' ? 'border-green-200' : 'border-red-200'
+                              ticket.approval_status === "approved"
+                                ? "border-green-200"
+                                : "border-red-200"
                             }`}
                           >
                             <div className="flex items-start justify-between">
@@ -2183,18 +2810,26 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                   <span className="text-sm font-medium text-gray-900">
                                     Ticket #{ticket.ticket_number}
                                   </span>
-                                  <Badge variant={ticket.approval_status === 'approved' ? 'success' : 'danger'}>
+                                  <Badge
+                                    variant={
+                                      ticket.approval_status === "approved"
+                                        ? "success"
+                                        : "danger"
+                                    }
+                                  >
                                     {ticket.approval_status.toUpperCase()}
                                   </Badge>
                                 </div>
                                 <p className="text-xs text-gray-600">
-                                  Customer: {ticket.customer_name} • Total: ${ticket.total_amount.toFixed(2)}
+                                  Customer: {ticket.customer_name} • Total: $
+                                  {ticket.total_amount.toFixed(2)}
                                 </p>
                                 <p className="text-xs text-gray-600">
                                   Services: {ticket.service_names}
                                 </p>
                                 <p className="text-xs text-gray-500 mt-1">
-                                  Approved by: {ticket.approved_by_name} on {formatDateTimeEST(ticket.approved_at)}
+                                  Approved by: {ticket.approved_by_name} on{" "}
+                                  {formatDateTimeEST(ticket.approved_at)}
                                 </p>
                               </div>
                             </div>
@@ -2203,7 +2838,8 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                       </div>
                       {historicalManagerTickets.length > 10 && (
                         <p className="text-xs text-gray-500 text-center mt-2">
-                          Showing 10 of {historicalManagerTickets.length} records
+                          Showing 10 of {historicalManagerTickets.length}{" "}
+                          records
                         </p>
                       )}
                     </div>
@@ -2213,43 +2849,57 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                     <div>
                       <h4 className="text-md font-medium text-gray-700 mb-3 flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-blue-600" />
-                        Supervisor Approvals ({historicalSupervisorTickets.length})
+                        Supervisor Approvals (
+                        {historicalSupervisorTickets.length})
                       </h4>
                       <div className="space-y-2">
-                        {historicalSupervisorTickets.slice(0, 10).map((ticket) => (
-                          <div
-                            key={ticket.ticket_id}
-                            className={`bg-gray-50 rounded-lg border p-3 ${
-                              ticket.approval_status === 'approved' ? 'border-green-200' : 'border-red-200'
-                            }`}
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-sm font-medium text-gray-900">
-                                    Ticket #{ticket.ticket_number}
-                                  </span>
-                                  <Badge variant={ticket.approval_status === 'approved' ? 'success' : 'danger'}>
-                                    {ticket.approval_status.toUpperCase()}
-                                  </Badge>
+                        {historicalSupervisorTickets
+                          .slice(0, 10)
+                          .map((ticket) => (
+                            <div
+                              key={ticket.ticket_id}
+                              className={`bg-gray-50 rounded-lg border p-3 ${
+                                ticket.approval_status === "approved"
+                                  ? "border-green-200"
+                                  : "border-red-200"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-sm font-medium text-gray-900">
+                                      Ticket #{ticket.ticket_number}
+                                    </span>
+                                    <Badge
+                                      variant={
+                                        ticket.approval_status === "approved"
+                                          ? "success"
+                                          : "danger"
+                                      }
+                                    >
+                                      {ticket.approval_status.toUpperCase()}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-gray-600">
+                                    Customer: {ticket.customer_name} • Total: $
+                                    {ticket.total_amount.toFixed(2)}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    Services: {ticket.service_names}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Approved by: {ticket.approved_by_name} on{" "}
+                                    {formatDateTimeEST(ticket.approved_at)}
+                                  </p>
                                 </div>
-                                <p className="text-xs text-gray-600">
-                                  Customer: {ticket.customer_name} • Total: ${ticket.total_amount.toFixed(2)}
-                                </p>
-                                <p className="text-xs text-gray-600">
-                                  Services: {ticket.service_names}
-                                </p>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  Approved by: {ticket.approved_by_name} on {formatDateTimeEST(ticket.approved_at)}
-                                </p>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
                       </div>
                       {historicalSupervisorTickets.length > 10 && (
                         <p className="text-xs text-gray-500 text-center mt-2">
-                          Showing 10 of {historicalSupervisorTickets.length} records
+                          Showing 10 of {historicalSupervisorTickets.length}{" "}
+                          records
                         </p>
                       )}
                     </div>
@@ -2261,7 +2911,8 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                 <div className="mt-8 pt-8 border-t border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <AlertCircle className="w-5 h-5 text-red-600" />
-                    Rejected Tickets Requiring Admin Review ({rejectedTickets.length})
+                    Rejected Tickets Requiring Admin Review (
+                    {rejectedTickets.length})
                   </h3>
                   <div className="space-y-3">
                     {rejectedTickets.map((ticket) => (
@@ -2278,7 +2929,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                               <Badge variant="danger">REJECTED</Badge>
                             </div>
                             <p className="text-sm text-gray-700">
-                              {ticket.service_name} {ticket.technician_name && `• ${ticket.technician_name}`}
+                              {ticket.service_name}{" "}
+                              {ticket.technician_name &&
+                                `• ${ticket.technician_name}`}
                             </p>
                             <p className="text-sm font-medium text-gray-900 mt-1">
                               Total: ${Number(ticket.total).toFixed(2)}
@@ -2287,17 +2940,25 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                         </div>
 
                         <div className="bg-red-100 rounded-lg p-3 mb-3">
-                          <p className="text-xs font-semibold text-red-800 mb-1">REJECTION REASON:</p>
-                          <p className="text-sm text-red-900">"{ticket.rejection_reason || 'No reason provided'}"</p>
+                          <p className="text-xs font-semibold text-red-800 mb-1">
+                            REJECTION REASON:
+                          </p>
+                          <p className="text-sm text-red-900">
+                            "{ticket.rejection_reason || "No reason provided"}"
+                          </p>
                         </div>
 
                         <div className="flex items-center justify-between">
                           <p className="text-xs text-gray-600">
-                            {ticket.rejected_by_name && `Rejected by: ${ticket.rejected_by_name}`}
-                            {ticket.rejected_at && ` • ${formatDateTimeEST(ticket.rejected_at)}`}
+                            {ticket.rejected_by_name &&
+                              `Rejected by: ${ticket.rejected_by_name}`}
+                            {ticket.rejected_at &&
+                              ` • ${formatDateTimeEST(ticket.rejected_at)}`}
                           </p>
                           <button
-                            onClick={() => handleClearAdminReview(ticket.ticket_id)}
+                            onClick={() =>
+                              handleClearAdminReview(ticket.ticket_id)
+                            }
                             disabled={processing}
                             className="px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-600 hover:bg-gray-700 text-white disabled:opacity-50"
                           >
@@ -2312,13 +2973,20 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
             </div>
           )}
 
-{activeTab === 'inventory' && (
+          {activeTab === "inventory" && (
             <div>
-              {inventoryApprovals.length === 0 && distributionApprovals.length === 0 && historicalInventoryApprovals.length === 0 ? (
+              {inventoryApprovals.length === 0 &&
+              distributionApprovals.length === 0 &&
+              historicalInventoryApprovals.length === 0 ? (
                 <div className="text-center py-12">
                   <Package className="w-16 h-16 text-gray-400 mx-auto mb-3" />
-                  <p className="text-lg font-medium text-gray-900 mb-1">No pending inventory items</p>
-                  <p className="text-sm text-gray-500">All inventory transactions and distributions have been processed</p>
+                  <p className="text-lg font-medium text-gray-900 mb-1">
+                    No pending inventory items
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    All inventory transactions and distributions have been
+                    processed
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -2329,15 +2997,17 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                         <div
                           key={approval.id}
                           className={`bg-white rounded-lg border-2 p-4 ${
-                            approval.transaction_type === 'transfer' ? 'border-purple-200' : 'border-blue-200'
+                            approval.transaction_type === "transfer"
+                              ? "border-purple-200"
+                              : "border-blue-200"
                           }`}
                         >
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
-                                {approval.transaction_type === 'in' ? (
+                                {approval.transaction_type === "in" ? (
                                   <PackagePlus className="w-5 h-5 text-green-600" />
-                                ) : approval.transaction_type === 'transfer' ? (
+                                ) : approval.transaction_type === "transfer" ? (
                                   <ArrowLeftRight className="w-5 h-5 text-purple-600" />
                                 ) : (
                                   <PackageMinus className="w-5 h-5 text-orange-600" />
@@ -2345,41 +3015,73 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                 <span className="font-semibold text-gray-900">
                                   {approval.transaction_number}
                                 </span>
-                                <Badge variant={
-                                  approval.transaction_type === 'in' ? 'success' :
-                                  approval.transaction_type === 'transfer' ? 'info' : 'default'
-                                }>
-                                  {approval.transaction_type === 'transfer' ? t('inventory.transfer').toUpperCase() : approval.transaction_type.toUpperCase()}
+                                <Badge
+                                  variant={
+                                    approval.transaction_type === "in"
+                                      ? "success"
+                                      : approval.transaction_type === "transfer"
+                                        ? "info"
+                                        : "default"
+                                  }
+                                >
+                                  {approval.transaction_type === "transfer"
+                                    ? t("inventory.transfer").toUpperCase()
+                                    : approval.transaction_type.toUpperCase()}
                                 </Badge>
                               </div>
-                              {approval.transaction_type === 'transfer' ? (
+                              {approval.transaction_type === "transfer" ? (
                                 <p className="text-sm text-gray-600">
-                                  {t('inventory.fromStore')}: <span className="font-medium">{approval.source_store_name}</span>
+                                  {t("inventory.fromStore")}:{" "}
+                                  <span className="font-medium">
+                                    {approval.source_store_name}
+                                  </span>
                                   {approval.destination_store_name && (
-                                    <span> → {t('inventory.toStore')}: <span className="font-medium">{approval.destination_store_name}</span></span>
+                                    <span>
+                                      {" "}
+                                      → {t("inventory.toStore")}:{" "}
+                                      <span className="font-medium">
+                                        {approval.destination_store_name}
+                                      </span>
+                                    </span>
                                   )}
                                 </p>
                               ) : (
                                 <p className="text-sm text-gray-600">
-                                  Requested by: <span className="font-medium">{approval.requested_by_name}</span>
+                                  Requested by:{" "}
+                                  <span className="font-medium">
+                                    {approval.requested_by_name}
+                                  </span>
                                   {approval.recipient_name && (
-                                    <span> → Recipient: <span className="font-medium">{approval.recipient_name}</span></span>
+                                    <span>
+                                      {" "}
+                                      → Recipient:{" "}
+                                      <span className="font-medium">
+                                        {approval.recipient_name}
+                                      </span>
+                                    </span>
                                   )}
                                 </p>
                               )}
                               <p className="text-sm text-gray-600">
-                                {approval.item_count} item{approval.item_count !== 1 ? 's' : ''} • Total value: ${approval.total_value?.toFixed(2) || '0.00'}
+                                {approval.item_count} item
+                                {approval.item_count !== 1 ? "s" : ""} • Total
+                                value: $
+                                {approval.total_value?.toFixed(2) || "0.00"}
                               </p>
                               {approval.notes && (
-                                <p className="text-sm text-gray-600 mt-1 italic">{approval.notes}</p>
+                                <p className="text-sm text-gray-600 mt-1 italic">
+                                  {approval.notes}
+                                </p>
                               )}
                             </div>
                             {canTakeActions ? (
                               <div className="flex gap-2">
-                                {approval.transaction_type === 'transfer' ? (
+                                {approval.transaction_type === "transfer" ? (
                                   <Button
                                     size="sm"
-                                    onClick={() => handleOpenTransferApproval(approval)}
+                                    onClick={() =>
+                                      handleOpenTransferApproval(approval)
+                                    }
                                     disabled={processing}
                                   >
                                     <CheckCircle className="w-4 h-4 mr-1" />
@@ -2388,7 +3090,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                 ) : (
                                   <Button
                                     size="sm"
-                                    onClick={() => handleApproveInventory(approval)}
+                                    onClick={() =>
+                                      handleApproveInventory(approval)
+                                    }
                                     disabled={processing}
                                   >
                                     <CheckCircle className="w-4 h-4 mr-1" />
@@ -2398,7 +3102,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                 <Button
                                   size="sm"
                                   variant="secondary"
-                                  onClick={() => handleRejectInventoryClick(approval)}
+                                  onClick={() =>
+                                    handleRejectInventoryClick(approval)
+                                  }
                                   disabled={processing}
                                 >
                                   <XCircle className="w-4 h-4 mr-1" />
@@ -2406,7 +3112,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                 </Button>
                               </div>
                             ) : (
-                              <div className="text-sm text-gray-500 italic">View only</div>
+                              <div className="text-sm text-gray-500 italic">
+                                View only
+                              </div>
                             )}
                           </div>
                         </div>
@@ -2418,7 +3126,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                   {distributionApprovals.length > 0 && (
                     <div className="space-y-3">
                       {inventoryApprovals.length > 0 && (
-                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mt-2">Distribution Confirmations</h3>
+                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mt-2">
+                          Distribution Confirmations
+                        </h3>
                       )}
                       {distributionApprovals.map((approval) => (
                         <div
@@ -2429,48 +3139,79 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
                                 <ArrowDownLeft className="w-5 h-5 text-green-600" />
-                                <span className="font-semibold text-gray-900">{approval.item_name}</span>
+                                <span className="font-semibold text-gray-900">
+                                  {approval.item_name}
+                                </span>
                                 <Badge variant="success">DISTRIBUTION</Badge>
                               </div>
                               <p className="text-sm text-gray-600">
-                                Distributed by: <span className="font-medium">{approval.distributed_by_name}</span>
-                                <span> → To: <span className="font-medium">{approval.to_employee_name}</span></span>
+                                Distributed by:{" "}
+                                <span className="font-medium">
+                                  {approval.distributed_by_name}
+                                </span>
+                                <span>
+                                  {" "}
+                                  → To:{" "}
+                                  <span className="font-medium">
+                                    {approval.to_employee_name}
+                                  </span>
+                                </span>
                               </p>
                               <p className="text-sm text-gray-600">
-                                Qty: {approval.total_quantity} • Value: ${approval.total_value?.toFixed(2) || '0.00'}
-                                {approval.distribution_count > 1 && ` • ${approval.distribution_count} lots`}
+                                Qty: {approval.total_quantity} • Value: $
+                                {approval.total_value?.toFixed(2) || "0.00"}
+                                {approval.distribution_count > 1 &&
+                                  ` • ${approval.distribution_count} lots`}
                               </p>
                               {approval.condition_notes && (
-                                <p className="text-sm text-gray-600 mt-1 italic">{approval.condition_notes}</p>
+                                <p className="text-sm text-gray-600 mt-1 italic">
+                                  {approval.condition_notes}
+                                </p>
                               )}
                               <div className="flex items-center gap-3 mt-2">
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                  approval.status !== 'pending' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                                }`}>
-                                  {approval.status !== 'pending' ? 'Acknowledged' : 'Pending Acknowledgment'}
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full ${
+                                    approval.status !== "pending"
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-yellow-100 text-yellow-700"
+                                  }`}
+                                >
+                                  {approval.status !== "pending"
+                                    ? "Acknowledged"
+                                    : "Pending Acknowledgment"}
                                 </span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                  approval.manager_approved ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                                }`}>
-                                  {approval.manager_approved ? 'Manager Approved' : 'Pending Manager Approval'}
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full ${
+                                    approval.manager_approved
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-yellow-100 text-yellow-700"
+                                  }`}
+                                >
+                                  {approval.manager_approved
+                                    ? "Manager Approved"
+                                    : "Pending Manager Approval"}
                                 </span>
                               </div>
                             </div>
                             <div className="flex gap-2 ml-3">
-                              {approval.approval_type === 'acknowledge' && (
+                              {approval.approval_type === "acknowledge" && (
                                 <Button
                                   size="sm"
-                                  onClick={() => handleAcknowledgeDistribution(approval)}
+                                  onClick={() =>
+                                    handleAcknowledgeDistribution(approval)
+                                  }
                                   disabled={processing}
                                 >
                                   <CheckCircle className="w-4 h-4 mr-1" />
                                   Acknowledge
                                 </Button>
                               )}
-                              {approval.approval_type === 'manager_approve' && (
+                              {approval.approval_type === "manager_approve" && (
                                 <Button
                                   size="sm"
-                                  onClick={() => handleApproveDistribution(approval)}
+                                  onClick={() =>
+                                    handleApproveDistribution(approval)
+                                  }
                                   disabled={processing}
                                 >
                                   <CheckCircle className="w-4 h-4 mr-1" />
@@ -2488,21 +3229,25 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
               {historicalInventoryApprovals.length > 0 && (
                 <div className="mt-8 pt-8 border-t border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Historical Approvals</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Historical Approvals
+                  </h3>
                   <div className="space-y-2">
                     {historicalInventoryApprovals.slice(0, 10).map((item) => (
                       <div
                         key={item.transaction_id}
                         className={`bg-gray-50 rounded-lg border p-3 ${
-                          item.status === 'approved' ? 'border-green-200' : 'border-red-200'
+                          item.status === "approved"
+                            ? "border-green-200"
+                            : "border-red-200"
                         }`}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              {item.transaction_type === 'in' ? (
+                              {item.transaction_type === "in" ? (
                                 <PackagePlus className="w-4 h-4 text-green-600" />
-                              ) : item.transaction_type === 'transfer' ? (
+                              ) : item.transaction_type === "transfer" ? (
                                 <ArrowLeftRight className="w-4 h-4 text-purple-600" />
                               ) : (
                                 <PackageMinus className="w-4 h-4 text-orange-600" />
@@ -2510,34 +3255,53 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                               <span className="text-sm font-medium text-gray-900">
                                 {item.transaction_number}
                               </span>
-                              <Badge variant={item.status === 'approved' ? 'success' : 'danger'}>
+                              <Badge
+                                variant={
+                                  item.status === "approved"
+                                    ? "success"
+                                    : "danger"
+                                }
+                              >
                                 {item.status.toUpperCase()}
                               </Badge>
-                              <Badge variant={
-                                item.transaction_type === 'in' ? 'success' :
-                                item.transaction_type === 'transfer' ? 'info' : 'default'
-                              }>
+                              <Badge
+                                variant={
+                                  item.transaction_type === "in"
+                                    ? "success"
+                                    : item.transaction_type === "transfer"
+                                      ? "info"
+                                      : "default"
+                                }
+                              >
                                 {item.transaction_type.toUpperCase()}
                               </Badge>
                             </div>
                             <p className="text-xs text-gray-600">
                               Requested by: {item.requested_by_name}
-                              {' • '}{item.item_count} item{item.item_count !== 1 ? 's' : ''}
-                              {' • '}Total: ${item.total_value.toFixed(2)}
+                              {" • "}
+                              {item.item_count} item
+                              {item.item_count !== 1 ? "s" : ""}
+                              {" • "}Total: ${item.total_value.toFixed(2)}
                             </p>
-                            {item.transaction_type === 'transfer' && (
+                            {item.transaction_type === "transfer" && (
                               <p className="text-xs text-gray-600">
-                                {item.source_store_name} → {item.destination_store_name}
+                                {item.source_store_name} →{" "}
+                                {item.destination_store_name}
                               </p>
                             )}
-                            {item.status === 'rejected' && item.rejection_reason && (
-                              <p className="text-xs text-red-600 mt-1">
-                                Reason: {item.rejection_reason}
-                              </p>
-                            )}
+                            {item.status === "rejected" &&
+                              item.rejection_reason && (
+                                <p className="text-xs text-red-600 mt-1">
+                                  Reason: {item.rejection_reason}
+                                </p>
+                              )}
                             <p className="text-xs text-gray-500 mt-1">
-                              {item.status === 'approved' ? 'Approved' : 'Rejected'} by: {item.manager_approved_by_name}
-                              {item.manager_approved_at && ` on ${formatDateTimeEST(item.manager_approved_at)}`}
+                              {item.status === "approved"
+                                ? "Approved"
+                                : "Rejected"}{" "}
+                              by: {item.manager_approved_by_name}
+                              {item.manager_approved_at &&
+                                ` on ${formatDateTimeEST(item.manager_approved_at)}`}
                             </p>
                           </div>
                         </div>
@@ -2546,7 +3310,8 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                   </div>
                   {historicalInventoryApprovals.length > 10 && (
                     <p className="text-xs text-gray-500 text-center mt-2">
-                      Showing 10 of {historicalInventoryApprovals.length} records
+                      Showing 10 of {historicalInventoryApprovals.length}{" "}
+                      records
                     </p>
                   )}
                 </div>
@@ -2554,13 +3319,19 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
             </div>
           )}
 
-          {activeTab === 'cash' && (
+          {activeTab === "cash" && (
             <div>
-              {cashTransactionApprovals.length === 0 && processedCashTransactions.length === 0 && historicalCashApprovals.length === 0 ? (
+              {cashTransactionApprovals.length === 0 &&
+              processedCashTransactions.length === 0 &&
+              historicalCashApprovals.length === 0 ? (
                 <div className="text-center py-12">
                   <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-3" />
-                  <p className="text-lg font-medium text-gray-900 mb-1">No pending cash transactions</p>
-                  <p className="text-sm text-gray-500">All cash transactions have been processed</p>
+                  <p className="text-lg font-medium text-gray-900 mb-1">
+                    No pending cash transactions
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    All cash transactions have been processed
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -2568,13 +3339,15 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                     <div
                       key={approval.transaction_id}
                       className={`bg-white rounded-lg border-2 p-4 ${
-                        approval.transaction_type === 'cash_in' ? 'border-green-200' : 'border-red-200'
+                        approval.transaction_type === "cash_in"
+                          ? "border-green-200"
+                          : "border-red-200"
                       }`}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            {approval.transaction_type === 'cash_in' ? (
+                            {approval.transaction_type === "cash_in" ? (
                               <ArrowDownLeft className="w-5 h-5 text-green-600" />
                             ) : (
                               <ArrowUpRight className="w-5 h-5 text-red-600" />
@@ -2582,19 +3355,32 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                             <span className="font-semibold text-gray-900">
                               ${approval.amount.toFixed(2)}
                             </span>
-                            <Badge variant={approval.transaction_type === 'cash_in' ? 'success' : 'danger'}>
-                              {approval.transaction_type === 'cash_in' ? 'CASH IN' : 'CASH OUT'}
+                            <Badge
+                              variant={
+                                approval.transaction_type === "cash_in"
+                                  ? "success"
+                                  : "danger"
+                              }
+                            >
+                              {approval.transaction_type === "cash_in"
+                                ? "CASH IN"
+                                : "CASH OUT"}
                             </Badge>
                           </div>
                           <p className="text-sm text-gray-600 mb-1">
-                            Created by: <span className="font-medium">{approval.created_by_name}</span>
+                            Created by:{" "}
+                            <span className="font-medium">
+                              {approval.created_by_name}
+                            </span>
                           </p>
                           <p className="text-sm text-gray-900 mb-1">
-                            <span className="font-medium">Description:</span> {approval.description}
+                            <span className="font-medium">Description:</span>{" "}
+                            {approval.description}
                           </p>
                           {approval.category && (
                             <p className="text-sm text-gray-600">
-                              <span className="font-medium">Category:</span> {approval.category}
+                              <span className="font-medium">Category:</span>{" "}
+                              {approval.category}
                             </p>
                           )}
                           <p className="text-xs text-gray-500 mt-2">
@@ -2605,7 +3391,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                           <div className="flex gap-2">
                             <Button
                               size="sm"
-                              onClick={() => handleApproveCashTransaction(approval)}
+                              onClick={() =>
+                                handleApproveCashTransaction(approval)
+                              }
                               disabled={processing}
                             >
                               <CheckCircle className="w-4 h-4 mr-1" />
@@ -2614,7 +3402,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                             <Button
                               size="sm"
                               variant="secondary"
-                              onClick={() => handleRejectCashTransactionClick(approval)}
+                              onClick={() =>
+                                handleRejectCashTransactionClick(approval)
+                              }
                               disabled={processing}
                             >
                               <XCircle className="w-4 h-4 mr-1" />
@@ -2622,7 +3412,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                             </Button>
                           </div>
                         ) : (
-                          <div className="text-sm text-gray-500 italic">View only</div>
+                          <div className="text-sm text-gray-500 italic">
+                            View only
+                          </div>
                         )}
                       </div>
                     </div>
@@ -2632,15 +3424,15 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                     <div
                       key={item.transaction_id}
                       className={`rounded-lg border-2 p-4 opacity-75 ${
-                        item.processed_status === 'approved'
-                          ? 'bg-green-50 border-green-300'
-                          : 'bg-red-50 border-red-300'
+                        item.processed_status === "approved"
+                          ? "bg-green-50 border-green-300"
+                          : "bg-red-50 border-red-300"
                       }`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            {item.processed_status === 'approved' ? (
+                            {item.processed_status === "approved" ? (
                               <CheckCircle className="w-5 h-5 text-green-600" />
                             ) : (
                               <XCircle className="w-5 h-5 text-red-600" />
@@ -2648,24 +3440,53 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                             <span className="font-semibold text-gray-900">
                               ${item.amount.toFixed(2)}
                             </span>
-                            <Badge variant={item.transaction_type === 'cash_in' ? 'success' : 'danger'}>
-                              {item.transaction_type === 'cash_in' ? 'CASH IN' : 'CASH OUT'}
+                            <Badge
+                              variant={
+                                item.transaction_type === "cash_in"
+                                  ? "success"
+                                  : "danger"
+                              }
+                            >
+                              {item.transaction_type === "cash_in"
+                                ? "CASH IN"
+                                : "CASH OUT"}
                             </Badge>
-                            <Badge variant={item.processed_status === 'approved' ? 'success' : 'danger'}>
-                              {item.processed_status === 'approved' ? 'APPROVED' : 'REJECTED'}
+                            <Badge
+                              variant={
+                                item.processed_status === "approved"
+                                  ? "success"
+                                  : "danger"
+                              }
+                            >
+                              {item.processed_status === "approved"
+                                ? "APPROVED"
+                                : "REJECTED"}
                             </Badge>
                           </div>
                           <p className="text-sm text-gray-600 mb-1">
-                            Created by: <span className="font-medium">{item.created_by_name}</span>
+                            Created by:{" "}
+                            <span className="font-medium">
+                              {item.created_by_name}
+                            </span>
                           </p>
                           <p className="text-sm text-gray-900 mb-1">
-                            <span className="font-medium">Description:</span> {item.description}
+                            <span className="font-medium">Description:</span>{" "}
+                            {item.description}
                           </p>
-                          <p className={`text-sm mt-1 ${item.processed_status === 'approved' ? 'text-green-700' : 'text-red-700'}`}>
-                            {item.processed_status === 'approved' ? 'Approved' : 'Rejected'} by <span className="font-medium">{item.processed_by_name}</span>
-                            {item.processed_status === 'rejected' && item.rejection_reason && (
-                              <span>: {item.rejection_reason}</span>
-                            )}
+                          <p
+                            className={`text-sm mt-1 ${item.processed_status === "approved" ? "text-green-700" : "text-red-700"}`}
+                          >
+                            {item.processed_status === "approved"
+                              ? "Approved"
+                              : "Rejected"}{" "}
+                            by{" "}
+                            <span className="font-medium">
+                              {item.processed_by_name}
+                            </span>
+                            {item.processed_status === "rejected" &&
+                              item.rejection_reason && (
+                                <span>: {item.rejection_reason}</span>
+                              )}
                           </p>
                           <p className="text-xs text-gray-500 mt-1">
                             {formatTimeEST(item.processed_at)}
@@ -2679,19 +3500,23 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
               {historicalCashApprovals.length > 0 && (
                 <div className="mt-8 pt-8 border-t border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Historical Approvals</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Historical Approvals
+                  </h3>
                   <div className="space-y-2">
                     {historicalCashApprovals.slice(0, 10).map((item) => (
                       <div
                         key={item.transaction_id}
                         className={`bg-gray-50 rounded-lg border p-3 ${
-                          item.status === 'approved' ? 'border-green-200' : 'border-red-200'
+                          item.status === "approved"
+                            ? "border-green-200"
+                            : "border-red-200"
                         }`}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              {item.transaction_type === 'cash_in' ? (
+                              {item.transaction_type === "cash_in" ? (
                                 <ArrowDownLeft className="w-4 h-4 text-green-600" />
                               ) : (
                                 <ArrowUpRight className="w-4 h-4 text-red-600" />
@@ -2699,30 +3524,50 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                               <span className="text-sm font-medium text-gray-900">
                                 ${item.amount.toFixed(2)}
                               </span>
-                              <Badge variant={item.status === 'approved' ? 'success' : 'danger'}>
+                              <Badge
+                                variant={
+                                  item.status === "approved"
+                                    ? "success"
+                                    : "danger"
+                                }
+                              >
                                 {item.status.toUpperCase()}
                               </Badge>
-                              <Badge variant={item.transaction_type === 'cash_in' ? 'success' : 'danger'}>
-                                {item.transaction_type === 'cash_in' ? 'CASH IN' : 'CASH OUT'}
+                              <Badge
+                                variant={
+                                  item.transaction_type === "cash_in"
+                                    ? "success"
+                                    : "danger"
+                                }
+                              >
+                                {item.transaction_type === "cash_in"
+                                  ? "CASH IN"
+                                  : "CASH OUT"}
                               </Badge>
                             </div>
                             <p className="text-xs text-gray-600">
                               Created by: {item.created_by_name}
-                              {' • '}{item.description}
+                              {" • "}
+                              {item.description}
                             </p>
                             {item.category && (
                               <p className="text-xs text-gray-600">
                                 Category: {item.category}
                               </p>
                             )}
-                            {item.status === 'rejected' && item.rejection_reason && (
-                              <p className="text-xs text-red-600 mt-1">
-                                Reason: {item.rejection_reason}
-                              </p>
-                            )}
+                            {item.status === "rejected" &&
+                              item.rejection_reason && (
+                                <p className="text-xs text-red-600 mt-1">
+                                  Reason: {item.rejection_reason}
+                                </p>
+                              )}
                             <p className="text-xs text-gray-500 mt-1">
-                              {item.status === 'approved' ? 'Approved' : 'Rejected'} by: {item.manager_approved_by_name}
-                              {item.manager_approved_at && ` on ${formatDateTimeEST(item.manager_approved_at)}`}
+                              {item.status === "approved"
+                                ? "Approved"
+                                : "Rejected"}{" "}
+                              by: {item.manager_approved_by_name}
+                              {item.manager_approved_at &&
+                                ` on ${formatDateTimeEST(item.manager_approved_at)}`}
                             </p>
                           </div>
                         </div>
@@ -2739,516 +3584,715 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
             </div>
           )}
 
-          {activeTab === 'transaction-changes' && canReviewTransactionChanges && (
-            <div>
-              {transactionChangeProposals.length === 0 && historicalTransactionChanges.length === 0 ? (
-                <div className="text-center py-12">
-                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-3" />
-                  <p className="text-lg font-medium text-gray-900 mb-1">No pending transaction changes</p>
-                  <p className="text-sm text-gray-500">All change requests have been processed</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {transactionChangeProposals.map((proposal) => (
-                    <div
-                      key={proposal.proposal_id}
-                      className={`bg-white rounded-lg border-2 p-4 ${
-                        proposal.is_deletion_request ? 'border-red-400' : 'border-yellow-400'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          {proposal.is_deletion_request ? (
-                            <AlertOctagon className="w-5 h-5 text-red-600" />
-                          ) : (
-                            <FileText className="w-5 h-5 text-yellow-600" />
-                          )}
-                          <span className="font-semibold text-gray-900">
-                            {proposal.is_deletion_request ? 'Deletion Request' : 'Change Request'}
-                          </span>
-                          <Badge variant={proposal.transaction_type === 'cash_in' ? 'success' : 'danger'}>
-                            {proposal.transaction_type === 'cash_in' ? 'DEPOSIT' : 'WITHDRAWAL'}
-                          </Badge>
-                          {proposal.is_deletion_request && (
-                            <Badge variant="danger">DELETE</Badge>
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {new Date(proposal.created_at).toLocaleDateString('en-US', {
-                            timeZone: 'America/New_York',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          })}
-                        </div>
-                      </div>
-
-                      <p className="text-sm text-gray-600 mb-3">
-                        Requested by: <span className="font-medium">{proposal.created_by_name}</span>
-                      </p>
-
-                      {proposal.is_deletion_request ? (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            <AlertTriangle className="w-4 h-4 text-red-600" />
-                            <span className="text-sm font-medium text-red-800">
-                              This request will permanently delete the transaction
+          {activeTab === "transaction-changes" &&
+            canReviewTransactionChanges && (
+              <div>
+                {transactionChangeProposals.length === 0 &&
+                historicalTransactionChanges.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="w-16 h-16 text-gray-400 mx-auto mb-3" />
+                    <p className="text-lg font-medium text-gray-900 mb-1">
+                      No pending transaction changes
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      All change requests have been processed
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {transactionChangeProposals.map((proposal) => (
+                      <div
+                        key={proposal.proposal_id}
+                        className={`bg-white rounded-lg border-2 p-4 ${
+                          proposal.is_deletion_request
+                            ? "border-red-400"
+                            : "border-yellow-400"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            {proposal.is_deletion_request ? (
+                              <AlertOctagon className="w-5 h-5 text-red-600" />
+                            ) : (
+                              <FileText className="w-5 h-5 text-yellow-600" />
+                            )}
+                            <span className="font-semibold text-gray-900">
+                              {proposal.is_deletion_request
+                                ? "Deletion Request"
+                                : "Change Request"}
                             </span>
+                            <Badge
+                              variant={
+                                proposal.transaction_type === "cash_in"
+                                  ? "success"
+                                  : "danger"
+                              }
+                            >
+                              {proposal.transaction_type === "cash_in"
+                                ? "DEPOSIT"
+                                : "WITHDRAWAL"}
+                            </Badge>
+                            {proposal.is_deletion_request && (
+                              <Badge variant="danger">DELETE</Badge>
+                            )}
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                            <div>
-                              <span className="text-gray-500">Amount:</span>{' '}
-                              <span className="font-medium">${proposal.current_amount.toFixed(2)}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Category:</span>{' '}
-                              <span className="font-medium">{proposal.current_category || '-'}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Date:</span>{' '}
-                              <span className="font-medium">{proposal.current_date}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Description:</span>{' '}
-                              <span className="font-medium">{proposal.current_description}</span>
-                            </div>
+                          <div className="text-xs text-gray-500">
+                            {new Date(proposal.created_at).toLocaleDateString(
+                              "en-US",
+                              {
+                                timeZone: "America/New_York",
+                                month: "short",
+                                day: "numeric",
+                                hour: "numeric",
+                                minute: "2-digit",
+                              },
+                            )}
                           </div>
                         </div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                          <div className="bg-gray-50 rounded-lg p-3">
-                            <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Current Values</h4>
-                            <div className="space-y-1 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-gray-500">Amount:</span>
-                                <span className={`font-medium ${proposal.proposed_amount !== null ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+
+                        <p className="text-sm text-gray-600 mb-3">
+                          Requested by:{" "}
+                          <span className="font-medium">
+                            {proposal.created_by_name}
+                          </span>
+                        </p>
+
+                        {proposal.is_deletion_request ? (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <AlertTriangle className="w-4 h-4 text-red-600" />
+                              <span className="text-sm font-medium text-red-800">
+                                This request will permanently delete the
+                                transaction
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                              <div>
+                                <span className="text-gray-500">Amount:</span>{" "}
+                                <span className="font-medium">
                                   ${proposal.current_amount.toFixed(2)}
                                 </span>
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-500">Category:</span>
-                                <span className={`font-medium ${proposal.proposed_category !== null ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                                  {proposal.current_category || '-'}
+                              <div>
+                                <span className="text-gray-500">Category:</span>{" "}
+                                <span className="font-medium">
+                                  {proposal.current_category || "-"}
                                 </span>
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-500">Date:</span>
-                                <span className={`font-medium ${proposal.proposed_date !== null ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                              <div>
+                                <span className="text-gray-500">Date:</span>{" "}
+                                <span className="font-medium">
                                   {proposal.current_date}
                                 </span>
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-500">Description:</span>
-                                <span className={`font-medium ${proposal.proposed_description !== null ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                              <div>
+                                <span className="text-gray-500">
+                                  Description:
+                                </span>{" "}
+                                <span className="font-medium">
                                   {proposal.current_description}
                                 </span>
                               </div>
                             </div>
                           </div>
-                          <div className="bg-green-50 rounded-lg p-3">
-                            <h4 className="text-xs font-semibold text-green-700 uppercase mb-2">Proposed Changes</h4>
-                            <div className="space-y-1 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-gray-500">Amount:</span>
-                                <span className={`font-semibold ${proposal.proposed_amount !== null ? 'text-green-700' : 'text-gray-400'}`}>
-                                  {proposal.proposed_amount !== null ? `$${proposal.proposed_amount.toFixed(2)}` : 'No change'}
-                                </span>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div className="bg-gray-50 rounded-lg p-3">
+                              <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                                Current Values
+                              </h4>
+                              <div className="space-y-1 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Amount:</span>
+                                  <span
+                                    className={`font-medium ${proposal.proposed_amount !== null ? "line-through text-gray-400" : "text-gray-900"}`}
+                                  >
+                                    ${proposal.current_amount.toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">
+                                    Category:
+                                  </span>
+                                  <span
+                                    className={`font-medium ${proposal.proposed_category !== null ? "line-through text-gray-400" : "text-gray-900"}`}
+                                  >
+                                    {proposal.current_category || "-"}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Date:</span>
+                                  <span
+                                    className={`font-medium ${proposal.proposed_date !== null ? "line-through text-gray-400" : "text-gray-900"}`}
+                                  >
+                                    {proposal.current_date}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">
+                                    Description:
+                                  </span>
+                                  <span
+                                    className={`font-medium ${proposal.proposed_description !== null ? "line-through text-gray-400" : "text-gray-900"}`}
+                                  >
+                                    {proposal.current_description}
+                                  </span>
+                                </div>
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-500">Category:</span>
-                                <span className={`font-semibold ${proposal.proposed_category !== null ? 'text-green-700' : 'text-gray-400'}`}>
-                                  {proposal.proposed_category !== null ? proposal.proposed_category : 'No change'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-500">Date:</span>
-                                <span className={`font-semibold ${proposal.proposed_date !== null ? 'text-green-700' : 'text-gray-400'}`}>
-                                  {proposal.proposed_date !== null ? proposal.proposed_date : 'No change'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-500">Description:</span>
-                                <span className={`font-semibold ${proposal.proposed_description !== null ? 'text-green-700' : 'text-gray-400'}`}>
-                                  {proposal.proposed_description !== null ? proposal.proposed_description : 'No change'}
-                                </span>
+                            </div>
+                            <div className="bg-green-50 rounded-lg p-3">
+                              <h4 className="text-xs font-semibold text-green-700 uppercase mb-2">
+                                Proposed Changes
+                              </h4>
+                              <div className="space-y-1 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Amount:</span>
+                                  <span
+                                    className={`font-semibold ${proposal.proposed_amount !== null ? "text-green-700" : "text-gray-400"}`}
+                                  >
+                                    {proposal.proposed_amount !== null
+                                      ? `$${proposal.proposed_amount.toFixed(2)}`
+                                      : "No change"}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">
+                                    Category:
+                                  </span>
+                                  <span
+                                    className={`font-semibold ${proposal.proposed_category !== null ? "text-green-700" : "text-gray-400"}`}
+                                  >
+                                    {proposal.proposed_category !== null
+                                      ? proposal.proposed_category
+                                      : "No change"}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Date:</span>
+                                  <span
+                                    className={`font-semibold ${proposal.proposed_date !== null ? "text-green-700" : "text-gray-400"}`}
+                                  >
+                                    {proposal.proposed_date !== null
+                                      ? proposal.proposed_date
+                                      : "No change"}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">
+                                    Description:
+                                  </span>
+                                  <span
+                                    className={`font-semibold ${proposal.proposed_description !== null ? "text-green-700" : "text-gray-400"}`}
+                                  >
+                                    {proposal.proposed_description !== null
+                                      ? proposal.proposed_description
+                                      : "No change"}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-                        <label className="text-xs font-semibold text-yellow-700 uppercase mb-1 block">
-                          Reason for Request
-                        </label>
-                        <p className="text-sm text-gray-700">{proposal.reason_comment}</p>
-                      </div>
-
-                      {selectedTransactionChangeProposal?.proposal_id === proposal.proposal_id ? (
-                        <div className="space-y-3">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Review Comment {proposal.is_deletion_request || 'rejection' ? '' : '(Optional)'}
-                            </label>
-                            <textarea
-                              value={transactionChangeReviewComment}
-                              onChange={(e) => setTransactionChangeReviewComment(e.target.value)}
-                              placeholder="Add a comment about this decision..."
-                              rows={2}
-                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              disabled={processing}
-                            />
-                          </div>
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => {
-                                setSelectedTransactionChangeProposal(null);
-                                setTransactionChangeReviewComment('');
-                              }}
-                              disabled={processing}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => handleRejectTransactionChangeProposal(proposal)}
-                              disabled={processing}
-                              className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
-                            >
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Reject
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleApproveTransactionChangeProposal(proposal)}
-                              disabled={processing}
-                              className={proposal.is_deletion_request ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
-                            >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              {processing ? 'Processing...' : proposal.is_deletion_request ? 'Approve Deletion' : 'Approve Changes'}
-                            </Button>
-                          </div>
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                          <label className="text-xs font-semibold text-yellow-700 uppercase mb-1 block">
+                            Reason for Request
+                          </label>
+                          <p className="text-sm text-gray-700">
+                            {proposal.reason_comment}
+                          </p>
                         </div>
-                      ) : (
-                        <div className="flex justify-end">
-                          <Button
-                            size="sm"
-                            onClick={() => setSelectedTransactionChangeProposal(proposal)}
-                            disabled={processing}
-                          >
-                            Review
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
 
-              {historicalTransactionChanges.length > 0 && (
-                <div className="mt-8 pt-8 border-t border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Historical Approvals</h3>
-                  <div className="space-y-2">
-                    {historicalTransactionChanges.slice(0, 10).map((item) => (
-                      <div
-                        key={item.proposal_id}
-                        className={`bg-gray-50 rounded-lg border p-3 ${
-                          item.status === 'approved' ? 'border-green-200' : 'border-red-200'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              {item.is_deletion_request ? (
-                                <AlertOctagon className="w-4 h-4 text-red-600" />
-                              ) : (
-                                <FileText className="w-4 h-4 text-yellow-600" />
-                              )}
-                              <span className="text-sm font-medium text-gray-900">
-                                {item.is_deletion_request ? 'Deletion Request' : 'Change Request'}
-                              </span>
-                              <Badge variant={item.status === 'approved' ? 'success' : 'danger'}>
-                                {item.status.toUpperCase()}
-                              </Badge>
-                              {item.is_deletion_request && (
-                                <Badge variant="danger">DELETE</Badge>
-                              )}
+                        {selectedTransactionChangeProposal?.proposal_id ===
+                        proposal.proposal_id ? (
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Review Comment{" "}
+                                {proposal.is_deletion_request || "rejection"
+                                  ? ""
+                                  : "(Optional)"}
+                              </label>
+                              <textarea
+                                value={transactionChangeReviewComment}
+                                onChange={(e) =>
+                                  setTransactionChangeReviewComment(
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="Add a comment about this decision..."
+                                rows={2}
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                disabled={processing}
+                              />
                             </div>
-                            <p className="text-xs text-gray-600">
-                              Created by: {item.created_by_name}
-                              {' • '}Amount: ${item.current_amount.toFixed(2)}
-                              {' • '}{item.current_description}
-                            </p>
-                            {item.review_comment && (
-                              <p className="text-xs text-gray-600 mt-1">
-                                Comment: {item.review_comment}
-                              </p>
-                            )}
-                            <p className="text-xs text-gray-500 mt-1">
-                              {item.status === 'approved' ? 'Approved' : 'Rejected'} by: {item.reviewed_by_name}
-                              {item.reviewed_at && ` on ${formatDateTimeEST(item.reviewed_at)}`}
-                            </p>
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                  setSelectedTransactionChangeProposal(null);
+                                  setTransactionChangeReviewComment("");
+                                }}
+                                disabled={processing}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() =>
+                                  handleRejectTransactionChangeProposal(
+                                    proposal,
+                                  )
+                                }
+                                disabled={processing}
+                                className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                              >
+                                <XCircle className="w-4 h-4 mr-1" />
+                                Reject
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleApproveTransactionChangeProposal(
+                                    proposal,
+                                  )
+                                }
+                                disabled={processing}
+                                className={
+                                  proposal.is_deletion_request
+                                    ? "bg-red-600 hover:bg-red-700"
+                                    : "bg-green-600 hover:bg-green-700"
+                                }
+                              >
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                {processing
+                                  ? "Processing..."
+                                  : proposal.is_deletion_request
+                                    ? "Approve Deletion"
+                                    : "Approve Changes"}
+                              </Button>
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="flex justify-end">
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                setSelectedTransactionChangeProposal(proposal)
+                              }
+                              disabled={processing}
+                            >
+                              Review
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
-                  {historicalTransactionChanges.length > 10 && (
-                    <p className="text-xs text-gray-500 text-center mt-2">
-                      Showing 10 of {historicalTransactionChanges.length} records
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                )}
 
-          {activeTab === 'attendance' && (
+                {historicalTransactionChanges.length > 0 && (
+                  <div className="mt-8 pt-8 border-t border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      Historical Approvals
+                    </h3>
+                    <div className="space-y-2">
+                      {historicalTransactionChanges.slice(0, 10).map((item) => (
+                        <div
+                          key={item.proposal_id}
+                          className={`bg-gray-50 rounded-lg border p-3 ${
+                            item.status === "approved"
+                              ? "border-green-200"
+                              : "border-red-200"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                {item.is_deletion_request ? (
+                                  <AlertOctagon className="w-4 h-4 text-red-600" />
+                                ) : (
+                                  <FileText className="w-4 h-4 text-yellow-600" />
+                                )}
+                                <span className="text-sm font-medium text-gray-900">
+                                  {item.is_deletion_request
+                                    ? "Deletion Request"
+                                    : "Change Request"}
+                                </span>
+                                <Badge
+                                  variant={
+                                    item.status === "approved"
+                                      ? "success"
+                                      : "danger"
+                                  }
+                                >
+                                  {item.status.toUpperCase()}
+                                </Badge>
+                                {item.is_deletion_request && (
+                                  <Badge variant="danger">DELETE</Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-600">
+                                Created by: {item.created_by_name}
+                                {" • "}Amount: ${item.current_amount.toFixed(2)}
+                                {" • "}
+                                {item.current_description}
+                              </p>
+                              {item.review_comment && (
+                                <p className="text-xs text-gray-600 mt-1">
+                                  Comment: {item.review_comment}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-500 mt-1">
+                                {item.status === "approved"
+                                  ? "Approved"
+                                  : "Rejected"}{" "}
+                                by: {item.reviewed_by_name}
+                                {item.reviewed_at &&
+                                  ` on ${formatDateTimeEST(item.reviewed_at)}`}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {historicalTransactionChanges.length > 10 && (
+                      <p className="text-xs text-gray-500 text-center mt-2">
+                        Showing 10 of {historicalTransactionChanges.length}{" "}
+                        records
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+          {activeTab === "attendance" && (
             <div>
-              {attendanceProposals.filter(p => p.status === 'pending').length === 0 && attendanceProposals.filter(p => p.status !== 'pending').length === 0 ? (
+              {attendanceProposals.filter((p) => p.status === "pending")
+                .length === 0 &&
+              attendanceProposals.filter((p) => p.status !== "pending")
+                .length === 0 ? (
                 <div className="text-center py-12">
                   <Bell className="w-16 h-16 text-gray-400 mx-auto mb-3" />
-                  <p className="text-lg font-medium text-gray-900 mb-1">No attendance change requests</p>
-                  <p className="text-sm text-gray-500">All requests have been processed</p>
+                  <p className="text-lg font-medium text-gray-900 mb-1">
+                    No attendance change requests
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    All requests have been processed
+                  </p>
                 </div>
               ) : (
                 <>
-                  {attendanceProposals.filter(p => p.status === 'pending').length > 0 && (
+                  {attendanceProposals.filter((p) => p.status === "pending")
+                    .length > 0 && (
                     <div className="mb-6">
                       <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                         <AlertCircle className="w-5 h-5 text-yellow-600" />
-                        Pending Requests ({attendanceProposals.filter(p => p.status === 'pending').length})
+                        Pending Requests (
+                        {
+                          attendanceProposals.filter(
+                            (p) => p.status === "pending",
+                          ).length
+                        }
+                        )
                       </h3>
                       <div className="space-y-3">
-                        {attendanceProposals.filter(p => p.status === 'pending').map((proposal) => (
-                          <div
-                            key={proposal.id}
-                            className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <User className="w-4 h-4 text-gray-600" />
-                                  <span className="font-semibold text-gray-900">
-                                    {proposal.employee?.display_name || 'Unknown'}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                                  <Calendar className="w-4 h-4" />
-                                  <span>{proposal.work_date ? formatDateEST(new Date(proposal.work_date), {
-                                    weekday: 'short',
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric',
-                                  }) : 'N/A'}</span>
-                                </div>
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {new Date(proposal.created_at).toLocaleDateString('en-US', {
-                                  timeZone: 'America/New_York',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                })}
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 bg-white rounded p-3">
-                              <div>
-                                <label className="text-xs font-medium text-gray-500 mb-1 block">
-                                  Check In
-                                </label>
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <Clock className="w-3 h-3 text-gray-400" />
-                                    <span className="text-sm text-gray-600 line-through">
-                                      {formatTimeEST(new Date(proposal.current_check_in_time), {
-                                        hour: 'numeric',
-                                        minute: '2-digit',
-                                        hour12: true,
-                                      })}
+                        {attendanceProposals
+                          .filter((p) => p.status === "pending")
+                          .map((proposal) => (
+                            <div
+                              key={proposal.id}
+                              className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <User className="w-4 h-4 text-gray-600" />
+                                    <span className="font-semibold text-gray-900">
+                                      {proposal.employee?.display_name ||
+                                        "Unknown"}
                                     </span>
                                   </div>
-                                  {proposal.proposed_check_in_time && (
-                                    <div className="flex items-center gap-2">
-                                      <Clock className="w-3 h-3 text-green-600" />
-                                      <span className="text-sm font-semibold text-green-700">
-                                        {formatTimeEST(new Date(proposal.proposed_check_in_time), {
-                                          hour: 'numeric',
-                                          minute: '2-digit',
-                                          hour12: true,
-                                        })}
-                                      </span>
-                                    </div>
-                                  )}
+                                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                                    <Calendar className="w-4 h-4" />
+                                    <span>
+                                      {proposal.work_date
+                                        ? formatDateEST(
+                                            new Date(proposal.work_date),
+                                            {
+                                              weekday: "short",
+                                              month: "short",
+                                              day: "numeric",
+                                              year: "numeric",
+                                            },
+                                          )
+                                        : "N/A"}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {new Date(
+                                    proposal.created_at,
+                                  ).toLocaleDateString("en-US", {
+                                    timeZone: "America/New_York",
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "numeric",
+                                    minute: "2-digit",
+                                  })}
                                 </div>
                               </div>
-                              <div>
-                                <label className="text-xs font-medium text-gray-500 mb-1 block">
-                                  Check Out
-                                </label>
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <Clock className="w-3 h-3 text-gray-400" />
-                                    <span className="text-sm text-gray-600 line-through">
-                                      {proposal.current_check_out_time
-                                        ? formatTimeEST(new Date(proposal.current_check_out_time), {
-                                            hour: 'numeric',
-                                            minute: '2-digit',
+
+                              <div className="grid grid-cols-2 gap-4 bg-white rounded p-3">
+                                <div>
+                                  <label className="text-xs font-medium text-gray-500 mb-1 block">
+                                    Check In
+                                  </label>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <Clock className="w-3 h-3 text-gray-400" />
+                                      <span className="text-sm text-gray-600 line-through">
+                                        {formatTimeEST(
+                                          new Date(
+                                            proposal.current_check_in_time,
+                                          ),
+                                          {
+                                            hour: "numeric",
+                                            minute: "2-digit",
                                             hour12: true,
-                                          })
-                                        : 'Not checked out'}
-                                    </span>
-                                  </div>
-                                  {proposal.proposed_check_out_time && (
-                                    <div className="flex items-center gap-2">
-                                      <Clock className="w-3 h-3 text-green-600" />
-                                      <span className="text-sm font-semibold text-green-700">
-                                        {formatTimeEST(new Date(proposal.proposed_check_out_time), {
-                                          hour: 'numeric',
-                                          minute: '2-digit',
-                                          hour12: true,
-                                        })}
+                                          },
+                                        )}
                                       </span>
                                     </div>
-                                  )}
+                                    {proposal.proposed_check_in_time && (
+                                      <div className="flex items-center gap-2">
+                                        <Clock className="w-3 h-3 text-green-600" />
+                                        <span className="text-sm font-semibold text-green-700">
+                                          {formatTimeEST(
+                                            new Date(
+                                              proposal.proposed_check_in_time,
+                                            ),
+                                            {
+                                              hour: "numeric",
+                                              minute: "2-digit",
+                                              hour12: true,
+                                            },
+                                          )}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="text-xs font-medium text-gray-500 mb-1 block">
+                                    Check Out
+                                  </label>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <Clock className="w-3 h-3 text-gray-400" />
+                                      <span className="text-sm text-gray-600 line-through">
+                                        {proposal.current_check_out_time
+                                          ? formatTimeEST(
+                                              new Date(
+                                                proposal.current_check_out_time,
+                                              ),
+                                              {
+                                                hour: "numeric",
+                                                minute: "2-digit",
+                                                hour12: true,
+                                              },
+                                            )
+                                          : "Not checked out"}
+                                      </span>
+                                    </div>
+                                    {proposal.proposed_check_out_time && (
+                                      <div className="flex items-center gap-2">
+                                        <Clock className="w-3 h-3 text-green-600" />
+                                        <span className="text-sm font-semibold text-green-700">
+                                          {formatTimeEST(
+                                            new Date(
+                                              proposal.proposed_check_out_time,
+                                            ),
+                                            {
+                                              hour: "numeric",
+                                              minute: "2-digit",
+                                              hour12: true,
+                                            },
+                                          )}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
 
-                            <div className="bg-white rounded p-3">
-                              <label className="text-xs font-medium text-gray-500 mb-1 block">
-                                Reason
-                              </label>
-                              <p className="text-sm text-gray-700">{proposal.reason_comment}</p>
-                            </div>
-
-                            {selectedProposal?.id === proposal.id && (
                               <div className="bg-white rounded p-3">
-                                <label className="text-xs font-medium text-gray-700 mb-1 block">
-                                  Review Comment (Optional)
+                                <label className="text-xs font-medium text-gray-500 mb-1 block">
+                                  Reason
                                 </label>
-                                <textarea
-                                  value={reviewComment}
-                                  onChange={(e) => setReviewComment(e.target.value)}
-                                  placeholder="Add a comment about this decision..."
-                                  rows={2}
-                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                  disabled={processing}
-                                />
+                                <p className="text-sm text-gray-700">
+                                  {proposal.reason_comment}
+                                </p>
                               </div>
-                            )}
 
-                            <div className="flex justify-end gap-2">
-                              {canTakeActions ? (
-                                selectedProposal?.id === proposal.id ? (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      variant="secondary"
-                                      onClick={() => {
-                                        setSelectedProposal(null);
-                                        setReviewComment('');
-                                      }}
-                                      disabled={processing}
-                                    >
-                                      Cancel
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="secondary"
-                                      onClick={() => handleReviewAttendanceProposal(proposal.id, 'reject')}
-                                      disabled={processing}
-                                      className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
-                                    >
-                                      <XCircle className="w-4 h-4 mr-1" />
-                                      Reject
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      onClick={() => handleReviewAttendanceProposal(proposal.id, 'approve')}
-                                      disabled={processing}
-                                      className="bg-green-600 hover:bg-green-700"
-                                    >
-                                      <CheckCircle className="w-4 h-4 mr-1" />
-                                      {processing ? 'Processing...' : 'Approve'}
-                                    </Button>
-                                  </>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => setSelectedProposal(proposal)}
+                              {selectedProposal?.id === proposal.id && (
+                                <div className="bg-white rounded p-3">
+                                  <label className="text-xs font-medium text-gray-700 mb-1 block">
+                                    Review Comment (Optional)
+                                  </label>
+                                  <textarea
+                                    value={reviewComment}
+                                    onChange={(e) =>
+                                      setReviewComment(e.target.value)
+                                    }
+                                    placeholder="Add a comment about this decision..."
+                                    rows={2}
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     disabled={processing}
-                                  >
-                                    Review
-                                  </Button>
-                                )
-                              ) : (
-                                <span className="text-sm text-gray-500 italic">View only</span>
+                                  />
+                                </div>
                               )}
+
+                              <div className="flex justify-end gap-2">
+                                {canTakeActions ? (
+                                  selectedProposal?.id === proposal.id ? (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={() => {
+                                          setSelectedProposal(null);
+                                          setReviewComment("");
+                                        }}
+                                        disabled={processing}
+                                      >
+                                        Cancel
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={() =>
+                                          handleReviewAttendanceProposal(
+                                            proposal.id,
+                                            "reject",
+                                          )
+                                        }
+                                        disabled={processing}
+                                        className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                                      >
+                                        <XCircle className="w-4 h-4 mr-1" />
+                                        Reject
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        onClick={() =>
+                                          handleReviewAttendanceProposal(
+                                            proposal.id,
+                                            "approve",
+                                          )
+                                        }
+                                        disabled={processing}
+                                        className="bg-green-600 hover:bg-green-700"
+                                      >
+                                        <CheckCircle className="w-4 h-4 mr-1" />
+                                        {processing
+                                          ? "Processing..."
+                                          : "Approve"}
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      onClick={() =>
+                                        setSelectedProposal(proposal)
+                                      }
+                                      disabled={processing}
+                                    >
+                                      Review
+                                    </Button>
+                                  )
+                                ) : (
+                                  <span className="text-sm text-gray-500 italic">
+                                    View only
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
                       </div>
                     </div>
                   )}
 
-                  {attendanceProposals.filter(p => p.status !== 'pending').length > 0 && (
+                  {attendanceProposals.filter((p) => p.status !== "pending")
+                    .length > 0 && (
                     <div className="border-t border-gray-200 pt-4">
                       <h3 className="font-semibold text-gray-700 mb-3">
-                        Previously Reviewed ({attendanceProposals.filter(p => p.status !== 'pending').length})
+                        Previously Reviewed (
+                        {
+                          attendanceProposals.filter(
+                            (p) => p.status !== "pending",
+                          ).length
+                        }
+                        )
                       </h3>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {attendanceProposals.filter(p => p.status !== 'pending').map((proposal) => (
-                          <div
-                            key={proposal.id}
-                            className={`rounded-lg p-3 border ${
-                              proposal.status === 'approved'
-                                ? 'bg-green-50 border-green-200'
-                                : 'bg-red-50 border-red-200'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                {proposal.status === 'approved' ? (
-                                  <CheckCircle className="w-4 h-4 text-green-600" />
-                                ) : (
-                                  <XCircle className="w-4 h-4 text-red-600" />
-                                )}
-                                <span className="text-sm font-medium text-gray-900">
-                                  {proposal.employee?.display_name}
-                                </span>
+                        {attendanceProposals
+                          .filter((p) => p.status !== "pending")
+                          .map((proposal) => (
+                            <div
+                              key={proposal.id}
+                              className={`rounded-lg p-3 border ${
+                                proposal.status === "approved"
+                                  ? "bg-green-50 border-green-200"
+                                  : "bg-red-50 border-red-200"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  {proposal.status === "approved" ? (
+                                    <CheckCircle className="w-4 h-4 text-green-600" />
+                                  ) : (
+                                    <XCircle className="w-4 h-4 text-red-600" />
+                                  )}
+                                  <span className="text-sm font-medium text-gray-900">
+                                    {proposal.employee?.display_name}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {proposal.work_date
+                                      ? formatDateEST(
+                                          new Date(proposal.work_date),
+                                          {
+                                            weekday: "short",
+                                            month: "short",
+                                            day: "numeric",
+                                            year: "numeric",
+                                          },
+                                        )
+                                      : "N/A"}
+                                  </span>
+                                </div>
                                 <span className="text-xs text-gray-500">
-                                  {proposal.work_date ? formatDateEST(new Date(proposal.work_date), {
-                                    weekday: 'short',
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric',
-                                  }) : 'N/A'}
+                                  {proposal.reviewed_at
+                                    ? new Date(
+                                        proposal.reviewed_at,
+                                      ).toLocaleDateString("en-US", {
+                                        timeZone: "America/New_York",
+                                        month: "short",
+                                        day: "numeric",
+                                      })
+                                    : "N/A"}
                                 </span>
                               </div>
-                              <span className="text-xs text-gray-500">
-                                {proposal.reviewed_at
-                                  ? new Date(proposal.reviewed_at).toLocaleDateString('en-US', {
-                                      timeZone: 'America/New_York',
-                                      month: 'short',
-                                      day: 'numeric',
-                                    })
-                                  : 'N/A'}
-                              </span>
+                              {proposal.review_comment && (
+                                <p className="text-xs text-gray-600 mt-2 ml-6">
+                                  {proposal.review_comment}
+                                </p>
+                              )}
                             </div>
-                            {proposal.review_comment && (
-                              <p className="text-xs text-gray-600 mt-2 ml-6">
-                                {proposal.review_comment}
-                              </p>
-                            )}
-                          </div>
-                        ))}
+                          ))}
                       </div>
                     </div>
                   )}
@@ -3257,7 +4301,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
             </div>
           )}
 
-          {activeTab === 'violations' && (
+          {activeTab === "violations" && (
             <div>
               {violationReports.length > 0 && (
                 <div className="mb-6">
@@ -3267,13 +4311,16 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                       Pending Turn Violation Reports ({violationReports.length})
                     </h3>
                     <p className="text-sm text-gray-600">
-                      Review employee votes and make final decision on reported violations
+                      Review employee votes and make final decision on reported
+                      violations
                     </p>
                   </div>
                   <div className="space-y-3 mb-6">
                     {violationReports.map((report) => {
-                      const isExpired = report.status === 'expired';
-                      const totalVotes = report.votes_for_violation + report.votes_against_violation;
+                      const isExpired = report.status === "expired";
+                      const totalVotes =
+                        report.votes_for_violation +
+                        report.votes_against_violation;
                       const votesFor = report.votes_for_violation;
                       const votesAgainst = report.votes_against_violation;
 
@@ -3281,13 +4328,15 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                         <div
                           key={report.report_id}
                           className={`bg-white rounded-lg border-2 p-4 ${
-                            isExpired ? 'border-gray-500' : 'border-red-500'
+                            isExpired ? "border-gray-500" : "border-red-500"
                           }`}
                         >
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                <Flag className={`w-5 h-5 ${isExpired ? 'text-gray-600' : 'text-red-600'}`} />
+                                <Flag
+                                  className={`w-5 h-5 ${isExpired ? "text-gray-600" : "text-red-600"}`}
+                                />
                                 <span className="font-semibold text-gray-900">
                                   Turn Violation Report
                                 </span>
@@ -3297,24 +4346,37 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                   <Badge variant="danger">PENDING REVIEW</Badge>
                                 )}
                                 {report.threshold_met ? (
-                                  <Badge className="bg-green-100 text-green-700">Threshold Met</Badge>
+                                  <Badge className="bg-green-100 text-green-700">
+                                    Threshold Met
+                                  </Badge>
                                 ) : (
-                                  <Badge className="bg-yellow-100 text-yellow-700">Threshold Not Met</Badge>
+                                  <Badge className="bg-yellow-100 text-yellow-700">
+                                    Threshold Not Met
+                                  </Badge>
                                 )}
                                 {report.insufficient_responders && (
-                                  <Badge className="bg-orange-100 text-orange-700">Insufficient Responders</Badge>
+                                  <Badge className="bg-orange-100 text-orange-700">
+                                    Insufficient Responders
+                                  </Badge>
                                 )}
                               </div>
                               {canSeeReporterInfo(report) && (
                                 <p className="text-sm text-gray-900 mb-2">
-                                  <span className="font-medium">Reporter:</span> {report.reporter_employee_name}
+                                  <span className="font-medium">Reporter:</span>{" "}
+                                  {report.reporter_employee_name}
                                 </p>
                               )}
                               <p className="text-sm text-gray-900 mb-2">
-                                <span className="font-medium">Reported Employee:</span> {report.reported_employee_name}
+                                <span className="font-medium">
+                                  Reported Employee:
+                                </span>{" "}
+                                {report.reported_employee_name}
                               </p>
                               <p className="text-sm text-gray-900 mb-2">
-                                <span className="font-medium">Description:</span> {report.violation_description}
+                                <span className="font-medium">
+                                  Description:
+                                </span>{" "}
+                                {report.violation_description}
                               </p>
                               <p className="text-xs text-gray-500">
                                 Date: {formatDateOnly(report.violation_date)}
@@ -3331,43 +4393,66 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                   </div>
                                   {report.info_request_message && (
                                     <p className="text-sm text-yellow-700 mb-2 italic">
-                                      &ldquo;{report.info_request_message}&rdquo;
+                                      &ldquo;{report.info_request_message}
+                                      &rdquo;
                                     </p>
                                   )}
                                   <p className="text-xs text-yellow-600 mb-2">
-                                    Requested on {formatDateTimeEST(report.info_requested_at)}
+                                    Requested on{" "}
+                                    {formatDateTimeEST(
+                                      report.info_requested_at,
+                                    )}
                                   </p>
 
                                   {/* Input for reporter to respond */}
-                                  {isReporter(report) && !report.additional_info_submitted_at && (
-                                    <div className="mt-3">
-                                      <textarea
-                                        value={additionalInfoText}
-                                        onChange={(e) => setAdditionalInfoText(e.target.value)}
-                                        placeholder="Provide additional details..."
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                                        rows={3}
-                                        disabled={processing}
-                                      />
-                                      <Button
-                                        size="sm"
-                                        onClick={() => handleSubmitAdditionalInfo(report)}
-                                        disabled={processing || !additionalInfoText.trim()}
-                                        className="mt-2"
-                                      >
-                                        {processing ? 'Submitting...' : 'Submit Additional Info'}
-                                      </Button>
-                                    </div>
-                                  )}
+                                  {isReporter(report) &&
+                                    !report.additional_info_submitted_at && (
+                                      <div className="mt-3">
+                                        <textarea
+                                          value={additionalInfoText}
+                                          onChange={(e) =>
+                                            setAdditionalInfoText(
+                                              e.target.value,
+                                            )
+                                          }
+                                          placeholder="Provide additional details..."
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                          rows={3}
+                                          disabled={processing}
+                                        />
+                                        <Button
+                                          size="sm"
+                                          onClick={() =>
+                                            handleSubmitAdditionalInfo(report)
+                                          }
+                                          disabled={
+                                            processing ||
+                                            !additionalInfoText.trim()
+                                          }
+                                          className="mt-2"
+                                        >
+                                          {processing
+                                            ? "Submitting..."
+                                            : "Submit Additional Info"}
+                                        </Button>
+                                      </div>
+                                    )}
 
                                   {/* Show submitted info */}
                                   {report.additional_info && (
                                     <div className="mt-2 p-2 bg-white rounded border border-yellow-200">
-                                      <p className="text-xs font-medium text-gray-700 mb-1">Additional Info Provided:</p>
-                                      <p className="text-sm text-gray-800">{report.additional_info}</p>
+                                      <p className="text-xs font-medium text-gray-700 mb-1">
+                                        Additional Info Provided:
+                                      </p>
+                                      <p className="text-sm text-gray-800">
+                                        {report.additional_info}
+                                      </p>
                                       {report.additional_info_submitted_at && (
                                         <p className="text-xs text-gray-500 mt-1">
-                                          Submitted {formatDateTimeEST(report.additional_info_submitted_at)}
+                                          Submitted{" "}
+                                          {formatDateTimeEST(
+                                            report.additional_info_submitted_at,
+                                          )}
                                         </p>
                                       )}
                                     </div>
@@ -3384,7 +4469,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                     <div className="flex items-center gap-2">
                                       <ThumbsUp className="w-4 h-4 text-green-600" />
                                       <span className="text-sm font-medium text-gray-900">
-                                        {report.votes_violation_confirmed} of {report.min_votes_required} "YES" votes needed
+                                        {report.votes_violation_confirmed} of{" "}
+                                        {report.min_votes_required} "YES" votes
+                                        needed
                                       </span>
                                     </div>
                                     {report.threshold_met && (
@@ -3392,7 +4479,8 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                     )}
                                   </div>
                                   <div className="text-xs text-gray-600">
-                                    Total responses: {totalVotes} ({votesFor} Yes, {votesAgainst} No)
+                                    Total responses: {totalVotes} ({votesFor}{" "}
+                                    Yes, {votesAgainst} No)
                                   </div>
                                   {isExpired && (
                                     <div className="text-xs text-orange-600 flex items-center gap-1">
@@ -3402,25 +4490,39 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                   )}
                                 </div>
                                 {/* Vote Details - Only visible to Management */}
-                                {canSeeVoteDetails() && report.response_details && report.response_details.length > 0 && (
-                                  <div className="mt-3 pt-3 border-t border-gray-200">
-                                    <p className="text-xs font-medium text-gray-700 mb-2">Vote Details</p>
-                                    <div className="space-y-1 text-xs">
-                                      <div>
-                                        <span className="font-medium text-green-700">Yes:</span>
-                                        <span className="text-gray-700 ml-1">
-                                          {report.response_details.filter(v => v.response).map(v => v.employee_name).join(', ') || 'None'}
-                                        </span>
-                                      </div>
-                                      <div>
-                                        <span className="font-medium text-red-700">No:</span>
-                                        <span className="text-gray-700 ml-1">
-                                          {report.response_details.filter(v => !v.response).map(v => v.employee_name).join(', ') || 'None'}
-                                        </span>
+                                {canSeeVoteDetails() &&
+                                  report.response_details &&
+                                  report.response_details.length > 0 && (
+                                    <div className="mt-3 pt-3 border-t border-gray-200">
+                                      <p className="text-xs font-medium text-gray-700 mb-2">
+                                        Vote Details
+                                      </p>
+                                      <div className="space-y-1 text-xs">
+                                        <div>
+                                          <span className="font-medium text-green-700">
+                                            Yes:
+                                          </span>
+                                          <span className="text-gray-700 ml-1">
+                                            {report.response_details
+                                              .filter((v) => v.response)
+                                              .map((v) => v.employee_name)
+                                              .join(", ") || "None"}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className="font-medium text-red-700">
+                                            No:
+                                          </span>
+                                          <span className="text-gray-700 ml-1">
+                                            {report.response_details
+                                              .filter((v) => !v.response)
+                                              .map((v) => v.employee_name)
+                                              .join(", ") || "None"}
+                                          </span>
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                )}
+                                  )}
                               </div>
                             </div>
                             <div className="flex gap-2">
@@ -3428,7 +4530,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                 <>
                                   <Button
                                     size="sm"
-                                    onClick={() => handleViolationDecisionClick(report)}
+                                    onClick={() =>
+                                      handleViolationDecisionClick(report)
+                                    }
                                     disabled={processing}
                                   >
                                     Review & Decide
@@ -3448,7 +4552,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                   )}
                                 </>
                               ) : (
-                                <span className="text-sm text-gray-500 italic">View only</span>
+                                <span className="text-sm text-gray-500 italic">
+                                  View only
+                                </span>
                               )}
                             </div>
                           </div>
@@ -3460,64 +4566,68 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
               )}
 
               <div className="mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Turn Violation</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  Turn Violation
+                </h3>
                 <div className="flex flex-wrap gap-2 mb-4">
                   <button
-                    onClick={() => setViolationStatusFilter('all')}
+                    onClick={() => setViolationStatusFilter("all")}
                     className={`px-3 py-1 text-sm rounded-full ${
-                      violationStatusFilter === 'all'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      violationStatusFilter === "all"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     All ({statusCounts.all})
                   </button>
                   <button
-                    onClick={() => setViolationStatusFilter('collecting_responses')}
+                    onClick={() =>
+                      setViolationStatusFilter("collecting_responses")
+                    }
                     className={`px-3 py-1 text-sm rounded-full ${
-                      violationStatusFilter === 'collecting_responses'
-                        ? 'bg-gray-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      violationStatusFilter === "collecting_responses"
+                        ? "bg-gray-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     Collecting Votes ({statusCounts.collecting_responses})
                   </button>
                   <button
-                    onClick={() => setViolationStatusFilter('pending_approval')}
+                    onClick={() => setViolationStatusFilter("pending_approval")}
                     className={`px-3 py-1 text-sm rounded-full ${
-                      violationStatusFilter === 'pending_approval'
-                        ? 'bg-red-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      violationStatusFilter === "pending_approval"
+                        ? "bg-red-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     Pending Review ({statusCounts.pending_approval})
                   </button>
                   <button
-                    onClick={() => setViolationStatusFilter('approved')}
+                    onClick={() => setViolationStatusFilter("approved")}
                     className={`px-3 py-1 text-sm rounded-full ${
-                      violationStatusFilter === 'approved'
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      violationStatusFilter === "approved"
+                        ? "bg-green-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     Approved ({statusCounts.approved})
                   </button>
                   <button
-                    onClick={() => setViolationStatusFilter('rejected')}
+                    onClick={() => setViolationStatusFilter("rejected")}
                     className={`px-3 py-1 text-sm rounded-full ${
-                      violationStatusFilter === 'rejected'
-                        ? 'bg-gray-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      violationStatusFilter === "rejected"
+                        ? "bg-gray-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     Rejected ({statusCounts.rejected})
                   </button>
                   <button
-                    onClick={() => setViolationStatusFilter('expired')}
+                    onClick={() => setViolationStatusFilter("expired")}
                     className={`px-3 py-1 text-sm rounded-full ${
-                      violationStatusFilter === 'expired'
-                        ? 'bg-orange-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      violationStatusFilter === "expired"
+                        ? "bg-orange-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     Expired ({statusCounts.expired})
@@ -3528,37 +4638,55 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
               {filteredViolationHistory.length === 0 ? (
                 <div className="text-center py-12">
                   <Flag className="w-16 h-16 text-gray-400 mx-auto mb-3" />
-                  <p className="text-lg font-medium text-gray-900 mb-1">No violation reports found</p>
+                  <p className="text-lg font-medium text-gray-900 mb-1">
+                    No violation reports found
+                  </p>
                   <p className="text-sm text-gray-500">
-                    {violationStatusFilter !== 'all'
-                      ? 'No reports match the selected filter'
-                      : 'No violation reports have been submitted yet'}
+                    {violationStatusFilter !== "all"
+                      ? "No reports match the selected filter"
+                      : "No violation reports have been submitted yet"}
                   </p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {filteredViolationHistory.map((report) => {
-                    const totalVotes = report.votes_violation + report.votes_no_violation;
-                    const percentageFor = totalVotes > 0 ? Math.round((report.votes_violation / totalVotes) * 100) : 0;
+                    const totalVotes =
+                      report.votes_violation + report.votes_no_violation;
+                    const percentageFor =
+                      totalVotes > 0
+                        ? Math.round(
+                            (report.votes_violation / totalVotes) * 100,
+                          )
+                        : 0;
 
-                    let borderColor = 'border-gray-200';
+                    let borderColor = "border-gray-200";
                     let statusBadge = null;
 
-                    if (report.status === 'collecting_responses') {
-                      borderColor = 'border-gray-400';
-                      statusBadge = <Badge variant="default">Collecting Votes</Badge>;
-                    } else if (report.status === 'pending_approval') {
-                      borderColor = 'border-red-500';
-                      statusBadge = <Badge variant="danger">Needs Decision</Badge>;
-                    } else if (report.status === 'approved') {
-                      borderColor = 'border-green-500';
+                    if (report.status === "collecting_responses") {
+                      borderColor = "border-gray-400";
+                      statusBadge = (
+                        <Badge variant="default">Collecting Votes</Badge>
+                      );
+                    } else if (report.status === "pending_approval") {
+                      borderColor = "border-red-500";
+                      statusBadge = (
+                        <Badge variant="danger">Needs Decision</Badge>
+                      );
+                    } else if (report.status === "approved") {
+                      borderColor = "border-green-500";
                       statusBadge = <Badge variant="success">APPROVED</Badge>;
-                    } else if (report.status === 'rejected') {
-                      borderColor = 'border-gray-400';
-                      statusBadge = <Badge variant="default">NO VIOLATION</Badge>;
-                    } else if (report.status === 'expired') {
-                      borderColor = 'border-orange-400';
-                      statusBadge = <Badge className="bg-orange-100 text-orange-800 border-orange-300">EXPIRED</Badge>;
+                    } else if (report.status === "rejected") {
+                      borderColor = "border-gray-400";
+                      statusBadge = (
+                        <Badge variant="default">NO VIOLATION</Badge>
+                      );
+                    } else if (report.status === "expired") {
+                      borderColor = "border-orange-400";
+                      statusBadge = (
+                        <Badge className="bg-orange-100 text-orange-800 border-orange-300">
+                          EXPIRED
+                        </Badge>
+                      );
                     }
 
                     return (
@@ -3574,16 +4702,23 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                             </div>
                             {canSeeReporterInfo(report) && (
                               <p className="text-sm text-gray-900 mb-1">
-                                <span className="font-medium">Reporter:</span> {report.reporter_employee_name}
+                                <span className="font-medium">Reporter:</span>{" "}
+                                {report.reporter_employee_name}
                               </p>
                             )}
                             <p className="text-sm text-gray-900 mb-1">
-                              <span className="font-medium">Reported Employee:</span> {report.reported_employee_name}
+                              <span className="font-medium">
+                                Reported Employee:
+                              </span>{" "}
+                              {report.reported_employee_name}
                             </p>
-                            <p className="text-sm text-gray-700 mb-2">{report.violation_description}</p>
+                            <p className="text-sm text-gray-700 mb-2">
+                              {report.violation_description}
+                            </p>
                             <p className="text-xs text-gray-500">
                               Date: {formatDateTimeEST(report.created_at)}
-                              {report.queue_position !== null && ` • Queue Position: ${report.queue_position}`}
+                              {report.queue_position !== null &&
+                                ` • Queue Position: ${report.queue_position}`}
                             </p>
 
                             {/* Info Request Display */}
@@ -3601,39 +4736,57 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                   </p>
                                 )}
                                 <p className="text-xs text-yellow-600 mb-2">
-                                  Requested on {formatDateTimeEST(report.info_requested_at)}
+                                  Requested on{" "}
+                                  {formatDateTimeEST(report.info_requested_at)}
                                 </p>
 
                                 {/* Input for reporter to respond */}
-                                {isReporter(report) && !report.additional_info_submitted_at && (
-                                  <div className="mt-3">
-                                    <textarea
-                                      value={additionalInfoText}
-                                      onChange={(e) => setAdditionalInfoText(e.target.value)}
-                                      placeholder="Provide additional details..."
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                                      rows={3}
-                                      disabled={processing}
-                                    />
-                                    <Button
-                                      size="sm"
-                                      onClick={() => handleSubmitAdditionalInfo(report)}
-                                      disabled={processing || !additionalInfoText.trim()}
-                                      className="mt-2"
-                                    >
-                                      {processing ? 'Submitting...' : 'Submit Additional Info'}
-                                    </Button>
-                                  </div>
-                                )}
+                                {isReporter(report) &&
+                                  !report.additional_info_submitted_at && (
+                                    <div className="mt-3">
+                                      <textarea
+                                        value={additionalInfoText}
+                                        onChange={(e) =>
+                                          setAdditionalInfoText(e.target.value)
+                                        }
+                                        placeholder="Provide additional details..."
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                        rows={3}
+                                        disabled={processing}
+                                      />
+                                      <Button
+                                        size="sm"
+                                        onClick={() =>
+                                          handleSubmitAdditionalInfo(report)
+                                        }
+                                        disabled={
+                                          processing ||
+                                          !additionalInfoText.trim()
+                                        }
+                                        className="mt-2"
+                                      >
+                                        {processing
+                                          ? "Submitting..."
+                                          : "Submit Additional Info"}
+                                      </Button>
+                                    </div>
+                                  )}
 
                                 {/* Show submitted info */}
                                 {report.additional_info && (
                                   <div className="mt-2 p-2 bg-white rounded border border-yellow-200">
-                                    <p className="text-xs font-medium text-gray-700 mb-1">Additional Info Provided:</p>
-                                    <p className="text-sm text-gray-800">{report.additional_info}</p>
+                                    <p className="text-xs font-medium text-gray-700 mb-1">
+                                      Additional Info Provided:
+                                    </p>
+                                    <p className="text-sm text-gray-800">
+                                      {report.additional_info}
+                                    </p>
                                     {report.additional_info_submitted_at && (
                                       <p className="text-xs text-gray-500 mt-1">
-                                        Submitted {formatDateTimeEST(report.additional_info_submitted_at)}
+                                        Submitted{" "}
+                                        {formatDateTimeEST(
+                                          report.additional_info_submitted_at,
+                                        )}
                                       </p>
                                     )}
                                   </div>
@@ -3641,72 +4794,118 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                               </div>
                             )}
 
-                            {report.status === 'collecting_responses' && (
+                            {report.status === "collecting_responses" && (
                               <div className="mt-3 pt-3 border-t border-gray-200">
                                 <div className="flex items-center gap-2 text-sm text-gray-600">
                                   <Timer className="w-4 h-4" />
                                   <span>
-                                    {report.total_responses} of {report.total_required_responders} votes collected
+                                    {report.total_responses} of{" "}
+                                    {report.total_required_responders} votes
+                                    collected
                                   </span>
                                 </div>
                               </div>
                             )}
 
-                            {(report.status === 'pending_approval' || report.status === 'approved' || report.status === 'rejected' || report.status === 'expired') && totalVotes > 0 && (
-                              <div className="mt-3 pt-3 border-t border-gray-200">
-                                <p className="text-sm font-medium text-gray-900 mb-2">
-                                  Vote Results ({totalVotes} responses)
-                                </p>
-                                <div className="flex items-center gap-4">
-                                  <div className="flex items-center gap-2">
-                                    <ThumbsUp className="w-4 h-4 text-green-600" />
-                                    <span className="text-sm text-gray-700">
-                                      {report.votes_violation} voted violation ({percentageFor}%)
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <ThumbsDown className="w-4 h-4 text-red-600" />
-                                    <span className="text-sm text-gray-700">
-                                      {report.votes_no_violation} voted no violation ({100 - percentageFor}%)
-                                    </span>
-                                  </div>
-                                </div>
-                                {/* Vote Details - Only visible to Management */}
-                                {canSeeVoteDetails() && report.responses && report.responses.length > 0 && (
-                                  <div className="mt-2 pt-2 border-t border-gray-100">
-                                    <p className="text-xs font-medium text-gray-700 mb-1">Vote Details</p>
-                                    <div className="space-y-1 text-xs">
-                                      <div>
-                                        <span className="font-medium text-green-700">Yes:</span>
-                                        <span className="text-gray-700 ml-1">
-                                          {report.responses.filter((v: any) => v.vote === 'violation').map((v: any) => v.responder_employee_name).join(', ') || 'None'}
-                                        </span>
-                                      </div>
-                                      <div>
-                                        <span className="font-medium text-red-700">No:</span>
-                                        <span className="text-gray-700 ml-1">
-                                          {report.responses.filter((v: any) => v.vote === 'no_violation').map((v: any) => v.responder_employee_name).join(', ') || 'None'}
-                                        </span>
-                                      </div>
+                            {(report.status === "pending_approval" ||
+                              report.status === "approved" ||
+                              report.status === "rejected" ||
+                              report.status === "expired") &&
+                              totalVotes > 0 && (
+                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                  <p className="text-sm font-medium text-gray-900 mb-2">
+                                    Vote Results ({totalVotes} responses)
+                                  </p>
+                                  <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                      <ThumbsUp className="w-4 h-4 text-green-600" />
+                                      <span className="text-sm text-gray-700">
+                                        {report.votes_violation} voted violation
+                                        ({percentageFor}%)
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <ThumbsDown className="w-4 h-4 text-red-600" />
+                                      <span className="text-sm text-gray-700">
+                                        {report.votes_no_violation} voted no
+                                        violation ({100 - percentageFor}%)
+                                      </span>
                                     </div>
                                   </div>
-                                )}
-                              </div>
-                            )}
+                                  {/* Vote Details - Only visible to Management */}
+                                  {canSeeVoteDetails() &&
+                                    report.responses &&
+                                    report.responses.length > 0 && (
+                                      <div className="mt-2 pt-2 border-t border-gray-100">
+                                        <p className="text-xs font-medium text-gray-700 mb-1">
+                                          Vote Details
+                                        </p>
+                                        <div className="space-y-1 text-xs">
+                                          <div>
+                                            <span className="font-medium text-green-700">
+                                              Yes:
+                                            </span>
+                                            <span className="text-gray-700 ml-1">
+                                              {report.responses
+                                                .filter(
+                                                  (v: any) =>
+                                                    v.vote === "violation",
+                                                )
+                                                .map(
+                                                  (v: any) =>
+                                                    v.responder_employee_name,
+                                                )
+                                                .join(", ") || "None"}
+                                            </span>
+                                          </div>
+                                          <div>
+                                            <span className="font-medium text-red-700">
+                                              No:
+                                            </span>
+                                            <span className="text-gray-700 ml-1">
+                                              {report.responses
+                                                .filter(
+                                                  (v: any) =>
+                                                    v.vote === "no_violation",
+                                                )
+                                                .map(
+                                                  (v: any) =>
+                                                    v.responder_employee_name,
+                                                )
+                                                .join(", ") || "None"}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                </div>
+                              )}
 
-                            {(report.status === 'approved' || report.status === 'rejected') && (
+                            {(report.status === "approved" ||
+                              report.status === "rejected") && (
                               <div className="mt-3 pt-3 border-t border-gray-200">
-                                <p className="text-sm font-medium text-gray-900 mb-1">Management Decision</p>
-                                <p className="text-xs text-gray-600 mb-1">
-                                  Reviewed by: <span className="font-medium">{report.reviewed_by_name}</span>
-                                  {report.reviewed_at && ` on ${formatDateEST(report.reviewed_at)}`}
+                                <p className="text-sm font-medium text-gray-900 mb-1">
+                                  Management Decision
                                 </p>
-                                {report.action_type && report.action_type !== 'none' && (
-                                  <p className="text-xs text-gray-700 mb-1">
-                                    <span className="font-medium">Action Taken:</span> {report.action_type.replace('_', ' ')}
-                                    {report.action_details && ` - ${report.action_details}`}
-                                  </p>
-                                )}
+                                <p className="text-xs text-gray-600 mb-1">
+                                  Reviewed by:{" "}
+                                  <span className="font-medium">
+                                    {report.reviewed_by_name}
+                                  </span>
+                                  {report.reviewed_at &&
+                                    ` on ${formatDateEST(report.reviewed_at)}`}
+                                </p>
+                                {report.action_type &&
+                                  report.action_type !== "none" && (
+                                    <p className="text-xs text-gray-700 mb-1">
+                                      <span className="font-medium">
+                                        Action Taken:
+                                      </span>{" "}
+                                      {report.action_type.replace("_", " ")}
+                                      {report.action_details &&
+                                        ` - ${report.action_details}`}
+                                    </p>
+                                  )}
                                 {report.manager_notes && (
                                   <p className="text-xs text-gray-700 italic mt-1">
                                     "{report.manager_notes}"
@@ -3724,13 +4923,16 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
             </div>
           )}
 
-          {activeTab === 'ticket-changes' && canReviewReopenRequests && (
+          {activeTab === "ticket-changes" && canReviewReopenRequests && (
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Pending Ticket Change Requests</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Pending Ticket Change Requests
+              </h3>
               <p className="text-sm text-gray-600 mb-4">
                 Review requests to reopen closed tickets for changes.
               </p>
-              {ticketReopenRequests.length === 0 && historicalTicketReopenRequests.length === 0 ? (
+              {ticketReopenRequests.length === 0 &&
+              historicalTicketReopenRequests.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
                   <p>No pending ticket change requests</p>
@@ -3738,29 +4940,53 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
               ) : (
                 <div className="space-y-4">
                   {ticketReopenRequests.map((request) => (
-                    <div key={request.request_id} className="border border-gray-200 rounded-lg p-4 bg-white">
+                    <div
+                      key={request.request_id}
+                      className="border border-gray-200 rounded-lg p-4 bg-white"
+                    >
                       <div className="flex justify-between items-start mb-3">
                         <div>
-                          <span className="font-semibold text-gray-900">#{request.ticket_no}</span>
-                          <span className="text-gray-500 ml-2">{request.customer_name || 'Walk-in'}</span>
-                          <span className="text-gray-500 ml-2">${request.total.toFixed(2)}</span>
+                          <span className="font-semibold text-gray-900">
+                            #{request.ticket_no}
+                          </span>
+                          <span className="text-gray-500 ml-2">
+                            {request.customer_name || "Walk-in"}
+                          </span>
+                          <span className="text-gray-500 ml-2">
+                            ${request.total.toFixed(2)}
+                          </span>
                         </div>
                         <div className="text-right">
-                          <span className="text-xs text-gray-500">{formatDateTimeEST(request.created_at)}</span>
-                          <Badge variant="warning" className="ml-2">Pending</Badge>
+                          <span className="text-xs text-gray-500">
+                            {formatDateTimeEST(request.created_at)}
+                          </span>
+                          <Badge variant="warning" className="ml-2">
+                            Pending
+                          </Badge>
                         </div>
                       </div>
 
                       <div className="bg-amber-50 border border-amber-200 rounded p-3 mb-3">
-                        <p className="text-sm font-medium text-amber-800 mb-1">Requested Changes:</p>
-                        <p className="text-sm text-amber-700">{request.requested_changes_description}</p>
-                        <p className="text-sm font-medium text-amber-800 mt-2 mb-1">Reason:</p>
-                        <p className="text-sm text-amber-700">{request.reason_comment}</p>
+                        <p className="text-sm font-medium text-amber-800 mb-1">
+                          Requested Changes:
+                        </p>
+                        <p className="text-sm text-amber-700">
+                          {request.requested_changes_description}
+                        </p>
+                        <p className="text-sm font-medium text-amber-800 mt-2 mb-1">
+                          Reason:
+                        </p>
+                        <p className="text-sm text-amber-700">
+                          {request.reason_comment}
+                        </p>
                       </div>
 
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                         <p className="text-xs text-gray-500">
-                          Requested by: <span className="font-medium">{request.created_by_name}</span>
+                          Requested by:{" "}
+                          <span className="font-medium">
+                            {request.created_by_name}
+                          </span>
                         </p>
                         <div className="flex gap-2 flex-wrap">
                           <Button
@@ -3797,7 +5023,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                                 variant="danger"
                                 onClick={() => {
                                   setSelectedTicketReopenRequest(request);
-                                  setTicketReopenReviewComment('');
+                                  setTicketReopenReviewComment("");
                                 }}
                                 disabled={processing}
                               >
@@ -3806,7 +5032,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                               </Button>
                             </>
                           ) : (
-                            <span className="text-sm text-gray-500 italic self-center">View only</span>
+                            <span className="text-sm text-gray-500 italic self-center">
+                              View only
+                            </span>
                           )}
                         </div>
                       </div>
@@ -3817,13 +5045,17 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
 
               {historicalTicketReopenRequests.length > 0 && (
                 <div className="mt-8 pt-8 border-t border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Historical Approvals</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Historical Approvals
+                  </h3>
                   <div className="space-y-2">
                     {historicalTicketReopenRequests.slice(0, 10).map((item) => (
                       <div
                         key={item.request_id}
                         className={`bg-gray-50 rounded-lg border p-3 ${
-                          item.status === 'approved' ? 'border-green-200' : 'border-red-200'
+                          item.status === "approved"
+                            ? "border-green-200"
+                            : "border-red-200"
                         }`}
                       >
                         <div className="flex items-start justify-between">
@@ -3833,16 +5065,23 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                               <span className="text-sm font-medium text-gray-900">
                                 Ticket #{item.ticket_no}
                               </span>
-                              <Badge variant={item.status === 'approved' ? 'success' : 'danger'}>
+                              <Badge
+                                variant={
+                                  item.status === "approved"
+                                    ? "success"
+                                    : "danger"
+                                }
+                              >
                                 {item.status.toUpperCase()}
                               </Badge>
                             </div>
                             <p className="text-xs text-gray-600">
-                              {item.customer_name || 'Walk-in'} • ${item.total.toFixed(2)}
+                              {item.customer_name || "Walk-in"} • $
+                              {item.total.toFixed(2)}
                             </p>
                             <p className="text-xs text-gray-600">
                               Requested by: {item.created_by_name}
-                              {' • '}Reason: {item.reason_comment}
+                              {" • "}Reason: {item.reason_comment}
                             </p>
                             {item.review_comment && (
                               <p className="text-xs text-gray-600 mt-1">
@@ -3850,8 +5089,12 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                               </p>
                             )}
                             <p className="text-xs text-gray-500 mt-1">
-                              {item.status === 'approved' ? 'Approved' : 'Rejected'} by: {item.reviewed_by_name}
-                              {item.reviewed_at && ` on ${formatDateTimeEST(item.reviewed_at)}`}
+                              {item.status === "approved"
+                                ? "Approved"
+                                : "Rejected"}{" "}
+                              by: {item.reviewed_by_name}
+                              {item.reviewed_at &&
+                                ` on ${formatDateTimeEST(item.reviewed_at)}`}
                             </p>
                           </div>
                         </div>
@@ -3860,7 +5103,8 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                   </div>
                   {historicalTicketReopenRequests.length > 10 && (
                     <p className="text-xs text-gray-500 text-center mt-2">
-                      Showing 10 of {historicalTicketReopenRequests.length} records
+                      Showing 10 of {historicalTicketReopenRequests.length}{" "}
+                      records
                     </p>
                   )}
                 </div>
@@ -3868,12 +5112,15 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
             </div>
           )}
 
-          {activeTab === 'queue-history' && canViewQueueHistory && (
+          {activeTab === "queue-history" && canViewQueueHistory && (
             <div>
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Queue Removal History</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Queue Removal History
+                </h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  View all technician removals from the queue with reasons and cooldown status
+                  View all technician removals from the queue with reasons and
+                  cooldown status
                 </p>
 
                 <div className="bg-gray-50 rounded-lg p-4 mb-4">
@@ -3885,7 +5132,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                       <input
                         type="date"
                         value={queueHistoryStartDate}
-                        onChange={(e) => onQueueHistoryStartDateChange(e.target.value)}
+                        onChange={(e) =>
+                          onQueueHistoryStartDateChange(e.target.value)
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -3896,15 +5145,23 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                       <input
                         type="date"
                         value={queueHistoryEndDate}
-                        onChange={(e) => onQueueHistoryEndDateChange(e.target.value)}
+                        onChange={(e) =>
+                          onQueueHistoryEndDateChange(e.target.value)
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
-                    <Button onClick={fetchQueueRemovalHistory} disabled={queueHistoryLoading}>
-                      {queueHistoryLoading ? 'Loading...' : 'Apply Filter'}
+                    <Button
+                      onClick={fetchQueueRemovalHistory}
+                      disabled={queueHistoryLoading}
+                    >
+                      {queueHistoryLoading ? "Loading..." : "Apply Filter"}
                     </Button>
                     {queueRemovalRecords.length > 0 && (
-                      <Button variant="secondary" onClick={exportQueueHistoryToCSV}>
+                      <Button
+                        variant="secondary"
+                        onClick={exportQueueHistoryToCSV}
+                      >
                         <Download className="w-4 h-4 mr-2" />
                         Export CSV
                       </Button>
@@ -3920,8 +5177,12 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
               ) : queueRemovalRecords.length === 0 ? (
                 <div className="text-center py-12">
                   <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-3" />
-                  <p className="text-lg font-medium text-gray-900 mb-1">No removals found</p>
-                  <p className="text-sm text-gray-500">No queue removals found for the selected date range</p>
+                  <p className="text-lg font-medium text-gray-900 mb-1">
+                    No removals found
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    No queue removals found for the selected date range
+                  </p>
                 </div>
               ) : (
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -3959,7 +5220,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                               </div>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900">
-                              <div className="font-medium">{record.employee_name}</div>
+                              <div className="font-medium">
+                                {record.employee_name}
+                              </div>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900">
                               <div className="flex items-center gap-2">
@@ -3968,17 +5231,21 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                               </div>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                record.reason === 'Queue adjustment'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
+                              <span
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  record.reason === "Queue adjustment"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
+                              >
                                 {record.reason}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-600 max-w-xs">
                               {record.notes || (
-                                <span className="text-gray-400 italic">No additional notes</span>
+                                <span className="text-gray-400 italic">
+                                  No additional notes
+                                </span>
                               )}
                             </td>
                             <td className="px-4 py-3 text-sm">
@@ -4008,7 +5275,8 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                   </div>
                   {queueRemovalRecords.length > 0 && (
                     <div className="px-4 py-3 border-t border-gray-200 text-sm text-gray-600 text-center">
-                      Showing {queueRemovalRecords.length} removal{queueRemovalRecords.length !== 1 ? 's' : ''}
+                      Showing {queueRemovalRecords.length} removal
+                      {queueRemovalRecords.length !== 1 ? "s" : ""}
                     </div>
                   )}
                 </div>
@@ -4023,14 +5291,15 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         onClose={() => !processing && setShowRejectModal(false)}
         title="Reject Ticket"
         onConfirm={handleReject}
-        confirmText={processing ? 'Rejecting...' : 'Reject Ticket'}
+        confirmText={processing ? "Rejecting..." : "Reject Ticket"}
         confirmVariant="danger"
         cancelText="Cancel"
       >
         {selectedTicket && (
           <div>
             <p className="text-gray-700 mb-3">
-              Rejecting ticket <strong>{selectedTicket.ticket_no}</strong> will send it for admin review.
+              Rejecting ticket <strong>{selectedTicket.ticket_no}</strong> will
+              send it for admin review.
             </p>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -4054,14 +5323,16 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         onClose={() => !processing && setShowInventoryRejectModal(false)}
         title="Reject Inventory Transaction"
         onConfirm={handleRejectInventory}
-        confirmText={processing ? 'Rejecting...' : 'Reject Transaction'}
+        confirmText={processing ? "Rejecting..." : "Reject Transaction"}
         confirmVariant="danger"
         cancelText="Cancel"
       >
         {selectedInventory && (
           <div>
             <p className="text-gray-700 mb-3">
-              Rejecting transaction <strong>{selectedInventory.transaction_number}</strong> will prevent inventory quantities from being updated.
+              Rejecting transaction{" "}
+              <strong>{selectedInventory.transaction_number}</strong> will
+              prevent inventory quantities from being updated.
             </p>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -4083,18 +5354,22 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
       <Modal
         isOpen={showTransferApprovalModal}
         onClose={() => !processing && setShowTransferApprovalModal(false)}
-        title={`${t('inventory.transfer')} - ${selectedInventory?.transaction_number || ''}`}
+        title={`${t("inventory.transfer")} - ${selectedInventory?.transaction_number || ""}`}
         onConfirm={handleApproveTransfer}
-        confirmText={processing ? 'Approving...' : 'Approve Transfer'}
+        confirmText={processing ? "Approving..." : "Approve Transfer"}
         cancelText="Cancel"
       >
         {selectedInventory && (
           <div>
             <div className="mb-4 p-3 bg-purple-50 rounded-lg">
               <p className="text-sm text-gray-700">
-                <span className="font-medium">{t('inventory.fromStore')}:</span> {selectedInventory.source_store_name}
+                <span className="font-medium">{t("inventory.fromStore")}:</span>{" "}
+                {selectedInventory.source_store_name}
                 <span className="mx-2">→</span>
-                <span className="font-medium">{t('inventory.toStore')}:</span> {selectedInventory.destination_store_name}
+                <span className="font-medium">
+                  {t("inventory.toStore")}:
+                </span>{" "}
+                {selectedInventory.destination_store_name}
               </p>
               <p className="text-sm text-gray-600 mt-1">
                 Requested by: {selectedInventory.requested_by_name}
@@ -4106,13 +5381,22 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                 Review quantities received. Adjust if partial receipt:
               </p>
               {transferApprovalItems.map((item, index) => (
-                <div key={item.item_id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div
+                  key={item.item_id}
+                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                >
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{item.item_name}</p>
-                    <p className="text-xs text-gray-500">{t('inventory.sentQty')}: {item.sent_quantity}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {item.item_name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {t("inventory.sentQty")}: {item.sent_quantity}
+                    </p>
                   </div>
                   <div className="w-28">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">{t('inventory.receivedQty')}</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      {t("inventory.receivedQty")}
+                    </label>
                     <input
                       type="number"
                       step="0.01"
@@ -4133,7 +5417,9 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
             </div>
 
             {selectedInventory.notes && (
-              <p className="text-sm text-gray-600 mt-3 italic">Notes: {selectedInventory.notes}</p>
+              <p className="text-sm text-gray-600 mt-3 italic">
+                Notes: {selectedInventory.notes}
+              </p>
             )}
           </div>
         )}
@@ -4144,14 +5430,20 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         onClose={() => !processing && setShowCashTransactionRejectModal(false)}
         title="Reject Cash Transaction"
         onConfirm={handleRejectCashTransaction}
-        confirmText={processing ? 'Rejecting...' : 'Reject Transaction'}
+        confirmText={processing ? "Rejecting..." : "Reject Transaction"}
         confirmVariant="danger"
         cancelText="Cancel"
       >
         {selectedCashTransaction && (
           <div>
             <p className="text-gray-700 mb-3">
-              Rejecting this {selectedCashTransaction.transaction_type === 'cash_in' ? 'cash in' : 'cash out'} transaction of <strong>${selectedCashTransaction.amount.toFixed(2)}</strong> will prevent it from being recorded in the cash reconciliation.
+              Rejecting this{" "}
+              {selectedCashTransaction.transaction_type === "cash_in"
+                ? "cash in"
+                : "cash out"}{" "}
+              transaction of{" "}
+              <strong>${selectedCashTransaction.amount.toFixed(2)}</strong> will
+              prevent it from being recorded in the cash reconciliation.
             </p>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -4175,80 +5467,118 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         onClose={() => !processing && setShowViolationDecisionModal(false)}
         title="Review Turn Violation Report"
         onConfirm={handleSubmitViolationDecision}
-        confirmText={processing ? 'Processing...' : 'Submit Decision'}
-        confirmVariant={violationDecision === 'violation_confirmed' ? 'danger' : 'default'}
+        confirmText={processing ? "Processing..." : "Submit Decision"}
+        confirmVariant={
+          violationDecision === "violation_confirmed" ? "danger" : "default"
+        }
         cancelText="Cancel"
       >
         {selectedViolationReport && (
           <div className="space-y-4">
             {canSeeReporterInfo(selectedViolationReport) && (
               <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-sm font-medium text-gray-900 mb-1">Reporter</p>
-                <p className="text-sm text-gray-700">{selectedViolationReport.reporter_employee_name}</p>
+                <p className="text-sm font-medium text-gray-900 mb-1">
+                  Reporter
+                </p>
+                <p className="text-sm text-gray-700">
+                  {selectedViolationReport.reporter_employee_name}
+                </p>
               </div>
             )}
             <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-sm font-medium text-gray-900 mb-1">Reported Employee</p>
-              <p className="text-sm text-gray-700">{selectedViolationReport.reported_employee_name}</p>
+              <p className="text-sm font-medium text-gray-900 mb-1">
+                Reported Employee
+              </p>
+              <p className="text-sm text-gray-700">
+                {selectedViolationReport.reported_employee_name}
+              </p>
             </div>
 
             <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-sm font-medium text-gray-900 mb-1">Violation Description</p>
-              <p className="text-sm text-gray-700">{selectedViolationReport.violation_description}</p>
+              <p className="text-sm font-medium text-gray-900 mb-1">
+                Violation Description
+              </p>
+              <p className="text-sm text-gray-700">
+                {selectedViolationReport.violation_description}
+              </p>
             </div>
 
             {/* Additional Info Display in Modal */}
             {selectedViolationReport.info_requested_at && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <p className="text-sm font-medium text-yellow-900 mb-2">Additional Information</p>
+                <p className="text-sm font-medium text-yellow-900 mb-2">
+                  Additional Information
+                </p>
                 {selectedViolationReport.info_request_message && (
                   <p className="text-sm text-yellow-700 mb-2">
-                    <span className="font-medium">Question asked:</span> &ldquo;{selectedViolationReport.info_request_message}&rdquo;
+                    <span className="font-medium">Question asked:</span> &ldquo;
+                    {selectedViolationReport.info_request_message}&rdquo;
                   </p>
                 )}
                 {selectedViolationReport.additional_info ? (
                   <div className="bg-white rounded p-2 border border-yellow-200">
-                    <p className="text-sm text-gray-800">{selectedViolationReport.additional_info}</p>
+                    <p className="text-sm text-gray-800">
+                      {selectedViolationReport.additional_info}
+                    </p>
                     {selectedViolationReport.additional_info_submitted_at && (
                       <p className="text-xs text-gray-500 mt-1">
-                        Submitted {formatDateTimeEST(selectedViolationReport.additional_info_submitted_at)}
+                        Submitted{" "}
+                        {formatDateTimeEST(
+                          selectedViolationReport.additional_info_submitted_at,
+                        )}
                       </p>
                     )}
                   </div>
                 ) : (
-                  <p className="text-sm text-yellow-700 italic">Reporter has not yet provided additional information.</p>
+                  <p className="text-sm text-yellow-700 italic">
+                    Reporter has not yet provided additional information.
+                  </p>
                 )}
               </div>
             )}
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm font-medium text-blue-900 mb-2">Employee Votes</p>
-              <p className="text-sm text-blue-800">
-                {selectedViolationReport.votes_for_violation} voted that violation occurred
+              <p className="text-sm font-medium text-blue-900 mb-2">
+                Employee Votes
               </p>
               <p className="text-sm text-blue-800">
-                {selectedViolationReport.votes_against_violation} voted that no violation occurred
+                {selectedViolationReport.votes_for_violation} voted that
+                violation occurred
+              </p>
+              <p className="text-sm text-blue-800">
+                {selectedViolationReport.votes_against_violation} voted that no
+                violation occurred
               </p>
               {/* Vote Details - Only visible to Management (which they are if viewing this modal) */}
-              {canSeeVoteDetails() && selectedViolationReport.response_details && selectedViolationReport.response_details.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-blue-200">
-                  <p className="text-xs font-medium text-blue-900 mb-1">Vote Details</p>
-                  <div className="space-y-1 text-xs">
-                    <div>
-                      <span className="font-medium text-green-700">Yes:</span>
-                      <span className="text-blue-800 ml-1">
-                        {selectedViolationReport.response_details.filter(v => v.response).map(v => v.employee_name).join(', ') || 'None'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-red-700">No:</span>
-                      <span className="text-blue-800 ml-1">
-                        {selectedViolationReport.response_details.filter(v => !v.response).map(v => v.employee_name).join(', ') || 'None'}
-                      </span>
+              {canSeeVoteDetails() &&
+                selectedViolationReport.response_details &&
+                selectedViolationReport.response_details.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-blue-200">
+                    <p className="text-xs font-medium text-blue-900 mb-1">
+                      Vote Details
+                    </p>
+                    <div className="space-y-1 text-xs">
+                      <div>
+                        <span className="font-medium text-green-700">Yes:</span>
+                        <span className="text-blue-800 ml-1">
+                          {selectedViolationReport.response_details
+                            .filter((v) => v.response)
+                            .map((v) => v.employee_name)
+                            .join(", ") || "None"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-red-700">No:</span>
+                        <span className="text-blue-800 ml-1">
+                          {selectedViolationReport.response_details
+                            .filter((v) => !v.response)
+                            .map((v) => v.employee_name)
+                            .join(", ") || "None"}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
 
             <div>
@@ -4261,14 +5591,22 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                     type="radio"
                     name="decision"
                     value="violation_confirmed"
-                    checked={violationDecision === 'violation_confirmed'}
-                    onChange={(e) => setViolationDecision(e.target.value as 'violation_confirmed')}
+                    checked={violationDecision === "violation_confirmed"}
+                    onChange={(e) =>
+                      setViolationDecision(
+                        e.target.value as "violation_confirmed",
+                      )
+                    }
                     disabled={processing}
                     className="mr-3"
                   />
                   <div>
-                    <p className="font-medium text-gray-900">Confirm Violation</p>
-                    <p className="text-sm text-gray-600">The violation did occur and action should be taken</p>
+                    <p className="font-medium text-gray-900">
+                      Confirm Violation
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      The violation did occur and action should be taken
+                    </p>
                   </div>
                 </label>
                 <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
@@ -4276,20 +5614,24 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                     type="radio"
                     name="decision"
                     value="no_violation"
-                    checked={violationDecision === 'no_violation'}
-                    onChange={(e) => setViolationDecision(e.target.value as 'no_violation')}
+                    checked={violationDecision === "no_violation"}
+                    onChange={(e) =>
+                      setViolationDecision(e.target.value as "no_violation")
+                    }
                     disabled={processing}
                     className="mr-3"
                   />
                   <div>
                     <p className="font-medium text-gray-900">No Violation</p>
-                    <p className="text-sm text-gray-600">The report is not substantiated</p>
+                    <p className="text-sm text-gray-600">
+                      The report is not substantiated
+                    </p>
                   </div>
                 </label>
               </div>
             </div>
 
-            {violationDecision === 'violation_confirmed' && (
+            {violationDecision === "violation_confirmed" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Action to Take
@@ -4309,21 +5651,22 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
               </div>
             )}
 
-            {violationDecision === 'violation_confirmed' && violationAction !== 'none' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Action Details (Optional)
-                </label>
-                <textarea
-                  value={violationActionDetails}
-                  onChange={(e) => setViolationActionDetails(e.target.value)}
-                  rows={2}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Additional details about the action taken..."
-                  disabled={processing}
-                />
-              </div>
-            )}
+            {violationDecision === "violation_confirmed" &&
+              violationAction !== "none" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Action Details (Optional)
+                  </label>
+                  <textarea
+                    value={violationActionDetails}
+                    onChange={(e) => setViolationActionDetails(e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Additional details about the action taken..."
+                    disabled={processing}
+                  />
+                </div>
+              )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -4348,18 +5691,19 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         onClose={() => {
           if (!processing) {
             setShowInfoRequestModal(false);
-            setInfoRequestMessage('');
+            setInfoRequestMessage("");
             setSelectedReportForInfoRequest(null);
           }
         }}
         title="Request Additional Information"
         onConfirm={handleRequestMoreInfo}
-        confirmText={processing ? 'Sending...' : 'Send Request'}
+        confirmText={processing ? "Sending..." : "Send Request"}
         cancelText="Cancel"
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            Request additional details from the reporter to help make your decision.
+            Request additional details from the reporter to help make your
+            decision.
           </p>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -4382,7 +5726,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
         isOpen={!!selectedTicketReopenRequest}
         onClose={() => {
           setSelectedTicketReopenRequest(null);
-          setTicketReopenReviewComment('');
+          setTicketReopenReviewComment("");
         }}
         title="Reject Ticket Change Request"
       >
@@ -4390,16 +5734,27 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
           <div className="space-y-4">
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-sm text-gray-600">
-                You are about to reject the change request for ticket{' '}
-                <span className="font-semibold">#{selectedTicketReopenRequest.ticket_no}</span>.
+                You are about to reject the change request for ticket{" "}
+                <span className="font-semibold">
+                  #{selectedTicketReopenRequest.ticket_no}
+                </span>
+                .
               </p>
             </div>
 
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <p className="text-sm font-medium text-amber-800 mb-1">Requested Changes:</p>
-              <p className="text-sm text-amber-700">{selectedTicketReopenRequest.requested_changes_description}</p>
-              <p className="text-sm font-medium text-amber-800 mt-2 mb-1">Reason Given:</p>
-              <p className="text-sm text-amber-700">{selectedTicketReopenRequest.reason_comment}</p>
+              <p className="text-sm font-medium text-amber-800 mb-1">
+                Requested Changes:
+              </p>
+              <p className="text-sm text-amber-700">
+                {selectedTicketReopenRequest.requested_changes_description}
+              </p>
+              <p className="text-sm font-medium text-amber-800 mt-2 mb-1">
+                Reason Given:
+              </p>
+              <p className="text-sm text-amber-700">
+                {selectedTicketReopenRequest.reason_comment}
+              </p>
             </div>
 
             <div>
@@ -4420,7 +5775,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                 variant="secondary"
                 onClick={() => {
                   setSelectedTicketReopenRequest(null);
-                  setTicketReopenReviewComment('');
+                  setTicketReopenReviewComment("");
                 }}
                 disabled={processing}
               >
@@ -4431,7 +5786,7 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
                 onClick={handleRejectTicketReopenRequest}
                 disabled={processing || !ticketReopenReviewComment.trim()}
               >
-                {processing ? 'Rejecting...' : 'Reject Request'}
+                {processing ? "Rejecting..." : "Reject Request"}
               </Button>
             </div>
           </div>
@@ -4449,11 +5804,15 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm font-medium text-gray-500">Ticket</p>
-                <p className="text-lg font-semibold">#{viewingRequest.ticket_no}</p>
+                <p className="text-lg font-semibold">
+                  #{viewingRequest.ticket_no}
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Customer</p>
-                <p className="text-lg">{viewingRequest.customer_name || 'Walk-in'}</p>
+                <p className="text-lg">
+                  {viewingRequest.customer_name || "Walk-in"}
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Total</p>
@@ -4466,16 +5825,25 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
             </div>
 
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <p className="text-sm font-semibold text-amber-800 mb-2">Requested Changes</p>
-              <p className="text-amber-700">{viewingRequest.requested_changes_description}</p>
+              <p className="text-sm font-semibold text-amber-800 mb-2">
+                Requested Changes
+              </p>
+              <p className="text-amber-700">
+                {viewingRequest.requested_changes_description}
+              </p>
 
-              <p className="text-sm font-semibold text-amber-800 mt-4 mb-2">Reason</p>
+              <p className="text-sm font-semibold text-amber-800 mt-4 mb-2">
+                Reason
+              </p>
               <p className="text-amber-700">{viewingRequest.reason_comment}</p>
             </div>
 
             <div className="text-sm text-gray-500">
-              Requested by <span className="font-medium">{viewingRequest.created_by_name}</span>
-              {' '}on {formatDateTimeEST(viewingRequest.created_at)}
+              Requested by{" "}
+              <span className="font-medium">
+                {viewingRequest.created_by_name}
+              </span>{" "}
+              on {formatDateTimeEST(viewingRequest.created_at)}
             </div>
 
             <div className="flex gap-2 pt-4 border-t">
@@ -4505,6 +5873,14 @@ export function PendingApprovalsPage({ selectedDate, onSelectedDateChange, queue
           </div>
         )}
       </Modal>
+
+      {viewingTicketId && (
+        <TicketEditor
+          ticketId={viewingTicketId}
+          onClose={() => setViewingTicketId(null)}
+          selectedDate={viewingTicketDate}
+        />
+      )}
     </div>
   );
 }

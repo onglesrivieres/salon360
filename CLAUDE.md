@@ -510,6 +510,9 @@ Always filter by `store_id` when querying store-specific data:
 
 Changes grouped by feature area. All dates in 2026.
 
+### Approvals: Inline Ticket Viewer on Ticket Changes Tab (Feb 18)
+- "View Ticket" button on Pending Approvals → Ticket Changes tab now opens TicketEditor as an inline drawer overlay instead of navigating away to the Tickets page. Uses same pattern as ClientDetailsModal (local state + conditional `<TicketEditor>`). "Approve & Reopen" still navigates to Tickets page (intentional — user needs to edit the reopened ticket). No DB changes. Files: `PendingApprovalsPage.tsx`
+
 ### EOD Expected Cash: Grand Total for Cash Tickets (Feb 18)
 - EOD "Expected Cash Collected" now branches by `payment_method`. Cash tickets: computes Grand Total from `sale_tickets.subtotal - discount + tax_gst + tax_qst + cash_tips`, independent of `payment_cash` pre-fill. Mixed tickets: uses `payment_cash + cash_tips` (user-entered cash portion). Card/gift_card: skipped. Fallback for old tickets (`subtotal = 0`): uses `payment_cash` as base. No DB changes. Files: `EndOfDayPage.tsx`
 
