@@ -1406,9 +1406,9 @@ export function PendingApprovalsPage({
   }
 
   // Open ticket as inline drawer overlay (no page navigation)
-  function handleViewTicket(request: PendingTicketReopenRequest) {
-    setViewingTicketId(request.ticket_id);
-    setViewingTicketDate(request.ticket_date);
+  function handleViewTicket(item: { ticket_id: string; ticket_date: string }) {
+    setViewingTicketId(item.ticket_id);
+    setViewingTicketDate(item.ticket_date);
   }
 
   // Approve and reopen the ticket, then navigate to it
@@ -2747,34 +2747,41 @@ export function PendingApprovalsPage({
                           </div>
                         </div>
 
-                        {canTakeActions ? (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="primary"
-                              onClick={() => handleApproveClick(ticket)}
-                              className="flex-1"
-                              disabled={processing}
-                            >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleRejectClick(ticket)}
-                              className="flex-1 text-red-600 hover:bg-red-50"
-                              disabled={processing}
-                            >
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Reject
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="text-sm text-gray-500 italic">
-                            View only
-                          </div>
-                        )}
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleViewTicket(ticket)}
+                            disabled={processing}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View
+                          </Button>
+                          {canTakeActions && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                onClick={() => handleApproveClick(ticket)}
+                                className="flex-1"
+                                disabled={processing}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleRejectClick(ticket)}
+                                className="flex-1 text-red-600 hover:bg-red-50"
+                                disabled={processing}
+                              >
+                                <XCircle className="w-4 h-4 mr-1" />
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
