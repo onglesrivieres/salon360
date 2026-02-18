@@ -1,26 +1,63 @@
-import { useState, useEffect, useRef } from 'react';
-import { DollarSign, TrendingUp, Vault, ChevronLeft, ChevronRight, TrendingDown, AlertTriangle, History, ChevronDown, ChevronUp, Edit3, Clock } from 'lucide-react';
-import { supabase, SafeBalanceSummary, CashTransactionWithDetails } from '../lib/supabase';
-import { useToast } from '../components/ui/Toast';
-import { useAuth } from '../contexts/AuthContext';
-import { getCurrentDateEST } from '../lib/timezone';
-import { SafeWithdrawalModal, WithdrawalData } from '../components/SafeWithdrawalModal';
-import { CashTransactionChangeRequestModal, ChangeRequestData } from '../components/CashTransactionChangeRequestModal';
-import { Button } from '../components/ui/Button';
-import { Permissions } from '../lib/permissions';
+import { useState, useEffect, useRef } from "react";
+import {
+  DollarSign,
+  TrendingUp,
+  Vault,
+  ChevronLeft,
+  ChevronRight,
+  TrendingDown,
+  AlertTriangle,
+  History,
+  ChevronDown,
+  ChevronUp,
+  Edit3,
+  Clock,
+} from "lucide-react";
+import {
+  supabase,
+  SafeBalanceSummary,
+  CashTransactionWithDetails,
+  CashTransactionPhoto,
+} from "../lib/supabase";
+import { useToast } from "../components/ui/Toast";
+import { useAuth } from "../contexts/AuthContext";
+import { useSettings } from "../contexts/SettingsContext";
+import { getCurrentDateEST } from "../lib/timezone";
+import {
+  SafeWithdrawalModal,
+  WithdrawalData,
+} from "../components/SafeWithdrawalModal";
+import {
+  CashTransactionChangeRequestModal,
+  ChangeRequestData,
+} from "../components/CashTransactionChangeRequestModal";
+import { Button } from "../components/ui/Button";
+import { Permissions } from "../lib/permissions";
+import { getStorageService } from "../lib/storage";
+import type { PendingPhoto } from "../components/photos/useTicketPhotos";
 
 interface SafeBalancePageProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
 }
 
-export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageProps) {
+export function SafeBalancePage({
+  selectedDate,
+  onDateChange,
+}: SafeBalancePageProps) {
   const { showToast } = useToast();
   const { session, selectedStoreId, effectiveRole } = useAuth();
+  const { getStorageConfig } = useSettings();
 
-  const [safeBalance, setSafeBalance] = useState<SafeBalanceSummary | null>(null);
-  const [safeDeposits, setSafeDeposits] = useState<CashTransactionWithDetails[]>([]);
-  const [safeWithdrawals, setSafeWithdrawals] = useState<CashTransactionWithDetails[]>([]);
+  const [safeBalance, setSafeBalance] = useState<SafeBalanceSummary | null>(
+    null,
+  );
+  const [safeDeposits, setSafeDeposits] = useState<
+    CashTransactionWithDetails[]
+  >([]);
+  const [safeWithdrawals, setSafeWithdrawals] = useState<
+    CashTransactionWithDetails[]
+  >([]);
   const [loadingSafeBalance, setLoadingSafeBalance] = useState(false);
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
   const [balanceWarning, setBalanceWarning] = useState<string | null>(null);
@@ -28,10 +65,15 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
   const [showHistory, setShowHistory] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showChangeRequestModal, setShowChangeRequestModal] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState<CashTransactionWithDetails | null>(null);
-  const [pendingProposals, setPendingProposals] = useState<Set<string>>(new Set());
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<CashTransactionWithDetails | null>(null);
+  const [pendingProposals, setPendingProposals] = useState<Set<string>>(
+    new Set(),
+  );
 
-  const canCreateChangeProposal = effectiveRole ? Permissions.cashTransactions.canCreateChangeProposal(effectiveRole) : false;
+  const canCreateChangeProposal = effectiveRole
+    ? Permissions.cashTransactions.canCreateChangeProposal(effectiveRole)
+    : false;
 
   const fetchIdRef = useRef(0);
 
@@ -56,15 +98,20 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
       setBalanceWarning(null);
 
       // Calculate previous date for balance warning check
-      const previousDate = new Date(selectedDate + 'T12:00:00');
+      const previousDate = new Date(selectedDate + "T12:00:00");
       previousDate.setDate(previousDate.getDate() - 1);
-      const prevDateStr = previousDate.toISOString().split('T')[0];
+      const prevDateStr = previousDate.toISOString().split("T")[0];
 
       // PHASE 1: Run 4 independent operations in parallel
-      const [balanceResult, depositsResult, withdrawalsResult, prevSnapshotResult] = await Promise.all([
+      const [
+        balanceResult,
+        depositsResult,
+        withdrawalsResult,
+        prevSnapshotResult,
+      ] = await Promise.all([
         // Balance summary via RPC
         supabase
-          .rpc('get_safe_balance_for_date', {
+          .rpc("get_safe_balance_for_date", {
             p_store_id: selectedStoreId,
             p_date: selectedDate,
           })
@@ -72,8 +119,9 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
 
         // Deposits query
         supabase
-          .from('cash_transactions')
-          .select(`
+          .from("cash_transactions")
+          .select(
+            `
             *,
             created_by:employees!cash_transactions_created_by_id_fkey (
               id,
@@ -83,17 +131,19 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
               id,
               name:legal_name
             )
-          `)
-          .eq('store_id', selectedStoreId)
-          .eq('date', selectedDate)
-          .in('transaction_type', ['cash_out', 'hq_deposit'])
-          .eq('category', 'Safe Deposit')
-          .order('created_at', { ascending: false }),
+          `,
+          )
+          .eq("store_id", selectedStoreId)
+          .eq("date", selectedDate)
+          .in("transaction_type", ["cash_out", "hq_deposit"])
+          .eq("category", "Safe Deposit")
+          .order("created_at", { ascending: false }),
 
         // Withdrawals query
         supabase
-          .from('cash_transactions')
-          .select(`
+          .from("cash_transactions")
+          .select(
+            `
             *,
             created_by:employees!cash_transactions_created_by_id_fkey (
               id,
@@ -103,19 +153,25 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
               id,
               name:legal_name
             )
-          `)
-          .eq('store_id', selectedStoreId)
-          .eq('date', selectedDate)
-          .eq('transaction_type', 'cash_payout')
-          .in('category', ['Payroll', 'Tip Payout', 'Headquarter Deposit', 'Other'])
-          .order('created_at', { ascending: false }),
+          `,
+          )
+          .eq("store_id", selectedStoreId)
+          .eq("date", selectedDate)
+          .eq("transaction_type", "cash_payout")
+          .in("category", [
+            "Payroll",
+            "Tip Payout",
+            "Headquarter Deposit",
+            "Other",
+          ])
+          .order("created_at", { ascending: false }),
 
         // Previous day snapshot for balance warning
         supabase
-          .from('safe_balance_history')
-          .select('closing_balance, date')
-          .eq('store_id', selectedStoreId)
-          .eq('date', prevDateStr)
+          .from("safe_balance_history")
+          .select("closing_balance, date")
+          .eq("store_id", selectedStoreId)
+          .eq("date", prevDateStr)
           .maybeSingle(),
       ]);
 
@@ -127,25 +183,29 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
       if (withdrawalsResult.error) throw withdrawalsResult.error;
 
       const rawBalance = balanceResult.data;
-      const balanceData: SafeBalanceSummary | null = rawBalance &&
-        typeof rawBalance === 'object' && 'opening_balance' in rawBalance
-        ? rawBalance as SafeBalanceSummary
-        : null;
-      setSafeBalance(balanceData || {
-        opening_balance: 0,
-        total_deposits: 0,
-        total_withdrawals: 0,
-        closing_balance: 0,
-      });
+      const balanceData: SafeBalanceSummary | null =
+        rawBalance &&
+        typeof rawBalance === "object" &&
+        "opening_balance" in rawBalance
+          ? (rawBalance as SafeBalanceSummary)
+          : null;
+      setSafeBalance(
+        balanceData || {
+          opening_balance: 0,
+          total_deposits: 0,
+          total_withdrawals: 0,
+          closing_balance: 0,
+        },
+      );
 
-      const deposits = (depositsResult.data || []).map(t => ({
+      const deposits = (depositsResult.data || []).map((t) => ({
         ...t,
         created_by_name: t.created_by?.name,
         manager_approved_by_name: t.approved_by?.name,
       }));
       setSafeDeposits(deposits);
 
-      const withdrawals = (withdrawalsResult.data || []).map(t => ({
+      const withdrawals = (withdrawalsResult.data || []).map((t) => ({
         ...t,
         created_by_name: t.created_by?.name,
         manager_approved_by_name: t.approved_by?.name,
@@ -155,13 +215,17 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
       // Balance warning check
       const prevSnapshot = prevSnapshotResult.data;
       if (balanceData && prevSnapshot) {
-        const expectedOpening = parseFloat(prevSnapshot.closing_balance.toString());
-        const actualOpening = parseFloat(balanceData.opening_balance.toString());
+        const expectedOpening = parseFloat(
+          prevSnapshot.closing_balance.toString(),
+        );
+        const actualOpening = parseFloat(
+          balanceData.opening_balance.toString(),
+        );
         const difference = Math.abs(expectedOpening - actualOpening);
 
         if (difference > 0.01) {
           setBalanceWarning(
-            `Opening balance ($${actualOpening.toFixed(2)}) does not match previous day's closing balance ($${expectedOpening.toFixed(2)}). Difference: $${difference.toFixed(2)}`
+            `Opening balance ($${actualOpening.toFixed(2)}) does not match previous day's closing balance ($${expectedOpening.toFixed(2)}). Difference: $${difference.toFixed(2)}`,
           );
         } else {
           setBalanceWarning(null);
@@ -172,38 +236,41 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
 
       // PHASE 2: Pending proposals (depends on deposits + withdrawals)
       const allTransactionIds = [
-        ...deposits.map(d => d.id),
-        ...withdrawals.map(w => w.id),
+        ...deposits.map((d) => d.id),
+        ...withdrawals.map((w) => w.id),
       ];
 
       if (allTransactionIds.length > 0) {
         const { data: proposals } = await supabase
-          .from('cash_transaction_change_proposals')
-          .select('cash_transaction_id')
-          .in('cash_transaction_id', allTransactionIds)
-          .eq('status', 'pending');
+          .from("cash_transaction_change_proposals")
+          .select("cash_transaction_id")
+          .in("cash_transaction_id", allTransactionIds)
+          .eq("status", "pending");
 
         if (fetchIdRef.current !== currentFetchId) return;
 
-        const pendingIds = new Set((proposals || []).map(p => p.cash_transaction_id));
+        const pendingIds = new Set(
+          (proposals || []).map((p) => p.cash_transaction_id),
+        );
         setPendingProposals(pendingIds);
       } else {
         setPendingProposals(new Set());
       }
 
       // Fire-and-forget: save snapshot (non-blocking write)
-      supabase.rpc('save_safe_balance_snapshot', {
-        p_store_id: selectedStoreId,
-        p_date: selectedDate,
-        p_employee_id: session.employee_id,
-      }).then(null, (err: unknown) => {
-        console.error('Failed to save safe balance snapshot:', err);
-      });
-
+      supabase
+        .rpc("save_safe_balance_snapshot", {
+          p_store_id: selectedStoreId,
+          p_date: selectedDate,
+          p_employee_id: session.employee_id,
+        })
+        .then(null, (err: unknown) => {
+          console.error("Failed to save safe balance snapshot:", err);
+        });
     } catch (error) {
       if (fetchIdRef.current === currentFetchId) {
-        console.error('Failed to load safe balance data:', error);
-        showToast('Failed to load safe balance data', 'error');
+        console.error("Failed to load safe balance data:", error);
+        showToast("Failed to load safe balance data", "error");
       }
     } finally {
       if (fetchIdRef.current === currentFetchId) {
@@ -213,15 +280,15 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
   }
 
   function goToPreviousDay() {
-    const date = new Date(selectedDate + 'T12:00:00');
+    const date = new Date(selectedDate + "T12:00:00");
     date.setDate(date.getDate() - 1);
-    onDateChange(date.toISOString().split('T')[0]);
+    onDateChange(date.toISOString().split("T")[0]);
   }
 
   function goToNextDay() {
-    const date = new Date(selectedDate + 'T12:00:00');
+    const date = new Date(selectedDate + "T12:00:00");
     date.setDate(date.getDate() + 1);
-    onDateChange(date.toISOString().split('T')[0]);
+    onDateChange(date.toISOString().split("T")[0]);
   }
 
   function goToToday() {
@@ -234,20 +301,19 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
     try {
       setLoadingHistory(true);
 
-      const { data, error } = await supabase
-        .rpc('get_safe_balance_history', {
-          p_store_id: selectedStoreId,
-          p_start_date: null,
-          p_end_date: null,
-          p_limit: 14,
-        });
+      const { data, error } = await supabase.rpc("get_safe_balance_history", {
+        p_store_id: selectedStoreId,
+        p_start_date: null,
+        p_end_date: null,
+        p_limit: 14,
+      });
 
       if (error) throw error;
 
       setBalanceHistory(data || []);
     } catch (error) {
-      console.error('Failed to load balance history:', error);
-      showToast('Failed to load balance history', 'error');
+      console.error("Failed to load balance history:", error);
+      showToast("Failed to load balance history", "error");
     } finally {
       setLoadingHistory(false);
     }
@@ -260,69 +326,150 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
     setShowHistory(!showHistory);
   }
 
+  async function uploadWithdrawalPhotos(
+    transactionId: string,
+    photos: PendingPhoto[],
+  ) {
+    if (photos.length === 0 || !selectedStoreId || !session?.employee_id)
+      return;
+
+    const storageConfig = getStorageConfig();
+    if (!storageConfig?.r2Config?.publicUrl) return;
+
+    let storage;
+    try {
+      storage = getStorageService(storageConfig);
+    } catch {
+      return;
+    }
+
+    for (let i = 0; i < photos.length; i++) {
+      const pending = photos[i];
+      const timestamp = Date.now();
+      const uuid = crypto.randomUUID();
+      const filename = `${timestamp}_${uuid}.jpg`;
+      const storagePath = `cash-transactions/${selectedStoreId}/${transactionId}/${filename}`;
+
+      try {
+        const uploadResult = await storage.upload(
+          storagePath,
+          pending.compressedBlob,
+          {
+            contentType: "image/jpeg",
+            cacheControl: "3600",
+          },
+        );
+
+        if (!uploadResult.success) {
+          console.error(
+            "Failed to upload withdrawal photo:",
+            uploadResult.error,
+          );
+          continue;
+        }
+
+        const photoData: Omit<CashTransactionPhoto, "id" | "created_at"> = {
+          store_id: selectedStoreId,
+          cash_transaction_id: transactionId,
+          storage_path: storagePath,
+          filename: pending.filename,
+          file_size: pending.compressedBlob.size,
+          mime_type: "image/jpeg",
+          display_order: i,
+          uploaded_by: session.employee_id,
+          caption: "",
+        };
+
+        const { error: insertError } = await supabase
+          .from("cash_transaction_photos")
+          .insert(photoData);
+
+        if (insertError) {
+          console.error("Failed to save withdrawal photo record:", insertError);
+        }
+      } catch (err) {
+        console.error("Failed to upload withdrawal photo:", err);
+      }
+    }
+  }
+
   async function handleWithdrawalSubmit(data: WithdrawalData) {
     if (!session?.employee_id || !selectedStoreId) {
-      showToast('You must be logged in to record a withdrawal', 'error');
+      showToast("You must be logged in to record a withdrawal", "error");
       return;
     }
 
     try {
-      const { data: result, error } = await supabase
-        .rpc('create_cash_transaction_with_validation', {
+      const { data: result, error } = await supabase.rpc(
+        "create_cash_transaction_with_validation",
+        {
           p_store_id: selectedStoreId,
           p_date: selectedDate,
-          p_transaction_type: 'cash_payout',
+          p_transaction_type: "cash_payout",
           p_amount: data.amount,
           p_description: data.description,
           p_category: data.category,
           p_created_by_id: session.employee_id,
-        });
+        },
+      );
 
       if (error) throw error;
 
       if (result && !result.success) {
-        showToast(result.error || 'Failed to submit withdrawal', 'error');
+        showToast(result.error || "Failed to submit withdrawal", "error");
         return;
       }
 
-      showToast('Withdrawal submitted for approval', 'success');
+      // Fire-and-forget photo upload after successful transaction creation
+      if (data.pendingPhotos.length > 0 && result?.transaction_id) {
+        uploadWithdrawalPhotos(result.transaction_id, data.pendingPhotos).catch(
+          (err) => {
+            console.error("Failed to upload withdrawal photos:", err);
+          },
+        );
+      }
+
+      showToast("Withdrawal submitted for approval", "success");
       setShowWithdrawalModal(false);
       loadSafeBalanceData();
     } catch (error) {
-      console.error('Failed to submit withdrawal:', error);
-      showToast('Failed to submit withdrawal', 'error');
+      console.error("Failed to submit withdrawal:", error);
+      showToast("Failed to submit withdrawal", "error");
     }
   }
 
   async function handleChangeRequestSubmit(data: ChangeRequestData) {
     if (!session?.employee_id || !selectedTransaction) {
-      showToast('Unable to submit change request', 'error');
+      showToast("Unable to submit change request", "error");
       return;
     }
 
-    const { data: result, error } = await supabase.rpc('create_cash_transaction_change_proposal', {
-      p_cash_transaction_id: selectedTransaction.id,
-      p_proposed_amount: data.proposed_amount,
-      p_proposed_category: data.proposed_category,
-      p_proposed_description: data.proposed_description,
-      p_proposed_date: data.proposed_date,
-      p_is_deletion_request: data.is_deletion_request,
-      p_reason_comment: data.reason_comment,
-      p_created_by_employee_id: session.employee_id,
-    });
+    const { data: result, error } = await supabase.rpc(
+      "create_cash_transaction_change_proposal",
+      {
+        p_cash_transaction_id: selectedTransaction.id,
+        p_proposed_amount: data.proposed_amount,
+        p_proposed_category: data.proposed_category,
+        p_proposed_description: data.proposed_description,
+        p_proposed_date: data.proposed_date,
+        p_is_deletion_request: data.is_deletion_request,
+        p_reason_comment: data.reason_comment,
+        p_created_by_employee_id: session.employee_id,
+      },
+    );
 
     if (error) {
-      console.error('Failed to submit change request:', error);
-      showToast('Failed to submit change request', 'error');
+      console.error("Failed to submit change request:", error);
+      showToast("Failed to submit change request", "error");
       throw error;
     }
 
     if (result && !result.success) {
-      showToast(result.error || 'Failed to submit change request', 'error');
+      showToast(result.error || "Failed to submit change request", "error");
       throw new Error(result.error);
     }
 
-    showToast('Change request submitted for approval', 'success');
+    showToast("Change request submitted for approval", "success");
     setShowChangeRequestModal(false);
     setSelectedTransaction(null);
     loadSafeBalanceData();
@@ -340,7 +487,9 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
     <div className="max-w-7xl mx-auto">
       <div className="mb-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-base md:text-lg font-bold text-gray-900">Safe Balance</h2>
+          <h2 className="text-base md:text-lg font-bold text-gray-900">
+            Safe Balance
+          </h2>
           <div className="flex items-center gap-2">
             {!isToday && (
               <button
@@ -379,10 +528,13 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-amber-900 mb-1">Balance Mismatch Warning</h3>
+              <h3 className="text-sm font-semibold text-amber-900 mb-1">
+                Balance Mismatch Warning
+              </h3>
               <p className="text-sm text-amber-800">{balanceWarning}</p>
               <p className="text-xs text-amber-700 mt-2">
-                This may indicate missing transactions or data inconsistency. Please review the previous day's closing balance.
+                This may indicate missing transactions or data inconsistency.
+                Please review the previous day's closing balance.
               </p>
             </div>
           </div>
@@ -399,7 +551,9 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
             <div className="bg-white rounded-lg shadow p-4">
               <div className="flex items-center gap-2 mb-2">
                 <DollarSign className="w-4 h-4 text-blue-600" />
-                <h3 className="text-sm font-semibold text-gray-900">Opening Balance</h3>
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Opening Balance
+                </h3>
               </div>
               <p className="text-2xl font-bold text-blue-600">
                 ${(safeBalance?.opening_balance || 0).toFixed(2)}
@@ -410,26 +564,32 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
             <div className="bg-white rounded-lg shadow p-4">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="w-4 h-4 text-green-600" />
-                <h3 className="text-sm font-semibold text-gray-900">Total Deposits</h3>
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Total Deposits
+                </h3>
               </div>
               <p className="text-2xl font-bold text-green-600">
                 ${(safeBalance?.total_deposits || 0).toFixed(2)}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {safeDeposits.filter(d => d.status === 'approved').length} approved
+                {safeDeposits.filter((d) => d.status === "approved").length}{" "}
+                approved
               </p>
             </div>
 
             <div className="bg-white rounded-lg shadow p-4">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingDown className="w-4 h-4 text-red-600" />
-                <h3 className="text-sm font-semibold text-gray-900">Total Withdrawals</h3>
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Total Withdrawals
+                </h3>
               </div>
               <p className="text-2xl font-bold text-red-600">
                 ${(safeBalance?.total_withdrawals || 0).toFixed(2)}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {safeWithdrawals.filter(w => w.status === 'approved').length} approved
+                {safeWithdrawals.filter((w) => w.status === "approved").length}{" "}
+                approved
               </p>
             </div>
 
@@ -450,10 +610,13 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-green-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">Safe Deposits</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Safe Deposits
+                  </h3>
                 </div>
                 <span className="text-sm text-gray-500">
-                  {safeDeposits.length} {safeDeposits.length === 1 ? 'transaction' : 'transactions'}
+                  {safeDeposits.length}{" "}
+                  {safeDeposits.length === 1 ? "transaction" : "transactions"}
                 </span>
               </div>
             </div>
@@ -477,45 +640,53 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
                           </span>
                           <span
                             className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              deposit.status === 'approved'
-                                ? 'bg-green-100 text-green-700'
-                                : deposit.status === 'rejected'
-                                ? 'bg-red-100 text-red-700'
-                                : 'bg-amber-100 text-amber-700'
+                              deposit.status === "approved"
+                                ? "bg-green-100 text-green-700"
+                                : deposit.status === "rejected"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-amber-100 text-amber-700"
                             }`}
                           >
-                            {deposit.status === 'approved'
-                              ? 'Approved'
-                              : deposit.status === 'rejected'
-                              ? 'Rejected'
-                              : 'Pending'}
+                            {deposit.status === "approved"
+                              ? "Approved"
+                              : deposit.status === "rejected"
+                                ? "Rejected"
+                                : "Pending"}
                           </span>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-900 font-medium">{deposit.description}</p>
+                      <p className="text-sm text-gray-900 font-medium">
+                        {deposit.description}
+                      </p>
                       <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
                         <span>By: {deposit.created_by_name}</span>
-                        <span>{new Date(deposit.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}</span>
+                        <span>
+                          {new Date(deposit.created_at).toLocaleTimeString(
+                            "en-US",
+                            { timeZone: "America/New_York" },
+                          )}
+                        </span>
                       </div>
                       {/* Request Change button - only for Managers, approved transactions, and no pending proposal */}
-                      {canCreateChangeProposal && deposit.status === 'approved' && (
-                        <div className="mt-2 pt-2 border-t border-gray-100">
-                          {pendingProposals.has(deposit.id) ? (
-                            <span className="flex items-center gap-1 text-xs text-amber-600">
-                              <Clock className="w-3 h-3" />
-                              Change pending
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => openChangeRequestModal(deposit)}
-                              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              Request Change
-                            </button>
-                          )}
-                        </div>
-                      )}
+                      {canCreateChangeProposal &&
+                        deposit.status === "approved" && (
+                          <div className="mt-2 pt-2 border-t border-gray-100">
+                            {pendingProposals.has(deposit.id) ? (
+                              <span className="flex items-center gap-1 text-xs text-amber-600">
+                                <Clock className="w-3 h-3" />
+                                Change pending
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => openChangeRequestModal(deposit)}
+                                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                                Request Change
+                              </button>
+                            )}
+                          </div>
+                        )}
                     </div>
                   ))}
                 </div>
@@ -528,11 +699,16 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <TrendingDown className="w-5 h-5 text-red-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">Safe Withdrawals</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Safe Withdrawals
+                  </h3>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-gray-500">
-                    {safeWithdrawals.length} {safeWithdrawals.length === 1 ? 'transaction' : 'transactions'}
+                    {safeWithdrawals.length}{" "}
+                    {safeWithdrawals.length === 1
+                      ? "transaction"
+                      : "transactions"}
                   </span>
                   <Button
                     variant="primary"
@@ -548,7 +724,9 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
               {safeWithdrawals.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <TrendingDown className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm">No withdrawals recorded for this date</p>
+                  <p className="text-sm">
+                    No withdrawals recorded for this date
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -560,22 +738,25 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <span className="text-lg font-bold text-red-600">
-                            -${parseFloat(withdrawal.amount.toString()).toFixed(2)}
+                            -$
+                            {parseFloat(withdrawal.amount.toString()).toFixed(
+                              2,
+                            )}
                           </span>
                           <span
                             className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              withdrawal.status === 'approved'
-                                ? 'bg-green-100 text-green-700'
-                                : withdrawal.status === 'rejected'
-                                ? 'bg-red-100 text-red-700'
-                                : 'bg-amber-100 text-amber-700'
+                              withdrawal.status === "approved"
+                                ? "bg-green-100 text-green-700"
+                                : withdrawal.status === "rejected"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-amber-100 text-amber-700"
                             }`}
                           >
-                            {withdrawal.status === 'approved'
-                              ? 'Approved'
-                              : withdrawal.status === 'rejected'
-                              ? 'Rejected'
-                              : 'Pending'}
+                            {withdrawal.status === "approved"
+                              ? "Approved"
+                              : withdrawal.status === "rejected"
+                                ? "Rejected"
+                                : "Pending"}
                           </span>
                         </div>
                       </div>
@@ -584,30 +765,40 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
                           {withdrawal.category}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-900 font-medium">{withdrawal.description}</p>
+                      <p className="text-sm text-gray-900 font-medium">
+                        {withdrawal.description}
+                      </p>
                       <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
                         <span>By: {withdrawal.created_by_name}</span>
-                        <span>{new Date(withdrawal.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}</span>
+                        <span>
+                          {new Date(withdrawal.created_at).toLocaleTimeString(
+                            "en-US",
+                            { timeZone: "America/New_York" },
+                          )}
+                        </span>
                       </div>
                       {/* Request Change button - only for Managers, approved transactions, and no pending proposal */}
-                      {canCreateChangeProposal && withdrawal.status === 'approved' && (
-                        <div className="mt-2 pt-2 border-t border-red-100">
-                          {pendingProposals.has(withdrawal.id) ? (
-                            <span className="flex items-center gap-1 text-xs text-amber-600">
-                              <Clock className="w-3 h-3" />
-                              Change pending
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => openChangeRequestModal(withdrawal)}
-                              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              Request Change
-                            </button>
-                          )}
-                        </div>
-                      )}
+                      {canCreateChangeProposal &&
+                        withdrawal.status === "approved" && (
+                          <div className="mt-2 pt-2 border-t border-red-100">
+                            {pendingProposals.has(withdrawal.id) ? (
+                              <span className="flex items-center gap-1 text-xs text-amber-600">
+                                <Clock className="w-3 h-3" />
+                                Change pending
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() =>
+                                  openChangeRequestModal(withdrawal)
+                                }
+                                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                                Request Change
+                              </button>
+                            )}
+                          </div>
+                        )}
                     </div>
                   ))}
                 </div>
@@ -622,7 +813,9 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
             >
               <div className="flex items-center gap-2">
                 <History className="w-5 h-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Balance History</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Balance History
+                </h3>
                 <span className="text-xs text-gray-500">(Last 14 days)</span>
               </div>
               {showHistory ? (
@@ -648,13 +841,27 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-200">
-                          <th className="text-left py-2 px-3 font-semibold text-gray-900">Date</th>
-                          <th className="text-right py-2 px-3 font-semibold text-gray-900">Opening</th>
-                          <th className="text-right py-2 px-3 font-semibold text-gray-900">Deposits</th>
-                          <th className="text-right py-2 px-3 font-semibold text-gray-900">Withdrawals</th>
-                          <th className="text-right py-2 px-3 font-semibold text-gray-900">Closing</th>
-                          <th className="text-right py-2 px-3 font-semibold text-gray-900">Change</th>
-                          <th className="text-left py-2 px-3 font-semibold text-gray-900">Updated By</th>
+                          <th className="text-left py-2 px-3 font-semibold text-gray-900">
+                            Date
+                          </th>
+                          <th className="text-right py-2 px-3 font-semibold text-gray-900">
+                            Opening
+                          </th>
+                          <th className="text-right py-2 px-3 font-semibold text-gray-900">
+                            Deposits
+                          </th>
+                          <th className="text-right py-2 px-3 font-semibold text-gray-900">
+                            Withdrawals
+                          </th>
+                          <th className="text-right py-2 px-3 font-semibold text-gray-900">
+                            Closing
+                          </th>
+                          <th className="text-right py-2 px-3 font-semibold text-gray-900">
+                            Change
+                          </th>
+                          <th className="text-left py-2 px-3 font-semibold text-gray-900">
+                            Updated By
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -664,20 +871,30 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
                             <tr
                               key={record.id}
                               className={`border-b border-gray-100 hover:bg-gray-50 ${
-                                isCurrentDate ? 'bg-blue-50' : ''
+                                isCurrentDate ? "bg-blue-50" : ""
                               }`}
                             >
                               <td className="py-2 px-3">
                                 <div className="flex items-center gap-2">
-                                  <span className={isCurrentDate ? 'font-semibold text-blue-900' : 'text-gray-900'}>
-                                    {new Date(record.date + 'T12:00:00').toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      year: 'numeric',
+                                  <span
+                                    className={
+                                      isCurrentDate
+                                        ? "font-semibold text-blue-900"
+                                        : "text-gray-900"
+                                    }
+                                  >
+                                    {new Date(
+                                      record.date + "T12:00:00",
+                                    ).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
                                     })}
                                   </span>
                                   {isCurrentDate && (
-                                    <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">Today</span>
+                                    <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">
+                                      Today
+                                    </span>
                                   )}
                                 </div>
                               </td>
@@ -688,19 +905,30 @@ export function SafeBalancePage({ selectedDate, onDateChange }: SafeBalancePageP
                                 +${parseFloat(record.total_deposits).toFixed(2)}
                               </td>
                               <td className="text-right py-2 px-3 text-red-600 font-medium">
-                                -${parseFloat(record.total_withdrawals).toFixed(2)}
+                                -$
+                                {parseFloat(record.total_withdrawals).toFixed(
+                                  2,
+                                )}
                               </td>
                               <td className="text-right py-2 px-3 text-gray-900 font-semibold">
                                 ${parseFloat(record.closing_balance).toFixed(2)}
                               </td>
-                              <td className={`text-right py-2 px-3 font-medium ${
-                                parseFloat(record.balance_change) >= 0 ? 'text-green-600' : 'text-red-600'
-                              }`}>
-                                {parseFloat(record.balance_change) >= 0 ? '+' : ''}
+                              <td
+                                className={`text-right py-2 px-3 font-medium ${
+                                  parseFloat(record.balance_change) >= 0
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                {parseFloat(record.balance_change) >= 0
+                                  ? "+"
+                                  : ""}
                                 ${parseFloat(record.balance_change).toFixed(2)}
                               </td>
                               <td className="py-2 px-3 text-gray-600 text-xs">
-                                {record.updated_by_name || record.created_by_name || 'System'}
+                                {record.updated_by_name ||
+                                  record.created_by_name ||
+                                  "System"}
                               </td>
                             </tr>
                           );

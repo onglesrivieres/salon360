@@ -1,8 +1,14 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { NumericInput } from './ui/NumericInput';
+import { PhotoUpload } from './photos/PhotoUpload';
+import { PhotoThumbnail } from './photos/PhotoThumbnail';
+import { compressImage } from '../lib/image-utils';
+import type { PendingPhoto } from './photos/useTicketPhotos';
+
+const MAX_PHOTOS = 3;
 
 interface SafeWithdrawalModalProps {
   isOpen: boolean;
@@ -15,6 +21,7 @@ export interface WithdrawalData {
   amount: number;
   description: string;
   category: string;
+  pendingPhotos: PendingPhoto[];
 }
 
 const WITHDRAWAL_CATEGORIES = [
@@ -34,6 +41,45 @@ export function SafeWithdrawalModal({
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [errors, setErrors] = useState<{ amount?: string; description?: string; category?: string }>({});
+  const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
+
+  const handleFileSelect = useCallback(async (file: File) => {
+    if (pendingPhotos.length >= MAX_PHOTOS) return;
+
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) return;
+
+    try {
+      setIsProcessingPhoto(true);
+      const compressedBlob = await compressImage(file);
+      const previewUrl = URL.createObjectURL(compressedBlob);
+
+      const pending: PendingPhoto = {
+        id: crypto.randomUUID(),
+        file,
+        compressedBlob,
+        previewUrl,
+        filename: file.name,
+      };
+
+      setPendingPhotos(prev => [...prev, pending]);
+    } catch (err) {
+      console.error('Failed to process photo:', err);
+    } finally {
+      setIsProcessingPhoto(false);
+    }
+  }, [pendingPhotos.length]);
+
+  const handleRemovePhoto = useCallback((id: string) => {
+    setPendingPhotos(prev => {
+      const photo = prev.find(p => p.id === id);
+      if (photo) {
+        URL.revokeObjectURL(photo.previewUrl);
+      }
+      return prev.filter(p => p.id !== id);
+    });
+  }, []);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -61,20 +107,29 @@ export function SafeWithdrawalModal({
       return;
     }
 
+    // Capture photos reference before clearing state
+    const photosToSubmit = [...pendingPhotos];
+
     onSubmit({
       amount: withdrawalAmount,
       description: description.trim(),
       category,
+      pendingPhotos: photosToSubmit,
     });
 
     handleClose();
   }
 
   function handleClose() {
+    // Revoke all blob URLs to prevent memory leaks
+    for (const photo of pendingPhotos) {
+      URL.revokeObjectURL(photo.previewUrl);
+    }
     setAmount('');
     setDescription('');
     setCategory('');
     setErrors({});
+    setPendingPhotos([]);
     onClose();
   }
 
@@ -165,6 +220,37 @@ export function SafeWithdrawalModal({
             rows={3}
           />
           {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description}</p>}
+        </div>
+
+        {/* Photo Upload Section */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Photos (optional)
+            {pendingPhotos.length > 0 && (
+              <span className="text-xs text-gray-500 ml-1">
+                {pendingPhotos.length}/{MAX_PHOTOS}
+              </span>
+            )}
+          </label>
+          <div className="flex flex-wrap items-start gap-2">
+            {pendingPhotos.map((photo) => (
+              <PhotoThumbnail
+                key={photo.id}
+                photo={photo}
+                isPending
+                canDelete
+                onDelete={() => handleRemovePhoto(photo.id)}
+                size="sm"
+              />
+            ))}
+            {pendingPhotos.length < MAX_PHOTOS && (
+              <PhotoUpload
+                onFileSelect={handleFileSelect}
+                isUploading={isProcessingPhoto}
+                remainingSlots={MAX_PHOTOS - pendingPhotos.length}
+              />
+            )}
+          </div>
         </div>
 
         {withdrawalAmount > 0 && (

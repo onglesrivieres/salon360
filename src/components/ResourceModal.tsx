@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal } from "./ui/Modal";
+import { Drawer } from "./ui/Drawer";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Input";
 import { useToast } from "./ui/Toast";
@@ -8,13 +8,23 @@ import {
   Resource,
   ResourceCategory,
   ResourceSubcategory,
+  ResourcePhotoWithUrl,
 } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
-import { Image, ExternalLink, Plus, ChevronDown } from "lucide-react";
+import { useSettings } from "../contexts/SettingsContext";
+import { Image, ExternalLink, Plus, ChevronDown, Star } from "lucide-react";
 import {
   CATEGORY_COLORS,
   getCategoryBadgeClasses,
 } from "../lib/category-colors";
+import { compressImage } from "../lib/image-utils";
+import { PhotoUpload } from "./photos/PhotoUpload";
+import { PhotoThumbnail } from "./photos/PhotoThumbnail";
+import { PendingPhoto } from "./photos/useTicketPhotos";
+import { getStorageService } from "../lib/storage";
+
+const MAX_PHOTOS = 3;
+const MAX_FILE_SIZE_MB = 5;
 
 interface ResourceModalProps {
   isOpen: boolean;
@@ -47,6 +57,7 @@ export function ResourceModal({
 }: ResourceModalProps) {
   const { session } = useAuth();
   const { showToast } = useToast();
+  const { getStorageConfig } = useSettings();
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -62,6 +73,15 @@ export function ResourceModal({
   const [newCategoryColor, setNewCategoryColor] = useState("blue");
   const [creatingCategory, setCreatingCategory] = useState(false);
 
+  // Photo state
+  const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
+  const [existingPhotos, setExistingPhotos] = useState<ResourcePhotoWithUrl[]>(
+    [],
+  );
+  const [photosToDelete, setPhotosToDelete] = useState<string[]>([]);
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
+  const [thumbnailPhotoId, setThumbnailPhotoId] = useState<string | null>(null);
+
   useEffect(() => {
     if (resource && isOpen) {
       setFormData({
@@ -71,6 +91,7 @@ export function ResourceModal({
         thumbnail_url: resource.thumbnail_url || "",
         subcategory: resource.subcategory || "",
       });
+      loadExistingPhotos(resource.id, resource.thumbnail_url);
     } else if (!resource && isOpen) {
       setFormData({
         title: "",
@@ -79,13 +100,67 @@ export function ResourceModal({
         thumbnail_url: "",
         subcategory: "",
       });
+      setExistingPhotos([]);
+      setPhotosToDelete([]);
+      setThumbnailPhotoId(null);
     }
+    setPendingPhotos([]);
     setShowNewCategory(false);
     setNewCategoryName("");
     setNewCategoryColor("blue");
   }, [resource, isOpen]);
 
+  async function loadExistingPhotos(
+    resourceId: string,
+    currentThumbnailUrl: string | null,
+  ) {
+    const storageConfig = getStorageConfig();
+    if (!storageConfig?.r2Config?.publicUrl) {
+      setExistingPhotos([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("resource_photos")
+      .select("*")
+      .eq("resource_id", resourceId)
+      .order("display_order", { ascending: true });
+
+    if (error) {
+      console.error("Error loading resource photos:", error);
+      setExistingPhotos([]);
+      return;
+    }
+
+    const publicUrl = storageConfig.r2Config.publicUrl.replace(/\/$/, "");
+    const photosWithUrls: ResourcePhotoWithUrl[] = (data || []).map(
+      (photo) => ({
+        ...photo,
+        url: `${publicUrl}/${photo.storage_path}`,
+      }),
+    );
+
+    setExistingPhotos(photosWithUrls);
+
+    // Check if current thumbnail matches an existing photo URL
+    if (currentThumbnailUrl) {
+      const matchingPhoto = photosWithUrls.find(
+        (p) => p.url === currentThumbnailUrl,
+      );
+      if (matchingPhoto) {
+        setThumbnailPhotoId(matchingPhoto.id);
+      }
+    }
+  }
+
   function handleClose() {
+    // Revoke pending photo blob URLs
+    pendingPhotos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    setPendingPhotos([]);
+    setExistingPhotos([]);
+    setPhotosToDelete([]);
+    setThumbnailPhotoId(null);
+    setIsProcessingPhoto(false);
     setFormData({
       title: "",
       description: "",
@@ -97,6 +172,77 @@ export function ResourceModal({
     setNewCategoryName("");
     setNewCategoryColor("blue");
     onClose();
+  }
+
+  async function handlePhotoSelect(file: File) {
+    // Validate file type
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      showToast("Please select a JPEG, PNG, or WebP image", "error");
+      return;
+    }
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      showToast(`File size must be under ${MAX_FILE_SIZE_MB}MB`, "error");
+      return;
+    }
+
+    // Check total count
+    const totalPhotos =
+      existingPhotos.length -
+      photosToDelete.length +
+      pendingPhotos.length;
+    if (totalPhotos >= MAX_PHOTOS) {
+      showToast(`Maximum ${MAX_PHOTOS} photos allowed`, "error");
+      return;
+    }
+
+    try {
+      setIsProcessingPhoto(true);
+      const compressedBlob = await compressImage(file);
+      const previewUrl = URL.createObjectURL(compressedBlob);
+      const newPhoto: PendingPhoto = {
+        id: crypto.randomUUID(),
+        file,
+        compressedBlob,
+        previewUrl,
+        filename: file.name,
+      };
+      setPendingPhotos((prev) => [...prev, newPhoto]);
+    } catch (error) {
+      console.error("Error compressing photo:", error);
+      showToast("Failed to process photo", "error");
+    } finally {
+      setIsProcessingPhoto(false);
+    }
+  }
+
+  function handleRemovePhoto(photoId: string) {
+    // Check if it's a pending photo
+    const pendingIndex = pendingPhotos.findIndex((p) => p.id === photoId);
+    if (pendingIndex >= 0) {
+      URL.revokeObjectURL(pendingPhotos[pendingIndex].previewUrl);
+      setPendingPhotos((prev) => prev.filter((p) => p.id !== photoId));
+    } else {
+      // It's an existing photo — mark for deletion
+      setPhotosToDelete((prev) => [...prev, photoId]);
+    }
+
+    // Clear thumbnail selection if removed photo was the thumbnail
+    if (thumbnailPhotoId === photoId) {
+      setThumbnailPhotoId(null);
+    }
+  }
+
+  function handleSetAsThumbnail(photoId: string) {
+    if (thumbnailPhotoId === photoId) {
+      // Toggle off
+      setThumbnailPhotoId(null);
+    } else {
+      setThumbnailPhotoId(photoId);
+      // Clear the manual URL field when selecting an uploaded photo
+      setFormData((prev) => ({ ...prev, thumbnail_url: "" }));
+    }
   }
 
   async function handleCreateCategory() {
@@ -184,8 +330,8 @@ export function ResourceModal({
       }
     }
 
-    // Validate thumbnail URL format if provided
-    if (formData.thumbnail_url.trim()) {
+    // Validate thumbnail URL format if provided (and no uploaded photo selected)
+    if (formData.thumbnail_url.trim() && !thumbnailPhotoId) {
       try {
         new URL(formData.thumbnail_url.trim());
       } catch {
@@ -197,7 +343,11 @@ export function ResourceModal({
     try {
       setSaving(true);
 
-      const thumbnailSource = formData.thumbnail_url.trim() ? "manual" : "none";
+      const hasThumbnailUrl = !!formData.thumbnail_url.trim();
+      const thumbnailSource =
+        thumbnailPhotoId || hasThumbnailUrl ? "manual" : "none";
+
+      let resourceId: string;
 
       if (resource) {
         // Update existing resource
@@ -207,7 +357,9 @@ export function ResourceModal({
             title: formData.title.trim(),
             description: formData.description.trim() || null,
             link_url: formData.link_url.trim() || null,
-            thumbnail_url: formData.thumbnail_url.trim() || null,
+            thumbnail_url: thumbnailPhotoId
+              ? null
+              : formData.thumbnail_url.trim() || null,
             thumbnail_source: thumbnailSource,
             subcategory: formData.subcategory || null,
             updated_by: session?.employee_id || null,
@@ -216,7 +368,7 @@ export function ResourceModal({
           .eq("id", resource.id);
 
         if (updateError) throw updateError;
-        showToast("Resource updated successfully", "success");
+        resourceId = resource.id;
       } else {
         // Get the max display_order for this category in this store
         const { data: maxOrderData } = await supabase
@@ -230,25 +382,38 @@ export function ResourceModal({
 
         const newDisplayOrder = (maxOrderData?.display_order ?? -1) + 1;
 
-        // Create new resource
-        const { error: insertError } = await supabase.from("resources").insert({
-          store_id: storeId,
-          category: category,
-          subcategory: formData.subcategory || null,
-          title: formData.title.trim(),
-          description: formData.description.trim() || null,
-          link_url: formData.link_url.trim() || null,
-          thumbnail_url: formData.thumbnail_url.trim() || null,
-          thumbnail_source: thumbnailSource,
-          display_order: newDisplayOrder,
-          is_active: true,
-          created_by: session?.employee_id || null,
-        });
+        // Create new resource — return ID for photo uploads
+        const { data: insertedResource, error: insertError } = await supabase
+          .from("resources")
+          .insert({
+            store_id: storeId,
+            category: category,
+            subcategory: formData.subcategory || null,
+            title: formData.title.trim(),
+            description: formData.description.trim() || null,
+            link_url: formData.link_url.trim() || null,
+            thumbnail_url: formData.thumbnail_url.trim() || null,
+            thumbnail_source: thumbnailSource,
+            display_order: newDisplayOrder,
+            is_active: true,
+            created_by: session?.employee_id || null,
+          })
+          .select("id")
+          .single();
 
         if (insertError) throw insertError;
-        showToast("Resource added successfully", "success");
+        resourceId = insertedResource.id;
       }
 
+      // Handle photo operations
+      await handlePhotoOperations(resourceId);
+
+      showToast(
+        resource
+          ? "Resource updated successfully"
+          : "Resource added successfully",
+        "success",
+      );
       onSuccess();
       handleClose();
     } catch (error: any) {
@@ -269,13 +434,107 @@ export function ResourceModal({
     }
   }
 
+  async function handlePhotoOperations(resourceId: string) {
+    const storageConfig = getStorageConfig();
+    if (!storageConfig?.r2Config?.publicUrl) {
+      // R2 not configured — skip photo operations silently
+      return;
+    }
+
+    const storage = getStorageService(storageConfig);
+    const publicUrl = storageConfig.r2Config.publicUrl.replace(/\/$/, "");
+
+    // 1. Delete removed photos
+    for (const photoId of photosToDelete) {
+      const photo = existingPhotos.find((p) => p.id === photoId);
+      if (photo) {
+        await storage.delete(photo.storage_path);
+        await supabase.from("resource_photos").delete().eq("id", photoId);
+      }
+    }
+
+    // 2. Upload new photos
+    const uploadedPhotoUrls = new Map<string, string>(); // pendingId -> url
+    for (let i = 0; i < pendingPhotos.length; i++) {
+      const pending = pendingPhotos[i];
+      const timestamp = Date.now();
+      const uuid = crypto.randomUUID();
+      const storagePath = `resources/${storeId}/${resourceId}/${timestamp}_${uuid}.jpg`;
+
+      const uploadResult = await storage.upload(storagePath, pending.compressedBlob, {
+        contentType: "image/jpeg",
+      });
+
+      if (!uploadResult.success) {
+        console.error("Failed to upload photo:", uploadResult.error);
+        continue;
+      }
+
+      const { error: insertError } = await supabase
+        .from("resource_photos")
+        .insert({
+          store_id: storeId,
+          resource_id: resourceId,
+          storage_path: storagePath,
+          filename: pending.filename,
+          file_size: pending.compressedBlob.size,
+          mime_type: "image/jpeg",
+          display_order: existingPhotos.length - photosToDelete.length + i,
+          uploaded_by: session?.employee_id,
+        });
+
+      if (insertError) {
+        console.error("Failed to save photo metadata:", insertError);
+        continue;
+      }
+
+      uploadedPhotoUrls.set(pending.id, `${publicUrl}/${storagePath}`);
+    }
+
+    // 3. Set thumbnail if a photo is selected
+    if (thumbnailPhotoId) {
+      let thumbnailUrl: string | null = null;
+
+      // Check pending photos first
+      const pendingUrl = uploadedPhotoUrls.get(thumbnailPhotoId);
+      if (pendingUrl) {
+        thumbnailUrl = pendingUrl;
+      } else {
+        // Check existing photos (not marked for deletion)
+        const existingPhoto = existingPhotos.find(
+          (p) => p.id === thumbnailPhotoId && !photosToDelete.includes(p.id),
+        );
+        if (existingPhoto) {
+          thumbnailUrl = existingPhoto.url;
+        }
+      }
+
+      if (thumbnailUrl) {
+        await supabase
+          .from("resources")
+          .update({
+            thumbnail_url: thumbnailUrl,
+            thumbnail_source: "manual",
+          })
+          .eq("id", resourceId);
+      }
+    }
+  }
+
+  // Compute visible photos (existing minus deleted, plus pending)
+  const visibleExistingPhotos = existingPhotos.filter(
+    (p) => !photosToDelete.includes(p.id),
+  );
+  const totalPhotoCount = visibleExistingPhotos.length + pendingPhotos.length;
+  const remainingSlots = MAX_PHOTOS - totalPhotoCount;
+
   // Get active subcategories sorted by display_order
   const activeSubcategories = subcategories
     .filter((c) => c.is_active)
     .sort((a, b) => a.display_order - b.display_order);
 
   return (
-    <Modal
+    <Drawer
       isOpen={isOpen}
       onClose={handleClose}
       title={
@@ -283,9 +542,33 @@ export function ResourceModal({
           ? "Edit Resource"
           : `Add ${CATEGORY_LABELS[category] || "Resource"}`
       }
-      size="md"
+      size="lg"
+      footer={
+        <div className="flex gap-3">
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={saving}
+            className="flex-1"
+          >
+            {saving
+              ? "Saving..."
+              : resource
+                ? "Update Resource"
+                : "Add Resource"}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleClose}
+            disabled={saving}
+          >
+            Cancel
+          </Button>
+        </div>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Title <span className="text-red-500">*</span>
@@ -410,6 +693,118 @@ export function ResourceModal({
           />
         </div>
 
+        {/* Photos Section */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Photos{" "}
+            <span className="text-gray-400 font-normal">
+              ({totalPhotoCount}/{MAX_PHOTOS})
+            </span>
+          </label>
+
+          {/* Photo grid */}
+          {totalPhotoCount > 0 && (
+            <div className="flex gap-2 flex-wrap mb-2">
+              {/* Existing photos */}
+              {visibleExistingPhotos.map((photo) => (
+                <div key={photo.id} className="relative">
+                  <PhotoThumbnail
+                    photo={photo}
+                    canDelete
+                    onDelete={() => handleRemovePhoto(photo.id)}
+                    size="sm"
+                  />
+                  {/* Thumbnail star button */}
+                  <button
+                    type="button"
+                    onClick={() => handleSetAsThumbnail(photo.id)}
+                    className={`absolute bottom-1 left-1 p-0.5 rounded-full transition-colors ${
+                      thumbnailPhotoId === photo.id
+                        ? "bg-amber-400 text-white"
+                        : "bg-black/40 text-white/70 hover:bg-black/60 hover:text-white"
+                    }`}
+                    title={
+                      thumbnailPhotoId === photo.id
+                        ? "Remove as thumbnail"
+                        : "Use as thumbnail"
+                    }
+                  >
+                    <Star
+                      className="w-3 h-3"
+                      fill={
+                        thumbnailPhotoId === photo.id
+                          ? "currentColor"
+                          : "none"
+                      }
+                    />
+                  </button>
+                  {thumbnailPhotoId === photo.id && (
+                    <span className="absolute -bottom-4 left-0 right-0 text-[10px] text-amber-600 text-center font-medium">
+                      Thumbnail
+                    </span>
+                  )}
+                </div>
+              ))}
+
+              {/* Pending photos */}
+              {pendingPhotos.map((photo) => (
+                <div key={photo.id} className="relative">
+                  <PhotoThumbnail
+                    photo={photo}
+                    canDelete
+                    onDelete={() => handleRemovePhoto(photo.id)}
+                    size="sm"
+                    isPending
+                  />
+                  {/* Thumbnail star button */}
+                  <button
+                    type="button"
+                    onClick={() => handleSetAsThumbnail(photo.id)}
+                    className={`absolute bottom-1 left-1 p-0.5 rounded-full transition-colors ${
+                      thumbnailPhotoId === photo.id
+                        ? "bg-amber-400 text-white"
+                        : "bg-black/40 text-white/70 hover:bg-black/60 hover:text-white"
+                    }`}
+                    title={
+                      thumbnailPhotoId === photo.id
+                        ? "Remove as thumbnail"
+                        : "Use as thumbnail"
+                    }
+                  >
+                    <Star
+                      className="w-3 h-3"
+                      fill={
+                        thumbnailPhotoId === photo.id
+                          ? "currentColor"
+                          : "none"
+                      }
+                    />
+                  </button>
+                  {thumbnailPhotoId === photo.id && (
+                    <span className="absolute -bottom-4 left-0 right-0 text-[10px] text-amber-600 text-center font-medium">
+                      Thumbnail
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload buttons */}
+          <PhotoUpload
+            onFileSelect={handlePhotoSelect}
+            disabled={saving}
+            isUploading={isProcessingPhoto}
+            remainingSlots={remainingSlots}
+          />
+
+          {thumbnailPhotoId && (
+            <p className="text-xs text-amber-600 mt-1">
+              An uploaded photo is selected as the card thumbnail
+            </p>
+          )}
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Link URL
@@ -447,19 +842,26 @@ export function ResourceModal({
           </label>
           <Input
             value={formData.thumbnail_url}
-            onChange={(e) =>
-              setFormData({ ...formData, thumbnail_url: e.target.value })
-            }
+            onChange={(e) => {
+              setFormData({ ...formData, thumbnail_url: e.target.value });
+              // Clear photo thumbnail selection when typing a URL
+              if (e.target.value.trim()) {
+                setThumbnailPhotoId(null);
+              }
+            }}
             placeholder="https://example.com/image.jpg"
             type="url"
+            disabled={!!thumbnailPhotoId}
           />
           <p className="text-xs text-gray-500 mt-1">
-            Direct link to an image for the card preview (optional)
+            {thumbnailPhotoId
+              ? "Clear the selected photo thumbnail above to use a URL instead"
+              : "Direct link to an image for the card preview (optional)"}
           </p>
         </div>
 
-        {/* Thumbnail Preview */}
-        {formData.thumbnail_url && (
+        {/* Thumbnail Preview — only show for URL thumbnails */}
+        {formData.thumbnail_url && !thumbnailPhotoId && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Preview
@@ -485,25 +887,7 @@ export function ResourceModal({
             </div>
           </div>
         )}
-
-        <div className="flex gap-3 pt-4">
-          <Button type="submit" disabled={saving} className="flex-1">
-            {saving
-              ? "Saving..."
-              : resource
-                ? "Update Resource"
-                : "Add Resource"}
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={handleClose}
-            disabled={saving}
-          >
-            Cancel
-          </Button>
-        </div>
-      </form>
-    </Modal>
+      </div>
+    </Drawer>
   );
 }

@@ -417,6 +417,8 @@ Technician ready → In queue → (skip turn → back to end of queue) → Assig
 | `resource_categories` | Subcategories within resource tabs |
 | `resource_tabs` | Dynamic tab definitions per store (slug, icon, order) |
 | `resource_read_status` | Per-employee read tracking for resources |
+| `resource_photos` | Photos attached to resources (thumbnails, procedure images) |
+| `cash_transaction_photos` | Photos attached to cash transactions (withdrawal receipts) |
 
 ### Important Fields
 
@@ -516,6 +518,13 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes (Jan 23 – Feb 18, 2026)
 
 Changes grouped by feature area. All dates in 2026.
+
+### Resources: Photo Upload in Add/Edit Resource Modal (Feb 19)
+- Up to 3 photos per resource via camera capture or file picker in ResourceModal. Photos staged locally as compressed blobs, uploaded to R2 on save. Star button on each photo thumbnail lets user designate one as the resource card thumbnail (sets `thumbnail_url` on the resource). Mutually exclusive with the Thumbnail URL text field — selecting a photo clears the URL and vice versa. Edit mode loads existing photos from `resource_photos` table, supports remove + add + change thumbnail. Storage path: `resources/{storeId}/{resourceId}/{ts}_{uuid}.jpg`. New `resource_photos` table (same schema as `ticket_photos`/`cash_transaction_photos`). `ResourcePhoto`/`ResourcePhotoWithUrl` interfaces added. Files: `ResourceModal.tsx`, `supabase.ts` + migration
+
+### Safe Withdrawal: Photo Upload + CashCountModal Drawer Conversion (Feb 19)
+- Photo capture on safe withdrawal modal — up to 3 photos (receipts, proof of withdrawal) staged during form entry, uploaded to R2 after transaction creation. Photos stored in `cash_transaction_photos` table. `SafeWithdrawalModal` passes `pendingPhotos` array in `WithdrawalData`. `SafeBalancePage` handles R2 upload via `uploadWithdrawalPhotos()` after `create_cash_transaction_with_validation` RPC returns transaction ID. Storage path: `cash-transactions/{storeId}/{transactionId}/{ts}_{uuid}.jpg`. New `cash_transaction_photos` table. Files: `SafeWithdrawalModal.tsx`, `SafeBalancePage.tsx`, `CashCountModal.tsx`, `supabase.ts` + migration
+- CashCountModal converted from centered Modal to right-slide Drawer component. Files: `CashCountModal.tsx`
 
 ### Inventory: Tab Reorder — Transactions Before Items (Feb 18)
 - Swapped tab order in `tabConfig` array so Transactions appears first. Default `activeTab` changed from `'items'` to `'transactions'`. Final order: Transactions, Items, Lots, Distributions, Suppliers. No migration. Files: `InventoryPage.tsx`

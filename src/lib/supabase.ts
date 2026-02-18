@@ -1270,6 +1270,43 @@ export interface InventoryTransactionInvoicePhotoWithUrl extends InventoryTransa
   url: string;
 }
 
+export interface CashTransactionPhoto {
+  id: string;
+  store_id: string;
+  cash_transaction_id: string;
+  storage_path: string;
+  filename: string;
+  file_size: number;
+  mime_type: "image/jpeg" | "image/png" | "image/webp";
+  display_order: number;
+  uploaded_by: string;
+  caption: string;
+  created_at: string;
+}
+
+export interface CashTransactionPhotoWithUrl extends CashTransactionPhoto {
+  url: string;
+}
+
+// Resource Photos
+export interface ResourcePhoto {
+  id: string;
+  store_id: string;
+  resource_id: string;
+  storage_path: string;
+  filename: string;
+  file_size: number;
+  mime_type: "image/jpeg" | "image/png" | "image/webp";
+  display_order: number;
+  uploaded_by: string;
+  caption: string;
+  created_at: string;
+}
+
+export interface ResourcePhotoWithUrl extends ResourcePhoto {
+  url: string;
+}
+
 // Resources (Knowledge Base)
 export type ResourceCategory = string;
 export type ThumbnailSource = "auto" | "manual" | "none";
