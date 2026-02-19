@@ -1048,7 +1048,7 @@ export function TicketEditor({
       card_type:
         method === "Cash" ? "" : existingData ? formData.card_type || "" : "",
     });
-    setMatchCalculation(false);
+    setMatchCalculation(!!ticket?.match_calculation);
     setFormData({
       ...formData,
       payment_method: method,
@@ -1120,7 +1120,7 @@ export function TicketEditor({
       discount_amount_cash: formData.discount_amount_cash || "0",
       card_type: formData.card_type || "",
     });
-    setMatchCalculation(isTicketClosed ? !!ticket?.match_calculation : false);
+    setMatchCalculation(!!ticket?.match_calculation);
     setShowPaymentModal(true);
   }
 
@@ -1543,6 +1543,11 @@ export function TicketEditor({
           }
         }
 
+        setTicket((prev) =>
+          prev
+            ? ({ ...prev, match_calculation: matchCalculation } as any)
+            : prev,
+        );
         showToast("Ticket updated successfully", "success");
       } else {
         const ticketNo = await generateTicketNumber();

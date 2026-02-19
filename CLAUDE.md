@@ -554,6 +554,9 @@ Changes grouped by feature area. All dates in 2026.
 ### Resources: Login Redirect for Unread Content (Feb 18)
 - On login, if the employee has unread resources at the selected store, auto-redirect to Resources page instead of Tickets. Uses existing `get_unread_resources_count` RPC. `useRef` flag (`hasCheckedUnreadRef`) ensures the check fires exactly once per login session — not on store switches or re-renders. Ref resets on logout so next login triggers a fresh check. If the RPC fails, silently falls through to default Tickets page. No migration. Files: `App.tsx`
 
+### Match Calculation Save→View Persistence Fix (Feb 19)
+- Fixed Match Calculation toggle reverting to OFF after Save (without close) then View Payment Details. Three root causes: (1) `handleViewPaymentDetails` gated `match_calculation` restore behind `isTicketClosed`, forcing `false` for open tickets; (2) `handlePaymentMethodClick` hardcoded `setMatchCalculation(false)`, losing state on payment method re-selection; (3) `handleSave` never synced `ticket` React state after DB write, leaving `ticket?.match_calculation` stale. Fixes: both reset sites now read `!!ticket?.match_calculation`, and `setTicket` call after update save syncs the local state. No DB changes. Files: `TicketEditor.tsx`
+
 ### Closed Ticket Tax Display Fix (Feb 19)
 - Payment Summary on closed tickets now returns stored `tax_gst`/`tax_qst` from the database instead of recalculating. Previously, `calculateTaxGst()`/`calculateTaxQst()` always recalculated with `matchCalculation = false` (its default), showing wrong tax when Match Calculation was used at save time. Early-return pattern: `if (isTicketClosed) return Number(ticket?.tax_gst) || 0`. No DB changes. Files: `TicketEditor.tsx`
 
