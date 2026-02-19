@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Modal } from '../ui/Modal';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
-import { DateRange } from '../../lib/timeFilters';
+import { useState, useEffect } from "react";
+import { Modal } from "../ui/Modal";
+import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
+import { DateRange } from "../../lib/timeFilters";
+import { getCurrentDateEST } from "../../lib/timezone";
 
 interface CustomDateRangeModalProps {
   isOpen: boolean;
@@ -11,10 +12,15 @@ interface CustomDateRangeModalProps {
   initialDateRange?: DateRange;
 }
 
-export function CustomDateRangeModal({ isOpen, onClose, onApply, initialDateRange }: CustomDateRangeModalProps) {
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [error, setError] = useState('');
+export function CustomDateRangeModal({
+  isOpen,
+  onClose,
+  onApply,
+  initialDateRange,
+}: CustomDateRangeModalProps) {
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (isOpen) {
@@ -23,17 +29,17 @@ export function CustomDateRangeModal({ isOpen, onClose, onApply, initialDateRang
         setEndDate(initialDateRange.endDate);
       } else {
         const today = new Date();
-        const formatted = today.toISOString().split('T')[0];
+        const formatted = today.toISOString().split("T")[0];
         setStartDate(formatted);
         setEndDate(formatted);
       }
-      setError('');
+      setError("");
     }
   }, [isOpen, initialDateRange]);
 
   const handleApply = () => {
     if (!startDate || !endDate) {
-      setError('Please select both start and end dates');
+      setError("Please select both start and end dates");
       return;
     }
 
@@ -41,7 +47,7 @@ export function CustomDateRangeModal({ isOpen, onClose, onApply, initialDateRang
     const end = new Date(endDate);
 
     if (start > end) {
-      setError('End date must be after start date');
+      setError("End date must be after start date");
       return;
     }
 
@@ -61,8 +67,9 @@ export function CustomDateRangeModal({ isOpen, onClose, onApply, initialDateRang
             value={startDate}
             onChange={(e) => {
               setStartDate(e.target.value);
-              setError('');
+              setError("");
             }}
+            max={getCurrentDateEST()}
             className="w-full"
           />
         </div>
@@ -76,8 +83,9 @@ export function CustomDateRangeModal({ isOpen, onClose, onApply, initialDateRang
             value={endDate}
             onChange={(e) => {
               setEndDate(e.target.value);
-              setError('');
+              setError("");
             }}
+            max={getCurrentDateEST()}
             className="w-full"
           />
         </div>
@@ -92,9 +100,7 @@ export function CustomDateRangeModal({ isOpen, onClose, onApply, initialDateRang
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleApply}>
-            Apply
-          </Button>
+          <Button onClick={handleApply}>Apply</Button>
         </div>
       </div>
     </Modal>

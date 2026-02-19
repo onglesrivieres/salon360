@@ -959,8 +959,7 @@ export function EndOfDayPage({
               </div>
               <button
                 onClick={() => navigateDay("next")}
-                disabled={!canNavigateNext()}
-                className="p-2 md:p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors min-h-[44px] md:min-h-[32px] min-w-[44px] md:min-w-[32px] flex items-center justify-center"
+                className={`p-2 md:p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors min-h-[44px] md:min-h-[32px] min-w-[44px] md:min-w-[32px] flex items-center justify-center ${!canNavigateNext() ? "invisible" : ""}`}
                 aria-label="Next day"
               >
                 <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />

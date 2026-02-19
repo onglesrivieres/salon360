@@ -286,10 +286,13 @@ export function SafeBalancePage({
   }
 
   function goToNextDay() {
+    if (selectedDate >= getCurrentDateEST()) return;
     const date = new Date(selectedDate + "T12:00:00");
     date.setDate(date.getDate() + 1);
     onDateChange(date.toISOString().split("T")[0]);
   }
+
+  const isAtToday = selectedDate >= getCurrentDateEST();
 
   function goToToday() {
     onDateChange(getCurrentDateEST());
@@ -510,11 +513,12 @@ export function SafeBalancePage({
               type="date"
               value={selectedDate}
               onChange={(e) => onDateChange(e.target.value)}
+              max={getCurrentDateEST()}
               className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
               onClick={goToNextDay}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className={`p-2 hover:bg-gray-100 rounded-lg transition-colors ${isAtToday ? "invisible" : ""}`}
               aria-label="Next day"
             >
               <ChevronRight className="w-5 h-5 text-gray-600" />

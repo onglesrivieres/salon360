@@ -50,7 +50,11 @@ import { EmployeeDistributionModal } from "../components/EmployeeDistributionMod
 import { SupplierModal } from "../components/SupplierModal";
 import { TransactionDetailModal } from "../components/TransactionDetailModal";
 import { CsvImportModal } from "../components/inventory/CsvImportModal";
-import { formatDateTimeEST, formatDateEST } from "../lib/timezone";
+import {
+  formatDateTimeEST,
+  formatDateEST,
+  getCurrentDateEST,
+} from "../lib/timezone";
 
 type Tab = "items" | "transactions" | "lots" | "distributions" | "suppliers";
 type ViewMode = "grid" | "table";
@@ -2531,6 +2535,7 @@ export function InventoryPage() {
                             type="date"
                             value={lotDateRangeEnd}
                             onChange={(e) => setLotDateRangeEnd(e.target.value)}
+                            max={getCurrentDateEST()}
                             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
@@ -3003,6 +3008,7 @@ export function InventoryPage() {
                             onChange={(e) =>
                               setDistributionDateRangeEnd(e.target.value)
                             }
+                            max={getCurrentDateEST()}
                             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>

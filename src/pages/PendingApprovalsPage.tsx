@@ -2397,8 +2397,7 @@ export function PendingApprovalsPage({
               size="sm"
               variant="ghost"
               onClick={() => navigateDay("next")}
-              disabled={!canNavigateNext()}
-              className="p-1 h-[44px] md:h-8 w-10 flex items-center justify-center"
+              className={`p-1 h-[44px] md:h-8 w-10 flex items-center justify-center ${!canNavigateNext() ? "invisible" : ""}`}
               aria-label="Next day"
             >
               <ChevronRight className="w-4 h-4" />
@@ -5155,6 +5154,7 @@ export function PendingApprovalsPage({
                         onChange={(e) =>
                           onQueueHistoryEndDateChange(e.target.value)
                         }
+                        max={getCurrentDateEST()}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>

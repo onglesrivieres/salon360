@@ -1,18 +1,35 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Check, CheckCircle, Clock, AlertCircle, Filter, X, XCircle, DollarSign, ChevronLeft, ChevronRight, ChevronDown, ImageIcon, FileText, Calendar, CalendarRange } from 'lucide-react';
-import { supabase, SaleTicket, SaleTicketWithItems } from '../lib/supabase';
-import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
-import { Modal } from '../components/ui/Modal';
-import { useToast } from '../components/ui/Toast';
-import { TicketEditor } from '../components/TicketEditor';
-import { TicketsDetailView } from '../components/TicketsDetailView';
-import { TicketsPeriodView } from '../components/TicketsPeriodView';
-import { useAuth } from '../contexts/AuthContext';
-import { useSettings } from '../contexts/SettingsContext';
-import { Permissions } from '../lib/permissions';
-import { formatTimeEST, getCurrentDateEST } from '../lib/timezone';
-import { getCategoryBadgeClasses } from '../lib/category-colors';
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import {
+  Plus,
+  Check,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Filter,
+  X,
+  XCircle,
+  DollarSign,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ImageIcon,
+  FileText,
+  Calendar,
+  CalendarRange,
+} from "lucide-react";
+import { supabase, SaleTicket, SaleTicketWithItems } from "../lib/supabase";
+import { Button } from "../components/ui/Button";
+import { Badge } from "../components/ui/Badge";
+import { Modal } from "../components/ui/Modal";
+import { useToast } from "../components/ui/Toast";
+import { TicketEditor } from "../components/TicketEditor";
+import { TicketsDetailView } from "../components/TicketsDetailView";
+import { TicketsPeriodView } from "../components/TicketsPeriodView";
+import { useAuth } from "../contexts/AuthContext";
+import { useSettings } from "../contexts/SettingsContext";
+import { Permissions } from "../lib/permissions";
+import { formatTimeEST, getCurrentDateEST } from "../lib/timezone";
+import { getCategoryBadgeClasses } from "../lib/category-colors";
 
 interface TicketsPageProps {
   selectedDate: string;
@@ -21,29 +38,39 @@ interface TicketsPageProps {
   onHighlightComplete?: () => void;
 }
 
-export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, onHighlightComplete }: TicketsPageProps) {
-  const [viewMode, setViewMode] = useState<'tickets' | 'daily' | 'period'>('tickets');
+export function TicketsPage({
+  selectedDate,
+  onDateChange,
+  highlightedTicketId,
+  onHighlightComplete,
+}: TicketsPageProps) {
+  const [viewMode, setViewMode] = useState<"tickets" | "daily" | "period">(
+    "tickets",
+  );
   const [tickets, setTickets] = useState<SaleTicketWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [quickFilter, setQuickFilter] = useState<'all' | 'unclosed'>('all');
-  const [approvalFilter, setApprovalFilter] = useState<string>('all');
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
-  const [technicianFilter, setTechnicianFilter] = useState<string>('all');
+  const [quickFilter, setQuickFilter] = useState<"all" | "unclosed">("all");
+  const [approvalFilter, setApprovalFilter] = useState<string>("all");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
+  const [technicianFilter, setTechnicianFilter] = useState<string>("all");
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [selectedTicketForApproval, setSelectedTicketForApproval] = useState<SaleTicket | null>(null);
-  const [rejectionReason, setRejectionReason] = useState('');
+  const [selectedTicketForApproval, setSelectedTicketForApproval] =
+    useState<SaleTicket | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
   const [processing, setProcessing] = useState(false);
   const { showToast } = useToast();
   const { session, selectedStoreId, t } = useAuth();
   const { getSettingBoolean } = useSettings();
-  const enableTax = getSettingBoolean('enable_tax', false);
+  const enableTax = getSettingBoolean("enable_tax", false);
 
   // Receptionist/Cashier: local date state to bypass global date lock (only for Tickets page)
-  const isLocalDateRole = session?.role_permission === 'Receptionist' || session?.role_permission === 'Cashier';
+  const isLocalDateRole =
+    session?.role_permission === "Receptionist" ||
+    session?.role_permission === "Cashier";
   const [localDate, setLocalDate] = useState(getCurrentDateEST());
   const activeDate = isLocalDateRole ? localDate : selectedDate;
   const activeDateChange = isLocalDateRole ? setLocalDate : onDateChange;
@@ -57,7 +84,9 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   const viewModeDropdownRef = useRef<HTMLDivElement>(null);
 
   // Category colors for service badges
-  const [categoryColors, setCategoryColors] = useState<Record<string, string>>({});
+  const [categoryColors, setCategoryColors] = useState<Record<string, string>>(
+    {},
+  );
 
   // Check if user is a commission employee
   const [isCommissionEmployee, setIsCommissionEmployee] = useState(false);
@@ -66,11 +95,11 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     async function checkPayType() {
       if (session?.employee_id) {
         const { data: employeeData } = await supabase
-          .from('employees')
-          .select('pay_type')
-          .eq('id', session.employee_id)
+          .from("employees")
+          .select("pay_type")
+          .eq("id", session.employee_id)
           .maybeSingle();
-        setIsCommissionEmployee(employeeData?.pay_type === 'commission');
+        setIsCommissionEmployee(employeeData?.pay_type === "commission");
       }
     }
     checkPayType();
@@ -81,10 +110,10 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     async function fetchCategoryColors() {
       if (!selectedStoreId) return;
       const { data } = await supabase
-        .from('store_service_categories')
-        .select('name, color')
-        .eq('store_id', selectedStoreId)
-        .eq('is_active', true);
+        .from("store_service_categories")
+        .select("name, color")
+        .eq("store_id", selectedStoreId)
+        .eq("is_active", true);
       if (data) {
         const colorMap: Record<string, string> = {};
         data.forEach((cat: { name: string; color: string }) => {
@@ -97,44 +126,58 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   }, [selectedStoreId]);
 
   // Management roles can always see tips regardless of pay type
-  const MANAGEMENT_ROLES = ['Admin', 'Manager', 'Owner', 'Supervisor'] as const;
-  const isManagement = session?.role ?
-    MANAGEMENT_ROLES.some(r => session.role?.includes(r)) : false;
+  const MANAGEMENT_ROLES = ["Admin", "Manager", "Owner", "Supervisor"] as const;
+  const isManagement = session?.role
+    ? MANAGEMENT_ROLES.some((r) => session.role?.includes(r))
+    : false;
 
   // Determine if tips should be hidden (commission employees without management role)
   const shouldHideTips = isCommissionEmployee && !isManagement;
 
   // Daily tab: Admin, Owner, Manager, Supervisor, Receptionist, Cashier, or commission employees
   // Non-commission Technician cannot access this tab
-  const canViewDailyReport = session?.role ? (Permissions.tipReport.canViewAll(session.role) || isCommissionEmployee) : false;
+  const canViewDailyReport = session?.role
+    ? Permissions.tipReport.canViewAll(session.role) || isCommissionEmployee
+    : false;
   // Period tab: Only Admin, Owner, and commission employees can see it
   // Manager, Supervisor, Receptionist, and Cashier cannot access this tab
-  const canViewPeriodReport = session?.role ? (
-    session.role.some(r => ['Admin', 'Owner'].includes(r)) || isCommissionEmployee
-  ) : false;
+  const canViewPeriodReport = session?.role
+    ? session.role.some((r) => ["Admin", "Owner"].includes(r)) ||
+      isCommissionEmployee
+    : false;
 
   // View mode tab configuration for responsive dropdown
-  const viewModeConfig: Array<{ key: 'tickets' | 'daily' | 'period'; label: string; icon: typeof FileText }> = [
-    { key: 'tickets', label: t('tickets.viewModeTickets'), icon: FileText },
-    { key: 'daily', label: t('tickets.viewModeDaily'), icon: Calendar },
-    { key: 'period', label: t('tickets.viewModePeriod'), icon: CalendarRange },
+  const viewModeConfig: Array<{
+    key: "tickets" | "daily" | "period";
+    label: string;
+    icon: typeof FileText;
+  }> = [
+    { key: "tickets", label: t("tickets.viewModeTickets"), icon: FileText },
+    { key: "daily", label: t("tickets.viewModeDaily"), icon: Calendar },
+    { key: "period", label: t("tickets.viewModePeriod"), icon: CalendarRange },
   ];
-  const visibleViewModes = viewModeConfig.filter(mode =>
-    mode.key === 'tickets' || (mode.key === 'daily' && canViewDailyReport) || (mode.key === 'period' && canViewPeriodReport)
+  const visibleViewModes = viewModeConfig.filter(
+    (mode) =>
+      mode.key === "tickets" ||
+      (mode.key === "daily" && canViewDailyReport) ||
+      (mode.key === "period" && canViewPeriodReport),
   );
-  const currentViewMode = viewModeConfig.find(mode => mode.key === viewMode);
+  const currentViewMode = viewModeConfig.find((mode) => mode.key === viewMode);
 
   // Click-outside handler for view mode dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (viewModeDropdownRef.current && !viewModeDropdownRef.current.contains(event.target as Node)) {
+      if (
+        viewModeDropdownRef.current &&
+        !viewModeDropdownRef.current.contains(event.target as Node)
+      ) {
         setIsViewModeDropdownOpen(false);
       }
     }
     if (isViewModeDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isViewModeDropdownOpen]);
 
   useEffect(() => {
@@ -142,13 +185,13 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   }, [activeDate, selectedStoreId]);
 
   useEffect(() => {
-    if (!canViewDailyReport && viewMode === 'daily') {
-      setViewMode('tickets');
-      showToast(t('tickets.noPermissionDailyReports'), 'error');
+    if (!canViewDailyReport && viewMode === "daily") {
+      setViewMode("tickets");
+      showToast(t("tickets.noPermissionDailyReports"), "error");
     }
-    if (!canViewPeriodReport && viewMode === 'period') {
-      setViewMode('tickets');
-      showToast(t('tickets.noPermissionPeriodReports'), 'error');
+    if (!canViewPeriodReport && viewMode === "period") {
+      setViewMode("tickets");
+      showToast(t("tickets.noPermissionPeriodReports"), "error");
     }
   }, [viewMode, canViewDailyReport, canViewPeriodReport]);
 
@@ -171,7 +214,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   useEffect(() => {
     if (highlightedTicketId && !loading) {
       // Check if the highlighted ticket exists in the current ticket list
-      const ticketExists = tickets.some(t => t.id === highlightedTicketId);
+      const ticketExists = tickets.some((t) => t.id === highlightedTicketId);
 
       if (ticketExists) {
         // Scroll to the highlighted ticket after a brief delay
@@ -182,8 +225,8 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
           if (targetRef) {
             targetRef.scrollIntoView({
-              behavior: 'smooth',
-              block: 'center'
+              behavior: "smooth",
+              block: "center",
             });
           }
 
@@ -207,23 +250,24 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
         setLoading(true);
       }
 
-      const isRestrictedRole = session?.role_permission === 'Technician';
+      const isRestrictedRole = session?.role_permission === "Technician";
 
       // Check if user is a commission employee
       let isCommissionEmployee = false;
       if (session?.employee_id) {
         const { data: employeeData } = await supabase
-          .from('employees')
-          .select('pay_type')
-          .eq('id', session.employee_id)
+          .from("employees")
+          .select("pay_type")
+          .eq("id", session.employee_id)
           .maybeSingle();
 
-        isCommissionEmployee = employeeData?.pay_type === 'commission';
+        isCommissionEmployee = employeeData?.pay_type === "commission";
       }
 
       let query = supabase
-        .from('sale_tickets')
-        .select(`
+        .from("sale_tickets")
+        .select(
+          `
           *,
           ticket_items (
             id,
@@ -245,21 +289,22 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
             employee:employees!ticket_items_employee_id_fkey(display_name)
           ),
           ticket_photos (id)
-        `)
-        .eq('ticket_date', activeDate);
+        `,
+        )
+        .eq("ticket_date", activeDate);
 
       if (selectedStoreId) {
-        query = query.eq('store_id', selectedStoreId);
+        query = query.eq("store_id", selectedStoreId);
       }
 
       query = query
-        .order('opened_at', { ascending: false })
-        .order('id', { ascending: true, referencedTable: 'ticket_items' });
+        .order("opened_at", { ascending: false })
+        .order("id", { ascending: true, referencedTable: "ticket_items" });
 
       const { data, error } = await query;
 
       // DEBUG: Log query results to diagnose empty tickets issue
-      console.log('fetchTickets DEBUG:', {
+      console.log("fetchTickets DEBUG:", {
         selectedStoreId,
         activeDate,
         role_permission: session?.role_permission,
@@ -267,7 +312,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
         employee_id: session?.employee_id,
         error,
         dataCount: data?.length,
-        firstTicket: data?.[0]
+        firstTicket: data?.[0],
       });
 
       if (error) throw error;
@@ -275,31 +320,46 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
       let filteredData = data || [];
 
       // Check if user has permission to view all tickets
-      const canViewAllTickets = session?.role_permission && Permissions.tickets.canViewAll(session.role_permission);
+      const canViewAllTickets =
+        session?.role_permission &&
+        Permissions.tickets.canViewAll(session.role_permission);
 
       // DEBUG: Log filter conditions
-      console.log('fetchTickets FILTER DEBUG:', {
+      console.log("fetchTickets FILTER DEBUG:", {
         canViewAllTickets,
         isRestrictedRole,
         isCommissionEmployee,
-        willFilter: !canViewAllTickets && (isRestrictedRole || isCommissionEmployee) && session?.employee_id,
-        beforeFilterCount: filteredData.length
+        willFilter:
+          !canViewAllTickets &&
+          (isRestrictedRole || isCommissionEmployee) &&
+          session?.employee_id,
+        beforeFilterCount: filteredData.length,
       });
 
       // Filter tickets for technicians and commission employees to show only their work
       // But allow roles with canViewAll permission (Receptionist, Admin, etc.) to see everything
-      if (!canViewAllTickets && (isRestrictedRole || isCommissionEmployee) && session?.employee_id) {
-        filteredData = filteredData.filter(ticket =>
-          ticket.ticket_items && ticket.ticket_items.some((item: any) => item.employee_id === session.employee_id)
+      if (
+        !canViewAllTickets &&
+        (isRestrictedRole || isCommissionEmployee) &&
+        session?.employee_id
+      ) {
+        filteredData = filteredData.filter(
+          (ticket) =>
+            ticket.ticket_items &&
+            ticket.ticket_items.some(
+              (item: any) => item.employee_id === session.employee_id,
+            ),
         );
       }
 
-      console.log('fetchTickets FINAL:', { afterFilterCount: filteredData.length });
+      console.log("fetchTickets FINAL:", {
+        afterFilterCount: filteredData.length,
+      });
 
       setTickets(filteredData);
     } catch (error) {
-      console.error('Error fetching tickets:', error);
-      showToast(t('tickets.failedToLoad'), 'error');
+      console.error("Error fetching tickets:", error);
+      showToast(t("tickets.failedToLoad"), "error");
     } finally {
       if (!silent) {
         setLoading(false);
@@ -325,14 +385,15 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   }
 
   function renderServiceBadges(ticket: any): React.ReactNode {
-    if (!ticket.ticket_items || ticket.ticket_items.length === 0) return <span>-</span>;
+    if (!ticket.ticket_items || ticket.ticket_items.length === 0)
+      return <span>-</span>;
     const badges = ticket.ticket_items
       .map((item: any, idx: number) => {
         const label = item?.custom_service_name || item?.service?.code;
         if (!label) return null;
         const category = item?.service?.category;
         const colorKey = category ? categoryColors[category] : undefined;
-        const colorClasses = getCategoryBadgeClasses(colorKey || '');
+        const colorClasses = getCategoryBadgeClasses(colorKey || "");
         return (
           <span
             key={item.id || idx}
@@ -347,31 +408,32 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   }
 
   function getTechnicianName(ticket: any): string {
-    if (!ticket.ticket_items || ticket.ticket_items.length === 0) return '-';
+    if (!ticket.ticket_items || ticket.ticket_items.length === 0) return "-";
     const employee = ticket.ticket_items[0]?.employee;
-    return employee ? employee.display_name : '-';
+    return employee ? employee.display_name : "-";
   }
 
   function getSubtotal(ticket: any): number {
     // Calculate from ticket_items: price_each + addon_price for all items
-    return ticket.ticket_items?.reduce(
-      (sum: number, item: any) => {
+    return (
+      ticket.ticket_items?.reduce((sum: number, item: any) => {
         const price = parseFloat(item.price_each) || 0;
         const addonPrice = parseFloat(item.addon_price) || 0;
         return sum + price + addonPrice;
-      },
-      0
-    ) || 0;
+      }, 0) || 0
+    );
   }
 
   function canViewTotalColumn(): boolean {
     if (!session?.role) return false;
-    return session.role.includes('Receptionist') ||
-           session.role.includes('Admin') ||
-           session.role.includes('Manager') ||
-           session.role.includes('Owner') ||
-           session.role.includes('Supervisor') ||
-           session.role.includes('Cashier');
+    return (
+      session.role.includes("Receptionist") ||
+      session.role.includes("Admin") ||
+      session.role.includes("Manager") ||
+      session.role.includes("Owner") ||
+      session.role.includes("Supervisor") ||
+      session.role.includes("Cashier")
+    );
   }
 
   function getGrandTotalCollected(ticket: any): number {
@@ -386,14 +448,17 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     // Discount based on payment method (from first item)
     const firstItem = items[0];
     let totalDiscount = 0;
-    if (ticket.payment_method === 'Cash') {
+    if (ticket.payment_method === "Cash") {
       totalDiscount = firstItem.discount_amount_cash || 0;
-    } else if (ticket.payment_method === 'Card' || ticket.payment_method === 'Mixed') {
+    } else if (
+      ticket.payment_method === "Card" ||
+      ticket.payment_method === "Mixed"
+    ) {
       totalDiscount = firstItem.discount_amount || 0;
     }
 
     // Tax from stored ticket values (only when setting is on)
-    const tax = enableTax ? ((ticket.tax_gst || 0) + (ticket.tax_qst || 0)) : 0;
+    const tax = enableTax ? (ticket.tax_gst || 0) + (ticket.tax_qst || 0) : 0;
 
     // Card tips from first item
     const tipCustomerCard = firstItem.tip_customer_card || 0;
@@ -406,45 +471,45 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
           <XCircle className="w-3 h-3 mr-1" />
-          {t('tickets.voided')}
+          {t("tickets.voided")}
         </span>
       );
     }
 
     if (!ticket.approval_status) {
       if (ticket.closed_at) {
-        return <Badge variant="success">{t('tickets.closed')}</Badge>;
+        return <Badge variant="success">{t("tickets.closed")}</Badge>;
       }
       return null;
     }
 
     switch (ticket.approval_status) {
-      case 'pending_approval':
+      case "pending_approval":
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
             <Clock className="w-3 h-3 mr-1" />
-            {t('tickets.pending')}
+            {t("tickets.pending")}
           </span>
         );
-      case 'approved':
+      case "approved":
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
             <CheckCircle className="w-3 h-3 mr-1" />
-            {ticket.approved_by ? t('tickets.approved') : t('tickets.auto')}
+            {ticket.approved_by ? t("tickets.approved") : t("tickets.auto")}
           </span>
         );
-      case 'auto_approved':
+      case "auto_approved":
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
             <Clock className="w-3 h-3 mr-1" />
-            {t('tickets.auto')}
+            {t("tickets.auto")}
           </span>
         );
-      case 'rejected':
+      case "rejected":
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
             <AlertCircle className="w-3 h-3 mr-1" />
-            {t('tickets.rejected')}
+            {t("tickets.rejected")}
           </span>
         );
       default:
@@ -455,7 +520,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   // Get unique technicians from tickets
   const technicians = useMemo(() => {
     const techSet = new Map<string, string>();
-    tickets.forEach(ticket => {
+    tickets.forEach((ticket) => {
       if (ticket.ticket_items && ticket.ticket_items.length > 0) {
         ticket.ticket_items.forEach((item: any) => {
           if (item.employee_id && item.employee?.display_name) {
@@ -464,65 +529,89 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
         });
       }
     });
-    return Array.from(techSet.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(techSet.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [tickets]);
 
   const filteredTickets = useMemo(() => {
     let filtered = tickets;
 
     // Apply quick filter first
-    if (quickFilter === 'unclosed') {
-      filtered = filtered.filter(ticket => !ticket.closed_at);
+    if (quickFilter === "unclosed") {
+      filtered = filtered.filter((ticket) => !ticket.closed_at);
     }
 
     // Apply approval status filter
-    if (approvalFilter !== 'all') {
-      filtered = filtered.filter(ticket => {
-        if (approvalFilter === 'self_service_pending') {
-          return ticket.opened_by_role &&
-            ['Technician', 'Trainee', 'Supervisor'].includes(ticket.opened_by_role) &&
-            !ticket.reviewed_by_receptionist;
+    if (approvalFilter !== "all") {
+      filtered = filtered.filter((ticket) => {
+        if (approvalFilter === "self_service_pending") {
+          return (
+            ticket.opened_by_role &&
+            ["Technician", "Trainee", "Supervisor"].includes(
+              ticket.opened_by_role,
+            ) &&
+            !ticket.reviewed_by_receptionist
+          );
         }
-        if (approvalFilter === 'open') return !ticket.closed_at;
-        if (approvalFilter === 'closed') return ticket.closed_at && !ticket.approval_status;
-        if (approvalFilter === 'pending_approval') return ticket.approval_status === 'pending_approval';
-        if (approvalFilter === 'approved') return ticket.approval_status === 'approved';
-        if (approvalFilter === 'auto_approved') return ticket.approval_status === 'auto_approved';
-        if (approvalFilter === 'rejected') return ticket.approval_status === 'rejected';
-        if (approvalFilter === 'voided') return !!ticket.voided_at;
+        if (approvalFilter === "open") return !ticket.closed_at;
+        if (approvalFilter === "closed")
+          return ticket.closed_at && !ticket.approval_status;
+        if (approvalFilter === "pending_approval")
+          return ticket.approval_status === "pending_approval";
+        if (approvalFilter === "approved")
+          return ticket.approval_status === "approved";
+        if (approvalFilter === "auto_approved")
+          return ticket.approval_status === "auto_approved";
+        if (approvalFilter === "rejected")
+          return ticket.approval_status === "rejected";
+        if (approvalFilter === "voided") return !!ticket.voided_at;
         return true;
       });
     }
 
     // Apply payment method filter
-    if (paymentMethodFilter !== 'all') {
-      filtered = filtered.filter(ticket => ticket.payment_method === paymentMethodFilter);
+    if (paymentMethodFilter !== "all") {
+      filtered = filtered.filter(
+        (ticket) => ticket.payment_method === paymentMethodFilter,
+      );
     }
 
     // Apply technician filter
-    if (technicianFilter !== 'all') {
-      filtered = filtered.filter(ticket => {
-        if (!ticket.ticket_items || ticket.ticket_items.length === 0) return false;
-        return ticket.ticket_items.some((item: any) => item.employee_id === technicianFilter);
+    if (technicianFilter !== "all") {
+      filtered = filtered.filter((ticket) => {
+        if (!ticket.ticket_items || ticket.ticket_items.length === 0)
+          return false;
+        return ticket.ticket_items.some(
+          (item: any) => item.employee_id === technicianFilter,
+        );
       });
     }
 
     return filtered;
-  }, [tickets, quickFilter, approvalFilter, paymentMethodFilter, technicianFilter]);
+  }, [
+    tickets,
+    quickFilter,
+    approvalFilter,
+    paymentMethodFilter,
+    technicianFilter,
+  ]);
 
   function getMinDate(): string {
-    const canViewUnlimitedHistory = session?.role ? Permissions.tickets.canViewAll(session.role) : false;
+    const canViewUnlimitedHistory = session?.role
+      ? Permissions.tickets.canViewAll(session.role)
+      : false;
 
     if (canViewUnlimitedHistory) {
-      return '2000-01-01';
+      return "2000-01-01";
     }
 
     const today = getCurrentDateEST();
     const date = new Date(today);
     date.setDate(date.getDate() - 14);
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
 
@@ -530,16 +619,16 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     return getCurrentDateEST();
   }
 
-  function navigateDay(direction: 'prev' | 'next'): void {
-    const currentDate = new Date(activeDate + 'T00:00:00');
-    if (direction === 'prev') {
+  function navigateDay(direction: "prev" | "next"): void {
+    const currentDate = new Date(activeDate + "T00:00:00");
+    if (direction === "prev") {
       currentDate.setDate(currentDate.getDate() - 1);
     } else {
       currentDate.setDate(currentDate.getDate() + 1);
     }
     const year = currentDate.getFullYear();
-    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-    const day = String(currentDate.getDate()).padStart(2, '0');
+    const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+    const day = String(currentDate.getDate()).padStart(2, "0");
     activeDateChange(`${year}-${month}-${day}`);
   }
 
@@ -557,10 +646,18 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     return service?.duration_min || 0;
   }
 
-  function getElapsedMinutes(openedAt: string, closedAt?: string, completedAt?: string): number {
+  function getElapsedMinutes(
+    openedAt: string,
+    closedAt?: string,
+    completedAt?: string,
+  ): number {
     const opened = new Date(openedAt);
     // Timer stops at whichever comes first: completed_at or closed_at
-    const end = closedAt ? new Date(closedAt) : (completedAt ? new Date(completedAt) : currentTime);
+    const end = closedAt
+      ? new Date(closedAt)
+      : completedAt
+        ? new Date(completedAt)
+        : currentTime;
     const diff = Math.floor((end.getTime() - opened.getTime()) / 1000 / 60);
     return Math.max(0, diff);
   }
@@ -569,7 +666,11 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     const serviceDuration = getServiceDuration(ticket);
     if (serviceDuration === 0) return false;
 
-    const elapsedMinutes = getElapsedMinutes(ticket.opened_at, ticket.closed_at, ticket.completed_at);
+    const elapsedMinutes = getElapsedMinutes(
+      ticket.opened_at,
+      ticket.closed_at,
+      ticket.completed_at,
+    );
 
     // For open tickets (not closed AND not completed): check if running 30% longer
     if (!ticket.closed_at && !ticket.completed_at) {
@@ -583,12 +684,15 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     return tooFast || tooSlow;
   }
 
-  function getCompletionStatus(ticket: any): 'on_time' | 'moderate_deviation' | 'extreme_deviation' | 'unknown' {
+  function getCompletionStatus(
+    ticket: any,
+  ): "on_time" | "moderate_deviation" | "extreme_deviation" | "unknown" {
     // Only check status for closed tickets with completed_at timestamp
-    if (!ticket.closed_at || !ticket.completed_at) return 'unknown';
+    if (!ticket.closed_at || !ticket.completed_at) return "unknown";
 
     // Get the first ticket item to determine expected service duration
-    if (!ticket.ticket_items || ticket.ticket_items.length === 0) return 'unknown';
+    if (!ticket.ticket_items || ticket.ticket_items.length === 0)
+      return "unknown";
     const firstItem = ticket.ticket_items[0];
 
     // Get expected duration from service
@@ -596,7 +700,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     const expectedDuration = service?.duration_min;
 
     // If no expected duration (custom service or missing data), return unknown
-    if (!expectedDuration || expectedDuration === 0) return 'unknown';
+    if (!expectedDuration || expectedDuration === 0) return "unknown";
 
     // Calculate actual duration from ticket open to completion (matches TicketEditor logic)
     const startTime = new Date(ticket.opened_at);
@@ -606,18 +710,18 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
     const percentage = (actualDurationMin / expectedDuration) * 100;
 
-    if (percentage < 70) return 'extreme_deviation';
-    if (percentage < 90) return 'moderate_deviation';
-    if (percentage <= 110) return 'on_time';
-    if (percentage <= 130) return 'moderate_deviation';
-    return 'extreme_deviation';
+    if (percentage < 70) return "extreme_deviation";
+    if (percentage < 90) return "moderate_deviation";
+    if (percentage <= 110) return "on_time";
+    if (percentage <= 130) return "moderate_deviation";
+    return "extreme_deviation";
   }
 
   function formatDuration(openedAt: string): string {
     const opened = new Date(openedAt);
     const diff = Math.floor((currentTime.getTime() - opened.getTime()) / 1000);
 
-    if (diff < 0) return '0s';
+    if (diff < 0) return "0s";
 
     const hours = Math.floor(diff / 3600);
     const minutes = Math.floor((diff % 3600) / 60);
@@ -634,31 +738,39 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
   function getActiveFilterCount(): number {
     let count = 0;
-    if (quickFilter !== 'all') count++;
-    if (approvalFilter !== 'all') count++;
-    if (paymentMethodFilter !== 'all') count++;
-    if (technicianFilter !== 'all') count++;
+    if (quickFilter !== "all") count++;
+    if (approvalFilter !== "all") count++;
+    if (paymentMethodFilter !== "all") count++;
+    if (technicianFilter !== "all") count++;
     return count;
   }
 
   function clearAllFilters(): void {
-    setQuickFilter('all');
-    setApprovalFilter('all');
-    setPaymentMethodFilter('all');
-    setTechnicianFilter('all');
+    setQuickFilter("all");
+    setApprovalFilter("all");
+    setPaymentMethodFilter("all");
+    setTechnicianFilter("all");
   }
 
   function getTotalTips(ticket: any): number {
     if (!ticket.ticket_items || ticket.ticket_items.length === 0) return 0;
     return ticket.ticket_items.reduce((total: number, item: any) => {
-      return total + (item?.tip_customer_cash || 0) + (item?.tip_customer_card || 0) + (item?.tip_receptionist || 0);
+      return (
+        total +
+        (item?.tip_customer_cash || 0) +
+        (item?.tip_customer_card || 0) +
+        (item?.tip_receptionist || 0)
+      );
     }, 0);
   }
 
   // Check if the same person opened, performed, and closed the ticket
-  function isSamePersonOpenedPerformedClosed(ticket: SaleTicketWithItems): boolean {
+  function isSamePersonOpenedPerformedClosed(
+    ticket: SaleTicketWithItems,
+  ): boolean {
     // Check if closed
-    if (!ticket.closed_at || !ticket.created_by || !ticket.closed_by) return false;
+    if (!ticket.closed_at || !ticket.created_by || !ticket.closed_by)
+      return false;
 
     // Check if same person opened and closed
     if (ticket.created_by !== ticket.closed_by) return false;
@@ -666,7 +778,9 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
     // Check if same person performed (single performer, same as closer)
     if (!ticket.ticket_items || ticket.ticket_items.length === 0) return false;
 
-    const performerIds = new Set(ticket.ticket_items.map((item: any) => item.employee_id));
+    const performerIds = new Set(
+      ticket.ticket_items.map((item: any) => item.employee_id),
+    );
 
     // Single performer and same as closer
     return performerIds.size === 1 && performerIds.has(ticket.closed_by);
@@ -678,35 +792,46 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
     // Must be closed and not in a final approval status
     if (!ticket.closed_at) return false;
-    const finalStatuses = ['approved', 'auto_approved', 'rejected'];
-    if (ticket.approval_status && finalStatuses.includes(ticket.approval_status)) return false;
+    const finalStatuses = ["approved", "auto_approved", "rejected"];
+    if (
+      ticket.approval_status &&
+      finalStatuses.includes(ticket.approval_status)
+    )
+      return false;
 
     // Receptionist can only approve technician-level tickets they worked on
-    if (session.role_permission === 'Receptionist' &&
-        ticket.approval_required_level &&
-        ticket.approval_required_level !== 'technician') {
+    if (
+      session.role_permission === "Receptionist" &&
+      ticket.approval_required_level &&
+      ticket.approval_required_level !== "technician"
+    ) {
       return false;
     }
 
     // ALL users can only approve tickets where they personally performed the service
     if (ticket.ticket_items) {
-      return ticket.ticket_items.some((item: any) => item.employee_id === session.employee_id);
+      return ticket.ticket_items.some(
+        (item: any) => item.employee_id === session.employee_id,
+      );
     }
 
     return false;
   }
 
-  async function handleApproveTicket(ticket: SaleTicket, event: React.MouseEvent) {
+  async function handleApproveTicket(
+    ticket: SaleTicket,
+    event: React.MouseEvent,
+  ) {
     event.stopPropagation(); // Prevent opening the editor
 
     if (!session?.employee_id) {
-      showToast(t('tickets.sessionExpired'), 'error');
+      showToast(t("tickets.sessionExpired"), "error");
       return;
     }
 
     try {
       setProcessing(true);
-      const { data, error } = await supabase.rpc('approve_ticket', {
+      const { data, error } = await supabase.rpc("approve_ticket", {
         p_ticket_id: ticket.id,
         p_employee_id: session.employee_id,
       });
@@ -715,52 +840,57 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
       const result = data as { success: boolean; message: string };
       if (!result.success) {
-        showToast(result.message, 'error');
+        showToast(result.message, "error");
         return;
       }
 
-      await supabase.from('ticket_activity_log').insert([{
-        ticket_id: ticket.id,
-        employee_id: session.employee_id,
-        action: 'approved',
-        description: `${session.display_name} approved ticket`,
-        changes: {
-          approval_status: 'approved',
-          ticket_no: ticket.ticket_no,
+      await supabase.from("ticket_activity_log").insert([
+        {
+          ticket_id: ticket.id,
+          employee_id: session.employee_id,
+          action: "approved",
+          description: `${session.display_name} approved ticket`,
+          changes: {
+            approval_status: "approved",
+            ticket_no: ticket.ticket_no,
+          },
         },
-      }]);
+      ]);
 
-      showToast(t('tickets.approvedSuccess'), 'success');
+      showToast(t("tickets.approvedSuccess"), "success");
       fetchTickets();
     } catch (error: any) {
-      console.error('Error approving ticket:', error);
-      showToast(error.message || t('tickets.failedToApprove'), 'error');
+      console.error("Error approving ticket:", error);
+      showToast(error.message || t("tickets.failedToApprove"), "error");
     } finally {
       setProcessing(false);
     }
   }
 
-  function handleRejectTicketClick(ticket: SaleTicket, event: React.MouseEvent) {
+  function handleRejectTicketClick(
+    ticket: SaleTicket,
+    event: React.MouseEvent,
+  ) {
     event.stopPropagation(); // Prevent opening the editor
     setSelectedTicketForApproval(ticket);
-    setRejectionReason('');
+    setRejectionReason("");
     setShowRejectModal(true);
   }
 
   async function handleRejectTicket() {
     if (!selectedTicketForApproval || !rejectionReason.trim()) {
-      showToast(t('tickets.provideRejectionReason'), 'error');
+      showToast(t("tickets.provideRejectionReason"), "error");
       return;
     }
 
     if (!session?.employee_id) {
-      showToast(t('tickets.sessionExpired'), 'error');
+      showToast(t("tickets.sessionExpired"), "error");
       return;
     }
 
     try {
       setProcessing(true);
-      const { data, error } = await supabase.rpc('reject_ticket', {
+      const { data, error } = await supabase.rpc("reject_ticket", {
         p_ticket_id: selectedTicketForApproval.id,
         p_employee_id: session.employee_id,
         p_rejection_reason: rejectionReason,
@@ -770,30 +900,32 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
 
       const result = data as { success: boolean; message: string };
       if (!result.success) {
-        showToast(result.message, 'error');
+        showToast(result.message, "error");
         return;
       }
 
-      await supabase.from('ticket_activity_log').insert([{
-        ticket_id: selectedTicketForApproval.id,
-        employee_id: session.employee_id,
-        action: 'rejected',
-        description: `${session.display_name} rejected ticket: ${rejectionReason}`,
-        changes: {
-          approval_status: 'rejected',
-          rejection_reason: rejectionReason,
-          ticket_no: selectedTicketForApproval.ticket_no,
+      await supabase.from("ticket_activity_log").insert([
+        {
+          ticket_id: selectedTicketForApproval.id,
+          employee_id: session.employee_id,
+          action: "rejected",
+          description: `${session.display_name} rejected ticket: ${rejectionReason}`,
+          changes: {
+            approval_status: "rejected",
+            rejection_reason: rejectionReason,
+            ticket_no: selectedTicketForApproval.ticket_no,
+          },
         },
-      }]);
+      ]);
 
-      showToast(t('tickets.rejectedSentForReview'), 'success');
+      showToast(t("tickets.rejectedSentForReview"), "success");
       setShowRejectModal(false);
       setSelectedTicketForApproval(null);
-      setRejectionReason('');
+      setRejectionReason("");
       fetchTickets();
     } catch (error: any) {
-      console.error('Error rejecting ticket:', error);
-      showToast(error.message || t('tickets.failedToReject'), 'error');
+      console.error("Error rejecting ticket:", error);
+      showToast(error.message || t("tickets.failedToReject"), "error");
     } finally {
       setProcessing(false);
     }
@@ -802,7 +934,7 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">{t('common.loading')}</div>
+        <div className="text-gray-500">{t("common.loading")}</div>
       </div>
     );
   }
@@ -816,7 +948,9 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
             <div className="md:hidden" ref={viewModeDropdownRef}>
               <div className="relative">
                 <button
-                  onClick={() => setIsViewModeDropdownOpen(!isViewModeDropdownOpen)}
+                  onClick={() =>
+                    setIsViewModeDropdownOpen(!isViewModeDropdownOpen)
+                  }
                   className="flex items-center justify-between gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 min-w-[120px]"
                 >
                   <div className="flex items-center gap-2">
@@ -827,7 +961,9 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                       </>
                     )}
                   </div>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${isViewModeDropdownOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform ${isViewModeDropdownOpen ? "rotate-180" : ""}`}
+                  />
                 </button>
                 {isViewModeDropdownOpen && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
@@ -837,16 +973,23 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                       return (
                         <button
                           key={mode.key}
-                          onClick={() => { setViewMode(mode.key); setIsViewModeDropdownOpen(false); }}
+                          onClick={() => {
+                            setViewMode(mode.key);
+                            setIsViewModeDropdownOpen(false);
+                          }}
                           className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm font-medium transition-colors ${
-                            isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+                            isActive
+                              ? "bg-blue-50 text-blue-700"
+                              : "text-gray-600 hover:bg-gray-50"
                           }`}
                         >
                           <div className="flex items-center gap-2">
                             <Icon className="w-4 h-4" />
                             <span>{mode.label}</span>
                           </div>
-                          {isActive && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                          {isActive && (
+                            <CheckCircle className="w-4 h-4 text-blue-600" />
+                          )}
                         </button>
                       );
                     })}
@@ -857,7 +1000,9 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
           )}
 
           {/* Desktop tabs - visible on screens >= md */}
-          <div className={`hidden ${visibleViewModes.length > 1 ? 'md:inline-flex' : 'inline-flex'} rounded-lg border border-gray-300 bg-white`}>
+          <div
+            className={`hidden ${visibleViewModes.length > 1 ? "md:inline-flex" : "inline-flex"} rounded-lg border border-gray-300 bg-white`}
+          >
             {visibleViewModes.map((mode, index) => {
               const isFirst = index === 0;
               const isLast = index === visibleViewModes.length - 1;
@@ -866,13 +1011,13 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                   key={mode.key}
                   onClick={() => setViewMode(mode.key)}
                   className={`px-2 md:px-3 py-1.5 text-xs md:text-sm font-medium ${
-                    isFirst ? 'rounded-l-lg' : ''
-                  } ${isLast ? 'rounded-r-lg' : ''} ${
-                    !isFirst ? 'border-l border-gray-300' : ''
+                    isFirst ? "rounded-l-lg" : ""
+                  } ${isLast ? "rounded-r-lg" : ""} ${
+                    !isFirst ? "border-l border-gray-300" : ""
                   } transition-colors ${
                     viewMode === mode.key
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   {mode.label}
@@ -882,28 +1027,28 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
           </div>
         </div>
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full md:w-auto">
-          {viewMode === 'tickets' && (
+          {viewMode === "tickets" && (
             <>
               <div className="inline-flex rounded-lg border border-gray-300 bg-white min-h-[44px] md:min-h-0">
                 <button
-                  onClick={() => setQuickFilter('all')}
+                  onClick={() => setQuickFilter("all")}
                   className={`px-3 py-2 text-sm font-medium rounded-l-lg transition-colors min-h-[44px] md:min-h-0 ${
-                    quickFilter === 'all'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                    quickFilter === "all"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-50"
                   }`}
                 >
-                  {t('tickets.all')}
+                  {t("tickets.all")}
                 </button>
                 <button
-                  onClick={() => setQuickFilter('unclosed')}
+                  onClick={() => setQuickFilter("unclosed")}
                   className={`px-3 py-2 text-sm font-medium rounded-r-lg border-l border-gray-300 transition-colors min-h-[44px] md:min-h-0 ${
-                    quickFilter === 'unclosed'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                    quickFilter === "unclosed"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-50"
                   }`}
                 >
-                  {t('tickets.unclosed')}
+                  {t("tickets.unclosed")}
                 </button>
               </div>
               <div className="relative">
@@ -911,12 +1056,12 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                   onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
                   className={`px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px] md:min-h-0 flex items-center gap-2 ${
                     getActiveFilterCount() > 0
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   <Filter className="w-4 h-4" />
-                  <span>{t('tickets.filters')}</span>
+                  <span>{t("tickets.filters")}</span>
                   {getActiveFilterCount() > 0 && (
                     <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full">
                       {getActiveFilterCount()}
@@ -925,104 +1070,132 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                 </button>
 
                 {isFilterPanelOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setIsFilterPanelOpen(false)}
-                />
-                <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                  <div className="p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-gray-900">{t('tickets.filters')}</h3>
-                      <button
-                        onClick={() => setIsFilterPanelOpen(false)}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setIsFilterPanelOpen(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                      <div className="p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-semibold text-gray-900">
+                            {t("tickets.filters")}
+                          </h3>
+                          <button
+                            onClick={() => setIsFilterPanelOpen(false)}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
 
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        {t('tickets.approvalStatus')}
-                      </label>
-                      <select
-                        value={approvalFilter}
-                        onChange={(e) => setApprovalFilter(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="all">{t('tickets.allTickets')}</option>
-                        <option value="self_service_pending">{t('tickets.selfServiceNeedsReview')}</option>
-                        <option value="open">{t('tickets.open')}</option>
-                        <option value="closed">{t('tickets.closedNoStatus')}</option>
-                        <option value="pending_approval">{t('tickets.pendingApproval')}</option>
-                        <option value="approved">{t('tickets.approved')}</option>
-                        <option value="auto_approved">{t('tickets.autoApproved')}</option>
-                        <option value="rejected">{t('tickets.rejected')}</option>
-                        <option value="voided">{t('tickets.voided')}</option>
-                      </select>
-                    </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            {t("tickets.approvalStatus")}
+                          </label>
+                          <select
+                            value={approvalFilter}
+                            onChange={(e) => setApprovalFilter(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="all">
+                              {t("tickets.allTickets")}
+                            </option>
+                            <option value="self_service_pending">
+                              {t("tickets.selfServiceNeedsReview")}
+                            </option>
+                            <option value="open">{t("tickets.open")}</option>
+                            <option value="closed">
+                              {t("tickets.closedNoStatus")}
+                            </option>
+                            <option value="pending_approval">
+                              {t("tickets.pendingApproval")}
+                            </option>
+                            <option value="approved">
+                              {t("tickets.approved")}
+                            </option>
+                            <option value="auto_approved">
+                              {t("tickets.autoApproved")}
+                            </option>
+                            <option value="rejected">
+                              {t("tickets.rejected")}
+                            </option>
+                            <option value="voided">
+                              {t("tickets.voided")}
+                            </option>
+                          </select>
+                        </div>
 
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        {t('tickets.paymentMethod')}
-                      </label>
-                      <select
-                        value={paymentMethodFilter}
-                        onChange={(e) => setPaymentMethodFilter(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="all">{t('tickets.allPaymentMethods')}</option>
-                        <option value="Cash">{t('tickets.cash')}</option>
-                        <option value="Card">{t('tickets.card')}</option>
-                        <option value="Mixed">{t('tickets.mixed')}</option>
-                        <option value="Other">{t('tickets.other')}</option>
-                      </select>
-                    </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            {t("tickets.paymentMethod")}
+                          </label>
+                          <select
+                            value={paymentMethodFilter}
+                            onChange={(e) =>
+                              setPaymentMethodFilter(e.target.value)
+                            }
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="all">
+                              {t("tickets.allPaymentMethods")}
+                            </option>
+                            <option value="Cash">{t("tickets.cash")}</option>
+                            <option value="Card">{t("tickets.card")}</option>
+                            <option value="Mixed">{t("tickets.mixed")}</option>
+                            <option value="Other">{t("tickets.other")}</option>
+                          </select>
+                        </div>
 
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        {t('tickets.technician')}
-                      </label>
-                      <select
-                        value={technicianFilter}
-                        onChange={(e) => setTechnicianFilter(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="all">{t('tickets.allTechnicians')}</option>
-                        {technicians.map(tech => (
-                          <option key={tech.id} value={tech.id}>{tech.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            {t("tickets.technician")}
+                          </label>
+                          <select
+                            value={technicianFilter}
+                            onChange={(e) =>
+                              setTechnicianFilter(e.target.value)
+                            }
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="all">
+                              {t("tickets.allTechnicians")}
+                            </option>
+                            {technicians.map((tech) => (
+                              <option key={tech.id} value={tech.id}>
+                                {tech.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
 
-                    {getActiveFilterCount() > 0 && (
-                      <button
-                        onClick={clearAllFilters}
-                        className="w-full px-3 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                      >
-                        {t('tickets.clearAllFilters')}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
+                        {getActiveFilterCount() > 0 && (
+                          <button
+                            onClick={clearAllFilters}
+                            className="w-full px-3 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                          >
+                            {t("tickets.clearAllFilters")}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </>
           )}
-          {viewMode !== 'period' && (
+          {viewMode !== "period" && (
             <div className="flex items-center gap-2 flex-1 md:flex-initial">
               {!isLocalDateRole && activeDate !== getCurrentDateEST() && (
                 <button
                   onClick={() => activeDateChange(getCurrentDateEST())}
                   className="px-2 py-1.5 md:py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[44px] md:min-h-[32px] flex items-center justify-center"
                 >
-                  {t('common.today')}
+                  {t("common.today")}
                 </button>
               )}
               <button
-                onClick={() => navigateDay('prev')}
+                onClick={() => navigateDay("prev")}
                 disabled={!canNavigatePrev()}
                 className="p-2 md:p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors min-h-[44px] md:min-h-[32px] min-w-[44px] md:min-w-[32px] flex items-center justify-center"
                 aria-label="Previous day"
@@ -1040,468 +1213,568 @@ export function TicketsPage({ selectedDate, onDateChange, highlightedTicketId, o
                 />
               </div>
               <button
-                onClick={() => navigateDay('next')}
-                disabled={!canNavigateNext()}
-                className="p-2 md:p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors min-h-[44px] md:min-h-[32px] min-w-[44px] md:min-w-[32px] flex items-center justify-center"
+                onClick={() => navigateDay("next")}
+                className={`p-2 md:p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors min-h-[44px] md:min-h-[32px] min-w-[44px] md:min-w-[32px] flex items-center justify-center ${!canNavigateNext() ? "invisible" : ""}`}
                 aria-label="Next day"
               >
                 <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
               </button>
             </div>
           )}
-          {viewMode === 'tickets' && session && session.role_permission && Permissions.tickets.canCreate(session.role_permission) && (
-            <Button
-              size="sm"
-              onClick={() => {
-                if (session.role_permission === 'Cashier') {
-                  showToast(t('tickets.cashierCannotCreate'), 'error');
-                  return;
-                }
-                openEditor();
-              }}
-              className={`min-h-[44px] md:min-h-0${session.role_permission === 'Cashier' ? ' opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <Plus className="w-4 h-4 md:w-3 md:h-3 mr-1" />
-              <span className="hidden xs:inline">{t('tickets.newTicket')}</span>
-              <span className="xs:hidden">{t('common.new')}</span>
-            </Button>
-          )}
+          {viewMode === "tickets" &&
+            session &&
+            session.role_permission &&
+            Permissions.tickets.canCreate(session.role_permission) && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (session.role_permission === "Cashier") {
+                    showToast(t("tickets.cashierCannotCreate"), "error");
+                    return;
+                  }
+                  openEditor();
+                }}
+                className={`min-h-[44px] md:min-h-0${session.role_permission === "Cashier" ? " opacity-50 cursor-not-allowed" : ""}`}
+              >
+                <Plus className="w-4 h-4 md:w-3 md:h-3 mr-1" />
+                <span className="hidden xs:inline">
+                  {t("tickets.newTicket")}
+                </span>
+                <span className="xs:hidden">{t("common.new")}</span>
+              </Button>
+            )}
         </div>
       </div>
 
-      {viewMode === 'daily' ? (
+      {viewMode === "daily" ? (
         <div className="bg-white rounded-lg shadow">
-          <TicketsDetailView selectedDate={activeDate} onRefresh={fetchTickets} isCommissionEmployee={isCommissionEmployee} />
+          <TicketsDetailView
+            selectedDate={activeDate}
+            onRefresh={fetchTickets}
+            isCommissionEmployee={isCommissionEmployee}
+          />
         </div>
-      ) : viewMode === 'period' ? (
+      ) : viewMode === "period" ? (
         <div className="bg-white rounded-lg shadow">
-          <TicketsPeriodView selectedDate={activeDate} onDateChange={activeDateChange} isCommissionEmployee={isCommissionEmployee} />
+          <TicketsPeriodView
+            selectedDate={activeDate}
+            onDateChange={activeDateChange}
+            isCommissionEmployee={isCommissionEmployee}
+          />
         </div>
       ) : (
         <>
           <div className="bg-white rounded-lg shadow hidden md:block">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('tickets.time')}
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('tickets.customer')}
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('tickets.service')}
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('tickets.tech')}
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('tickets.subtotal')}
-                </th>
-                {canViewTotalColumn() && (
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {t('tickets.total')}
-                  </th>
-                )}
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('tickets.status')}
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('tickets.approval')}
-                </th>
-                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredTickets.map((ticket) => {
-                const technicianName = getTechnicianName(ticket);
-                const time = formatTimeEST(ticket.opened_at);
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t("tickets.time")}
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t("tickets.customer")}
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t("tickets.service")}
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t("tickets.tech")}
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t("tickets.subtotal")}
+                    </th>
+                    {canViewTotalColumn() && (
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {t("tickets.total")}
+                      </th>
+                    )}
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t("tickets.status")}
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t("tickets.approval")}
+                    </th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-10"></th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredTickets.map((ticket) => {
+                    const technicianName = getTechnicianName(ticket);
+                    const time = formatTimeEST(ticket.opened_at);
 
-                const canView = session && session.role_permission && Permissions.tickets.canView(session.role_permission);
+                    const canView =
+                      session &&
+                      session.role_permission &&
+                      Permissions.tickets.canView(session.role_permission);
 
-                const isTicketVoided = !!ticket.voided_at;
+                    const isTicketVoided = !!ticket.voided_at;
 
-                const isSelfServiceTicket =
-                  ticket.opened_by_role &&
-                  ['Technician', 'Trainee', 'Supervisor'].includes(ticket.opened_by_role) &&
-                  !ticket.reviewed_by_receptionist &&
-                  !ticket.closed_at;
+                    const isSelfServiceTicket =
+                      ticket.opened_by_role &&
+                      ["Technician", "Trainee", "Supervisor"].includes(
+                        ticket.opened_by_role,
+                      ) &&
+                      !ticket.reviewed_by_receptionist &&
+                      !ticket.closed_at;
 
-                const isUnclosedTicket = !ticket.closed_at;
-                const isClosedTicket = !!ticket.closed_at;
+                    const isUnclosedTicket = !ticket.closed_at;
+                    const isClosedTicket = !!ticket.closed_at;
 
-                let rowBackgroundClass = 'bg-gray-100 hover:bg-gray-200';
-                if (isTicketVoided) {
-                  rowBackgroundClass = 'bg-gray-200 hover:bg-gray-300 opacity-60';
-                } else if (isSelfServiceTicket) {
-                  rowBackgroundClass = 'bg-green-50 hover:bg-green-100';
-                } else if (isUnclosedTicket) {
-                  rowBackgroundClass = 'bg-yellow-50 hover:bg-yellow-100 animate-pulse';
-                } else if (isClosedTicket) {
-                  rowBackgroundClass = 'bg-gray-100 hover:bg-gray-200';
-                }
+                    let rowBackgroundClass = "bg-gray-100 hover:bg-gray-200";
+                    if (isTicketVoided) {
+                      rowBackgroundClass =
+                        "bg-gray-200 hover:bg-gray-300 opacity-60";
+                    } else if (isSelfServiceTicket) {
+                      rowBackgroundClass = "bg-green-50 hover:bg-green-100";
+                    } else if (isUnclosedTicket) {
+                      rowBackgroundClass =
+                        "bg-yellow-50 hover:bg-yellow-100 animate-pulse";
+                    } else if (isClosedTicket) {
+                      rowBackgroundClass = "bg-gray-100 hover:bg-gray-200";
+                    }
 
-                const isHighlighted = ticket.id === highlightedTicketId;
+                    const isHighlighted = ticket.id === highlightedTicketId;
 
-                return (
-                  <tr
-                    key={ticket.id}
-                    ref={isHighlighted ? highlightedRowRef : null}
-                    className={`
+                    return (
+                      <tr
+                        key={ticket.id}
+                        ref={isHighlighted ? highlightedRowRef : null}
+                        className={`
                       ${rowBackgroundClass}
-                      ${canView ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}
-                      ${isHighlighted ? 'animate-highlight-pulse ring-4 ring-yellow-400' : ''}
+                      ${canView ? "cursor-pointer" : "cursor-not-allowed opacity-60"}
+                      ${isHighlighted ? "animate-highlight-pulse ring-4 ring-yellow-400" : ""}
                       transition-colors duration-200
                     `}
-                    onClick={() => canView && openEditor(ticket.id)}
-                    title={!canView ? 'You do not have permission to view this ticket' : ''}
-                  >
-                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600">
-                      {time}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                      {ticket.customer_name || '-'}
-                    </td>
-                    <td className="px-3 py-2 text-xs">
-                      <div className="flex flex-wrap gap-1">
-                        {renderServiceBadges(ticket)}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                      {technicianName}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 italic">
-                      ${getSubtotal(ticket).toFixed(2)}
-                    </td>
-                    {canViewTotalColumn() && (
-                      <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 font-bold">
-                        ${getGrandTotalCollected(ticket).toFixed(2)}
-                      </td>
-                    )}
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <div className="flex items-center gap-1">
-                        {ticket.closed_at ? (
-                          (() => {
-                            const status = getCompletionStatus(ticket);
-                            return (
-                              <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                status === 'on_time'
-                                  ? 'bg-green-100 text-green-800'
-                                  : status === 'moderate_deviation'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : status === 'extreme_deviation'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {status === 'unknown' ? t('tickets.closedUnknown') : t('tickets.closed')}
-                              </div>
-                            );
-                          })()
-                        ) : ticket.completed_at ? (
-                          <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                            {t('tickets.completed')}
+                        onClick={() => canView && openEditor(ticket.id)}
+                        title={
+                          !canView
+                            ? "You do not have permission to view this ticket"
+                            : ""
+                        }
+                      >
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600">
+                          {time}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
+                          {ticket.customer_name || "-"}
+                        </td>
+                        <td className="px-3 py-2 text-xs">
+                          <div className="flex flex-wrap gap-1">
+                            {renderServiceBadges(ticket)}
                           </div>
-                        ) : (
-                          <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                            isTimeDeviationHigh(ticket) ? 'flash-red' : 'bg-orange-100 text-red-600'
-                          }`}>
-                            {formatDuration(ticket.opened_at)}
-                          </div>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
+                          {technicianName}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 italic">
+                          ${getSubtotal(ticket).toFixed(2)}
+                        </td>
+                        {canViewTotalColumn() && (
+                          <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 font-bold">
+                            ${getGrandTotalCollected(ticket).toFixed(2)}
+                          </td>
                         )}
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <div className="flex items-center gap-1">
+                            {ticket.closed_at ? (
+                              (() => {
+                                const status = getCompletionStatus(ticket);
+                                return (
+                                  <div
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                      status === "on_time"
+                                        ? "bg-green-100 text-green-800"
+                                        : status === "moderate_deviation"
+                                          ? "bg-amber-100 text-amber-800"
+                                          : status === "extreme_deviation"
+                                            ? "bg-red-100 text-red-800"
+                                            : "bg-gray-100 text-gray-800"
+                                    }`}
+                                  >
+                                    {status === "unknown"
+                                      ? t("tickets.closedUnknown")
+                                      : t("tickets.closed")}
+                                  </div>
+                                );
+                              })()
+                            ) : ticket.completed_at ? (
+                              <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                {t("tickets.completed")}
+                              </div>
+                            ) : (
+                              <div
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  isTimeDeviationHigh(ticket)
+                                    ? "flash-red"
+                                    : "bg-orange-100 text-red-600"
+                                }`}
+                              >
+                                {formatDuration(ticket.opened_at)}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            {isSamePersonOpenedPerformedClosed(ticket) &&
+                              ["Supervisor", "Manager"].includes(
+                                ticket.opened_by_role || "",
+                              ) &&
+                              !ticket.approval_status && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                  {t("tickets.required")}
+                                </span>
+                              )}
+                            {getApprovalStatusBadge(ticket)}
+                            {canApproveTicket(ticket) && (
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) =>
+                                    handleApproveTicket(ticket, e)
+                                  }
+                                  disabled={processing}
+                                  className="w-7 h-7 flex items-center justify-center rounded bg-green-500 hover:bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title={t("common.approve")}
+                                >
+                                  <Check className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={(e) =>
+                                    handleRejectTicketClick(ticket, e)
+                                  }
+                                  disabled={processing}
+                                  className="w-7 h-7 flex items-center justify-center rounded bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title={t("common.reject")}
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {!shouldHideTips &&
+                              getTipReceptionist(ticket) > 0 && (
+                                <DollarSign className="w-4 h-4 text-green-500 inline-block" />
+                              )}
+                            {ticket.notes && ticket.notes.trim() !== "" && (
+                              <FileText className="w-4 h-4 text-amber-500 inline-block" />
+                            )}
+                            {ticket.ticket_photos &&
+                              ticket.ticket_photos.length > 0 && (
+                                <ImageIcon className="w-4 h-4 text-blue-500 inline-block" />
+                              )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {filteredTickets.length === 0 && tickets.length > 0 && (
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-500">
+                  {t("tickets.noTicketsMatchFilter")}
+                </p>
+              </div>
+            )}
+            {tickets.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-500 mb-3">
+                  {t("tickets.noTicketsForDate")}
+                </p>
+                {session &&
+                  session.role_permission &&
+                  Permissions.tickets.canCreate(session.role_permission) && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (session.role_permission === "Cashier") {
+                          showToast(t("tickets.cashierCannotCreate"), "error");
+                          return;
+                        }
+                        openEditor();
+                      }}
+                      className={
+                        session.role_permission === "Cashier"
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }
+                    >
+                      {t("tickets.createFirstTicket")}
+                    </Button>
+                  )}
+              </div>
+            )}
+          </div>
+
+          <div className="md:hidden space-y-2">
+            {filteredTickets.map((ticket) => {
+              const totalTips = getTotalTips(ticket);
+              const technicianName = getTechnicianName(ticket);
+              const time = formatTimeEST(ticket.opened_at);
+
+              const canView =
+                session && Permissions.tickets.canView(session.role_permission);
+              const showApprovalButtons = canApproveTicket(ticket);
+
+              const isTicketVoided = !!ticket.voided_at;
+
+              const isSelfServiceTicket =
+                ticket.opened_by_role &&
+                ["Technician", "Trainee", "Supervisor"].includes(
+                  ticket.opened_by_role,
+                ) &&
+                !ticket.reviewed_by_receptionist &&
+                !ticket.closed_at;
+
+              const isUnclosedTicket = !ticket.closed_at;
+              const isClosedTicket = !!ticket.closed_at;
+              const isHighTip = totalTips > 20;
+
+              let cardBackgroundClass = "bg-gray-100";
+
+              if (isTicketVoided) {
+                cardBackgroundClass = "bg-gray-200 opacity-60";
+              } else if (isSelfServiceTicket) {
+                cardBackgroundClass = "bg-green-50";
+              } else if (isUnclosedTicket) {
+                cardBackgroundClass = "bg-yellow-50 animate-pulse";
+              } else if (isClosedTicket) {
+                cardBackgroundClass = "bg-gray-100";
+              }
+
+              const isHighlighted = ticket.id === highlightedTicketId;
+
+              return (
+                <div
+                  key={ticket.id}
+                  ref={isHighlighted ? highlightedCardRef : null}
+                  className={`${cardBackgroundClass} rounded-lg shadow p-3 ${isHighlighted ? "animate-highlight-pulse ring-4 ring-yellow-400" : ""}`}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div
+                      className={`flex-1 ${canView ? "cursor-pointer" : ""}`}
+                      onClick={(e) => {
+                        if (canView) {
+                          e.stopPropagation();
+                          openEditor(ticket.id);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-semibold text-gray-900">
+                          {ticket.customer_name || "-"}
+                        </span>
+                        <span className="text-xs text-gray-500">{time}</span>
                       </div>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {isSamePersonOpenedPerformedClosed(ticket) &&
-                         ['Supervisor', 'Manager'].includes(ticket.opened_by_role || '') &&
-                         !ticket.approval_status && (
+                      <div className="text-xs text-gray-600 flex flex-wrap items-center gap-1">
+                        {renderServiceBadges(ticket)}
+                        <span>•</span>
+                        <span>{technicianName}</span>
+                      </div>
+                    </div>
+                    <div className="text-right flex flex-col gap-1 items-end">
+                      {ticket.closed_at ? (
+                        (() => {
+                          const status = getCompletionStatus(ticket);
+                          return (
+                            <div
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                status === "on_time"
+                                  ? "bg-green-100 text-green-800"
+                                  : status === "moderate_deviation"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : status === "extreme_deviation"
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {status === "unknown"
+                                ? t("tickets.closedUnknown")
+                                : t("tickets.closed")}
+                            </div>
+                          );
+                        })()
+                      ) : ticket.completed_at ? (
+                        <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                          {t("tickets.completed")}
+                        </div>
+                      ) : (
+                        <div
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            isTimeDeviationHigh(ticket)
+                              ? "flash-red"
+                              : "bg-orange-100 text-red-600"
+                          }`}
+                        >
+                          {formatDuration(ticket.opened_at)}
+                        </div>
+                      )}
+                      {isSamePersonOpenedPerformedClosed(ticket) &&
+                        ["Supervisor", "Manager"].includes(
+                          ticket.opened_by_role || "",
+                        ) &&
+                        !ticket.approval_status && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            {t('tickets.required')}
+                            {t("tickets.required")}
                           </span>
                         )}
+                      <div className="flex items-center gap-1">
                         {getApprovalStatusBadge(ticket)}
-                        {canApproveTicket(ticket) && (
-                          <div className="flex gap-1">
-                            <button
-                              onClick={(e) => handleApproveTicket(ticket, e)}
-                              disabled={processing}
-                              className="w-7 h-7 flex items-center justify-center rounded bg-green-500 hover:bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={t('common.approve')}
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={(e) => handleRejectTicketClick(ticket, e)}
-                              disabled={processing}
-                              className="w-7 h-7 flex items-center justify-center rounded bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={t('common.reject')}
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <div className="flex items-center justify-center gap-1">
                         {!shouldHideTips && getTipReceptionist(ticket) > 0 && (
-                          <DollarSign className="w-4 h-4 text-green-500 inline-block" />
+                          <DollarSign className="w-4 h-4 text-green-500" />
                         )}
-                        {ticket.notes && ticket.notes.trim() !== '' && (
-                          <FileText className="w-4 h-4 text-amber-500 inline-block" />
+                        {ticket.notes && ticket.notes.trim() !== "" && (
+                          <FileText className="w-4 h-4 text-amber-500" />
                         )}
-                        {ticket.ticket_photos && ticket.ticket_photos.length > 0 && (
-                          <ImageIcon className="w-4 h-4 text-blue-500 inline-block" />
-                        )}
+                        {ticket.ticket_photos &&
+                          ticket.ticket_photos.length > 0 && (
+                            <ImageIcon className="w-4 h-4 text-blue-500" />
+                          )}
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredTickets.length === 0 && tickets.length > 0 && (
-          <div className="text-center py-8">
-            <p className="text-sm text-gray-500">{t('tickets.noTicketsMatchFilter')}</p>
-          </div>
-        )}
-        {tickets.length === 0 && (
-          <div className="text-center py-8">
-            <p className="text-sm text-gray-500 mb-3">{t('tickets.noTicketsForDate')}</p>
-            {session && session.role_permission && Permissions.tickets.canCreate(session.role_permission) && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  if (session.role_permission === 'Cashier') {
-                    showToast(t('tickets.cashierCannotCreate'), 'error');
-                    return;
-                  }
-                  openEditor();
-                }}
-                className={session.role_permission === 'Cashier' ? 'opacity-50 cursor-not-allowed' : ''}
-              >{t('tickets.createFirstTicket')}</Button>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="md:hidden space-y-2">
-        {filteredTickets.map((ticket) => {
-          const totalTips = getTotalTips(ticket);
-          const technicianName = getTechnicianName(ticket);
-          const time = formatTimeEST(ticket.opened_at);
-
-          const canView = session && Permissions.tickets.canView(session.role_permission);
-          const showApprovalButtons = canApproveTicket(ticket);
-
-          const isTicketVoided = !!ticket.voided_at;
-
-          const isSelfServiceTicket =
-            ticket.opened_by_role &&
-            ['Technician', 'Trainee', 'Supervisor'].includes(ticket.opened_by_role) &&
-            !ticket.reviewed_by_receptionist &&
-            !ticket.closed_at;
-
-          const isUnclosedTicket = !ticket.closed_at;
-          const isClosedTicket = !!ticket.closed_at;
-          const isHighTip = totalTips > 20;
-
-          let cardBackgroundClass = 'bg-gray-100';
-
-          if (isTicketVoided) {
-            cardBackgroundClass = 'bg-gray-200 opacity-60';
-          } else if (isSelfServiceTicket) {
-            cardBackgroundClass = 'bg-green-50';
-          } else if (isUnclosedTicket) {
-            cardBackgroundClass = 'bg-yellow-50 animate-pulse';
-          } else if (isClosedTicket) {
-            cardBackgroundClass = 'bg-gray-100';
-          }
-
-          const isHighlighted = ticket.id === highlightedTicketId;
-
-          return (
-            <div
-              key={ticket.id}
-              ref={isHighlighted ? highlightedCardRef : null}
-              className={`${cardBackgroundClass} rounded-lg shadow p-3 ${isHighlighted ? 'animate-highlight-pulse ring-4 ring-yellow-400' : ''}`}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div
-                  className={`flex-1 ${canView ? 'cursor-pointer' : ''}`}
-                  onClick={(e) => {
-                    if (canView) {
-                      e.stopPropagation();
-                      openEditor(ticket.id);
-                    }
-                  }}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-semibold text-gray-900">{ticket.customer_name || '-'}</span>
-                    <span className="text-xs text-gray-500">{time}</span>
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-600 flex flex-wrap items-center gap-1">
-                    {renderServiceBadges(ticket)}
-                    <span>•</span>
-                    <span>{technicianName}</span>
-                  </div>
-                </div>
-                <div className="text-right flex flex-col gap-1 items-end">
-                  {ticket.closed_at ? (
-                    (() => {
-                      const status = getCompletionStatus(ticket);
-                      return (
-                        <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          status === 'on_time'
-                            ? 'bg-green-100 text-green-800'
-                            : status === 'moderate_deviation'
-                            ? 'bg-amber-100 text-amber-800'
-                            : status === 'extreme_deviation'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {status === 'unknown' ? t('tickets.closedUnknown') : t('tickets.closed')}
+                  <div className="pt-2 border-t border-gray-100">
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                      <div>
+                        <div className="text-xs text-gray-500">
+                          {t("tickets.subtotal")}
                         </div>
-                      );
-                    })()
-                  ) : ticket.completed_at ? (
-                    <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                      {t('tickets.completed')}
+                        <div className="text-sm font-semibold text-gray-900 italic">
+                          ${getSubtotal(ticket).toFixed(2)}
+                        </div>
+                      </div>
+                      {canViewTotalColumn() && (
+                        <div>
+                          <div className="text-xs text-gray-500">
+                            {t("tickets.total")}
+                          </div>
+                          <div className="text-sm font-bold text-gray-900">
+                            ${getGrandTotalCollected(ticket).toFixed(2)}
+                          </div>
+                        </div>
+                      )}
+                      {isClosedTicket && !shouldHideTips && (
+                        <div
+                          className={
+                            isHighTip ? "bg-orange-50 rounded px-2 -mx-2" : ""
+                          }
+                        >
+                          <div
+                            className={`text-xs font-medium ${isHighTip ? "text-orange-700" : "text-gray-500"}`}
+                          >
+                            {t("tickets.totalTips")}
+                          </div>
+                          <div
+                            className={`text-sm font-semibold ${isHighTip ? "text-orange-700" : "text-green-600"}`}
+                          >
+                            ${totalTips.toFixed(2)}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      isTimeDeviationHigh(ticket) ? 'flash-red' : 'bg-orange-100 text-red-600'
-                    }`}>
-                      {formatDuration(ticket.opened_at)}
-                    </div>
-                  )}
-                  {isSamePersonOpenedPerformedClosed(ticket) &&
-                   ['Supervisor', 'Manager'].includes(ticket.opened_by_role || '') &&
-                   !ticket.approval_status && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                      {t('tickets.required')}
-                    </span>
-                  )}
-                  <div className="flex items-center gap-1">
-                    {getApprovalStatusBadge(ticket)}
-                    {!shouldHideTips && getTipReceptionist(ticket) > 0 && (
-                      <DollarSign className="w-4 h-4 text-green-500" />
-                    )}
-                    {ticket.notes && ticket.notes.trim() !== '' && (
-                      <FileText className="w-4 h-4 text-amber-500" />
-                    )}
-                    {ticket.ticket_photos && ticket.ticket_photos.length > 0 && (
-                      <ImageIcon className="w-4 h-4 text-blue-500" />
+                    {showApprovalButtons && (
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={(e) => handleApproveTicket(ticket, e)}
+                          disabled={processing}
+                          className="flex-1 min-h-[44px] flex items-center justify-center rounded bg-green-500 hover:bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Check className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={(e) => handleRejectTicketClick(ticket, e)}
+                          disabled={processing}
+                          className="flex-1 min-h-[44px] flex items-center justify-center rounded bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
+              );
+            })}
+            {filteredTickets.length === 0 && tickets.length > 0 && (
+              <div className="bg-white rounded-lg shadow p-8 text-center">
+                <p className="text-sm text-gray-500">
+                  {t("tickets.noTicketsMatchFilter")}
+                </p>
               </div>
-              <div className="pt-2 border-t border-gray-100">
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  <div>
-                    <div className="text-xs text-gray-500">{t('tickets.subtotal')}</div>
-                    <div className="text-sm font-semibold text-gray-900 italic">${getSubtotal(ticket).toFixed(2)}</div>
-                  </div>
-                  {canViewTotalColumn() && (
-                    <div>
-                      <div className="text-xs text-gray-500">{t('tickets.total')}</div>
-                      <div className="text-sm font-bold text-gray-900">${getGrandTotalCollected(ticket).toFixed(2)}</div>
-                    </div>
-                  )}
-                  {isClosedTicket && !shouldHideTips && (
-                    <div className={isHighTip ? 'bg-orange-50 rounded px-2 -mx-2' : ''}>
-                      <div className={`text-xs font-medium ${isHighTip ? 'text-orange-700' : 'text-gray-500'}`}>
-                        {t('tickets.totalTips')}
-                      </div>
-                      <div className={`text-sm font-semibold ${isHighTip ? 'text-orange-700' : 'text-green-600'}`}>
-                        ${totalTips.toFixed(2)}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {showApprovalButtons && (
-                  <div className="flex gap-2 mt-2">
-                    <button
-                      onClick={(e) => handleApproveTicket(ticket, e)}
-                      disabled={processing}
-                      className="flex-1 min-h-[44px] flex items-center justify-center rounded bg-green-500 hover:bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            )}
+            {tickets.length === 0 && (
+              <div className="bg-white rounded-lg shadow p-8 text-center">
+                <p className="text-sm text-gray-500 mb-3">
+                  {t("tickets.noTicketsForDate")}
+                </p>
+                {session &&
+                  session.role_permission &&
+                  Permissions.tickets.canCreate(session.role_permission) && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (session.role_permission === "Cashier") {
+                          showToast(t("tickets.cashierCannotCreate"), "error");
+                          return;
+                        }
+                        openEditor();
+                      }}
+                      className={
+                        session.role_permission === "Cashier"
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }
                     >
-                      <Check className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={(e) => handleRejectTicketClick(ticket, e)}
-                      disabled={processing}
-                      className="flex-1 min-h-[44px] flex items-center justify-center rounded bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                )}
+                      {t("tickets.createFirstTicket")}
+                    </Button>
+                  )}
               </div>
-            </div>
-          );
-        })}
-        {filteredTickets.length === 0 && tickets.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <p className="text-sm text-gray-500">{t('tickets.noTicketsMatchFilter')}</p>
-          </div>
-        )}
-        {tickets.length === 0 && (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <p className="text-sm text-gray-500 mb-3">{t('tickets.noTicketsForDate')}</p>
-            {session && session.role_permission && Permissions.tickets.canCreate(session.role_permission) && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  if (session.role_permission === 'Cashier') {
-                    showToast(t('tickets.cashierCannotCreate'), 'error');
-                    return;
-                  }
-                  openEditor();
-                }}
-                className={session.role_permission === 'Cashier' ? 'opacity-50 cursor-not-allowed' : ''}
-              >{t('tickets.createFirstTicket')}</Button>
             )}
           </div>
-        )}
-      </div>
         </>
       )}
 
       <Modal
         isOpen={showRejectModal}
         onClose={() => !processing && setShowRejectModal(false)}
-        title={t('tickets.rejectTicket')}
+        title={t("tickets.rejectTicket")}
         onConfirm={handleRejectTicket}
-        confirmText={processing ? t('tickets.rejecting') : t('tickets.rejectTicket')}
+        confirmText={
+          processing ? t("tickets.rejecting") : t("tickets.rejectTicket")
+        }
         confirmVariant="danger"
-        cancelText={t('common.cancel')}
+        cancelText={t("common.cancel")}
       >
         {selectedTicketForApproval && (
           <div>
             <p className="text-gray-700 mb-3">
-              {t('tickets.rejectingTicketWillSend').replace('{ticketNo}', selectedTicketForApproval.ticket_no || '')}
+              {t("tickets.rejectingTicketWillSend").replace(
+                "{ticketNo}",
+                selectedTicketForApproval.ticket_no || "",
+              )}
             </p>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('tickets.reasonForRejection')} <span className="text-red-600">*</span>
+                {t("tickets.reasonForRejection")}{" "}
+                <span className="text-red-600">*</span>
               </label>
               <textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 rows={3}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder={t('tickets.explainRejection')}
+                placeholder={t("tickets.explainRejection")}
                 disabled={processing}
               />
             </div>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <p className="text-sm text-yellow-800">
-                {t('tickets.ticketLockedWarning')}
+                {t("tickets.ticketLockedWarning")}
               </p>
             </div>
           </div>

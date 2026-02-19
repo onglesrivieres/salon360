@@ -1,21 +1,39 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Download, Printer, ChevronLeft, ChevronRight, ChevronDown, Check, CheckCircle, X, Circle, Calendar, CalendarDays, CalendarRange, Filter } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { Button } from '../components/ui/Button';
-import { useToast } from '../components/ui/Toast';
-import { useAuth } from '../contexts/AuthContext';
-import { Permissions } from '../lib/permissions';
-import { WeeklyCalendarView } from '../components/WeeklyCalendarView';
-import { TicketEditor } from '../components/TicketEditor';
-import { formatTimeEST, getCurrentDateEST, formatDateISOEST } from '../lib/timezone';
+import { useState, useEffect, useRef, useMemo } from "react";
+import {
+  Download,
+  Printer,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Check,
+  CheckCircle,
+  X,
+  Circle,
+  Calendar,
+  CalendarDays,
+  CalendarRange,
+  Filter,
+} from "lucide-react";
+import { supabase } from "../lib/supabase";
+import { Button } from "../components/ui/Button";
+import { useToast } from "../components/ui/Toast";
+import { useAuth } from "../contexts/AuthContext";
+import { Permissions } from "../lib/permissions";
+import { WeeklyCalendarView } from "../components/WeeklyCalendarView";
+import { TicketEditor } from "../components/TicketEditor";
+import {
+  formatTimeEST,
+  getCurrentDateEST,
+  formatDateISOEST,
+} from "../lib/timezone";
 import {
   calculateServiceDuration,
   formatTimerDisplay,
   hasActiveTimer,
   getTimerStatus,
-  TimerServiceItem
-} from '../lib/timerUtils';
-import { getStoreClosingTimeForDate } from '../lib/workingHours';
+  TimerServiceItem,
+} from "../lib/timerUtils";
+import { getStoreClosingTimeForDate } from "../lib/workingHours";
 
 interface TechnicianSummary {
   technician_id: string;
@@ -73,17 +91,37 @@ interface TipReportPageProps {
   onDateChange: (date: string) => void;
 }
 
-export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps) {
+export function TipReportPage({
+  selectedDate,
+  onDateChange,
+}: TipReportPageProps) {
   const [summaries, setSummaries] = useState<TechnicianSummary[]>([]);
   const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<'detail' | 'weekly' | 'period'>('detail');
-  const [weeklyData, setWeeklyData] = useState<Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>>>(new Map());
+  const [viewMode, setViewMode] = useState<"detail" | "weekly" | "period">(
+    "detail",
+  );
+  const [weeklyData, setWeeklyData] = useState<
+    Map<
+      string,
+      Map<
+        string,
+        Array<{
+          store_id: string;
+          store_code: string;
+          tips_customer: number;
+          tips_receptionist: number;
+        }>
+      >
+    >
+  >(new Map());
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(true);
   const { showToast } = useToast();
   const { session, selectedStoreId, t } = useAuth();
-  const isReceptionist = session?.role_permission === 'Receptionist' || session?.role_permission === 'Cashier';
+  const isReceptionist =
+    session?.role_permission === "Receptionist" ||
+    session?.role_permission === "Cashier";
 
   // Technician filter state
   const [technicianFilter, setTechnicianFilter] = useState<string[]>([]);
@@ -99,45 +137,57 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     tips_cash: 0,
     tips_card: 0,
   });
-  const [multiStoreEmployeeIds, setMultiStoreEmployeeIds] = useState<Set<string>>(new Set());
+  const [multiStoreEmployeeIds, setMultiStoreEmployeeIds] = useState<
+    Set<string>
+  >(new Set());
   const [currentTime, setCurrentTime] = useState(new Date());
   const [storeClosingTime, setStoreClosingTime] = useState<string | null>(null);
 
   // View mode tab configuration for responsive dropdown
-  const viewModeConfig: Array<{ key: 'detail' | 'weekly' | 'period'; label: string; icon: typeof Calendar }> = [
-    { key: 'detail', label: 'Daily', icon: Calendar },
-    { key: 'weekly', label: 'Weekly', icon: CalendarDays },
-    { key: 'period', label: 'Period', icon: CalendarRange },
+  const viewModeConfig: Array<{
+    key: "detail" | "weekly" | "period";
+    label: string;
+    icon: typeof Calendar;
+  }> = [
+    { key: "detail", label: "Daily", icon: Calendar },
+    { key: "weekly", label: "Weekly", icon: CalendarDays },
+    { key: "period", label: "Period", icon: CalendarRange },
   ];
-  const visibleViewModes = viewModeConfig.filter(mode =>
-    mode.key === 'detail' || !isReceptionist
+  const visibleViewModes = viewModeConfig.filter(
+    (mode) => mode.key === "detail" || !isReceptionist,
   );
-  const currentViewMode = viewModeConfig.find(mode => mode.key === viewMode);
+  const currentViewMode = viewModeConfig.find((mode) => mode.key === viewMode);
 
   // Click-outside handler for view mode dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (viewModeDropdownRef.current && !viewModeDropdownRef.current.contains(event.target as Node)) {
+      if (
+        viewModeDropdownRef.current &&
+        !viewModeDropdownRef.current.contains(event.target as Node)
+      ) {
         setIsViewModeDropdownOpen(false);
       }
     }
     if (isViewModeDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isViewModeDropdownOpen]);
 
   // Click-outside handler for filter panel
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (filterPanelRef.current && !filterPanelRef.current.contains(event.target as Node)) {
+      if (
+        filterPanelRef.current &&
+        !filterPanelRef.current.contains(event.target as Node)
+      ) {
         setIsFilterPanelOpen(false);
       }
     }
     if (isFilterPanelOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isFilterPanelOpen]);
 
   // Derive technician list from summaries for filter dropdown
@@ -156,15 +206,18 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   // Filtered summaries based on technician filter
   const filteredSummaries = useMemo(() => {
     if (technicianFilter.length === 0) return summaries;
-    return summaries.filter(s => technicianFilter.includes(s.technician_id));
+    return summaries.filter((s) => technicianFilter.includes(s.technician_id));
   }, [summaries, technicianFilter]);
 
   const activeFilterCount = technicianFilter.length;
 
   // Timer refresh effect - update every 30 seconds if there are active timers
   useEffect(() => {
-    const hasAnyActiveTimer = summaries.some(s =>
-      s.items.some(item => item.started_at && !item.timer_stopped_at && !item.completed_at)
+    const hasAnyActiveTimer = summaries.some((s) =>
+      s.items.some(
+        (item) =>
+          item.started_at && !item.timer_stopped_at && !item.completed_at,
+      ),
     );
     if (!hasAnyActiveTimer) return;
     const interval = setInterval(() => setCurrentTime(new Date()), 30000);
@@ -175,7 +228,10 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   useEffect(() => {
     async function fetchClosingTime() {
       if (!selectedStoreId || !selectedDate) return;
-      const closingTime = await getStoreClosingTimeForDate(selectedStoreId, selectedDate);
+      const closingTime = await getStoreClosingTimeForDate(
+        selectedStoreId,
+        selectedDate,
+      );
       setStoreClosingTime(closingTime);
     }
     fetchClosingTime();
@@ -186,11 +242,13 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     if (!storeClosingTime) return false;
     // Convert to EST timezone to match store hours
     const openedDate = new Date(openedAt);
-    const estTime = new Date(openedDate.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const estTime = new Date(
+      openedDate.toLocaleString("en-US", { timeZone: "America/New_York" }),
+    );
     const openedHour = estTime.getHours();
     const openedMin = estTime.getMinutes();
     const openedMinutes = openedHour * 60 + openedMin;
-    const [closeHour, closeMin] = storeClosingTime.split(':').map(Number);
+    const [closeHour, closeMin] = storeClosingTime.split(":").map(Number);
     const closingMinutes = closeHour * 60 + closeMin;
     const LAST_TICKET_THRESHOLD = 45;
     const thresholdMinutes = closingMinutes - LAST_TICKET_THRESHOLD;
@@ -228,16 +286,17 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       group.totalDuration += calculateServiceDuration(timerItem, currentTime);
       if (hasActiveTimer(timerItem)) group.hasActiveTimer = true;
     }
-    return Array.from(ticketMap.values()).sort((a, b) =>
-      new Date(a.opened_at).getTime() - new Date(b.opened_at).getTime()
+    return Array.from(ticketMap.values()).sort(
+      (a, b) =>
+        new Date(a.opened_at).getTime() - new Date(b.opened_at).getTime(),
     );
   }
 
   function abbreviateStoreName(storeCode: string): string {
     const codeMap: Record<string, string> = {
-      'OM': 'M',
-      'OC': 'C',
-      'OR': 'R',
+      OM: "M",
+      OC: "C",
+      OR: "R",
     };
     return codeMap[storeCode.toUpperCase()] || storeCode;
   }
@@ -245,21 +304,25 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   function getStoreColor(storeCode: string): string {
     const abbrev = abbreviateStoreName(storeCode);
     switch (abbrev) {
-      case 'M': return 'text-pink-600';
-      case 'C': return 'text-green-600';
-      case 'R': return 'text-blue-600';
-      default: return 'text-gray-600';
+      case "M":
+        return "text-pink-600";
+      case "C":
+        return "text-green-600";
+      case "R":
+        return "text-blue-600";
+      default:
+        return "text-gray-600";
     }
   }
 
   function getApprovalIcon(status: string | null) {
     switch (status) {
-      case 'approved':
-      case 'auto_approved':
+      case "approved":
+      case "auto_approved":
         return <Check className="w-3 h-3 text-green-600" />;
-      case 'rejected':
+      case "rejected":
         return <X className="w-3 h-3 text-red-600" />;
-      case 'pending_approval':
+      case "pending_approval":
         return <Circle className="w-3 h-3 text-yellow-500 fill-yellow-500" />;
       default:
         return null;
@@ -267,9 +330,9 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   }
 
   useEffect(() => {
-    if (viewMode === 'weekly') {
+    if (viewMode === "weekly") {
       fetchWeeklyData();
-    } else if (viewMode === 'period') {
+    } else if (viewMode === "period") {
       fetchPeriodData();
     } else {
       fetchTipData();
@@ -277,7 +340,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   }, [selectedDate, selectedStoreId, viewMode]);
 
   function getWeekStartDate(date: string): string {
-    const d = new Date(date + 'T00:00:00');
+    const d = new Date(date + "T00:00:00");
     const day = d.getDay();
     const diff = day === 0 ? -6 : 1 - day;
     d.setDate(d.getDate() + diff);
@@ -286,7 +349,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
   function getWeekDates(startDate: string): string[] {
     const dates: string[] = [];
-    const d = new Date(startDate + 'T00:00:00');
+    const d = new Date(startDate + "T00:00:00");
     for (let i = 0; i < 7; i++) {
       dates.push(formatDateISOEST(d));
       d.setDate(d.getDate() + 1);
@@ -295,45 +358,61 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   }
 
   function getISOWeekNumber(date: Date): number {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const d = new Date(
+      Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+    );
     d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    const weekNo = Math.ceil(
+      ((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
+    );
     return weekNo;
   }
 
   function getPeriodDateRange(dateStr: string) {
     const payrollStartDate = new Date(2024, 9, 13); // Oct 13, 2024
-    const currentDate = new Date(dateStr + 'T00:00:00');
+    const currentDate = new Date(dateStr + "T00:00:00");
     currentDate.setHours(0, 0, 0, 0);
     payrollStartDate.setHours(0, 0, 0, 0);
 
-    const daysSinceStart = Math.floor((currentDate.getTime() - payrollStartDate.getTime()) / (1000 * 60 * 60 * 24));
+    const daysSinceStart = Math.floor(
+      (currentDate.getTime() - payrollStartDate.getTime()) /
+        (1000 * 60 * 60 * 24),
+    );
     const periodNumber = Math.floor(daysSinceStart / 14);
 
     const periodStart = new Date(payrollStartDate);
-    periodStart.setDate(periodStart.getDate() + (periodNumber * 14));
+    periodStart.setDate(periodStart.getDate() + periodNumber * 14);
 
     const periodEnd = new Date(periodStart);
     periodEnd.setDate(periodEnd.getDate() + 13);
 
     const formatLocalDate = (date: Date) => {
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
       return `${year}-${month}-${day}`;
     };
 
-    return { startDate: formatLocalDate(periodStart), endDate: formatLocalDate(periodEnd), periodStart, periodEnd };
+    return {
+      startDate: formatLocalDate(periodStart),
+      endDate: formatLocalDate(periodEnd),
+      periodStart,
+      periodEnd,
+    };
   }
 
   function getPeriodDates(dateStr: string): string[] {
     const { periodStart, periodEnd } = getPeriodDateRange(dateStr);
     const dates: string[] = [];
-    for (let d = new Date(periodStart); d <= periodEnd; d.setDate(d.getDate() + 1)) {
+    for (
+      let d = new Date(periodStart);
+      d <= periodEnd;
+      d.setDate(d.getDate() + 1)
+    ) {
       const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
       dates.push(`${year}-${month}-${day}`);
     }
     return dates;
@@ -345,7 +424,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     const endYear = periodEnd.getFullYear();
 
     if (startYear !== endYear) {
-      const formatDateWithYear = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+      const formatDateWithYear = (d: Date) =>
+        `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
       return `${formatDateWithYear(periodStart)} - ${formatDateWithYear(periodEnd)}`;
     } else {
       const formatDate = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
@@ -353,34 +433,43 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     }
   }
 
-  function navigatePeriod(direction: 'prev' | 'next') {
-    const d = new Date(selectedDate + 'T00:00:00');
-    d.setDate(d.getDate() + (direction === 'prev' ? -14 : 14));
+  function navigatePeriod(direction: "prev" | "next") {
+    if (direction === "next" && isCurrentPeriod()) return;
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() + (direction === "prev" ? -14 : 14));
     onDateChange(formatDateISOEST(d));
   }
 
   function isCurrentPeriod(): boolean {
     const today = getCurrentDateEST();
-    return getPeriodDateRange(selectedDate).startDate === getPeriodDateRange(today).startDate;
+    return (
+      getPeriodDateRange(selectedDate).startDate ===
+      getPeriodDateRange(today).startDate
+    );
   }
 
-  async function fetchDailyTipData(dateToFetch: string, forWeeklyView: boolean = false): Promise<Map<string, TechnicianSummary>> {
-    const canViewAll = session?.role_permission ? Permissions.tipReport.canViewAll(session.role_permission) : false;
-    const isRestrictedRole = !canViewAll && session?.role_permission === 'Technician';
+  async function fetchDailyTipData(
+    dateToFetch: string,
+    forWeeklyView: boolean = false,
+  ): Promise<Map<string, TechnicianSummary>> {
+    const canViewAll = session?.role_permission
+      ? Permissions.tipReport.canViewAll(session.role_permission)
+      : false;
+    const isRestrictedRole =
+      !canViewAll && session?.role_permission === "Technician";
 
     // In Weekly view, Supervisors and Technicians can only see their own data
     // Only Admin, Manager, Owner can see all data in Weekly view
     const canViewAllInWeekly = session?.role
-      ? session.role.some(r => ['Admin', 'Manager', 'Owner'].includes(r))
+      ? session.role.some((r) => ["Admin", "Manager", "Owner"].includes(r))
       : false;
 
     const isTechnician = forWeeklyView
-      ? !canViewAllInWeekly  // In Weekly: restrict Supervisor and Technician
-      : isRestrictedRole;    // In Daily: only restrict Technician
+      ? !canViewAllInWeekly // In Weekly: restrict Supervisor and Technician
+      : isRestrictedRole; // In Daily: only restrict Technician
 
-    const { data: allEmployeeStores, error: allEmployeeStoresError } = await supabase
-      .from('employee_stores')
-      .select('employee_id, store_id');
+    const { data: allEmployeeStores, error: allEmployeeStoresError } =
+      await supabase.from("employee_stores").select("employee_id, store_id");
 
     if (allEmployeeStoresError) {
       throw allEmployeeStoresError;
@@ -422,7 +511,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     }
 
     let query = supabase
-      .from('sale_tickets')
+      .from("sale_tickets")
       .select(
         `
         id,
@@ -434,7 +523,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         store_id,
         approval_status,
         store:stores!sale_tickets_store_id_fkey(id, name, code),
-        ticket_items${isTechnician ? '!inner' : ''} (
+        ticket_items${isTechnician ? "!inner" : ""} (
           id,
           store_service_id,
           custom_service_name,
@@ -455,21 +544,21 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             pay_type
           )
         )
-      `
+      `,
       )
-      .eq('ticket_date', dateToFetch);
+      .eq("ticket_date", dateToFetch);
 
     if (storeIds.length > 0) {
-      query = query.in('store_id', storeIds);
+      query = query.in("store_id", storeIds);
     } else if (selectedStoreId) {
-      query = query.eq('store_id', selectedStoreId);
+      query = query.eq("store_id", selectedStoreId);
     }
 
     if (isTechnician && session?.employee_id) {
-      query = query.eq('ticket_items.employee_id', session.employee_id);
+      query = query.eq("ticket_items.employee_id", session.employee_id);
     }
 
-    query = query.is('voided_at', null);
+    query = query.is("voided_at", null);
 
     const { data: tickets, error: ticketsError } = await query;
 
@@ -481,18 +570,24 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       const ticketStoreId = (ticket as any).store_id;
 
       for (const item of (ticket as any).ticket_items || []) {
-        const itemRevenue = (parseFloat(item.qty) || 0) * (parseFloat(item.price_each) || 0) + (parseFloat(item.addon_price) || 0);
+        const itemRevenue =
+          (parseFloat(item.qty) || 0) * (parseFloat(item.price_each) || 0) +
+          (parseFloat(item.addon_price) || 0);
         const techId = item.employee_id;
         const technician = item.employee;
 
         if (!technician) continue;
 
         // Skip commission employees - only show hourly and daily
-        if (technician.pay_type === 'commission') {
+        if (technician.pay_type === "commission") {
           continue;
         }
 
-        if (isTechnician && session?.employee_id && techId !== session.employee_id) {
+        if (
+          isTechnician &&
+          session?.employee_id &&
+          techId !== session.employee_id
+        ) {
           continue;
         }
 
@@ -502,7 +597,10 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             continue;
           }
 
-          if (ticketStoreId !== selectedStoreId && !multiStoreEmployees.has(techId)) {
+          if (
+            ticketStoreId !== selectedStoreId &&
+            !multiStoreEmployees.has(techId)
+          ) {
             continue;
           }
         }
@@ -523,7 +621,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         }
 
         const summary = technicianMap.get(techId)!;
-        const serviceRevenue = (parseFloat(item.qty) || 0) * (parseFloat(item.price_each) || 0);
+        const serviceRevenue =
+          (parseFloat(item.qty) || 0) * (parseFloat(item.price_each) || 0);
         const addonRevenue = parseFloat(item.addon_price) || 0;
         const tipCustomerCash = parseFloat(String(item.tip_customer_cash)) || 0;
         const tipCustomerCard = parseFloat(String(item.tip_customer_card)) || 0;
@@ -537,26 +636,29 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
         // Only count tips for approved tickets (or legacy tickets with no approval status)
         const approvalStatus = (ticket as any).approval_status;
-        const isApprovedTicket = approvalStatus === 'approved' ||
-                                 approvalStatus === 'auto_approved' ||
-                                 !approvalStatus; // null = legacy tickets (count them)
+        const isApprovedTicket =
+          approvalStatus === "approved" ||
+          approvalStatus === "auto_approved" ||
+          !approvalStatus; // null = legacy tickets (count them)
 
         if (isApprovedTicket) {
-          summary.tips_customer = (summary.tips_customer || 0) + tipCustomerCash + tipCustomerCard;
-          summary.tips_receptionist = (summary.tips_receptionist || 0) + tipReceptionist;
+          summary.tips_customer =
+            (summary.tips_customer || 0) + tipCustomerCash + tipCustomerCard;
+          summary.tips_receptionist =
+            (summary.tips_receptionist || 0) + tipReceptionist;
         }
 
         summary.items.push({
           ticket_id: ticket.id,
-          service_code: item.service?.code || '',
-          service_name: item.service?.name || '',
+          service_code: item.service?.code || "",
+          service_name: item.service?.name || "",
           price: itemRevenue,
           service_revenue: serviceRevenue,
           addon_revenue: addonRevenue,
           tip_customer_cash: parseFloat(String(item.tip_customer_cash)) || 0,
           tip_customer_card: parseFloat(String(item.tip_customer_card)) || 0,
           tip_receptionist: parseFloat(String(item.tip_receptionist)) || 0,
-          payment_method: (ticket as any).payment_method || '',
+          payment_method: (ticket as any).payment_method || "",
           opened_at: (ticket as any).opened_at,
           closed_at: ticket.closed_at,
           ticket_completed_at: (ticket as any).completed_at || null,
@@ -564,8 +666,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           started_at: item.started_at || null,
           timer_stopped_at: item.timer_stopped_at || null,
           completed_at: item.completed_at || null,
-          store_code: (ticket as any).store?.code || '',
-          store_name: (ticket as any).store?.name || '',
+          store_code: (ticket as any).store?.code || "",
+          store_name: (ticket as any).store?.name || "",
           approval_status: (ticket as any).approval_status || null,
         });
       }
@@ -581,10 +683,26 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       const weekStart = getWeekStartDate(selectedDate);
       const weekDates = getWeekDates(weekStart);
 
-      const dailyDataPromises = weekDates.map(date => fetchDailyTipData(date, true));
+      const dailyDataPromises = weekDates.map((date) =>
+        fetchDailyTipData(date, true),
+      );
       const dailyDataResults = await Promise.all(dailyDataPromises);
 
-      const dataMap = new Map<string, Map<string, Map<string, { store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>>();
+      const dataMap = new Map<
+        string,
+        Map<
+          string,
+          Map<
+            string,
+            {
+              store_id: string;
+              store_code: string;
+              tips_customer: number;
+              tips_receptionist: number;
+            }
+          >
+        >
+      >();
 
       weekDates.forEach((date, index) => {
         const technicianMap = dailyDataResults[index];
@@ -601,7 +719,15 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
           const dateMap = techMap.get(date)!;
 
-          const storeBreakdown = new Map<string, { store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>();
+          const storeBreakdown = new Map<
+            string,
+            {
+              store_id: string;
+              store_code: string;
+              tips_customer: number;
+              tips_receptionist: number;
+            }
+          >();
 
           for (const item of summary.items) {
             const storeId = item.store_code;
@@ -615,8 +741,11 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             }
 
             const storeData = storeBreakdown.get(storeId)!;
-            storeData.tips_customer += (parseFloat(String(item.tip_customer_cash)) || 0) + (parseFloat(String(item.tip_customer_card)) || 0);
-            storeData.tips_receptionist += (parseFloat(String(item.tip_receptionist)) || 0);
+            storeData.tips_customer +=
+              (parseFloat(String(item.tip_customer_cash)) || 0) +
+              (parseFloat(String(item.tip_customer_card)) || 0);
+            storeData.tips_receptionist +=
+              parseFloat(String(item.tip_receptionist)) || 0;
           }
 
           for (const [storeId, storeData] of storeBreakdown.entries()) {
@@ -625,10 +754,29 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         }
       });
 
-      const finalData = new Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>>();
+      const finalData = new Map<
+        string,
+        Map<
+          string,
+          Array<{
+            store_id: string;
+            store_code: string;
+            tips_customer: number;
+            tips_receptionist: number;
+          }>
+        >
+      >();
 
       for (const [techId, dateMap] of dataMap.entries()) {
-        const techDateMap = new Map<string, Array<{ store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>();
+        const techDateMap = new Map<
+          string,
+          Array<{
+            store_id: string;
+            store_code: string;
+            tips_customer: number;
+            tips_receptionist: number;
+          }>
+        >();
 
         for (const [date, storeMap] of dateMap.entries()) {
           const storesArray = Array.from(storeMap.values());
@@ -646,13 +794,18 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       }
 
       // Debug logging to identify data discrepancies
-      if (process.env.NODE_ENV === 'development') {
-        console.log('=== Weekly Data Debug Info ===');
-        console.log('Selected Store ID:', selectedStoreId);
-        console.log('Week Range:', weekStart, 'to', weekDates[weekDates.length - 1]);
+      if (process.env.NODE_ENV === "development") {
+        console.log("=== Weekly Data Debug Info ===");
+        console.log("Selected Store ID:", selectedStoreId);
+        console.log(
+          "Week Range:",
+          weekStart,
+          "to",
+          weekDates[weekDates.length - 1],
+        );
 
         for (const [techId, dateMap] of finalData.entries()) {
-          const techName = techNames.get(techId) || 'Unknown';
+          const techName = techNames.get(techId) || "Unknown";
           const storeIds = new Set<string>();
           let totalTips = 0;
           const dailyBreakdown: any = {};
@@ -665,7 +818,9 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
               dayData[store.store_code || store.store_id] = {
                 customer: store.tips_customer.toFixed(2),
                 receptionist: store.tips_receptionist.toFixed(2),
-                total: (store.tips_customer + store.tips_receptionist).toFixed(2)
+                total: (store.tips_customer + store.tips_receptionist).toFixed(
+                  2,
+                ),
               };
             }
             dailyBreakdown[date] = dayData;
@@ -674,25 +829,25 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           console.log(`${techName} (${techId}):`, {
             uniqueStoresInData: Array.from(storeIds),
             weeklyTotal: totalTips.toFixed(2),
-            dailyBreakdown
+            dailyBreakdown,
           });
         }
-        console.log('=== End Weekly Debug Info ===');
+        console.log("=== End Weekly Debug Info ===");
       }
 
       const sortedData = new Map(
         Array.from(finalData.entries()).sort((a, b) => {
-          const nameA = techNames.get(a[0]) || '';
-          const nameB = techNames.get(b[0]) || '';
+          const nameA = techNames.get(a[0]) || "";
+          const nameB = techNames.get(b[0]) || "";
           return nameA.localeCompare(nameB);
-        })
+        }),
       );
 
       setWeeklyData(sortedData);
 
       const technicianMap = new Map<string, TechnicianSummary>();
       for (const [techId, dayMap] of sortedData.entries()) {
-        const techName = techNames.get(techId) || 'Unknown';
+        const techName = techNames.get(techId) || "Unknown";
         let totalCustomer = 0;
         let totalReceptionist = 0;
 
@@ -721,7 +876,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       const sortedSummaries = Array.from(technicianMap.values());
       setSummaries(sortedSummaries);
     } catch (error) {
-      showToast('Failed to load weekly data', 'error');
+      showToast("Failed to load weekly data", "error");
     } finally {
       setLoading(false);
     }
@@ -733,10 +888,26 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
       const periodDates = getPeriodDates(selectedDate);
 
-      const dailyDataPromises = periodDates.map(date => fetchDailyTipData(date, true));
+      const dailyDataPromises = periodDates.map((date) =>
+        fetchDailyTipData(date, true),
+      );
       const dailyDataResults = await Promise.all(dailyDataPromises);
 
-      const dataMap = new Map<string, Map<string, Map<string, { store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>>();
+      const dataMap = new Map<
+        string,
+        Map<
+          string,
+          Map<
+            string,
+            {
+              store_id: string;
+              store_code: string;
+              tips_customer: number;
+              tips_receptionist: number;
+            }
+          >
+        >
+      >();
 
       periodDates.forEach((date, index) => {
         const technicianMap = dailyDataResults[index];
@@ -751,7 +922,15 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             techMap.set(date, new Map());
           }
 
-          const storeBreakdown = new Map<string, { store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>();
+          const storeBreakdown = new Map<
+            string,
+            {
+              store_id: string;
+              store_code: string;
+              tips_customer: number;
+              tips_receptionist: number;
+            }
+          >();
 
           for (const item of summary.items) {
             const storeId = item.store_code;
@@ -765,8 +944,11 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             }
 
             const storeData = storeBreakdown.get(storeId)!;
-            storeData.tips_customer += (parseFloat(String(item.tip_customer_cash)) || 0) + (parseFloat(String(item.tip_customer_card)) || 0);
-            storeData.tips_receptionist += (parseFloat(String(item.tip_receptionist)) || 0);
+            storeData.tips_customer +=
+              (parseFloat(String(item.tip_customer_cash)) || 0) +
+              (parseFloat(String(item.tip_customer_card)) || 0);
+            storeData.tips_receptionist +=
+              parseFloat(String(item.tip_receptionist)) || 0;
           }
 
           const dateMap = techMap.get(date)!;
@@ -776,10 +958,29 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         }
       });
 
-      const finalData = new Map<string, Map<string, Array<{ store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>>();
+      const finalData = new Map<
+        string,
+        Map<
+          string,
+          Array<{
+            store_id: string;
+            store_code: string;
+            tips_customer: number;
+            tips_receptionist: number;
+          }>
+        >
+      >();
 
       for (const [techId, dateMap] of dataMap.entries()) {
-        const techDateMap = new Map<string, Array<{ store_id: string; store_code: string; tips_customer: number; tips_receptionist: number }>>();
+        const techDateMap = new Map<
+          string,
+          Array<{
+            store_id: string;
+            store_code: string;
+            tips_customer: number;
+            tips_receptionist: number;
+          }>
+        >();
 
         for (const [date, storeMap] of dateMap.entries()) {
           const storesArray = Array.from(storeMap.values());
@@ -798,17 +999,17 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
       const sortedData = new Map(
         Array.from(finalData.entries()).sort((a, b) => {
-          const nameA = techNames.get(a[0]) || '';
-          const nameB = techNames.get(b[0]) || '';
+          const nameA = techNames.get(a[0]) || "";
+          const nameB = techNames.get(b[0]) || "";
           return nameA.localeCompare(nameB);
-        })
+        }),
       );
 
       setWeeklyData(sortedData);
 
       const technicianMap = new Map<string, TechnicianSummary>();
       for (const [techId, dayMap] of sortedData.entries()) {
-        const techName = techNames.get(techId) || 'Unknown';
+        const techName = techNames.get(techId) || "Unknown";
         let totalCustomer = 0;
         let totalReceptionist = 0;
 
@@ -837,7 +1038,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       const sortedSummaries = Array.from(technicianMap.values());
       setSummaries(sortedSummaries);
     } catch (error) {
-      showToast('Failed to load period data', 'error');
+      showToast("Failed to load period data", "error");
     } finally {
       setLoading(false);
     }
@@ -847,15 +1048,18 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     try {
       setLoading(true);
 
-      const canViewAll = session?.role_permission ? Permissions.tipReport.canViewAll(session.role_permission) : false;
-      const isRestrictedRole = !canViewAll && session?.role_permission === 'Technician';
+      const canViewAll = session?.role_permission
+        ? Permissions.tipReport.canViewAll(session.role_permission)
+        : false;
+      const isRestrictedRole =
+        !canViewAll && session?.role_permission === "Technician";
       const isTechnician = isRestrictedRole;
 
       if (isTechnician && session?.employee_id) {
         const { data: employeeData, error: employeeError } = await supabase
-          .from('employees')
-          .select('tip_report_show_details')
-          .eq('id', session.employee_id)
+          .from("employees")
+          .select("tip_report_show_details")
+          .eq("id", session.employee_id)
           .maybeSingle();
 
         if (!employeeError && employeeData) {
@@ -880,18 +1084,25 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       }
 
       // Debug logging for Detail Grid data
-      if (process.env.NODE_ENV === 'development') {
-        console.log('=== Detail Grid Debug Info ===');
-        console.log('Selected Date:', selectedDate);
-        console.log('Selected Store ID:', selectedStoreId);
+      if (process.env.NODE_ENV === "development") {
+        console.log("=== Detail Grid Debug Info ===");
+        console.log("Selected Date:", selectedDate);
+        console.log("Selected Store ID:", selectedStoreId);
 
         for (const [techId, summary] of technicianMap.entries()) {
-          const storeBreakdown = new Map<string, { services: number; addons: number; total: number }>();
+          const storeBreakdown = new Map<
+            string,
+            { services: number; addons: number; total: number }
+          >();
 
           for (const item of summary.items) {
-            const storeCode = item.store_code || 'Unknown';
+            const storeCode = item.store_code || "Unknown";
             if (!storeBreakdown.has(storeCode)) {
-              storeBreakdown.set(storeCode, { services: 0, addons: 0, total: 0 });
+              storeBreakdown.set(storeCode, {
+                services: 0,
+                addons: 0,
+                total: 0,
+              });
             }
             const storeData = storeBreakdown.get(storeCode)!;
             storeData.services += item.service_revenue;
@@ -904,7 +1115,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             storeBreakdownObj[storeCode] = {
               services: data.services.toFixed(2),
               addons: data.addons.toFixed(2),
-              total: data.total.toFixed(2)
+              total: data.total.toFixed(2),
             };
           }
 
@@ -914,23 +1125,25 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             serviceRevenue: summary.service_revenue.toFixed(2),
             addonRevenue: summary.addon_revenue.toFixed(2),
             itemCount: summary.items.length,
-            storeBreakdown: storeBreakdownObj
+            storeBreakdown: storeBreakdownObj,
           });
         }
-        console.log('=== End Detail Grid Debug Info ===');
+        console.log("=== End Detail Grid Debug Info ===");
       }
 
       let filteredSummaries = Array.from(technicianMap.values());
 
-      filteredSummaries.forEach(summary => {
+      filteredSummaries.forEach((summary) => {
         summary.items.sort((a, b) => {
-          return new Date(a.opened_at).getTime() - new Date(b.opened_at).getTime();
+          return (
+            new Date(a.opened_at).getTime() - new Date(b.opened_at).getTime()
+          );
         });
       });
 
       if (isRestrictedRole && session?.employee_id) {
         filteredSummaries = filteredSummaries.filter(
-          summary => summary.technician_id === session.employee_id
+          (summary) => summary.technician_id === session.employee_id,
         );
 
         const technicianTotals = filteredSummaries[0];
@@ -952,7 +1165,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
         tips_card: totalAddonRevenue,
       });
     } catch (error) {
-      showToast('Failed to load tip data', 'error');
+      showToast("Failed to load tip data", "error");
     } finally {
       setLoading(false);
     }
@@ -960,11 +1173,11 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
 
   function exportCSV() {
     const headers = [
-      'Technician',
-      'Services Done',
-      'Service Revenue',
-      'Addon Revenue',
-      'Total Revenue',
+      "Technician",
+      "Services Done",
+      "Service Revenue",
+      "Addon Revenue",
+      "Total Revenue",
     ];
 
     const rows = filteredSummaries.map((s) => [
@@ -975,33 +1188,40 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       s.total_revenue.toFixed(2),
     ]);
 
-    const csv = [headers, ...rows].map((row) => row.join(',')).join('\n');
+    const csv = [headers, ...rows].map((row) => row.join(",")).join("\n");
 
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `tip-report-${selectedDate}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
 
-    showToast('Tip Report exported successfully', 'success');
+    showToast("Tip Report exported successfully", "success");
   }
 
   function handlePrint() {
     window.print();
-    showToast('Opening print dialog', 'success');
+    showToast("Opening print dialog", "success");
   }
 
-  function navigateWeek(direction: 'prev' | 'next') {
-    const d = new Date(selectedDate + 'T00:00:00');
-    d.setDate(d.getDate() + (direction === 'prev' ? -7 : 7));
+  function isCurrentWeek(): boolean {
+    return (
+      getWeekStartDate(selectedDate) === getWeekStartDate(getCurrentDateEST())
+    );
+  }
+
+  function navigateWeek(direction: "prev" | "next") {
+    if (direction === "next" && isCurrentWeek()) return;
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() + (direction === "prev" ? -7 : 7));
     onDateChange(formatDateISOEST(d));
   }
 
-  function navigateDay(direction: 'prev' | 'next') {
-    const d = new Date(selectedDate + 'T00:00:00');
-    d.setDate(d.getDate() + (direction === 'prev' ? -1 : 1));
+  function navigateDay(direction: "prev" | "next") {
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() + (direction === "prev" ? -1 : 1));
     onDateChange(formatDateISOEST(d));
   }
 
@@ -1016,15 +1236,16 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   function getCurrentWeekLabel(): string {
     const weekStart = getWeekStartDate(selectedDate);
     const weekDates = getWeekDates(weekStart);
-    const startDate = new Date(weekDates[0] + 'T00:00:00');
-    const endDate = new Date(weekDates[6] + 'T00:00:00');
+    const startDate = new Date(weekDates[0] + "T00:00:00");
+    const endDate = new Date(weekDates[6] + "T00:00:00");
     const weekNumber = getISOWeekNumber(startDate);
 
     const startYear = startDate.getFullYear();
     const endYear = endDate.getFullYear();
 
     if (startYear !== endYear) {
-      const formatDateWithYear = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+      const formatDateWithYear = (d: Date) =>
+        `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
       return `W${weekNumber} ${formatDateWithYear(startDate)} - ${formatDateWithYear(endDate)}`;
     } else {
       const formatDate = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
@@ -1033,18 +1254,20 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   }
 
   function getMinDate(): string {
-    const canViewUnlimitedHistory = session?.role ? Permissions.tipReport.canViewUnlimitedHistory(session.role) : false;
+    const canViewUnlimitedHistory = session?.role
+      ? Permissions.tipReport.canViewUnlimitedHistory(session.role)
+      : false;
 
     if (canViewUnlimitedHistory) {
-      return '2000-01-01';
+      return "2000-01-01";
     }
 
     const today = getCurrentDateEST();
     const date = new Date(today);
     date.setDate(date.getDate() - 14);
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
 
@@ -1056,43 +1279,52 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
     if (item.started_at && item.completed_at) {
       const started = new Date(item.started_at);
       const completed = new Date(item.completed_at);
-      const durationMinutes = Math.floor((completed.getTime() - started.getTime()) / (1000 * 60));
+      const durationMinutes = Math.floor(
+        (completed.getTime() - started.getTime()) / (1000 * 60),
+      );
       return Math.max(0, durationMinutes);
     }
 
     if (item.opened_at && item.ticket_completed_at) {
       const opened = new Date(item.opened_at);
       const ticketCompleted = new Date(item.ticket_completed_at);
-      const durationMinutes = Math.floor((ticketCompleted.getTime() - opened.getTime()) / (1000 * 60));
+      const durationMinutes = Math.floor(
+        (ticketCompleted.getTime() - opened.getTime()) / (1000 * 60),
+      );
       return Math.max(0, durationMinutes);
     }
 
     if (item.opened_at && item.closed_at) {
       const opened = new Date(item.opened_at);
       const closed = new Date(item.closed_at);
-      const durationMinutes = Math.floor((closed.getTime() - opened.getTime()) / (1000 * 60));
+      const durationMinutes = Math.floor(
+        (closed.getTime() - opened.getTime()) / (1000 * 60),
+      );
       return Math.max(0, durationMinutes);
     }
 
     return 0;
   }
 
-  function getItemCompletionStatus(item: ServiceItemDetail): 'on_time' | 'moderate_deviation' | 'extreme_deviation' | 'unknown' {
+  function getItemCompletionStatus(
+    item: ServiceItemDetail,
+  ): "on_time" | "moderate_deviation" | "extreme_deviation" | "unknown" {
     const expectedDuration = item.duration_min;
-    const hasCompletionData = item.completed_at || item.ticket_completed_at || item.closed_at;
+    const hasCompletionData =
+      item.completed_at || item.ticket_completed_at || item.closed_at;
 
-    if (expectedDuration === 0 || !hasCompletionData) return 'unknown';
+    if (expectedDuration === 0 || !hasCompletionData) return "unknown";
 
     const actualDuration = calculateItemCompletionDuration(item);
-    if (actualDuration === 0) return 'unknown';
+    if (actualDuration === 0) return "unknown";
 
     const percentage = (actualDuration / expectedDuration) * 100;
 
-    if (percentage < 70) return 'extreme_deviation';
-    if (percentage < 90) return 'moderate_deviation';
-    if (percentage <= 110) return 'on_time';
-    if (percentage <= 130) return 'moderate_deviation';
-    return 'extreme_deviation';
+    if (percentage < 70) return "extreme_deviation";
+    if (percentage < 90) return "moderate_deviation";
+    if (percentage <= 110) return "on_time";
+    if (percentage <= 130) return "moderate_deviation";
+    return "extreme_deviation";
   }
 
   function openTicketEditor(ticketId: string) {
@@ -1103,9 +1335,9 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   function closeTicketEditor() {
     setIsEditorOpen(false);
     setEditingTicketId(null);
-    if (viewMode === 'weekly') {
+    if (viewMode === "weekly") {
       fetchWeeklyData();
-    } else if (viewMode === 'period') {
+    } else if (viewMode === "period") {
       fetchPeriodData();
     } else {
       fetchTipData();
@@ -1115,20 +1347,34 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
-        <h2 className="text-base md:text-lg font-bold text-gray-900">Tip Report</h2>
+        <h2 className="text-base md:text-lg font-bold text-gray-900">
+          Tip Report
+        </h2>
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
-          {session && session.role && Permissions.endOfDay.canExport(session.role) && (
-            <>
-              <Button variant="secondary" size="sm" onClick={exportCSV} className="hidden md:flex">
-                <Download className="w-3 h-3 mr-1" />
-                Export
-              </Button>
-              <Button variant="secondary" size="sm" onClick={handlePrint} className="hidden md:flex">
-                <Printer className="w-3 h-3 mr-1" />
-                Print
-              </Button>
-            </>
-          )}
+          {session &&
+            session.role &&
+            Permissions.endOfDay.canExport(session.role) && (
+              <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={exportCSV}
+                  className="hidden md:flex"
+                >
+                  <Download className="w-3 h-3 mr-1" />
+                  Export
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handlePrint}
+                  className="hidden md:flex"
+                >
+                  <Printer className="w-3 h-3 mr-1" />
+                  Print
+                </Button>
+              </>
+            )}
           {/* Technician filter */}
           <div className="relative" ref={filterPanelRef}>
             <Button
@@ -1138,7 +1384,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
               className="relative"
             >
               <Filter className="w-3 h-3 mr-1" />
-              {t('tickets.filters')}
+              {t("tickets.filters")}
               {activeFilterCount > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 bg-blue-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                   {activeFilterCount}
@@ -1148,41 +1394,55 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             {isFilterPanelOpen && (
               <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 min-w-[220px]">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-gray-900">{t('tickets.filters')}</span>
+                  <span className="text-sm font-semibold text-gray-900">
+                    {t("tickets.filters")}
+                  </span>
                   {activeFilterCount > 0 && (
                     <button
-                      onClick={() => { setTechnicianFilter([]); }}
+                      onClick={() => {
+                        setTechnicianFilter([]);
+                      }}
                       className="text-xs text-blue-600 hover:text-blue-800"
                     >
-                      {t('tickets.clearAllFilters')}
+                      {t("tickets.clearAllFilters")}
                     </button>
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Technician</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Technician
+                  </label>
                   <div className="max-h-[200px] overflow-y-auto border border-gray-200 rounded-lg">
-                    {technicians.map(tech => {
+                    {technicians.map((tech) => {
                       const isChecked = technicianFilter.includes(tech.id);
                       return (
                         <button
                           key={tech.id}
                           type="button"
-                          onClick={() => setTechnicianFilter(prev =>
-                            prev.includes(tech.id)
-                              ? prev.filter(id => id !== tech.id)
-                              : [...prev, tech.id]
-                          )}
+                          onClick={() =>
+                            setTechnicianFilter((prev) =>
+                              prev.includes(tech.id)
+                                ? prev.filter((id) => id !== tech.id)
+                                : [...prev, tech.id],
+                            )
+                          }
                           className="flex items-center gap-2 w-full px-2 py-1.5 text-sm text-left hover:bg-gray-50"
                         >
-                          <span className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center ${isChecked ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
-                            {isChecked && <Check className="w-3 h-3 text-white" />}
+                          <span
+                            className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center ${isChecked ? "bg-blue-600 border-blue-600" : "border-gray-300"}`}
+                          >
+                            {isChecked && (
+                              <Check className="w-3 h-3 text-white" />
+                            )}
                           </span>
                           <span className="truncate">{tech.name}</span>
                         </button>
                       );
                     })}
                     {technicians.length === 0 && (
-                      <div className="px-2 py-1.5 text-sm text-gray-400">{t('tickets.allTechnicians')}</div>
+                      <div className="px-2 py-1.5 text-sm text-gray-400">
+                        {t("tickets.allTechnicians")}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1195,21 +1455,24 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
       <div className="bg-white rounded-lg shadow mb-3">
         <div className="p-2 border-b border-gray-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
           <div className="flex items-center justify-between w-full md:w-auto">
-            <h3 className="text-base font-semibold text-gray-900">Technician Tips</h3>
-            {viewMode === 'weekly' && (
+            <h3 className="text-base font-semibold text-gray-900">
+              Technician Tips
+            </h3>
+            {viewMode === "weekly" && (
               <div className="flex items-center gap-2 md:hidden">
-                {getWeekStartDate(selectedDate) !== getWeekStartDate(getCurrentDateEST()) && (
+                {getWeekStartDate(selectedDate) !==
+                  getWeekStartDate(getCurrentDateEST()) && (
                   <button
                     onClick={() => onDateChange(getCurrentDateEST())}
                     className="px-2 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[44px] flex items-center justify-center"
                   >
-                    {t('common.today')}
+                    {t("common.today")}
                   </button>
                 )}
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => navigateWeek('prev')}
+                  onClick={() => navigateWeek("prev")}
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
@@ -1219,13 +1482,14 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => navigateWeek('next')}
+                  onClick={() => navigateWeek("next")}
+                  className={isCurrentWeek() ? "invisible" : ""}
                 >
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
             )}
-            {viewMode === 'detail' && (
+            {viewMode === "detail" && (
               <div className="flex items-center gap-1 md:hidden">
                 {!isReceptionist ? (
                   <>
@@ -1234,13 +1498,13 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                         onClick={() => onDateChange(getCurrentDateEST())}
                         className="px-2 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[44px] flex items-center justify-center"
                       >
-                        {t('common.today')}
+                        {t("common.today")}
                       </button>
                     )}
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => navigateDay('prev')}
+                      onClick={() => navigateDay("prev")}
                       disabled={!canNavigatePrev()}
                       className="p-1 h-[44px] md:h-8 w-10 flex items-center justify-center"
                       aria-label="Previous day"
@@ -1258,9 +1522,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => navigateDay('next')}
-                      disabled={!canNavigateNext()}
-                      className="p-1 h-[44px] md:h-8 w-10 flex items-center justify-center"
+                      onClick={() => navigateDay("next")}
+                      className={`p-1 h-[44px] md:h-8 w-10 flex items-center justify-center ${!canNavigateNext() ? "invisible" : ""}`}
                       aria-label="Next day"
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -1276,20 +1539,20 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                 )}
               </div>
             )}
-            {viewMode === 'period' && (
+            {viewMode === "period" && (
               <div className="flex items-center gap-2 md:hidden">
                 {!isCurrentPeriod() && (
                   <button
                     onClick={() => onDateChange(getCurrentDateEST())}
                     className="px-2 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[44px] flex items-center justify-center"
                   >
-                    {t('common.today')}
+                    {t("common.today")}
                   </button>
                 )}
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => navigatePeriod('prev')}
+                  onClick={() => navigatePeriod("prev")}
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
@@ -1299,7 +1562,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => navigatePeriod('next')}
+                  onClick={() => navigatePeriod("next")}
+                  className={isCurrentPeriod() ? "invisible" : ""}
                 >
                   <ChevronRight className="w-4 h-4" />
                 </Button>
@@ -1307,20 +1571,21 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             )}
           </div>
           <div className="flex gap-2 items-center w-full md:w-auto justify-between">
-            {viewMode === 'weekly' && (
+            {viewMode === "weekly" && (
               <div className="hidden md:flex items-center gap-2">
-                {getWeekStartDate(selectedDate) !== getWeekStartDate(getCurrentDateEST()) && (
+                {getWeekStartDate(selectedDate) !==
+                  getWeekStartDate(getCurrentDateEST()) && (
                   <button
                     onClick={() => onDateChange(getCurrentDateEST())}
                     className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[32px] flex items-center justify-center"
                   >
-                    {t('common.today')}
+                    {t("common.today")}
                   </button>
                 )}
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => navigateWeek('prev')}
+                  onClick={() => navigateWeek("prev")}
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
@@ -1330,26 +1595,27 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => navigateWeek('next')}
+                  onClick={() => navigateWeek("next")}
+                  className={isCurrentWeek() ? "invisible" : ""}
                 >
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
             )}
-            {viewMode === 'period' && (
+            {viewMode === "period" && (
               <div className="hidden md:flex items-center gap-2">
                 {!isCurrentPeriod() && (
                   <button
                     onClick={() => onDateChange(getCurrentDateEST())}
                     className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[32px] flex items-center justify-center"
                   >
-                    {t('common.today')}
+                    {t("common.today")}
                   </button>
                 )}
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => navigatePeriod('prev')}
+                  onClick={() => navigatePeriod("prev")}
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
@@ -1359,13 +1625,14 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => navigatePeriod('next')}
+                  onClick={() => navigatePeriod("next")}
+                  className={isCurrentPeriod() ? "invisible" : ""}
                 >
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
             )}
-            {viewMode === 'detail' && (
+            {viewMode === "detail" && (
               <div className="hidden md:flex items-center gap-1">
                 {!isReceptionist ? (
                   <>
@@ -1374,13 +1641,13 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                         onClick={() => onDateChange(getCurrentDateEST())}
                         className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors min-h-[32px] flex items-center justify-center"
                       >
-                        {t('common.today')}
+                        {t("common.today")}
                       </button>
                     )}
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => navigateDay('prev')}
+                      onClick={() => navigateDay("prev")}
                       disabled={!canNavigatePrev()}
                       className="p-1 h-8 w-10 flex items-center justify-center"
                       aria-label="Previous day"
@@ -1398,9 +1665,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => navigateDay('next')}
-                      disabled={!canNavigateNext()}
-                      className="p-1 h-8 w-10 flex items-center justify-center"
+                      onClick={() => navigateDay("next")}
+                      className={`p-1 h-8 w-10 flex items-center justify-center ${!canNavigateNext() ? "invisible" : ""}`}
                       aria-label="Next day"
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -1421,7 +1687,9 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
               <div className="md:hidden" ref={viewModeDropdownRef}>
                 <div className="relative">
                   <button
-                    onClick={() => setIsViewModeDropdownOpen(!isViewModeDropdownOpen)}
+                    onClick={() =>
+                      setIsViewModeDropdownOpen(!isViewModeDropdownOpen)
+                    }
                     className="flex items-center justify-between gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 min-w-[100px]"
                   >
                     <div className="flex items-center gap-2">
@@ -1432,7 +1700,9 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                         </>
                       )}
                     </div>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${isViewModeDropdownOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform ${isViewModeDropdownOpen ? "rotate-180" : ""}`}
+                    />
                   </button>
                   {isViewModeDropdownOpen && (
                     <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[120px]">
@@ -1442,16 +1712,23 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                         return (
                           <button
                             key={mode.key}
-                            onClick={() => { setViewMode(mode.key); setIsViewModeDropdownOpen(false); }}
+                            onClick={() => {
+                              setViewMode(mode.key);
+                              setIsViewModeDropdownOpen(false);
+                            }}
                             className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm font-medium transition-colors ${
-                              isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
+                              isActive
+                                ? "bg-blue-50 text-blue-700"
+                                : "text-gray-600 hover:bg-gray-50"
                             }`}
                           >
                             <div className="flex items-center gap-2">
                               <Icon className="w-4 h-4" />
                               <span>{mode.label}</span>
                             </div>
-                            {isActive && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                            {isActive && (
+                              <CheckCircle className="w-4 h-4 text-blue-600" />
+                            )}
                           </button>
                         );
                       })}
@@ -1462,12 +1739,14 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
             )}
 
             {/* Desktop tabs - visible on screens >= md */}
-            <div className={`${visibleViewModes.length > 1 ? 'hidden md:flex' : 'flex'} gap-2`}>
+            <div
+              className={`${visibleViewModes.length > 1 ? "hidden md:flex" : "flex"} gap-2`}
+            >
               {visibleViewModes.map((mode) => (
                 <Button
                   key={mode.key}
                   size="sm"
-                  variant={viewMode === mode.key ? 'primary' : 'ghost'}
+                  variant={viewMode === mode.key ? "primary" : "ghost"}
                   onClick={() => setViewMode(mode.key)}
                 >
                   {mode.label}
@@ -1485,7 +1764,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
           <div className="text-center py-8">
             <p className="text-sm text-gray-500">No tips for this date</p>
           </div>
-        ) : viewMode === 'weekly' ? (
+        ) : viewMode === "weekly" ? (
           <div className="p-2 overflow-x-auto">
             <WeeklyCalendarView
               selectedDate={selectedDate}
@@ -1495,7 +1774,7 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
               multiStoreEmployeeIds={multiStoreEmployeeIds}
             />
           </div>
-        ) : viewMode === 'period' ? (
+        ) : viewMode === "period" ? (
           <div className="p-2 overflow-x-auto">
             <WeeklyCalendarView
               selectedDate={selectedDate}
@@ -1518,7 +1797,8 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                       {summary.technician_name}
                     </h4>
                     <p className="text-[9px] text-gray-500">
-                      {summary.services_count} service{summary.services_count !== 1 ? 's' : ''}
+                      {summary.services_count} service
+                      {summary.services_count !== 1 ? "s" : ""}
                     </p>
                   </div>
 
@@ -1531,29 +1811,43 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                         {showDetails ? (
                           <>
                             <div className="flex justify-between items-center">
-                              <span className="text-[9px] text-gray-600">T. (given)</span>
+                              <span className="text-[9px] text-gray-600">
+                                T. (given)
+                              </span>
                               <span className="text-[9px] font-semibold text-green-700">
                                 {(summary.tips_customer || 0).toFixed(0)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-[9px] text-gray-600">T. (paired)</span>
+                              <span className="text-[9px] text-gray-600">
+                                T. (paired)
+                              </span>
                               <span className="text-[9px] font-semibold text-blue-700">
                                 {(summary.tips_receptionist || 0).toFixed(0)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
-                              <span className="text-[9px] font-medium text-gray-900">Total</span>
+                              <span className="text-[9px] font-medium text-gray-900">
+                                Total
+                              </span>
                               <span className="text-[10px] font-bold text-gray-900">
-                                {((summary.tips_customer || 0) + (summary.tips_receptionist || 0)).toFixed(0)}
+                                {(
+                                  (summary.tips_customer || 0) +
+                                  (summary.tips_receptionist || 0)
+                                ).toFixed(0)}
                               </span>
                             </div>
                           </>
                         ) : (
                           <div className="flex justify-between items-center">
-                            <span className="text-[9px] font-medium text-gray-900">Total Tips</span>
+                            <span className="text-[9px] font-medium text-gray-900">
+                              Total Tips
+                            </span>
                             <span className="text-[10px] font-bold text-gray-900">
-                              {((summary.tips_customer || 0) + (summary.tips_receptionist || 0)).toFixed(0)}
+                              {(
+                                (summary.tips_customer || 0) +
+                                (summary.tips_receptionist || 0)
+                              ).toFixed(0)}
                             </span>
                           </div>
                         )}
@@ -1575,61 +1869,98 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                             const cardClasses = isLast
                               ? "border-2 border-purple-300 bg-purple-50/30 rounded p-1 cursor-pointer hover:bg-purple-100/50 hover:border-purple-400 transition-colors"
                               : "border-2 border-blue-300 bg-blue-50/30 rounded p-1 cursor-pointer hover:bg-blue-100/50 hover:border-blue-400 transition-colors";
-                            const borderColor = isLast ? "border-purple-200" : "border-blue-200";
-                            const leftBorderColor = isLast ? "border-purple-400" : "border-blue-400";
+                            const borderColor = isLast
+                              ? "border-purple-200"
+                              : "border-blue-200";
+                            const leftBorderColor = isLast
+                              ? "border-purple-400"
+                              : "border-blue-400";
                             return (
                               <div
                                 key={group.ticket_id}
-                                onClick={() => openTicketEditor(group.ticket_id)}
+                                onClick={() =>
+                                  openTicketEditor(group.ticket_id)
+                                }
                                 className={cardClasses}
                               >
                                 {/* Header with opening time and total duration */}
-                                <div className={`flex justify-between items-center text-[8px] text-gray-500 mb-1 pb-0.5 border-b ${borderColor}`}>
+                                <div
+                                  className={`flex justify-between items-center text-[8px] text-gray-500 mb-1 pb-0.5 border-b ${borderColor}`}
+                                >
                                   <div className="flex items-center gap-0.5 truncate">
                                     <span className="truncate">
-                                      {openTime.replace(/\s/g, '')}
+                                      {openTime.replace(/\s/g, "")}
                                     </span>
                                     {getApprovalIcon(group.approval_status)}
-                                    {multiStoreEmployeeIds.has(summary.technician_id) && group.store_code && (
-                                      <span className={`text-[7px] font-medium ${getStoreColor(group.store_code)}`}>
-                                        [{abbreviateStoreName(group.store_code)}]
-                                      </span>
-                                    )}
+                                    {multiStoreEmployeeIds.has(
+                                      summary.technician_id,
+                                    ) &&
+                                      group.store_code && (
+                                        <span
+                                          className={`text-[7px] font-medium ${getStoreColor(group.store_code)}`}
+                                        >
+                                          [
+                                          {abbreviateStoreName(
+                                            group.store_code,
+                                          )}
+                                          ]
+                                        </span>
+                                      )}
                                   </div>
-                                  <span className={`ml-1 flex-shrink-0 font-semibold ${group.hasActiveTimer ? 'text-blue-700' : 'text-gray-600'}`}>
+                                  <span
+                                    className={`ml-1 flex-shrink-0 font-semibold ${group.hasActiveTimer ? "text-blue-700" : "text-gray-600"}`}
+                                  >
                                     {formatTimerDisplay(group.totalDuration)}
-                                    {group.hasActiveTimer && '*'}
+                                    {group.hasActiveTimer && "*"}
                                   </span>
                                 </div>
                                 {/* Service list with individual timers */}
-                                <div className={`border-l-2 ${leftBorderColor} pl-1 space-y-0.5`}>
+                                <div
+                                  className={`border-l-2 ${leftBorderColor} pl-1 space-y-0.5`}
+                                >
                                   {group.services.map((item, svcIndex) => {
                                     const timerItem: TimerServiceItem = {
                                       started_at: item.started_at,
                                       timer_stopped_at: item.timer_stopped_at,
                                       completed_at: item.completed_at,
-                                      ticket_completed_at: item.ticket_completed_at,
+                                      ticket_completed_at:
+                                        item.ticket_completed_at,
                                       ticket_closed_at: item.closed_at,
                                     };
-                                    const svcDuration = calculateServiceDuration(timerItem, currentTime);
-                                    const timerStatus = getTimerStatus(timerItem);
-                                    const completionStatus = getItemCompletionStatus(item);
-                                    const timerColor = timerStatus === 'active'
-                                      ? 'bg-blue-100 text-blue-800'
-                                      : completionStatus === 'on_time'
-                                        ? 'bg-green-100 text-green-800'
-                                        : completionStatus === 'moderate_deviation'
-                                          ? 'bg-amber-100 text-amber-800'
-                                          : completionStatus === 'extreme_deviation'
-                                            ? 'bg-red-100 text-red-800'
-                                            : 'bg-gray-100 text-gray-800';
+                                    const svcDuration =
+                                      calculateServiceDuration(
+                                        timerItem,
+                                        currentTime,
+                                      );
+                                    const timerStatus =
+                                      getTimerStatus(timerItem);
+                                    const completionStatus =
+                                      getItemCompletionStatus(item);
+                                    const timerColor =
+                                      timerStatus === "active"
+                                        ? "bg-blue-100 text-blue-800"
+                                        : completionStatus === "on_time"
+                                          ? "bg-green-100 text-green-800"
+                                          : completionStatus ===
+                                              "moderate_deviation"
+                                            ? "bg-amber-100 text-amber-800"
+                                            : completionStatus ===
+                                                "extreme_deviation"
+                                              ? "bg-red-100 text-red-800"
+                                              : "bg-gray-100 text-gray-800";
                                     return (
-                                      <div key={svcIndex} className="flex justify-between items-center">
+                                      <div
+                                        key={svcIndex}
+                                        className="flex justify-between items-center"
+                                      >
                                         <span className="text-[9px] font-semibold text-gray-900">
                                           {item.service_code}
                                         </span>
-                                        <span className={`text-[8px] font-semibold px-1 py-0.5 rounded ${timerColor}`}>
-                                          {formatTimerDisplay(svcDuration)}{timerStatus === 'active' && '*'}
+                                        <span
+                                          className={`text-[8px] font-semibold px-1 py-0.5 rounded ${timerColor}`}
+                                        >
+                                          {formatTimerDisplay(svcDuration)}
+                                          {timerStatus === "active" && "*"}
                                         </span>
                                       </div>
                                     );
@@ -1637,25 +1968,38 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                 </div>
                                 {/* Tips */}
                                 {showDetails ? (
-                                  <div className={`space-y-0.5 mt-1 pt-0.5 border-t ${borderColor}`}>
+                                  <div
+                                    className={`space-y-0.5 mt-1 pt-0.5 border-t ${borderColor}`}
+                                  >
                                     <div className="flex justify-between items-center">
-                                      <span className="text-[8px] text-gray-600">T. (given)</span>
+                                      <span className="text-[8px] text-gray-600">
+                                        T. (given)
+                                      </span>
                                       <span className="text-[8px] font-semibold text-green-700">
                                         {group.totalTipGiven.toFixed(0)}
                                       </span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                      <span className="text-[8px] text-gray-600">T. (paired)</span>
+                                      <span className="text-[8px] text-gray-600">
+                                        T. (paired)
+                                      </span>
                                       <span className="text-[8px] font-semibold text-blue-700">
                                         {group.totalTipPaired.toFixed(0)}
                                       </span>
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className={`flex justify-between items-center mt-1 pt-0.5 border-t ${borderColor}`}>
-                                    <span className="text-[8px] text-gray-600">Total</span>
+                                  <div
+                                    className={`flex justify-between items-center mt-1 pt-0.5 border-t ${borderColor}`}
+                                  >
+                                    <span className="text-[8px] text-gray-600">
+                                      Total
+                                    </span>
                                     <span className="text-[8px] font-semibold text-gray-900">
-                                      {(group.totalTipGiven + group.totalTipPaired).toFixed(0)}
+                                      {(
+                                        group.totalTipGiven +
+                                        group.totalTipPaired
+                                      ).toFixed(0)}
                                     </span>
                                   </div>
                                 )}
@@ -1672,23 +2016,29 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                             ticket_completed_at: item.ticket_completed_at,
                             ticket_closed_at: item.closed_at,
                           };
-                          const svcDuration = calculateServiceDuration(timerItem, currentTime);
+                          const svcDuration = calculateServiceDuration(
+                            timerItem,
+                            currentTime,
+                          );
                           const timerStatus = getTimerStatus(timerItem);
-                          const completionStatus = getItemCompletionStatus(item);
+                          const completionStatus =
+                            getItemCompletionStatus(item);
                           const isLast = isLastTicket(group.opened_at);
-                          const timerColor = timerStatus === 'active'
-                            ? 'bg-blue-100 text-blue-800'
-                            : completionStatus === 'on_time'
-                              ? 'bg-green-100 text-green-800'
-                              : completionStatus === 'moderate_deviation'
-                                ? 'bg-amber-100 text-amber-800'
-                                : completionStatus === 'extreme_deviation'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-gray-100 text-gray-800';
+                          const timerColor =
+                            timerStatus === "active"
+                              ? "bg-blue-100 text-blue-800"
+                              : completionStatus === "on_time"
+                                ? "bg-green-100 text-green-800"
+                                : completionStatus === "moderate_deviation"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : completionStatus === "extreme_deviation"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-gray-100 text-gray-800";
                           const cardClasses = isLast
                             ? "border border-purple-300 bg-purple-50 rounded p-1 cursor-pointer hover:bg-purple-100 hover:border-purple-400 transition-colors"
                             : "border border-gray-200 bg-gray-50 rounded p-1 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors";
-                          const tipGiven = item.tip_customer_cash + item.tip_customer_card;
+                          const tipGiven =
+                            item.tip_customer_cash + item.tip_customer_card;
                           const tipPaired = item.tip_receptionist;
                           const totalTips = tipGiven + tipPaired;
 
@@ -1702,17 +2052,27 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                 <div className="flex justify-between items-center text-[8px] text-gray-500 mb-0.5">
                                   <div className="flex items-center gap-0.5 truncate">
                                     <span className="truncate">
-                                      {openTime.replace(/\s/g, '')}
+                                      {openTime.replace(/\s/g, "")}
                                     </span>
                                     {getApprovalIcon(group.approval_status)}
-                                    {multiStoreEmployeeIds.has(summary.technician_id) && item.store_code && (
-                                      <span className={`text-[7px] font-medium ${getStoreColor(item.store_code)}`}>
-                                        [{abbreviateStoreName(item.store_code)}]
-                                      </span>
-                                    )}
+                                    {multiStoreEmployeeIds.has(
+                                      summary.technician_id,
+                                    ) &&
+                                      item.store_code && (
+                                        <span
+                                          className={`text-[7px] font-medium ${getStoreColor(item.store_code)}`}
+                                        >
+                                          [
+                                          {abbreviateStoreName(item.store_code)}
+                                          ]
+                                        </span>
+                                      )}
                                   </div>
-                                  <span className={`ml-1 flex-shrink-0 text-[8px] font-semibold px-1 py-0.5 rounded ${timerColor}`}>
-                                    {formatTimerDisplay(svcDuration)}{timerStatus === 'active' && '*'}
+                                  <span
+                                    className={`ml-1 flex-shrink-0 text-[8px] font-semibold px-1 py-0.5 rounded ${timerColor}`}
+                                  >
+                                    {formatTimerDisplay(svcDuration)}
+                                    {timerStatus === "active" && "*"}
                                   </span>
                                 </div>
                                 <div className="text-[9px] font-semibold text-gray-900">
@@ -1722,13 +2082,17 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                               {showDetails ? (
                                 <div className="space-y-0.5">
                                   <div className="flex justify-between items-center">
-                                    <span className="text-[8px] text-gray-600">T. (given)</span>
+                                    <span className="text-[8px] text-gray-600">
+                                      T. (given)
+                                    </span>
                                     <span className="text-[8px] font-semibold text-green-700">
                                       {tipGiven.toFixed(0)}
                                     </span>
                                   </div>
                                   <div className="flex justify-between items-center">
-                                    <span className="text-[8px] text-gray-600">T. (paired)</span>
+                                    <span className="text-[8px] text-gray-600">
+                                      T. (paired)
+                                    </span>
                                     <span className="text-[8px] font-semibold text-blue-700">
                                       {tipPaired.toFixed(0)}
                                     </span>
@@ -1736,7 +2100,9 @@ export function TipReportPage({ selectedDate, onDateChange }: TipReportPageProps
                                 </div>
                               ) : (
                                 <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-600">Total</span>
+                                  <span className="text-[8px] text-gray-600">
+                                    Total
+                                  </span>
                                   <span className="text-[8px] font-semibold text-gray-900">
                                     {totalTips.toFixed(0)}
                                   </span>
