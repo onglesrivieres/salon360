@@ -18,8 +18,8 @@ import {
   Plus,
   ChevronDown,
   ChevronRight,
-  Star,
   Eye,
+  Check,
 } from "lucide-react";
 import {
   CATEGORY_COLORS,
@@ -109,6 +109,7 @@ export function ResourceModal({
   const [photosToDelete, setPhotosToDelete] = useState<string[]>([]);
   const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
   const [thumbnailPhotoId, setThumbnailPhotoId] = useState<string | null>(null);
+  const [thumbnailMode, setThumbnailMode] = useState<"photo" | "url">("photo");
 
   // Visibility targeting state
   const [visibilityStores, setVisibilityStores] = useState<"all" | "selected">(
@@ -259,6 +260,7 @@ export function ResourceModal({
       setExistingPhotos([]);
       setPhotosToDelete([]);
       setThumbnailPhotoId(null);
+      setThumbnailMode("photo");
       setVisibilityStores("all");
       setSelectedStoreIds(new Set());
       setVisibilityRoles("all");
@@ -313,7 +315,13 @@ export function ResourceModal({
       );
       if (matchingPhoto) {
         setThumbnailPhotoId(matchingPhoto.id);
+        setThumbnailMode("photo");
+      } else {
+        // URL thumbnail that doesn't match any photo → URL mode
+        setThumbnailMode("url");
       }
+    } else {
+      setThumbnailMode("photo");
     }
   }
 
@@ -324,6 +332,7 @@ export function ResourceModal({
     setExistingPhotos([]);
     setPhotosToDelete([]);
     setThumbnailPhotoId(null);
+    setThumbnailMode("photo");
     setIsProcessingPhoto(false);
     setFormData({
       title: "",
@@ -979,33 +988,6 @@ export function ResourceModal({
                     onDelete={() => handleRemovePhoto(photo.id)}
                     size="sm"
                   />
-                  {/* Thumbnail star button */}
-                  <button
-                    type="button"
-                    onClick={() => handleSetAsThumbnail(photo.id)}
-                    className={`absolute bottom-1 left-1 p-0.5 rounded-full transition-colors ${
-                      thumbnailPhotoId === photo.id
-                        ? "bg-amber-400 text-white"
-                        : "bg-black/40 text-white/70 hover:bg-black/60 hover:text-white"
-                    }`}
-                    title={
-                      thumbnailPhotoId === photo.id
-                        ? "Remove as thumbnail"
-                        : "Use as thumbnail"
-                    }
-                  >
-                    <Star
-                      className="w-3 h-3"
-                      fill={
-                        thumbnailPhotoId === photo.id ? "currentColor" : "none"
-                      }
-                    />
-                  </button>
-                  {thumbnailPhotoId === photo.id && (
-                    <span className="absolute -bottom-4 left-0 right-0 text-[10px] text-amber-600 text-center font-medium">
-                      Thumbnail
-                    </span>
-                  )}
                 </div>
               ))}
 
@@ -1019,33 +1001,6 @@ export function ResourceModal({
                     size="sm"
                     isPending
                   />
-                  {/* Thumbnail star button */}
-                  <button
-                    type="button"
-                    onClick={() => handleSetAsThumbnail(photo.id)}
-                    className={`absolute bottom-1 left-1 p-0.5 rounded-full transition-colors ${
-                      thumbnailPhotoId === photo.id
-                        ? "bg-amber-400 text-white"
-                        : "bg-black/40 text-white/70 hover:bg-black/60 hover:text-white"
-                    }`}
-                    title={
-                      thumbnailPhotoId === photo.id
-                        ? "Remove as thumbnail"
-                        : "Use as thumbnail"
-                    }
-                  >
-                    <Star
-                      className="w-3 h-3"
-                      fill={
-                        thumbnailPhotoId === photo.id ? "currentColor" : "none"
-                      }
-                    />
-                  </button>
-                  {thumbnailPhotoId === photo.id && (
-                    <span className="absolute -bottom-4 left-0 right-0 text-[10px] text-amber-600 text-center font-medium">
-                      Thumbnail
-                    </span>
-                  )}
                 </div>
               ))}
             </div>
@@ -1058,12 +1013,6 @@ export function ResourceModal({
             isUploading={isProcessingPhoto}
             remainingSlots={remainingSlots}
           />
-
-          {thumbnailPhotoId && (
-            <p className="text-xs text-amber-600 mt-1">
-              An uploaded photo is selected as the card thumbnail
-            </p>
-          )}
         </div>
 
         <div>
@@ -1097,57 +1046,141 @@ export function ResourceModal({
           </p>
         </div>
 
+        {/* Thumbnail */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Thumbnail URL
+            Thumbnail{" "}
+            <span className="text-gray-400 font-normal">(optional)</span>
           </label>
-          <Input
-            value={formData.thumbnail_url}
-            onChange={(e) => {
-              setFormData({ ...formData, thumbnail_url: e.target.value });
-              // Clear photo thumbnail selection when typing a URL
-              if (e.target.value.trim()) {
-                setThumbnailPhotoId(null);
-              }
-            }}
-            placeholder="https://example.com/image.jpg"
-            type="url"
-            disabled={!!thumbnailPhotoId}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            {thumbnailPhotoId
-              ? "Clear the selected photo thumbnail above to use a URL instead"
-              : "Direct link to an image for the card preview (optional)"}
-          </p>
-        </div>
 
-        {/* Thumbnail Preview — only show for URL thumbnails */}
-        {formData.thumbnail_url && !thumbnailPhotoId && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Preview
-            </label>
-            <div className="relative w-full h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-              <img
-                src={formData.thumbnail_url}
-                alt="Thumbnail preview"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
-                  (
-                    e.target as HTMLImageElement
-                  ).nextElementSibling?.classList.remove("hidden");
-                }}
-              />
-              <div className="hidden absolute inset-0 flex items-center justify-center text-gray-400">
-                <div className="text-center">
-                  <Image className="w-8 h-8 mx-auto mb-1" />
-                  <span className="text-xs">Failed to load image</span>
-                </div>
-              </div>
-            </div>
+          {/* Mode pills */}
+          <div className="flex gap-1 mb-2">
+            <button
+              type="button"
+              onClick={() => {
+                setThumbnailMode("photo");
+                setFormData((prev) => ({ ...prev, thumbnail_url: "" }));
+              }}
+              className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                thumbnailMode === "photo"
+                  ? "bg-blue-100 text-blue-700 border-blue-300"
+                  : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              From Photo
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setThumbnailMode("url");
+                setThumbnailPhotoId(null);
+              }}
+              className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                thumbnailMode === "url"
+                  ? "bg-blue-100 text-blue-700 border-blue-300"
+                  : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              From URL
+            </button>
           </div>
-        )}
+
+          {/* Photo picker */}
+          {thumbnailMode === "photo" && totalPhotoCount > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              {visibleExistingPhotos.map((photo) => (
+                <button
+                  key={photo.id}
+                  type="button"
+                  onClick={() => handleSetAsThumbnail(photo.id)}
+                  className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                    thumbnailPhotoId === photo.id
+                      ? "border-blue-500 ring-2 ring-blue-200"
+                      : "border-gray-200 hover:border-gray-400"
+                  }`}
+                >
+                  <img
+                    src={photo.url}
+                    alt="Photo thumbnail"
+                    className="w-full h-full object-cover"
+                  />
+                  {thumbnailPhotoId === photo.id && (
+                    <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
+                      <div className="bg-blue-500 rounded-full p-0.5">
+                        <Check className="w-3 h-3 text-white" />
+                      </div>
+                    </div>
+                  )}
+                </button>
+              ))}
+              {pendingPhotos.map((photo) => (
+                <button
+                  key={photo.id}
+                  type="button"
+                  onClick={() => handleSetAsThumbnail(photo.id)}
+                  className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                    thumbnailPhotoId === photo.id
+                      ? "border-blue-500 ring-2 ring-blue-200"
+                      : "border-gray-200 hover:border-gray-400"
+                  }`}
+                >
+                  <img
+                    src={photo.previewUrl}
+                    alt="Pending photo thumbnail"
+                    className="w-full h-full object-cover"
+                  />
+                  {thumbnailPhotoId === photo.id && (
+                    <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
+                      <div className="bg-blue-500 rounded-full p-0.5">
+                        <Check className="w-3 h-3 text-white" />
+                      </div>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+          {thumbnailMode === "photo" && totalPhotoCount === 0 && (
+            <p className="text-xs text-gray-500">
+              Upload photos above to select one as thumbnail
+            </p>
+          )}
+
+          {/* URL input */}
+          {thumbnailMode === "url" && (
+            <>
+              <Input
+                value={formData.thumbnail_url}
+                onChange={(e) =>
+                  setFormData({ ...formData, thumbnail_url: e.target.value })
+                }
+                placeholder="https://example.com/image.jpg"
+                type="url"
+              />
+              {formData.thumbnail_url && (
+                <div className="relative w-full h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 mt-2">
+                  <img
+                    src={formData.thumbnail_url}
+                    alt="Thumbnail preview"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                      (
+                        e.target as HTMLImageElement
+                      ).nextElementSibling?.classList.remove("hidden");
+                    }}
+                  />
+                  <div className="hidden absolute inset-0 flex items-center justify-center text-gray-400">
+                    <div className="text-center">
+                      <Image className="w-8 h-8 mx-auto mb-1" />
+                      <span className="text-xs">Failed to load image</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
         {/* Visibility Targeting */}
         <div className="border border-gray-200 rounded-lg overflow-hidden">
