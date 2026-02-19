@@ -701,6 +701,8 @@ export function TicketEditor({
           opening_time: ticketData.opened_at || "",
         });
 
+        setMatchCalculation(!!(ticketData as any).match_calculation);
+
         setItems(
           ticketItems.map((item: any) => ({
             id: item.id,
@@ -1118,7 +1120,7 @@ export function TicketEditor({
       discount_amount_cash: formData.discount_amount_cash || "0",
       card_type: formData.card_type || "",
     });
-    setMatchCalculation(false);
+    setMatchCalculation(isTicketClosed ? !!ticket?.match_calculation : false);
     setShowPaymentModal(true);
   }
 
@@ -1390,6 +1392,7 @@ export function TicketEditor({
           tax_gst: ticketTaxGst,
           tax_qst: ticketTaxQst,
           tax: ticketTaxGst + ticketTaxQst,
+          match_calculation: matchCalculation,
           notes: formData.notes,
           saved_by: session?.employee_id,
           updated_at: new Date().toISOString(),
@@ -1561,6 +1564,7 @@ export function TicketEditor({
           tax_gst: ticketTaxGst,
           tax_qst: ticketTaxQst,
           tax: ticketTaxGst + ticketTaxQst,
+          match_calculation: matchCalculation,
           notes: formData.notes,
           store_id: selectedStoreId || null,
           created_by: session?.employee_id,

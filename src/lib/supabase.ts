@@ -196,6 +196,7 @@ export interface SaleTicket {
   tax_gst?: number;
   tax_qst?: number;
   card_type?: string | null;
+  match_calculation?: boolean;
   created_at: string;
   updated_at: string;
   // Optional: populated when ticket_photos is included in query
