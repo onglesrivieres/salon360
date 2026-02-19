@@ -483,19 +483,10 @@ export function ResourcesPage() {
             </button>
           )}
           {canManage && (
-            <>
-              <button
-                onClick={() => setShowCategoryModal(true)}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Manage Categories"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-              <Button onClick={handleAddResource} disabled={tabs.length === 0}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Resource
-              </Button>
-            </>
+            <Button onClick={handleAddResource} disabled={tabs.length === 0}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Resource
+            </Button>
           )}
         </div>
       </div>
@@ -619,18 +610,21 @@ export function ResourcesPage() {
       </div>
 
       {/* Category Filter Pills */}
-      {currentTabSubcategories.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setSelectedSubcategory(null)}
-            className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
-              selectedSubcategory === null
-                ? "bg-gray-800 text-white border-gray-800"
-                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-            }`}
-          >
-            All ({resources.filter((r) => r.category === activeTabSlug).length})
-          </button>
+      {(currentTabSubcategories.length > 0 || canManage) && (
+        <div className="flex gap-2 flex-wrap items-center">
+          {currentTabSubcategories.length > 0 && (
+            <button
+              onClick={() => setSelectedSubcategory(null)}
+              className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                selectedSubcategory === null
+                  ? "bg-gray-800 text-white border-gray-800"
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              All (
+              {resources.filter((r) => r.category === activeTabSlug).length})
+            </button>
+          )}
           {currentTabSubcategories.map((cat) => (
             <button
               key={cat.id}
@@ -664,6 +658,15 @@ export function ResourcesPage() {
               }`}
             >
               Uncategorized ({subcategoryCounts.__uncategorized__})
+            </button>
+          )}
+          {canManage && (
+            <button
+              onClick={() => setShowCategoryModal(true)}
+              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              title="Manage Categories"
+            >
+              <Settings className="w-4 h-4" />
             </button>
           )}
         </div>
