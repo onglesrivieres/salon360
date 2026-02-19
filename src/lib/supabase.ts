@@ -1328,6 +1328,9 @@ export interface Resource {
   is_active: boolean;
   created_by: string | null;
   updated_by: string | null;
+  visible_store_ids: string[] | null;
+  visible_roles: string[] | null;
+  visible_employee_ids: string[] | null;
   created_at: string;
   updated_at: string;
 }

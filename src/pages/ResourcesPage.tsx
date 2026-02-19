@@ -72,6 +72,11 @@ export function ResourcesPage() {
   // View modal state
   const [viewingResource, setViewingResource] = useState<Resource | null>(null);
 
+  // Employee store assignments for visibility filtering
+  const [employeeStoreIds, setEmployeeStoreIds] = useState<Set<string>>(
+    new Set(),
+  );
+
   // Permission checks
   const canManage =
     effectiveRole && Permissions.resources.canCreate(effectiveRole);
@@ -219,6 +224,21 @@ export function ResourcesPage() {
     fetchUnreadCounts();
   }, [selectedStoreId]);
 
+  // Fetch employee store assignments for visibility filtering
+  useEffect(() => {
+    if (!session?.employee_id) return;
+    async function fetchEmployeeStores() {
+      const { data } = await supabase
+        .from("employee_stores")
+        .select("store_id")
+        .eq("employee_id", session!.employee_id);
+      if (data) {
+        setEmployeeStoreIds(new Set(data.map((r) => r.store_id)));
+      }
+    }
+    fetchEmployeeStores();
+  }, [session?.employee_id]);
+
   // Reset category filter when switching tabs
   useEffect(() => {
     setSelectedSubcategory(null);
@@ -231,9 +251,34 @@ export function ResourcesPage() {
       .sort((a, b) => a.display_order - b.display_order);
   }, [subcategories, activeTabSlug]);
 
+  // Apply visibility filtering — Admin/Owner/Manager bypass
+  const visibleResources = useMemo(() => {
+    if (canManage) return resources;
+    return resources.filter((r) => {
+      if (
+        r.visible_store_ids?.length &&
+        !r.visible_store_ids.some((id) => employeeStoreIds.has(id))
+      )
+        return false;
+      if (
+        r.visible_roles?.length &&
+        !r.visible_roles.some((role) =>
+          (session?.role || []).includes(role as any),
+        )
+      )
+        return false;
+      if (
+        r.visible_employee_ids?.length &&
+        !r.visible_employee_ids.includes(session?.employee_id || "")
+      )
+        return false;
+      return true;
+    });
+  }, [resources, canManage, employeeStoreIds, session]);
+
   // Filter resources by tab, subcategory, and search
   const filteredResources = useMemo(() => {
-    return resources.filter((resource) => {
+    return visibleResources.filter((resource) => {
       if (resource.category !== activeTabSlug) return false;
 
       if (selectedSubcategory !== null) {
@@ -258,7 +303,7 @@ export function ResourcesPage() {
 
       return true;
     });
-  }, [resources, activeTabSlug, selectedSubcategory, searchQuery]);
+  }, [visibleResources, activeTabSlug, selectedSubcategory, searchQuery]);
 
   // Group resources by subcategory for display
   const groupedResources = useMemo(() => {
@@ -301,19 +346,19 @@ export function ResourcesPage() {
     return groups;
   }, [filteredResources, selectedSubcategory, currentTabSubcategories]);
 
-  // Count resources per tab
+  // Count resources per tab (visibility-filtered)
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    resources.forEach((resource) => {
+    visibleResources.forEach((resource) => {
       counts[resource.category] = (counts[resource.category] || 0) + 1;
     });
     return counts;
-  }, [resources]);
+  }, [visibleResources]);
 
-  // Count resources per subcategory in current tab
+  // Count resources per subcategory in current tab (visibility-filtered)
   const subcategoryCounts = useMemo(() => {
     const counts: Record<string, number> = { __uncategorized__: 0 };
-    resources
+    visibleResources
       .filter((r) => r.category === activeTabSlug)
       .forEach((resource) => {
         if (resource.subcategory) {
@@ -324,7 +369,7 @@ export function ResourcesPage() {
         }
       });
     return counts;
-  }, [resources, activeTabSlug]);
+  }, [visibleResources, activeTabSlug]);
 
   // Get subcategory color
   function getSubcategoryColor(subcategoryName: string): string {

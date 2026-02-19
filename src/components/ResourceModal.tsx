@@ -12,7 +12,15 @@ import {
 } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import { useSettings } from "../contexts/SettingsContext";
-import { Image, ExternalLink, Plus, ChevronDown, Star } from "lucide-react";
+import {
+  Image,
+  ExternalLink,
+  Plus,
+  ChevronDown,
+  ChevronRight,
+  Star,
+  Eye,
+} from "lucide-react";
 import {
   CATEGORY_COLORS,
   getCategoryBadgeClasses,
@@ -41,6 +49,17 @@ interface ResourceModalProps {
   onCategoriesChanged: () => void;
 }
 
+const ALL_ROLES = [
+  "Admin",
+  "Owner",
+  "Manager",
+  "Supervisor",
+  "Receptionist",
+  "Cashier",
+  "Technician",
+  "Trainee",
+] as const;
+
 const CATEGORY_LABELS: Record<string, string> = {
   sop: "Standard Operating Procedure",
   employee_manual: "Employee Manual",
@@ -63,6 +82,10 @@ export function ResourceModal({
   const { showToast } = useToast();
   const { getStorageConfig } = useSettings();
   const [saving, setSaving] = useState(false);
+
+  // Admin/Owner can post globally; Manager is scoped to assigned stores
+  const isAdminOrOwner =
+    session?.role?.some((r) => ["Admin", "Owner"].includes(r)) ?? false;
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -87,6 +110,109 @@ export function ResourceModal({
   const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
   const [thumbnailPhotoId, setThumbnailPhotoId] = useState<string | null>(null);
 
+  // Visibility targeting state
+  const [visibilityStores, setVisibilityStores] = useState<"all" | "selected">(
+    "all",
+  );
+  const [selectedStoreIds, setSelectedStoreIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [visibilityRoles, setVisibilityRoles] = useState<"all" | "selected">(
+    "all",
+  );
+  const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set());
+  const [visibilityUsers, setVisibilityUsers] = useState<"all" | "selected">(
+    "all",
+  );
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [allStores, setAllStores] = useState<{ id: string; name: string }[]>(
+    [],
+  );
+  const [allEmployees, setAllEmployees] = useState<
+    { id: string; display_name: string; role: string[] }[]
+  >([]);
+  const [managerStoreIds, setManagerStoreIds] = useState<string[]>([]);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    new Set(),
+  );
+
+  // Fetch stores and employees for visibility selectors (scoped by role)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    async function fetchVisibilityData() {
+      if (isAdminOrOwner) {
+        // Admin/Owner: global access — all stores, all employees
+        const [storesRes, employeesRes] = await Promise.all([
+          supabase
+            .from("stores")
+            .select("id, name")
+            .eq("active", true)
+            .order("name"),
+          supabase
+            .from("employees")
+            .select("id, display_name, role")
+            .eq("status", "Active")
+            .order("display_name"),
+        ]);
+
+        if (storesRes.data) setAllStores(storesRes.data);
+        if (employeesRes.data) setAllEmployees(employeesRes.data);
+        setManagerStoreIds([]);
+      } else {
+        // Manager: scoped to assigned stores only
+        const { data: myStoreLinks } = await supabase
+          .from("employee_stores")
+          .select("store_id")
+          .eq("employee_id", session?.employee_id);
+
+        const myStoreIds = (myStoreLinks || []).map((s) => s.store_id);
+        setManagerStoreIds(myStoreIds);
+
+        if (myStoreIds.length === 0) {
+          setAllStores([]);
+          setAllEmployees([]);
+          return;
+        }
+
+        // Fetch store names for assigned stores
+        const { data: storesData } = await supabase
+          .from("stores")
+          .select("id, name")
+          .in("id", myStoreIds)
+          .eq("active", true)
+          .order("name");
+
+        if (storesData) setAllStores(storesData);
+
+        // Fetch employees at those stores
+        const { data: empLinks } = await supabase
+          .from("employee_stores")
+          .select("employee_id")
+          .in("store_id", myStoreIds);
+
+        const empIds = [...new Set((empLinks || []).map((e) => e.employee_id))];
+
+        if (empIds.length > 0) {
+          const { data: empsData } = await supabase
+            .from("employees")
+            .select("id, display_name, role")
+            .in("id", empIds)
+            .eq("status", "Active")
+            .order("display_name");
+
+          if (empsData) setAllEmployees(empsData);
+        } else {
+          setAllEmployees([]);
+        }
+      }
+    }
+
+    fetchVisibilityData();
+  }, [isOpen, isAdminOrOwner, session?.employee_id]);
+
   useEffect(() => {
     if (resource && isOpen) {
       setFormData({
@@ -98,6 +224,29 @@ export function ResourceModal({
         subcategory: resource.subcategory || "",
       });
       loadExistingPhotos(resource.id, resource.thumbnail_url);
+
+      // Initialize visibility from saved resource
+      if (resource.visible_store_ids?.length) {
+        setVisibilityStores("selected");
+        setSelectedStoreIds(new Set(resource.visible_store_ids));
+      } else {
+        setVisibilityStores("all");
+        setSelectedStoreIds(new Set());
+      }
+      if (resource.visible_roles?.length) {
+        setVisibilityRoles("selected");
+        setSelectedRoles(new Set(resource.visible_roles));
+      } else {
+        setVisibilityRoles("all");
+        setSelectedRoles(new Set());
+      }
+      if (resource.visible_employee_ids?.length) {
+        setVisibilityUsers("selected");
+        setSelectedEmployeeIds(new Set(resource.visible_employee_ids));
+      } else {
+        setVisibilityUsers("all");
+        setSelectedEmployeeIds(new Set());
+      }
     } else if (!resource && isOpen) {
       setFormData({
         title: "",
@@ -110,11 +259,19 @@ export function ResourceModal({
       setExistingPhotos([]);
       setPhotosToDelete([]);
       setThumbnailPhotoId(null);
+      setVisibilityStores("all");
+      setSelectedStoreIds(new Set());
+      setVisibilityRoles("all");
+      setSelectedRoles(new Set());
+      setVisibilityUsers("all");
+      setSelectedEmployeeIds(new Set());
+      setManagerStoreIds([]);
     }
     setPendingPhotos([]);
     setShowNewCategory(false);
     setNewCategoryName("");
     setNewCategoryColor("blue");
+    setExpandedSections(new Set());
   }, [resource, isOpen]);
 
   async function loadExistingPhotos(
@@ -179,6 +336,14 @@ export function ResourceModal({
     setShowNewCategory(false);
     setNewCategoryName("");
     setNewCategoryColor("blue");
+    setVisibilityStores("all");
+    setSelectedStoreIds(new Set());
+    setVisibilityRoles("all");
+    setSelectedRoles(new Set());
+    setVisibilityUsers("all");
+    setSelectedEmployeeIds(new Set());
+    setManagerStoreIds([]);
+    setExpandedSections(new Set());
     onClose();
   }
 
@@ -357,6 +522,27 @@ export function ResourceModal({
 
       if (resource) {
         // Update existing resource
+        const visibilityPayload = {
+          visible_store_ids:
+            visibilityStores === "selected"
+              ? Array.from(selectedStoreIds)
+              : isAdminOrOwner
+                ? null
+                : managerStoreIds.length > 0
+                  ? managerStoreIds
+                  : null,
+          visible_roles:
+            visibilityRoles === "all" ? null : Array.from(selectedRoles),
+          visible_employee_ids:
+            visibilityUsers === "selected"
+              ? Array.from(selectedEmployeeIds)
+              : isAdminOrOwner
+                ? null
+                : allEmployees.length > 0
+                  ? allEmployees.map((e) => e.id)
+                  : null,
+        };
+
         const { error: updateError } = await supabase
           .from("resources")
           .update({
@@ -371,6 +557,7 @@ export function ResourceModal({
             subcategory: formData.subcategory || null,
             updated_by: session?.employee_id || null,
             updated_at: new Date().toISOString(),
+            ...visibilityPayload,
           })
           .eq("id", resource.id);
 
@@ -390,6 +577,27 @@ export function ResourceModal({
         const newDisplayOrder = (maxOrderData?.display_order ?? -1) + 1;
 
         // Create new resource — return ID for photo uploads
+        const visibilityPayload = {
+          visible_store_ids:
+            visibilityStores === "selected"
+              ? Array.from(selectedStoreIds)
+              : isAdminOrOwner
+                ? null
+                : managerStoreIds.length > 0
+                  ? managerStoreIds
+                  : null,
+          visible_roles:
+            visibilityRoles === "all" ? null : Array.from(selectedRoles),
+          visible_employee_ids:
+            visibilityUsers === "selected"
+              ? Array.from(selectedEmployeeIds)
+              : isAdminOrOwner
+                ? null
+                : allEmployees.length > 0
+                  ? allEmployees.map((e) => e.id)
+                  : null,
+        };
+
         const { data: insertedResource, error: insertError } = await supabase
           .from("resources")
           .insert({
@@ -405,6 +613,7 @@ export function ResourceModal({
             display_order: newDisplayOrder,
             is_active: true,
             created_by: session?.employee_id || null,
+            ...visibilityPayload,
           })
           .select("id")
           .single();
@@ -539,6 +748,41 @@ export function ResourceModal({
   );
   const totalPhotoCount = visibleExistingPhotos.length + pendingPhotos.length;
   const remainingSlots = MAX_PHOTOS - totalPhotoCount;
+
+  function toggleSetItem(
+    setter: React.Dispatch<React.SetStateAction<Set<string>>>,
+    item: string,
+  ) {
+    setter((prev) => {
+      const next = new Set(prev);
+      if (next.has(item)) {
+        next.delete(item);
+      } else {
+        next.add(item);
+      }
+      return next;
+    });
+  }
+
+  function toggleSection(key: string) {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  function getSummaryText(
+    mode: "all" | "selected",
+    count: number,
+    label: string,
+  ) {
+    return mode === "all" ? `All ${label}` : `${count} ${label}`;
+  }
 
   // Get active subcategories sorted by display_order
   const activeSubcategories = subcategories
@@ -904,6 +1148,270 @@ export function ResourceModal({
             </div>
           </div>
         )}
+
+        {/* Visibility Targeting */}
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+            <Eye className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-700">
+              Visibility
+            </span>
+            <span className="text-xs text-gray-400 ml-auto">
+              Who can see this resource
+            </span>
+          </div>
+
+          {/* Stores Section */}
+          <div className="border-b border-gray-100">
+            <button
+              type="button"
+              onClick={() => toggleSection("stores")}
+              className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                {expandedSections.has("stores") ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                )}
+                <span className="text-sm text-gray-700">Stores</span>
+              </div>
+              <span className="text-xs text-gray-500">
+                {getSummaryText(
+                  visibilityStores,
+                  selectedStoreIds.size,
+                  visibilityStores === "all"
+                    ? isAdminOrOwner
+                      ? "Stores"
+                      : "My Stores"
+                    : `store(s)`,
+                )}
+              </span>
+            </button>
+            {expandedSections.has("stores") && (
+              <div className="px-3 pb-3 space-y-2">
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVisibilityStores("all");
+                      setSelectedStoreIds(new Set());
+                    }}
+                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                      visibilityStores === "all"
+                        ? "bg-blue-100 text-blue-700 border-blue-300"
+                        : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    {isAdminOrOwner ? "All Stores" : "All My Stores"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVisibilityStores("selected")}
+                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                      visibilityStores === "selected"
+                        ? "bg-blue-100 text-blue-700 border-blue-300"
+                        : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    Select Specific
+                  </button>
+                </div>
+                {visibilityStores === "selected" && (
+                  <div className="max-h-48 overflow-y-auto space-y-1 border border-gray-200 rounded-lg p-2">
+                    {allStores.map((store) => (
+                      <label
+                        key={store.id}
+                        className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedStoreIds.has(store.id)}
+                          onChange={() =>
+                            toggleSetItem(setSelectedStoreIds, store.id)
+                          }
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          {store.name}
+                        </span>
+                      </label>
+                    ))}
+                    {allStores.length === 0 && (
+                      <p className="text-xs text-gray-400 text-center py-2">
+                        No stores found
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Roles Section */}
+          <div className="border-b border-gray-100">
+            <button
+              type="button"
+              onClick={() => toggleSection("roles")}
+              className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                {expandedSections.has("roles") ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                )}
+                <span className="text-sm text-gray-700">Roles</span>
+              </div>
+              <span className="text-xs text-gray-500">
+                {getSummaryText(
+                  visibilityRoles,
+                  selectedRoles.size,
+                  visibilityRoles === "all" ? "Roles" : `role(s)`,
+                )}
+              </span>
+            </button>
+            {expandedSections.has("roles") && (
+              <div className="px-3 pb-3 space-y-2">
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVisibilityRoles("all");
+                      setSelectedRoles(new Set());
+                    }}
+                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                      visibilityRoles === "all"
+                        ? "bg-blue-100 text-blue-700 border-blue-300"
+                        : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    All Roles
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVisibilityRoles("selected")}
+                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                      visibilityRoles === "selected"
+                        ? "bg-blue-100 text-blue-700 border-blue-300"
+                        : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    Select Specific
+                  </button>
+                </div>
+                {visibilityRoles === "selected" && (
+                  <div className="max-h-48 overflow-y-auto space-y-1 border border-gray-200 rounded-lg p-2">
+                    {ALL_ROLES.map((role) => (
+                      <label
+                        key={role}
+                        className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedRoles.has(role)}
+                          onChange={() => toggleSetItem(setSelectedRoles, role)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">{role}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Users Section */}
+          <div>
+            <button
+              type="button"
+              onClick={() => toggleSection("users")}
+              className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                {expandedSections.has("users") ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                )}
+                <span className="text-sm text-gray-700">Users</span>
+              </div>
+              <span className="text-xs text-gray-500">
+                {getSummaryText(
+                  visibilityUsers,
+                  selectedEmployeeIds.size,
+                  visibilityUsers === "all"
+                    ? isAdminOrOwner
+                      ? "Users"
+                      : "My Users"
+                    : `user(s)`,
+                )}
+              </span>
+            </button>
+            {expandedSections.has("users") && (
+              <div className="px-3 pb-3 space-y-2">
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVisibilityUsers("all");
+                      setSelectedEmployeeIds(new Set());
+                    }}
+                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                      visibilityUsers === "all"
+                        ? "bg-blue-100 text-blue-700 border-blue-300"
+                        : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    {isAdminOrOwner ? "All Users" : "All My Users"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVisibilityUsers("selected")}
+                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                      visibilityUsers === "selected"
+                        ? "bg-blue-100 text-blue-700 border-blue-300"
+                        : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    Select Specific
+                  </button>
+                </div>
+                {visibilityUsers === "selected" && (
+                  <div className="max-h-48 overflow-y-auto space-y-1 border border-gray-200 rounded-lg p-2">
+                    {allEmployees.map((emp) => (
+                      <label
+                        key={emp.id}
+                        className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedEmployeeIds.has(emp.id)}
+                          onChange={() =>
+                            toggleSetItem(setSelectedEmployeeIds, emp.id)
+                          }
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          {emp.display_name}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {(emp.role || []).join(", ")}
+                        </span>
+                      </label>
+                    ))}
+                    {allEmployees.length === 0 && (
+                      <p className="text-xs text-gray-400 text-center py-2">
+                        No employees found
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </Drawer>
   );
