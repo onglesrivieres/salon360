@@ -548,6 +548,9 @@ Changes grouped by feature area. All dates in 2026.
 ### Resources: Login Redirect for Unread Content (Feb 18)
 - On login, if the employee has unread resources at the selected store, auto-redirect to Resources page instead of Tickets. Uses existing `get_unread_resources_count` RPC. `useRef` flag (`hasCheckedUnreadRef`) ensures the check fires exactly once per login session — not on store switches or re-renders. Ref resets on logout so next login triggers a fresh check. If the RPC fails, silently falls through to default Tickets page. No migration. Files: `App.tsx`
 
+### Closed Ticket Tax Display Fix (Feb 19)
+- Payment Summary on closed tickets now returns stored `tax_gst`/`tax_qst` from the database instead of recalculating. Previously, `calculateTaxGst()`/`calculateTaxQst()` always recalculated with `matchCalculation = false` (its default), showing wrong tax when Match Calculation was used at save time. Early-return pattern: `if (isTicketClosed) return Number(ticket?.tax_gst) || 0`. No DB changes. Files: `TicketEditor.tsx`
+
 ### Unified Tax Base — Always `subtotal - discount` (Feb 19)
 - Reverted Feb 18 payment-method branching. Tax base is now `max(0, subtotal - discount)` for **all** payment methods (Cash, Card, Mixed, Gift Card). Discount always reduces the tax base. The `matchCalculation` toggle (gated behind `enable_match_calculation`) remains as an override to force tax on full `subtotal` when needed. No DB changes. Files: `TicketEditor.tsx`
 

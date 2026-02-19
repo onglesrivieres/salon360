@@ -944,6 +944,7 @@ export function TicketEditor({
 
   function calculateTaxGst(): number {
     if (!enableTax) return 0;
+    if (isTicketClosed) return Number(ticket?.tax_gst) || 0;
     const subtotal = calculateSubtotal();
     const taxable = matchCalculation
       ? subtotal
@@ -953,6 +954,7 @@ export function TicketEditor({
 
   function calculateTaxQst(): number {
     if (!enableTax) return 0;
+    if (isTicketClosed) return Number(ticket?.tax_qst) || 0;
     const subtotal = calculateSubtotal();
     const taxable = matchCalculation
       ? subtotal
