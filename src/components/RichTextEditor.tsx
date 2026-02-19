@@ -12,7 +12,7 @@ import {
   ListOrdered,
   ImagePlus,
 } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { useToast } from "./ui/Toast";
 import { useSettings } from "../contexts/SettingsContext";
 import { compressImage } from "../lib/image-utils";
@@ -62,6 +62,13 @@ export function RichTextEditor({
       },
     },
   });
+
+  // Sync content prop into editor when it changes externally (e.g., modal populates formData after mount)
+  useEffect(() => {
+    if (editor && content !== editor.getHTML()) {
+      editor.commands.setContent(content);
+    }
+  }, [editor, content]);
 
   if (!editor) return null;
 
