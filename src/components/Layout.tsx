@@ -44,6 +44,7 @@ import { RemoveTechnicianModal } from "./RemoveTechnicianModal";
 import { QueueReasonModal } from "./QueueReasonModal";
 import { ViolationReportModal } from "./ViolationReportModal";
 import { ViolationResponseRibbon } from "./ViolationResponseRibbon";
+import { UnreadResourcesRibbon } from "./UnreadResourcesRibbon";
 import { useCheckInStatusCheck } from "../hooks/useCheckInStatusCheck";
 import { useToast } from "./ui/Toast";
 
@@ -1207,6 +1208,17 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
     isOpeningCashMissing &&
     canAccessEod;
 
+  const shouldShowUnreadRibbon =
+    unreadResourcesCount > 0 && currentPage !== "resources";
+
+  const guardedNavigate = (page: typeof currentPage) => {
+    if (page === "resources" || unreadResourcesCount === 0) {
+      onNavigate(page);
+      return;
+    }
+    showToast(t("common.unreadResourcesBlocked"), "warning");
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {pendingViolationResponses.length > 0 && (
@@ -1217,6 +1229,12 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
       )}
       {hasNewVersion && showVersionNotifications && (
         <VersionNotification onUpdate={handleUpdate} />
+      )}
+      {shouldShowUnreadRibbon && (
+        <UnreadResourcesRibbon
+          unreadCount={unreadResourcesCount}
+          onReadNow={() => onNavigate("resources")}
+        />
       )}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="px-3 py-2 md:px-4">
@@ -1330,7 +1348,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                 effectiveRole &&
                 canAccessPage("settings", effectiveRole) && (
                   <button
-                    onClick={() => onNavigate("settings")}
+                    onClick={() => guardedNavigate("settings")}
                     className="flex items-center gap-2 px-2 py-1 text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
                     title={t("nav.settings")}
                   >
@@ -1363,7 +1381,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
               </p>
             </div>
             <button
-              onClick={() => onNavigate("eod")}
+              onClick={() => guardedNavigate("eod")}
               className="flex-shrink-0 bg-white text-amber-700 px-3 py-1.5 rounded text-xs font-semibold hover:bg-amber-50 transition-colors whitespace-nowrap"
             >
               {t("cash.countNow")}
@@ -1392,7 +1410,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                   <li key={item.id}>
                     <button
                       onClick={() => {
-                        onNavigate(item.id);
+                        guardedNavigate(item.id);
                         setIsMobileMenuOpen(false);
                       }}
                       className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm ${

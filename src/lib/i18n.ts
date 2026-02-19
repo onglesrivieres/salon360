@@ -765,6 +765,11 @@ export const translations = {
       deleteTabConfirm:
         "Delete this tab? Resources in it will become inaccessible until reassigned.",
       unread: "Unread",
+      unreadResourcesMessage:
+        "You have {count} unread resource(s). Please review them before continuing.",
+      readNow: "Read Now",
+      unreadResourcesBlocked:
+        "Please read all resources before navigating to other pages.",
       noTabs: "No tabs yet. Create your first tab to get started.",
     },
   },
@@ -1548,6 +1553,11 @@ export const translations = {
       deleteTabConfirm:
         "Supprimer cet onglet ? Les ressources ne seront plus accessibles tant qu'elles ne seront pas réattribuées.",
       unread: "Non lu",
+      unreadResourcesMessage:
+        "Vous avez {count} ressource(s) non lue(s). Veuillez les consulter avant de continuer.",
+      readNow: "Lire maintenant",
+      unreadResourcesBlocked:
+        "Veuillez lire toutes les ressources avant de naviguer vers d'autres pages.",
       noTabs: "Aucun onglet. Créez votre premier onglet pour commencer.",
     },
   },
@@ -2305,6 +2315,11 @@ export const translations = {
       deleteTabConfirm:
         "Xóa tab này? Tài nguyên trong đó sẽ không truy cập được cho đến khi được chỉ định lại.",
       unread: "Chưa đọc",
+      unreadResourcesMessage:
+        "Bạn có {count} tài nguyên chưa đọc. Vui lòng xem trước khi tiếp tục.",
+      readNow: "Đọc ngay",
+      unreadResourcesBlocked:
+        "Vui lòng đọc tất cả tài nguyên trước khi chuyển sang trang khác.",
       noTabs: "Chưa có tab. Tạo tab đầu tiên để bắt đầu.",
     },
   },
@@ -3063,6 +3078,10 @@ export const translations = {
       deleteTabConfirm:
         "លុបផ្ទាំងនេះ? ធនធានក្នុងនោះនឹងមិនអាចចូលបានរហូតដល់ផ្ទេរឡើងវិញ។",
       unread: "មិនទាន់អាន",
+      unreadResourcesMessage:
+        "អ្នកមានធនធាន {count} មិនទាន់អាន។ សូមពិនិត្យមុនពេលបន្ត។",
+      readNow: "អានឥឡូវ",
+      unreadResourcesBlocked: "សូមអានធនធានទាំងអស់មុនពេលចូលទៅទំព័រផ្សេង។",
       noTabs: "មិនទាន់មានផ្ទាំង។ បង្កើតផ្ទាំងដំបូងដើម្បីចាប់ផ្តើម។",
     },
   },
