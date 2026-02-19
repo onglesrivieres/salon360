@@ -124,6 +124,7 @@ ToastProvider → AuthProvider → PermissionsProvider → PermissionsCacheProvi
 - All migrations must be idempotent (`IF NOT EXISTS`, `CREATE OR REPLACE`, `DROP ... IF EXISTS`)
 - Environment variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 - After DDL migrations (`ALTER TABLE ADD COLUMN`), always run `NOTIFY pgrst, 'reload schema'`
+- **Production databases**: Only apply migrations to `supabase-salon360qc-db` and `supabase-salon365-db`. Never apply to `supabase-checkin-db` or any other database
 
 ---
 
