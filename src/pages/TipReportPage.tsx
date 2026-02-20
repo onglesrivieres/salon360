@@ -869,11 +869,13 @@ export function TipReportPage({
         const techName = techNames.get(techId) || "Unknown";
         let totalCustomer = 0;
         let totalReceptionist = 0;
+        let totalCommission = 0;
 
         for (const storesArray of dayMap.values()) {
           for (const storeData of storesArray) {
             totalCustomer += storeData.tips_customer;
             totalReceptionist += storeData.tips_receptionist;
+            totalCommission += storeData.tips_commission;
           }
         }
 
@@ -887,7 +889,8 @@ export function TipReportPage({
           total_revenue: 0,
           tips_customer: totalCustomer,
           tips_receptionist: totalReceptionist,
-          tips_total: totalCustomer + totalReceptionist,
+          tips_commission: totalCommission,
+          tips_total: totalCustomer + totalReceptionist + totalCommission,
           items: [],
         });
       }
@@ -1038,11 +1041,13 @@ export function TipReportPage({
         const techName = techNames.get(techId) || "Unknown";
         let totalCustomer = 0;
         let totalReceptionist = 0;
+        let totalCommission = 0;
 
         for (const storesArray of dayMap.values()) {
           for (const storeData of storesArray) {
             totalCustomer += storeData.tips_customer;
             totalReceptionist += storeData.tips_receptionist;
+            totalCommission += storeData.tips_commission;
           }
         }
 
@@ -1056,7 +1061,8 @@ export function TipReportPage({
           total_revenue: 0,
           tips_customer: totalCustomer,
           tips_receptionist: totalReceptionist,
-          tips_total: totalCustomer + totalReceptionist,
+          tips_commission: totalCommission,
+          tips_total: totalCustomer + totalReceptionist + totalCommission,
           items: [],
         });
       }
