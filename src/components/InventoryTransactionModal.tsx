@@ -63,6 +63,7 @@ interface InventoryTransactionModalProps {
   onSuccess: () => void;
   initialTransactionType?: "in" | "out" | "transfer";
   draftTransaction?: DraftTransaction;
+  pendingTransaction?: DraftTransaction;
 }
 
 interface TransactionItemForm {
@@ -164,6 +165,7 @@ export function InventoryTransactionModal({
   onSuccess,
   initialTransactionType,
   draftTransaction,
+  pendingTransaction,
 }: InventoryTransactionModalProps) {
   const { showToast } = useToast();
   const { selectedStoreId, session } = useAuth();
@@ -175,6 +177,7 @@ export function InventoryTransactionModal({
   const [savingDraft, setSavingDraft] = useState(false);
   const [deletingDraft, setDeletingDraft] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
+  const [isEditingPending, setIsEditingPending] = useState(false);
   const [transactionType, setTransactionType] = useState<
     "in" | "out" | "transfer"
   >(initialTransactionType || "in");
@@ -265,19 +268,21 @@ export function InventoryTransactionModal({
   }, [isOpen, selectedStoreId]);
 
   useEffect(() => {
-    if (draftTransaction) {
-      // Populate form from draft
-      setDraftId(draftTransaction.id);
-      setTransactionType(draftTransaction.transaction_type);
-      setSupplierId(draftTransaction.supplier_id || "");
-      setRecipientId(draftTransaction.recipient_id || "");
-      setDestinationStoreId(draftTransaction.destination_store_id || "");
-      setInvoiceReference(draftTransaction.invoice_reference || "");
-      setNotes(draftTransaction.notes || "");
+    const sourceTransaction = draftTransaction || pendingTransaction;
+    if (sourceTransaction) {
+      // Populate form from draft or pending transaction
+      setDraftId(sourceTransaction.id);
+      setIsEditingPending(!!pendingTransaction);
+      setTransactionType(sourceTransaction.transaction_type);
+      setSupplierId(sourceTransaction.supplier_id || "");
+      setRecipientId(sourceTransaction.recipient_id || "");
+      setDestinationStoreId(sourceTransaction.destination_store_id || "");
+      setInvoiceReference(sourceTransaction.invoice_reference || "");
+      setNotes(sourceTransaction.notes || "");
 
-      if (draftTransaction.items.length > 0) {
+      if (sourceTransaction.items.length > 0) {
         setItems(
-          draftTransaction.items.map((item) => ({
+          sourceTransaction.items.map((item) => ({
             item_id: item.item_id,
             brand: "",
             isAddingNewBrand: false,
@@ -321,6 +326,7 @@ export function InventoryTransactionModal({
     } else {
       // Reset form
       setDraftId(null);
+      setIsEditingPending(false);
       setItems([
         {
           item_id: "",
@@ -350,13 +356,14 @@ export function InventoryTransactionModal({
       setNotes("");
       setTransactionType(initialTransactionType || "in");
     }
-  }, [isOpen, initialTransactionType, draftTransaction]);
+  }, [isOpen, initialTransactionType, draftTransaction, pendingTransaction]);
 
-  // Fetch purchase units and populate brands for draft items when inventory items are loaded
+  // Fetch purchase units and populate brands for draft/pending items when inventory items are loaded
   useEffect(() => {
-    if (draftTransaction && inventoryItems.length > 0) {
+    const sourceTransaction = draftTransaction || pendingTransaction;
+    if (sourceTransaction && inventoryItems.length > 0) {
       const itemIds = new Set(
-        draftTransaction.items.map((i) => i.item_id).filter(Boolean),
+        sourceTransaction.items.map((i) => i.item_id).filter(Boolean),
       );
       itemIds.forEach(async (itemId) => {
         const invItem = inventoryItems.find((i) => i.id === itemId);
@@ -366,7 +373,7 @@ export function InventoryTransactionModal({
         }
       });
 
-      // Populate brand from inventory items for draft items
+      // Populate brand from inventory items for draft/pending items
       setItems((prev) =>
         prev.map((item) => {
           if (item.item_id && !item.brand) {
@@ -379,7 +386,7 @@ export function InventoryTransactionModal({
         }),
       );
     }
-  }, [draftTransaction, inventoryItems]);
+  }, [draftTransaction, pendingTransaction, inventoryItems]);
 
   async function fetchInventoryItems() {
     if (!selectedStoreId) return;
@@ -1919,7 +1926,74 @@ export function InventoryTransactionModal({
       const canSelfApprove =
         session.role && Permissions.inventory.canSelfApprove(session.role);
 
-      if (draftId) {
+      if (isEditingPending && draftId) {
+        // Update existing pending transaction
+        const { error: updateError } = await supabase.rpc(
+          "update_pending_transaction",
+          {
+            p_transaction_id: draftId,
+            p_transaction_type: transactionType,
+            p_recipient_id:
+              transactionType === "out" ? recipientId || null : null,
+            p_supplier_id:
+              transactionType === "in" && supplierId ? supplierId : null,
+            p_invoice_reference:
+              transactionType === "in" && invoiceReference
+                ? invoiceReference.trim()
+                : null,
+            p_notes: notes.trim(),
+            p_destination_store_id:
+              transactionType === "transfer"
+                ? destinationStoreId || null
+                : null,
+          },
+        );
+
+        if (updateError) throw updateError;
+
+        // Delete existing items and re-insert
+        const { error: deleteItemsError } = await supabase
+          .from("inventory_transaction_items")
+          .delete()
+          .eq("transaction_id", draftId);
+
+        if (deleteItemsError) throw deleteItemsError;
+
+        if (validItems.length > 0) {
+          const itemsData = validItems.map((item) => ({
+            item_id: item.item_id,
+            quantity: parseFloat(item.quantity) || 0,
+            unit_cost: parseFloat(item.unit_cost) || 0,
+            purchase_unit_id:
+              transactionType === "in" ? item.purchase_unit_id || null : null,
+            purchase_quantity:
+              transactionType === "in" && item.purchase_quantity
+                ? parseFloat(item.purchase_quantity)
+                : null,
+            purchase_unit_price:
+              transactionType === "in" && item.purchase_unit_price
+                ? parseFloat(item.purchase_unit_price)
+                : null,
+            purchase_unit_multiplier: null,
+            notes: item.notes.trim(),
+          }));
+
+          const { error: insertError } = await supabase.rpc(
+            "insert_transaction_items_batch",
+            {
+              p_transaction_id: draftId,
+              p_items: itemsData,
+            },
+          );
+
+          if (insertError) throw insertError;
+        }
+
+        showToast("Transaction updated", "success");
+        onSuccess();
+        onClose();
+        return;
+      } else if (draftId) {
         // Update existing draft
         const { error: updateError } = await supabase.rpc(
           "update_draft_transaction",
@@ -2475,7 +2549,13 @@ export function InventoryTransactionModal({
       <Drawer
         isOpen={isOpen}
         onClose={onClose}
-        title={draftId ? "Edit Draft Transaction" : "New Inventory Transaction"}
+        title={
+          isEditingPending
+            ? "Edit Pending Transaction"
+            : draftId
+              ? "Edit Draft Transaction"
+              : "New Inventory Transaction"
+        }
         size="xl"
         footer={
           <>
@@ -2500,7 +2580,7 @@ export function InventoryTransactionModal({
             </div>
 
             <div className="flex gap-3">
-              {draftId && (
+              {draftId && !isEditingPending && (
                 <Button
                   type="button"
                   variant="danger"
@@ -2519,28 +2599,42 @@ export function InventoryTransactionModal({
               >
                 Cancel
               </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleSaveDraft}
-                disabled={saving || savingDraft || deletingDraft}
-              >
-                {savingDraft ? "Saving..." : "Save Draft"}
-              </Button>
-              <Button
-                type="submit"
-                form="inventory-transaction-form"
-                disabled={saving || savingDraft || deletingDraft}
-              >
-                {saving
-                  ? "Submitting..."
-                  : draftId
-                    ? "Submit for Approval"
-                    : "Create Transaction"}
-              </Button>
+              {isEditingPending ? (
+                <Button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  disabled={savingDraft}
+                >
+                  {savingDraft ? "Saving..." : "Save Changes"}
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleSaveDraft}
+                    disabled={saving || savingDraft || deletingDraft}
+                  >
+                    {savingDraft ? "Saving..." : "Save Draft"}
+                  </Button>
+                  <Button
+                    type="submit"
+                    form="inventory-transaction-form"
+                    disabled={saving || savingDraft || deletingDraft}
+                  >
+                    {saving
+                      ? "Submitting..."
+                      : draftId
+                        ? "Submit for Approval"
+                        : "Create Transaction"}
+                  </Button>
+                </>
+              )}
             </div>
             <p className="text-xs text-gray-500 text-center mt-3">
-              {transactionType === "transfer" ? (
+              {isEditingPending ? (
+                "This transaction will remain pending after saving changes."
+              ) : transactionType === "transfer" ? (
                 "This transfer will require approval from the destination store manager"
               ) : (
                 <>
@@ -2571,6 +2665,7 @@ export function InventoryTransactionModal({
                       e.target.value as "in" | "out" | "transfer",
                     )
                   }
+                  disabled={isEditingPending}
                 >
                   <option value="in">IN - Receiving Items</option>
                   <option value="out">OUT - Giving to Employee</option>

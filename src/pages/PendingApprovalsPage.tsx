@@ -28,6 +28,7 @@ import {
   Download,
   Eye,
   RotateCcw,
+  Pencil,
 } from "lucide-react";
 import {
   supabase,
@@ -63,6 +64,7 @@ import {
 } from "../lib/timezone";
 import { Permissions } from "../lib/permissions";
 import { TicketEditor } from "../components/TicketEditor";
+import { InventoryTransactionModal } from "../components/InventoryTransactionModal";
 
 interface ViolationHistoryReport {
   report_id: string;
@@ -191,6 +193,9 @@ export function PendingApprovalsPage({
     useState(false);
   const [showTransferApprovalModal, setShowTransferApprovalModal] =
     useState(false);
+  const [editingInventoryTransaction, setEditingInventoryTransaction] =
+    useState<any>(null);
+  const [showInventoryEditModal, setShowInventoryEditModal] = useState(false);
   const [transferApprovalItems, setTransferApprovalItems] = useState<
     {
       item_id: string;
@@ -1767,6 +1772,53 @@ export function PendingApprovalsPage({
     }
   }
 
+  async function handleEditInventory(approval: PendingInventoryApproval) {
+    try {
+      setProcessing(true);
+
+      // Fetch transaction items
+      const { data: itemsData, error: itemsError } = await supabase
+        .from("inventory_transaction_items")
+        .select("*")
+        .eq("transaction_id", approval.id);
+      if (itemsError) throw itemsError;
+
+      // Fetch transaction header for supplier_id, invoice_reference, etc.
+      const { data: txnData, error: txnError } = await supabase
+        .from("inventory_transactions")
+        .select(
+          "supplier_id, invoice_reference, destination_store_id, recipient_id, notes",
+        )
+        .eq("id", approval.id)
+        .single();
+      if (txnError) throw txnError;
+
+      setEditingInventoryTransaction({
+        id: approval.id,
+        transaction_type: approval.transaction_type,
+        supplier_id: txnData.supplier_id || undefined,
+        recipient_id: txnData.recipient_id || undefined,
+        destination_store_id: txnData.destination_store_id || undefined,
+        invoice_reference: txnData.invoice_reference || undefined,
+        notes: txnData.notes || "",
+        items: (itemsData || []).map((item: any) => ({
+          item_id: item.item_id,
+          purchase_unit_id: item.purchase_unit_id || undefined,
+          purchase_quantity: item.purchase_quantity || undefined,
+          purchase_unit_price: item.purchase_unit_price || undefined,
+          quantity: item.quantity,
+          unit_cost: item.unit_cost,
+          notes: item.notes || "",
+        })),
+      });
+      setShowInventoryEditModal(true);
+    } catch (error: any) {
+      showToast(error.message || "Failed to load transaction", "error");
+    } finally {
+      setProcessing(false);
+    }
+  }
+
   async function handleOpenTransferApproval(
     approval: PendingInventoryApproval,
   ) {
@@ -3094,16 +3146,29 @@ export function PendingApprovalsPage({
                                     Review
                                   </Button>
                                 ) : (
-                                  <Button
-                                    size="sm"
-                                    onClick={() =>
-                                      handleApproveInventory(approval)
-                                    }
-                                    disabled={processing}
-                                  >
-                                    <CheckCircle className="w-4 h-4 mr-1" />
-                                    Approve
-                                  </Button>
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      onClick={() =>
+                                        handleApproveInventory(approval)
+                                      }
+                                      disabled={processing}
+                                    >
+                                      <CheckCircle className="w-4 h-4 mr-1" />
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      onClick={() =>
+                                        handleEditInventory(approval)
+                                      }
+                                      disabled={processing}
+                                    >
+                                      <Pencil className="w-4 h-4 mr-1" />
+                                      Edit
+                                    </Button>
+                                  </>
                                 )}
                                 <Button
                                   size="sm"
@@ -5431,6 +5496,19 @@ export function PendingApprovalsPage({
           </div>
         )}
       </Modal>
+
+      <InventoryTransactionModal
+        isOpen={showInventoryEditModal}
+        onClose={() => {
+          setShowInventoryEditModal(false);
+          setEditingInventoryTransaction(null);
+        }}
+        onSuccess={() => {
+          fetchInventoryApprovals();
+          fetchHistoricalInventoryApprovals();
+        }}
+        pendingTransaction={editingInventoryTransaction}
+      />
 
       <Modal
         isOpen={showCashTransactionRejectModal}
