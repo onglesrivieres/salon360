@@ -425,7 +425,7 @@ Technician ready → In queue → (skip turn → back to end of queue) → Assig
 
 **sale_tickets**: `ticket_no` (auto-generated), `ticket_date` (YYYY-MM-DD), `opened_at`/`closed_at`/`completed_at` (timestamps), `payment_method` (cash/card/mixed/gift_card), `approval_status` (pending_approval/approved/auto_approved/rejected), `approval_required_level` (technician/supervisor/manager/owner), `requires_admin_review` (boolean), `voided_at`/`voided_by`/`void_reason` (void fields), `subtotal`/`tax`/`tax_gst`/`tax_qst` (tax fields, default 0.00)
 
-**ticket_items**: `started_at`/`timer_stopped_at`/`completed_at` (service timer), `tip_customer_cash`/`tip_customer_card`, `tip_receptionist`, `payment_cash`/`payment_card`/`payment_gift_card`
+**ticket_items**: `started_at`/`timer_stopped_at`/`completed_at` (service timer), `tip_customer_cash`/`tip_customer_card`, `tip_receptionist`, `tip_commission`, `payment_cash`/`payment_card`/`payment_gift_card`
 
 **store_services**: `requires_photos` — when true, tickets with this service require min 1 photo + notes
 
@@ -519,6 +519,9 @@ Always filter by `store_id` when querying store-specific data:
 ## Recent Changes (Jan 23 – Feb 20, 2026)
 
 Changes grouped by feature area. All dates in 2026.
+
+### Commission Field in Tips + Tip Report (Feb 20)
+- New "Commission" input field in TicketEditor Payment Details modal, positioned as a fourth column in the Tips section (right of "Tip Paired by Receptionist"). Same enable/disable rules as Tip Paired: disabled when `tip_paired_enabled=false` for all technicians AND when ticket is closed/read-only. Grid layout: `md:grid-cols-3` for Cash/Card (3 fields), `md:grid-cols-2` for Mixed (4 fields wrap 2x2). Commission shown separately below Grand Total in Payment Summary (purple text, only when > 0). New `tip_commission` numeric(10,2) column on `ticket_items` (DEFAULT 0.00). Stored only on first ticket item (same pattern as all other tip fields). `TicketItem` interface, `TicketItemForm` interface, `formData`, `tempPaymentData`, and all item initialization/save/load sites updated. Tip Report daily view: purple "Commission" row after T. (paired) in Daily Total, multi-service ticket tips, and single-service ticket tips. Only shown when commission > 0. Commission included in Total calculations. `ServiceItemDetail`, `TechnicianSummary`, `TicketGroup` interfaces extended with `tip_commission`/`tips_commission`/`totalTipCommission`. Weekly/period views: purple commission row in `WeeklyCalendarView` for both daily cells and Period Total column. `WeeklyDataTips` type extended. Weekly and period data aggregation functions both updated with `tips_commission` tracking through store breakdown maps. Files: `TicketEditor.tsx`, `TipReportPage.tsx`, `WeeklyCalendarView.tsx`, `supabase.ts` + migration
 
 ### Safe Withdrawal: Denomination Grid Replaces Amount Input (Feb 20)
 - Replaced single numeric "Withdrawal Amount" input with full cash denomination counting grid (same two-column Bills/Coins layout as `CashCountModal.tsx`). `amount` string state replaced by `denominations` object (10 fields: `bill_100` through `coin_5`, all initialized to 0). Inline `DenominationInput` sub-component, `calculateTotal()`, and `updateDenomination()` functions follow same pattern as CashCountModal. Blue total summary bar with `DollarSign` icon shows live computed withdrawal total. Validation updated: checks `calculateTotal() <= 0` with message "Please enter bill or coin counts". Drawer widened to `size="lg"` (512px) for grid layout. Reset clears all denominations to zero on close. No changes to `WithdrawalData` interface — `amount` field still receives the computed total. No DB changes. Files: `SafeWithdrawalModal.tsx`

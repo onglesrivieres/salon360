@@ -73,6 +73,7 @@ interface TicketItemForm {
   price_each: string;
   tip_customer: string;
   tip_receptionist: string;
+  tip_commission: string;
   addon_details: string;
   addon_price: string;
   service?: Service;
@@ -316,6 +317,7 @@ export function TicketEditor({
     tip_customer_cash: "",
     tip_customer_card: "",
     tip_receptionist: "",
+    tip_commission: "",
     discount_percentage: "",
     discount_amount: "",
     discount_percentage_cash: "",
@@ -337,6 +339,7 @@ export function TicketEditor({
     tip_customer_cash: "",
     tip_customer_card: "",
     tip_receptionist: "",
+    tip_commission: "",
     discount_amount: "",
     discount_percentage: "",
     discount_percentage_cash: "",
@@ -685,6 +688,9 @@ export function TicketEditor({
           tip_receptionist: firstItem
             ? parseFloat(firstItem.tip_receptionist || 0).toString()
             : "0",
+          tip_commission: firstItem
+            ? parseFloat(firstItem.tip_commission || 0).toString()
+            : "0",
           discount_percentage: firstItem
             ? parseFloat(firstItem.discount_percentage || 0).toString()
             : "0",
@@ -715,6 +721,7 @@ export function TicketEditor({
               parseFloat(item.tip_customer_card || 0)
             ).toString(),
             tip_receptionist: parseFloat(item.tip_receptionist || 0).toString(),
+            tip_commission: parseFloat(item.tip_commission || 0).toString(),
             addon_details: item.addon_details || "",
             addon_price: parseFloat(item.addon_price || 0).toString(),
             service: item.service,
@@ -1001,7 +1008,8 @@ export function TicketEditor({
     const hasTips =
       parseFloat(formData.tip_customer_cash || "0") > 0 ||
       parseFloat(formData.tip_customer_card || "0") > 0 ||
-      parseFloat(formData.tip_receptionist || "0") > 0;
+      parseFloat(formData.tip_receptionist || "0") > 0 ||
+      parseFloat(formData.tip_commission || "0") > 0;
     const hasDiscounts =
       parseFloat(formData.discount_amount || "0") > 0 ||
       parseFloat(formData.discount_percentage || "0") > 0 ||
@@ -1035,6 +1043,7 @@ export function TicketEditor({
       tip_customer_cash: existingData ? formData.tip_customer_cash || "0" : "",
       tip_customer_card: existingData ? formData.tip_customer_card || "0" : "",
       tip_receptionist: existingData ? formData.tip_receptionist || "0" : "",
+      tip_commission: existingData ? formData.tip_commission || "0" : "",
       discount_amount: existingData ? formData.discount_amount || "0" : "",
       discount_percentage: existingData
         ? formData.discount_percentage || "0"
@@ -1092,6 +1101,7 @@ export function TicketEditor({
       tip_customer_cash: tempPaymentData.tip_customer_cash,
       tip_customer_card: tempPaymentData.tip_customer_card,
       tip_receptionist: tempPaymentData.tip_receptionist,
+      tip_commission: tempPaymentData.tip_commission,
       discount_amount: tempPaymentData.discount_amount,
       discount_percentage: tempPaymentData.discount_percentage,
       discount_percentage_cash: tempPaymentData.discount_percentage_cash,
@@ -1114,6 +1124,7 @@ export function TicketEditor({
       tip_customer_cash: formData.tip_customer_cash || "0",
       tip_customer_card: formData.tip_customer_card || "0",
       tip_receptionist: formData.tip_receptionist || "0",
+      tip_commission: formData.tip_commission || "0",
       discount_amount: formData.discount_amount || "0",
       discount_percentage: formData.discount_percentage || "0",
       discount_percentage_cash: formData.discount_percentage_cash || "0",
@@ -1362,6 +1373,7 @@ export function TicketEditor({
       let tipCustomerCash = parseFloat(formData.tip_customer_cash) || 0;
       let tipCustomerCard = parseFloat(formData.tip_customer_card) || 0;
       const tipReceptionist = parseFloat(formData.tip_receptionist) || 0;
+      const tipCommission = parseFloat(formData.tip_commission) || 0;
 
       // Clear payment and tip fields based on payment method
       if (formData.payment_method === "Cash") {
@@ -1452,6 +1464,7 @@ export function TicketEditor({
             tip_customer_cash: tipCustomerCash,
             tip_customer_card: tipCustomerCard,
             tip_receptionist: tipReceptionist,
+            tip_commission: tipCommission,
             discount_amount: parseFloat(formData.discount_amount) || 0,
             discount_percentage: parseFloat(formData.discount_percentage) || 0,
             discount_percentage_cash:
@@ -1518,6 +1531,7 @@ export function TicketEditor({
             tip_customer_cash: isFirstItem ? tipCustomerCash : 0,
             tip_customer_card: isFirstItem ? tipCustomerCard : 0,
             tip_receptionist: isFirstItem ? tipReceptionist : 0,
+            tip_commission: isFirstItem ? tipCommission : 0,
             addon_details: item.addon_details || "",
             addon_price: addonPrice,
             discount_percentage: isFirstItem ? discountPercentage : 0,
@@ -1634,6 +1648,7 @@ export function TicketEditor({
             tip_customer_cash: isFirstItem ? tipCustomerCash : 0,
             tip_customer_card: isFirstItem ? tipCustomerCard : 0,
             tip_receptionist: isFirstItem ? tipReceptionist : 0,
+            tip_commission: isFirstItem ? tipCommission : 0,
             addon_details: item.addon_details || "",
             addon_price: addonPrice,
             discount_percentage: isFirstItem ? discountPercentage : 0,
@@ -1665,6 +1680,7 @@ export function TicketEditor({
             tip_customer_cash: tipCustomerCash,
             tip_customer_card: tipCustomerCard,
             tip_receptionist: tipReceptionist,
+            tip_commission: tipCommission,
             discount_amount: parseFloat(formData.discount_amount) || 0,
             discount_percentage: parseFloat(formData.discount_percentage) || 0,
             discount_percentage_cash:
@@ -2855,6 +2871,7 @@ export function TicketEditor({
                                   price_each: service.price.toString(),
                                   tip_customer: "0",
                                   tip_receptionist: "0",
+                                  tip_commission: "0",
                                   addon_details: "",
                                   addon_price: "0",
                                   service: service as any,
@@ -2888,6 +2905,7 @@ export function TicketEditor({
                               price_each: "0",
                               tip_customer: "0",
                               tip_receptionist: "0",
+                              tip_commission: "0",
                               addon_details: "",
                               addon_price: "0",
                               is_custom: true,
@@ -3153,6 +3171,7 @@ export function TicketEditor({
                                     price_each: service.price.toString(),
                                     tip_customer: "0",
                                     tip_receptionist: "0",
+                                    tip_commission: "0",
                                     addon_details: "",
                                     addon_price: "0",
                                     service: service as any,
@@ -3187,6 +3206,7 @@ export function TicketEditor({
                                 price_each: "0",
                                 tip_customer: "0",
                                 tip_receptionist: "0",
+                                tip_commission: "0",
                                 addon_details: "",
                                 addon_price: "0",
                                 is_custom: true,
@@ -3579,6 +3599,7 @@ export function TicketEditor({
                         "tip_customer_cash",
                         "tip_customer_card",
                         "tip_receptionist",
+                        "tip_commission",
                         "discount_amount",
                       ];
 
@@ -4092,82 +4113,84 @@ export function TicketEditor({
             )}
           </div>
 
-          {!hideTips && (
-            <div className="border-t border-gray-200 pt-4">
-              <h4 className="text-sm font-semibold text-gray-900 mb-3">Tips</h4>
+          {!hideTips &&
+            (() => {
+              const isTipPairedEnabled = items.some((item) => {
+                const employee = employees.find(
+                  (emp) => emp.id === item.employee_id,
+                );
+                return employee?.tip_paired_enabled !== false;
+              });
 
-              <div
-                className={
-                  formData.payment_method === "Mixed"
-                    ? "grid grid-cols-1 md:grid-cols-3 gap-3"
-                    : "grid grid-cols-1 md:grid-cols-2 gap-3"
-                }
-              >
-                {(formData.payment_method === "Cash" ||
-                  formData.payment_method === "Mixed") && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tip (Cash) by Customer
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">
-                        $
-                      </span>
-                      <NumericInput
-                        step="0.01"
-                        min="0"
-                        value={tempPaymentData.tip_customer_cash}
-                        onChange={(e) =>
-                          setTempPaymentData({
-                            ...tempPaymentData,
-                            tip_customer_cash: e.target.value,
-                          })
-                        }
-                        className="pl-8 pr-3"
-                        placeholder="All tips must be distributed to technicians"
-                        disabled={true}
-                      />
-                    </div>
-                  </div>
-                )}
+              return (
+                <div className="border-t border-gray-200 pt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                    Tips
+                  </h4>
 
-                {(formData.payment_method === "Card" ||
-                  formData.payment_method === "Mixed") && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tip (Card) by Customer
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">
-                        $
-                      </span>
-                      <NumericInput
-                        step="0.01"
-                        min="0"
-                        value={tempPaymentData.tip_customer_card}
-                        onChange={(e) =>
-                          setTempPaymentData({
-                            ...tempPaymentData,
-                            tip_customer_card: e.target.value,
-                          })
-                        }
-                        className="pl-8 pr-3"
-                        placeholder="0.00"
-                        disabled={isTicketClosed || isReadOnly}
-                      />
-                    </div>
-                  </div>
-                )}
+                  <div
+                    className={
+                      formData.payment_method === "Mixed"
+                        ? "grid grid-cols-1 md:grid-cols-2 gap-3"
+                        : "grid grid-cols-1 md:grid-cols-3 gap-3"
+                    }
+                  >
+                    {(formData.payment_method === "Cash" ||
+                      formData.payment_method === "Mixed") && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Tip (Cash) by Customer
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">
+                            $
+                          </span>
+                          <NumericInput
+                            step="0.01"
+                            min="0"
+                            value={tempPaymentData.tip_customer_cash}
+                            onChange={(e) =>
+                              setTempPaymentData({
+                                ...tempPaymentData,
+                                tip_customer_cash: e.target.value,
+                              })
+                            }
+                            className="pl-8 pr-3"
+                            placeholder="All tips must be distributed to technicians"
+                            disabled={true}
+                          />
+                        </div>
+                      </div>
+                    )}
 
-                {(() => {
-                  const isTipPairedEnabled = items.some((item) => {
-                    const employee = employees.find(
-                      (emp) => emp.id === item.employee_id,
-                    );
-                    return employee?.tip_paired_enabled !== false;
-                  });
+                    {(formData.payment_method === "Card" ||
+                      formData.payment_method === "Mixed") && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Tip (Card) by Customer
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">
+                            $
+                          </span>
+                          <NumericInput
+                            step="0.01"
+                            min="0"
+                            value={tempPaymentData.tip_customer_card}
+                            onChange={(e) =>
+                              setTempPaymentData({
+                                ...tempPaymentData,
+                                tip_customer_card: e.target.value,
+                              })
+                            }
+                            className="pl-8 pr-3"
+                            placeholder="0.00"
+                            disabled={isTicketClosed || isReadOnly}
+                          />
+                        </div>
+                      </div>
+                    )}
 
-                  return (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Tip Paired by Receptionist
@@ -4200,11 +4223,37 @@ export function TicketEditor({
                         </p>
                       )}
                     </div>
-                  );
-                })()}
-              </div>
-            </div>
-          )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Commission
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">
+                          $
+                        </span>
+                        <NumericInput
+                          step="0.01"
+                          min="0"
+                          value={tempPaymentData.tip_commission}
+                          onChange={(e) =>
+                            setTempPaymentData({
+                              ...tempPaymentData,
+                              tip_commission: e.target.value,
+                            })
+                          }
+                          disabled={
+                            isTicketClosed || isReadOnly || !isTipPairedEnabled
+                          }
+                          className="pl-8 pr-3"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
           {(() => {
             const tempSubtotal = calculateSubtotal();
@@ -4227,6 +4276,8 @@ export function TicketEditor({
               tempTotalTipsClient;
             const tempTipReceptionist =
               parseFloat(tempPaymentData.tip_receptionist) || 0;
+            const tempTipCommission =
+              parseFloat(tempPaymentData.tip_commission) || 0;
             return (
               <div className="border border-gray-200 rounded-lg p-2.5 bg-gray-50">
                 <h4 className="text-xs font-semibold text-gray-700 mb-1.5">
@@ -4280,6 +4331,14 @@ export function TicketEditor({
                       <span>Total Tips Paired by Receptionist:</span>
                       <span className="font-semibold">
                         ${tempTipReceptionist.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {!hideTips && tempTipCommission > 0 && (
+                    <div className="flex justify-between text-purple-700 text-sm">
+                      <span>Commission:</span>
+                      <span className="font-semibold">
+                        ${tempTipCommission.toFixed(2)}
                       </span>
                     </div>
                   )}

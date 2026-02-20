@@ -220,6 +220,7 @@ export interface TicketItem {
   tip_customer_cash: number;
   tip_customer_card: number;
   tip_receptionist: number;
+  tip_commission: number;
   discount_percentage?: number;
   discount_amount?: number;
   discount_percentage_cash?: number;

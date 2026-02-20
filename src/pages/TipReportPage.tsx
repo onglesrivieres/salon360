@@ -45,6 +45,7 @@ interface TechnicianSummary {
   total_revenue: number;
   tips_customer?: number;
   tips_receptionist?: number;
+  tips_commission?: number;
   tips_total?: number;
   tips_cash?: number;
   tips_card?: number;
@@ -61,6 +62,7 @@ interface ServiceItemDetail {
   tip_customer_cash: number;
   tip_customer_card: number;
   tip_receptionist: number;
+  tip_commission: number;
   payment_method: string;
   opened_at: string;
   closed_at: string | null;
@@ -81,6 +83,7 @@ interface TicketGroup {
   totalDuration: number;
   totalTipGiven: number;
   totalTipPaired: number;
+  totalTipCommission: number;
   services: ServiceItemDetail[];
   hasActiveTimer: boolean;
   approval_status: string | null;
@@ -110,6 +113,7 @@ export function TipReportPage({
           store_code: string;
           tips_customer: number;
           tips_receptionist: number;
+          tips_commission: number;
         }>
       >
     >
@@ -267,6 +271,7 @@ export function TipReportPage({
           totalDuration: 0,
           totalTipGiven: 0,
           totalTipPaired: 0,
+          totalTipCommission: 0,
           services: [],
           hasActiveTimer: false,
           approval_status: item.approval_status,
@@ -276,6 +281,7 @@ export function TipReportPage({
       group.services.push(item);
       group.totalTipGiven += item.tip_customer_cash + item.tip_customer_card;
       group.totalTipPaired += item.tip_receptionist;
+      group.totalTipCommission += item.tip_commission;
       const timerItem: TimerServiceItem = {
         started_at: item.started_at,
         timer_stopped_at: item.timer_stopped_at,
@@ -534,6 +540,7 @@ export function TipReportPage({
           tip_customer_cash,
           tip_customer_card,
           tip_receptionist,
+          tip_commission,
           started_at,
           timer_stopped_at,
           completed_at,
@@ -616,6 +623,7 @@ export function TipReportPage({
             total_revenue: 0,
             tips_customer: 0,
             tips_receptionist: 0,
+            tips_commission: 0,
             items: [],
           });
         }
@@ -627,6 +635,7 @@ export function TipReportPage({
         const tipCustomerCash = parseFloat(String(item.tip_customer_cash)) || 0;
         const tipCustomerCard = parseFloat(String(item.tip_customer_card)) || 0;
         const tipReceptionist = parseFloat(String(item.tip_receptionist)) || 0;
+        const tipCommission = parseFloat(String(item.tip_commission)) || 0;
 
         summary.services_count += 1;
         summary.revenue += itemRevenue;
@@ -646,6 +655,8 @@ export function TipReportPage({
             (summary.tips_customer || 0) + tipCustomerCash + tipCustomerCard;
           summary.tips_receptionist =
             (summary.tips_receptionist || 0) + tipReceptionist;
+          summary.tips_commission =
+            (summary.tips_commission || 0) + tipCommission;
         }
 
         summary.items.push({
@@ -658,6 +669,7 @@ export function TipReportPage({
           tip_customer_cash: parseFloat(String(item.tip_customer_cash)) || 0,
           tip_customer_card: parseFloat(String(item.tip_customer_card)) || 0,
           tip_receptionist: parseFloat(String(item.tip_receptionist)) || 0,
+          tip_commission: parseFloat(String(item.tip_commission)) || 0,
           payment_method: (ticket as any).payment_method || "",
           opened_at: (ticket as any).opened_at,
           closed_at: ticket.closed_at,
@@ -699,6 +711,7 @@ export function TipReportPage({
               store_code: string;
               tips_customer: number;
               tips_receptionist: number;
+              tips_commission: number;
             }
           >
         >
@@ -726,6 +739,7 @@ export function TipReportPage({
               store_code: string;
               tips_customer: number;
               tips_receptionist: number;
+              tips_commission: number;
             }
           >();
 
@@ -737,6 +751,7 @@ export function TipReportPage({
                 store_code: item.store_code,
                 tips_customer: 0,
                 tips_receptionist: 0,
+                tips_commission: 0,
               });
             }
 
@@ -746,6 +761,8 @@ export function TipReportPage({
               (parseFloat(String(item.tip_customer_card)) || 0);
             storeData.tips_receptionist +=
               parseFloat(String(item.tip_receptionist)) || 0;
+            storeData.tips_commission +=
+              parseFloat(String(item.tip_commission)) || 0;
           }
 
           for (const [storeId, storeData] of storeBreakdown.entries()) {
@@ -763,6 +780,7 @@ export function TipReportPage({
             store_code: string;
             tips_customer: number;
             tips_receptionist: number;
+            tips_commission: number;
           }>
         >
       >();
@@ -775,6 +793,7 @@ export function TipReportPage({
             store_code: string;
             tips_customer: number;
             tips_receptionist: number;
+            tips_commission: number;
           }>
         >();
 
@@ -904,6 +923,7 @@ export function TipReportPage({
               store_code: string;
               tips_customer: number;
               tips_receptionist: number;
+              tips_commission: number;
             }
           >
         >
@@ -929,6 +949,7 @@ export function TipReportPage({
               store_code: string;
               tips_customer: number;
               tips_receptionist: number;
+              tips_commission: number;
             }
           >();
 
@@ -940,6 +961,7 @@ export function TipReportPage({
                 store_code: item.store_code,
                 tips_customer: 0,
                 tips_receptionist: 0,
+                tips_commission: 0,
               });
             }
 
@@ -949,6 +971,8 @@ export function TipReportPage({
               (parseFloat(String(item.tip_customer_card)) || 0);
             storeData.tips_receptionist +=
               parseFloat(String(item.tip_receptionist)) || 0;
+            storeData.tips_commission +=
+              parseFloat(String(item.tip_commission)) || 0;
           }
 
           const dateMap = techMap.get(date)!;
@@ -967,6 +991,7 @@ export function TipReportPage({
             store_code: string;
             tips_customer: number;
             tips_receptionist: number;
+            tips_commission: number;
           }>
         >
       >();
@@ -979,6 +1004,7 @@ export function TipReportPage({
             store_code: string;
             tips_customer: number;
             tips_receptionist: number;
+            tips_commission: number;
           }>
         >();
 
@@ -1826,6 +1852,16 @@ export function TipReportPage({
                                 {(summary.tips_receptionist || 0).toFixed(0)}
                               </span>
                             </div>
+                            {(summary.tips_commission || 0) > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-[9px] text-gray-600">
+                                  Commission
+                                </span>
+                                <span className="text-[9px] font-semibold text-purple-700">
+                                  {(summary.tips_commission || 0).toFixed(0)}
+                                </span>
+                              </div>
+                            )}
                             <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
                               <span className="text-[9px] font-medium text-gray-900">
                                 Total
@@ -1833,7 +1869,8 @@ export function TipReportPage({
                               <span className="text-[10px] font-bold text-gray-900">
                                 {(
                                   (summary.tips_customer || 0) +
-                                  (summary.tips_receptionist || 0)
+                                  (summary.tips_receptionist || 0) +
+                                  (summary.tips_commission || 0)
                                 ).toFixed(0)}
                               </span>
                             </div>
@@ -1846,7 +1883,8 @@ export function TipReportPage({
                             <span className="text-[10px] font-bold text-gray-900">
                               {(
                                 (summary.tips_customer || 0) +
-                                (summary.tips_receptionist || 0)
+                                (summary.tips_receptionist || 0) +
+                                (summary.tips_commission || 0)
                               ).toFixed(0)}
                             </span>
                           </div>
@@ -1987,6 +2025,16 @@ export function TipReportPage({
                                         {group.totalTipPaired.toFixed(0)}
                                       </span>
                                     </div>
+                                    {group.totalTipCommission > 0 && (
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-[8px] text-gray-600">
+                                          Commission
+                                        </span>
+                                        <span className="text-[8px] font-semibold text-purple-700">
+                                          {group.totalTipCommission.toFixed(0)}
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
                                 ) : (
                                   <div
@@ -1998,7 +2046,8 @@ export function TipReportPage({
                                     <span className="text-[8px] font-semibold text-gray-900">
                                       {(
                                         group.totalTipGiven +
-                                        group.totalTipPaired
+                                        group.totalTipPaired +
+                                        group.totalTipCommission
                                       ).toFixed(0)}
                                     </span>
                                   </div>
@@ -2040,7 +2089,9 @@ export function TipReportPage({
                           const tipGiven =
                             item.tip_customer_cash + item.tip_customer_card;
                           const tipPaired = item.tip_receptionist;
-                          const totalTips = tipGiven + tipPaired;
+                          const tipCommission = item.tip_commission;
+                          const totalTips =
+                            tipGiven + tipPaired + tipCommission;
 
                           return (
                             <div
@@ -2097,6 +2148,16 @@ export function TipReportPage({
                                       {tipPaired.toFixed(0)}
                                     </span>
                                   </div>
+                                  {tipCommission > 0 && (
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-[8px] text-gray-600">
+                                        Commission
+                                      </span>
+                                      <span className="text-[8px] font-semibold text-purple-700">
+                                        {tipCommission.toFixed(0)}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <div className="flex justify-between items-center">

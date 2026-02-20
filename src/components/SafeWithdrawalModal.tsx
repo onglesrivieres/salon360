@@ -398,32 +398,6 @@ export function SafeWithdrawalModal({
           )}
         </div>
 
-        <div>
-          <label
-            htmlFor="description"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Description *
-          </label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(e) => {
-              setDescription(e.target.value);
-              if (errors.description)
-                setErrors({ ...errors, description: undefined });
-            }}
-            placeholder="Enter purpose of withdrawal..."
-            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.description ? "border-red-500" : "border-gray-300"
-            }`}
-            rows={3}
-          />
-          {errors.description && (
-            <p className="text-red-500 text-xs mt-1">{errors.description}</p>
-          )}
-        </div>
-
         {/* Photo Upload Section */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -453,6 +427,37 @@ export function SafeWithdrawalModal({
               />
             )}
           </div>
+        </div>
+
+        <div>
+          <label
+            htmlFor="description"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Description *
+          </label>
+          <textarea
+            id="description"
+            value={description}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              if (errors.description)
+                setErrors({ ...errors, description: undefined });
+            }}
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = "auto";
+              target.style.height = `${target.scrollHeight}px`;
+            }}
+            placeholder="Enter purpose of withdrawal..."
+            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
+              errors.description ? "border-red-500" : "border-gray-300"
+            }`}
+            rows={1}
+          />
+          {errors.description && (
+            <p className="text-red-500 text-xs mt-1">{errors.description}</p>
+          )}
         </div>
 
         {withdrawalAmount > 0 && (
