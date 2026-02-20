@@ -4242,9 +4242,7 @@ export function TicketEditor({
                               tip_commission: e.target.value,
                             })
                           }
-                          disabled={
-                            isTicketClosed || isReadOnly || !isTipPairedEnabled
-                          }
+                          disabled={isTicketClosed || isReadOnly}
                           className="pl-8 pr-3"
                           placeholder="0.00"
                         />
