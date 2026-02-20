@@ -1858,16 +1858,14 @@ export function TipReportPage({
                                 {(summary.tips_receptionist || 0).toFixed(0)}
                               </span>
                             </div>
-                            {(summary.tips_commission || 0) > 0 && (
-                              <div className="flex justify-between items-center">
-                                <span className="text-[9px] text-gray-600">
-                                  Commission
-                                </span>
-                                <span className="text-[9px] font-semibold text-purple-700">
-                                  {(summary.tips_commission || 0).toFixed(0)}
-                                </span>
-                              </div>
-                            )}
+                            <div className="flex justify-between items-center">
+                              <span className="text-[9px] text-gray-600">
+                                Commission
+                              </span>
+                              <span className="text-[9px] font-semibold text-purple-700">
+                                {(summary.tips_commission || 0).toFixed(0)}
+                              </span>
+                            </div>
                             <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
                               <span className="text-[9px] font-medium text-gray-900">
                                 Total
@@ -2031,16 +2029,14 @@ export function TipReportPage({
                                         {group.totalTipPaired.toFixed(0)}
                                       </span>
                                     </div>
-                                    {group.totalTipCommission > 0 && (
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-[8px] text-gray-600">
-                                          Commission
-                                        </span>
-                                        <span className="text-[8px] font-semibold text-purple-700">
-                                          {group.totalTipCommission.toFixed(0)}
-                                        </span>
-                                      </div>
-                                    )}
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-[8px] text-gray-600">
+                                        Commission
+                                      </span>
+                                      <span className="text-[8px] font-semibold text-purple-700">
+                                        {group.totalTipCommission.toFixed(0)}
+                                      </span>
+                                    </div>
                                   </div>
                                 ) : (
                                   <div
@@ -2154,16 +2150,14 @@ export function TipReportPage({
                                       {tipPaired.toFixed(0)}
                                     </span>
                                   </div>
-                                  {tipCommission > 0 && (
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-[8px] text-gray-600">
-                                        Commission
-                                      </span>
-                                      <span className="text-[8px] font-semibold text-purple-700">
-                                        {tipCommission.toFixed(0)}
-                                      </span>
-                                    </div>
-                                  )}
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-[8px] text-gray-600">
+                                      Commission
+                                    </span>
+                                    <span className="text-[8px] font-semibold text-purple-700">
+                                      {tipCommission.toFixed(0)}
+                                    </span>
+                                  </div>
                                 </div>
                               ) : (
                                 <div className="flex justify-between items-center">
