@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, DollarSign } from "lucide-react";
 import { Drawer } from "./ui/Drawer";
 import { Button } from "./ui/Button";
 import { NumericInput } from "./ui/NumericInput";
@@ -37,7 +37,18 @@ export function SafeWithdrawalModal({
   onSubmit,
   currentBalance,
 }: SafeWithdrawalModalProps) {
-  const [amount, setAmount] = useState("");
+  const [denominations, setDenominations] = useState({
+    bill_100: 0,
+    bill_50: 0,
+    bill_20: 0,
+    bill_10: 0,
+    bill_5: 0,
+    bill_2: 0,
+    bill_1: 0,
+    coin_25: 0,
+    coin_10: 0,
+    coin_5: 0,
+  });
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [errors, setErrors] = useState<{
@@ -88,6 +99,57 @@ export function SafeWithdrawalModal({
     });
   }, []);
 
+  function calculateTotal(): number {
+    return (
+      denominations.bill_100 * 100 +
+      denominations.bill_50 * 50 +
+      denominations.bill_20 * 20 +
+      denominations.bill_10 * 10 +
+      denominations.bill_5 * 5 +
+      denominations.bill_2 * 2 +
+      denominations.bill_1 * 1 +
+      denominations.coin_25 * 0.25 +
+      denominations.coin_10 * 0.1 +
+      denominations.coin_5 * 0.05
+    );
+  }
+
+  function updateDenomination(key: string, value: string) {
+    const numValue = parseInt(value) || 0;
+    setDenominations((prev) => ({ ...prev, [key]: Math.max(0, numValue) }));
+  }
+
+  const DenominationInput = ({
+    label,
+    value,
+    onChange,
+    denomination,
+  }: {
+    label: string;
+    value: number;
+    onChange: (value: string) => void;
+    denomination: number;
+  }) => {
+    const itemTotal = value * denomination;
+    return (
+      <div className="flex items-center gap-1">
+        <label className="text-sm font-medium text-gray-700 w-8 whitespace-nowrap flex-shrink-0">
+          {label}
+        </label>
+        <NumericInput
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-16 text-center text-sm py-1 flex-shrink-0"
+          min="0"
+          step="1"
+        />
+        <span className="text-sm font-semibold text-gray-900 w-16 text-right whitespace-nowrap flex-shrink-0">
+          ${itemTotal.toFixed(2)}
+        </span>
+      </div>
+    );
+  };
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -97,10 +159,10 @@ export function SafeWithdrawalModal({
       category?: string;
     } = {};
 
-    const withdrawalAmount = parseFloat(amount);
+    const withdrawalAmount = calculateTotal();
 
-    if (!amount || withdrawalAmount <= 0) {
-      newErrors.amount = "Please enter a valid amount greater than 0";
+    if (withdrawalAmount <= 0) {
+      newErrors.amount = "Please enter bill or coin counts";
     } else if (withdrawalAmount > currentBalance) {
       newErrors.amount = `Amount cannot exceed available safe balance ($${currentBalance.toFixed(2)})`;
     }
@@ -136,7 +198,18 @@ export function SafeWithdrawalModal({
     for (const photo of pendingPhotos) {
       URL.revokeObjectURL(photo.previewUrl);
     }
-    setAmount("");
+    setDenominations({
+      bill_100: 0,
+      bill_50: 0,
+      bill_20: 0,
+      bill_10: 0,
+      bill_5: 0,
+      bill_2: 0,
+      bill_1: 0,
+      coin_25: 0,
+      coin_10: 0,
+      coin_5: 0,
+    });
     setDescription("");
     setCategory("");
     setErrors({});
@@ -144,7 +217,7 @@ export function SafeWithdrawalModal({
     onClose();
   }
 
-  const withdrawalAmount = parseFloat(amount) || 0;
+  const withdrawalAmount = calculateTotal();
   const newBalance = currentBalance - withdrawalAmount;
   const showLowBalanceWarning = newBalance < 500 && withdrawalAmount > 0;
 
@@ -164,6 +237,7 @@ export function SafeWithdrawalModal({
       isOpen={isOpen}
       onClose={handleClose}
       title="Safe Withdrawal"
+      size="lg"
       footer={footerContent}
     >
       <form onSubmit={handleSubmit} id="withdrawal-form" className="space-y-4">
@@ -178,26 +252,104 @@ export function SafeWithdrawalModal({
           </div>
         </div>
 
+        {/* Cash Count Denomination Grid */}
         <div>
-          <label
-            htmlFor="amount"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Withdrawal Amount *
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Cash Count *
           </label>
-          <NumericInput
-            id="amount"
-            step="0.01"
-            min="0.01"
-            max={currentBalance}
-            value={amount}
-            onChange={(e) => {
-              setAmount(e.target.value);
-              if (errors.amount) setErrors({ ...errors, amount: undefined });
-            }}
-            placeholder="0.00"
-            className={errors.amount ? "border-red-500" : ""}
-          />
+          <div className="bg-gray-50 rounded-lg p-3">
+            <div className="grid grid-cols-2 gap-4">
+              {/* Bills Column */}
+              <div className="flex flex-col justify-between pr-4 border-r border-gray-300">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  Bills
+                </h4>
+                <DenominationInput
+                  label="$100"
+                  value={denominations.bill_100}
+                  onChange={(v) => updateDenomination("bill_100", v)}
+                  denomination={100}
+                />
+                <DenominationInput
+                  label="$50"
+                  value={denominations.bill_50}
+                  onChange={(v) => updateDenomination("bill_50", v)}
+                  denomination={50}
+                />
+                <DenominationInput
+                  label="$20"
+                  value={denominations.bill_20}
+                  onChange={(v) => updateDenomination("bill_20", v)}
+                  denomination={20}
+                />
+                <DenominationInput
+                  label="$10"
+                  value={denominations.bill_10}
+                  onChange={(v) => updateDenomination("bill_10", v)}
+                  denomination={10}
+                />
+                <DenominationInput
+                  label="$5"
+                  value={denominations.bill_5}
+                  onChange={(v) => updateDenomination("bill_5", v)}
+                  denomination={5}
+                />
+              </div>
+
+              {/* Coins Column */}
+              <div className="flex flex-col justify-between">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                  Coins
+                </h4>
+                <DenominationInput
+                  label="$2"
+                  value={denominations.bill_2}
+                  onChange={(v) => updateDenomination("bill_2", v)}
+                  denomination={2}
+                />
+                <DenominationInput
+                  label="$1"
+                  value={denominations.bill_1}
+                  onChange={(v) => updateDenomination("bill_1", v)}
+                  denomination={1}
+                />
+                <DenominationInput
+                  label="25¢"
+                  value={denominations.coin_25}
+                  onChange={(v) => updateDenomination("coin_25", v)}
+                  denomination={0.25}
+                />
+                <DenominationInput
+                  label="10¢"
+                  value={denominations.coin_10}
+                  onChange={(v) => updateDenomination("coin_10", v)}
+                  denomination={0.1}
+                />
+                <DenominationInput
+                  label="5¢"
+                  value={denominations.coin_5}
+                  onChange={(v) => updateDenomination("coin_5", v)}
+                  denomination={0.05}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Total Bar */}
+          <div className="text-blue-600 bg-blue-50 border-blue-200 border rounded-lg p-3 mt-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-blue-600" />
+                <span className="text-base font-bold text-gray-900">
+                  Withdrawal Total:
+                </span>
+              </div>
+              <span className="text-2xl font-bold text-blue-600">
+                ${withdrawalAmount.toFixed(2)}
+              </span>
+            </div>
+          </div>
+
           {errors.amount && (
             <p className="text-red-500 text-xs mt-1">{errors.amount}</p>
           )}

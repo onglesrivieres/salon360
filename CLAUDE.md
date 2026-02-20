@@ -516,9 +516,12 @@ Always filter by `store_id` when querying store-specific data:
 
 ---
 
-## Recent Changes (Jan 23 – Feb 19, 2026)
+## Recent Changes (Jan 23 – Feb 20, 2026)
 
 Changes grouped by feature area. All dates in 2026.
+
+### Safe Withdrawal: Denomination Grid Replaces Amount Input (Feb 20)
+- Replaced single numeric "Withdrawal Amount" input with full cash denomination counting grid (same two-column Bills/Coins layout as `CashCountModal.tsx`). `amount` string state replaced by `denominations` object (10 fields: `bill_100` through `coin_5`, all initialized to 0). Inline `DenominationInput` sub-component, `calculateTotal()`, and `updateDenomination()` functions follow same pattern as CashCountModal. Blue total summary bar with `DollarSign` icon shows live computed withdrawal total. Validation updated: checks `calculateTotal() <= 0` with message "Please enter bill or coin counts". Drawer widened to `size="lg"` (512px) for grid layout. Reset clears all denominations to zero on close. No changes to `WithdrawalData` interface — `amount` field still receives the computed total. No DB changes. Files: `SafeWithdrawalModal.tsx`
 
 ### Resources: Thumbnail Source Picker — Photo or URL (Feb 19)
 - Replaced disconnected thumbnail UX (star buttons on photos + separate Thumbnail URL input) with unified Thumbnail section in ResourceModal. Pill toggle buttons ("From Photo" / "From URL") using same styling as Visibility section pills (`bg-blue-100 text-blue-700 border-blue-300` selected pattern). Photo mode shows clickable 16x16 grid of uploaded photos with `ring-2 ring-blue-500` + checkmark overlay (`Check` icon) on selection. URL mode shows text input with live image preview. Switching modes clears the other source (mutual exclusivity preserved). New `thumbnailMode` state (`'photo' | 'url'`) initialized from edit data in `loadExistingPhotos`: photo match → `'photo'`, standalone URL → `'url'`, default → `'photo'`. Removed `Star` import, added `Check` from lucide-react. No changes to `handleSetAsThumbnail`, `handleSave`, or photo operations. No DB changes. Files: `ResourceModal.tsx`
