@@ -951,6 +951,21 @@ export function TicketEditor({
     return itemsTotal;
   }
 
+  function getMaxReceptionistTip(): { tierMax: number; allowance: number } {
+    const tierMax = items.reduce((sum, item) => {
+      const basePrice = parseFloat(item.price_each) || 0;
+      if (basePrice <= 20) return sum + 2;
+      if (basePrice <= 40) return sum + 3;
+      return sum + 5;
+    }, 0);
+
+    const customerTip =
+      (parseFloat(tempPaymentData.tip_customer_cash) || 0) +
+      (parseFloat(tempPaymentData.tip_customer_card) || 0);
+
+    return { tierMax, allowance: Math.max(0, tierMax - customerTip) };
+  }
+
   function calculateTaxGst(): number {
     if (!enableTax) return 0;
     if (isTicketClosed) return Number(ticket?.tax_gst) || 0;
@@ -1079,6 +1094,20 @@ export function TicketEditor({
         "error",
       );
       return;
+    }
+
+    // Validate receptionist paired tip against tier-based maximum
+    const tipReceptionistValue =
+      parseFloat(tempPaymentData.tip_receptionist) || 0;
+    if (tipReceptionistValue > 0) {
+      const { allowance } = getMaxReceptionistTip();
+      if (tipReceptionistValue > allowance + 0.005) {
+        showToast(
+          `Receptionist paired tip cannot exceed $${allowance.toFixed(2)} for this ticket`,
+          "error",
+        );
+        return;
+      }
     }
 
     // Warn if cash discount is entered - prevents accidental phantom discounts
@@ -4129,6 +4158,10 @@ export function TicketEditor({
                 return employee?.commission_paired_enabled !== false;
               });
 
+              const { tierMax, allowance: tipAllowance } =
+                getMaxReceptionistTip();
+              const isTipAllowanceExhausted = tipAllowance <= 0;
+
               return (
                 <div className="border-t border-gray-200 pt-4">
                   <h4 className="text-sm font-semibold text-gray-900 mb-3">
@@ -4156,12 +4189,23 @@ export function TicketEditor({
                             step="0.01"
                             min="0"
                             value={tempPaymentData.tip_customer_cash}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const newCash = parseFloat(e.target.value) || 0;
+                              const otherTip =
+                                parseFloat(tempPaymentData.tip_customer_card) ||
+                                0;
+                              const newAllowance = Math.max(
+                                0,
+                                tierMax - newCash - otherTip,
+                              );
                               setTempPaymentData({
                                 ...tempPaymentData,
                                 tip_customer_cash: e.target.value,
-                              })
-                            }
+                                ...(newAllowance <= 0
+                                  ? { tip_receptionist: "0" }
+                                  : {}),
+                              });
+                            }}
                             className="pl-8 pr-3"
                             placeholder="All tips must be distributed to technicians"
                             disabled={true}
@@ -4184,12 +4228,23 @@ export function TicketEditor({
                             step="0.01"
                             min="0"
                             value={tempPaymentData.tip_customer_card}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const newCard = parseFloat(e.target.value) || 0;
+                              const otherTip =
+                                parseFloat(tempPaymentData.tip_customer_cash) ||
+                                0;
+                              const newAllowance = Math.max(
+                                0,
+                                tierMax - newCard - otherTip,
+                              );
                               setTempPaymentData({
                                 ...tempPaymentData,
                                 tip_customer_card: e.target.value,
-                              })
-                            }
+                                ...(newAllowance <= 0
+                                  ? { tip_receptionist: "0" }
+                                  : {}),
+                              });
+                            }}
                             className="pl-8 pr-3"
                             placeholder="0.00"
                             disabled={isTicketClosed || isReadOnly}
@@ -4209,6 +4264,11 @@ export function TicketEditor({
                         <NumericInput
                           step="0.01"
                           min="0"
+                          max={
+                            isTipPairedEnabled && !isTipAllowanceExhausted
+                              ? tipAllowance.toString()
+                              : undefined
+                          }
                           value={tempPaymentData.tip_receptionist}
                           onChange={(e) =>
                             setTempPaymentData({
@@ -4217,16 +4277,28 @@ export function TicketEditor({
                             })
                           }
                           disabled={
-                            isTicketClosed || isReadOnly || !isTipPairedEnabled
+                            isTicketClosed ||
+                            isReadOnly ||
+                            !isTipPairedEnabled ||
+                            isTipAllowanceExhausted
                           }
                           className="pl-8 pr-3"
                           placeholder="0.00"
                         />
                       </div>
-                      {!isTipPairedEnabled && (
+                      {!isTipPairedEnabled ? (
                         <p className="text-xs text-gray-500 mt-1">
                           Tip pairing is disabled for all employees on this
                           ticket
+                        </p>
+                      ) : isTipAllowanceExhausted ? (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Customer tip meets or exceeds the maximum ($
+                          {tierMax.toFixed(2)})
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Max ${tipAllowance.toFixed(2)}
                         </p>
                       )}
                     </div>

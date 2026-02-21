@@ -516,9 +516,12 @@ Always filter by `store_id` when querying store-specific data:
 
 ---
 
-## Recent Changes (Jan 23 – Feb 20, 2026)
+## Recent Changes (Jan 23 – Feb 21, 2026)
 
 Changes grouped by feature area. All dates in 2026.
+
+### Receptionist Paired Tip: Tier-Based Maximum Validation (Feb 21)
+- Added validation on payment modal save that caps the "Tip Paired by Receptionist" amount based on service prices. Tier formula per item: ≤$20 → $2, ≤$40 → $3, >$40 → $5. Customer tips (cash + card) reduce the allowance. If receptionist tip exceeds the remaining allowance, save is blocked with error toast showing the maximum. `getMaxReceptionistTip()` helper computes `tierMax` and `allowance`. 0.005 epsilon for floating-point tolerance. No DB changes. Files: `TicketEditor.tsx`
 
 ### Inventory Approvals: View Button for Transaction Details (Feb 21)
 - Added "View" button (Eye icon) to Pending Approvals → Inventory tab for all transaction types (IN, OUT, transfers). Button appears for all users — replaces the old "View only" italic text for non-management users with an interactive button. Opens `TransactionDetailModal` showing full transaction details (items, photos, supplier info). Management users see View alongside existing Approve/Edit/Review/Reject buttons. No DB changes. Files: `PendingApprovalsPage.tsx`
