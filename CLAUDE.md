@@ -520,6 +520,9 @@ Always filter by `store_id` when querying store-specific data:
 
 Changes grouped by feature area. All dates in 2026.
 
+### Inventory Approvals: View Button for Transaction Details (Feb 21)
+- Added "View" button (Eye icon) to Pending Approvals → Inventory tab for all transaction types (IN, OUT, transfers). Button appears for all users — replaces the old "View only" italic text for non-management users with an interactive button. Opens `TransactionDetailModal` showing full transaction details (items, photos, supplier info). Management users see View alongside existing Approve/Edit/Review/Reject buttons. No DB changes. Files: `PendingApprovalsPage.tsx`
+
 ### Commission Paired Employee Toggle (Feb 21)
 - New per-employee `commission_paired_enabled` boolean (default `true`) controls whether the Commission input field in TicketEditor Payment Details is editable for tickets performed by that employee. Follows same pattern as `tip_paired_enabled`: `items.some()` check means Commission is enabled if *any* employee on the ticket has the flag set. Checkbox appears in EmployeesPage form below "Tip Paired", conditionally hidden for commission pay type employees (they already have all tips hidden via `hideTips`). When disabled, Commission input shows gray helper text "Commission pairing is disabled for all employees on this ticket". Default `true` preserves existing behavior. New `commission_paired_enabled` column on `employees` table. Files: `TicketEditor.tsx`, `EmployeesPage.tsx`, `supabase.ts` + migration
 

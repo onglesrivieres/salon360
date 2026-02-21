@@ -65,6 +65,7 @@ import {
 import { Permissions } from "../lib/permissions";
 import { TicketEditor } from "../components/TicketEditor";
 import { InventoryTransactionModal } from "../components/InventoryTransactionModal";
+import { TransactionDetailModal } from "../components/TransactionDetailModal";
 
 interface ViolationHistoryReport {
   report_id: string;
@@ -249,6 +250,8 @@ export function PendingApprovalsPage({
   const [viewingRequest, setViewingRequest] =
     useState<PendingTicketReopenRequest | null>(null);
   const [viewingTicketId, setViewingTicketId] = useState<string | null>(null);
+  const [viewingInventoryTransactionId, setViewingInventoryTransactionId] =
+    useState<string | null>(null);
   const [viewingTicketDate, setViewingTicketDate] = useState<string>("");
   const [historicalInventoryApprovals, setHistoricalInventoryApprovals] =
     useState<HistoricalInventoryApproval[]>([]);
@@ -3132,61 +3135,69 @@ export function PendingApprovalsPage({
                                 </p>
                               )}
                             </div>
-                            {canTakeActions ? (
-                              <div className="flex gap-2">
-                                {approval.transaction_type === "transfer" ? (
-                                  <Button
-                                    size="sm"
-                                    onClick={() =>
-                                      handleOpenTransferApproval(approval)
-                                    }
-                                    disabled={processing}
-                                  >
-                                    <CheckCircle className="w-4 h-4 mr-1" />
-                                    Review
-                                  </Button>
-                                ) : (
-                                  <>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() =>
+                                  setViewingInventoryTransactionId(approval.id)
+                                }
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                View
+                              </Button>
+                              {canTakeActions && (
+                                <>
+                                  {approval.transaction_type === "transfer" ? (
                                     <Button
                                       size="sm"
                                       onClick={() =>
-                                        handleApproveInventory(approval)
+                                        handleOpenTransferApproval(approval)
                                       }
                                       disabled={processing}
                                     >
                                       <CheckCircle className="w-4 h-4 mr-1" />
-                                      Approve
+                                      Review
                                     </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="secondary"
-                                      onClick={() =>
-                                        handleEditInventory(approval)
-                                      }
-                                      disabled={processing}
-                                    >
-                                      <Pencil className="w-4 h-4 mr-1" />
-                                      Edit
-                                    </Button>
-                                  </>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  onClick={() =>
-                                    handleRejectInventoryClick(approval)
-                                  }
-                                  disabled={processing}
-                                >
-                                  <XCircle className="w-4 h-4 mr-1" />
-                                  Reject
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="text-sm text-gray-500 italic">
-                                View only
-                              </div>
-                            )}
+                                  ) : (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        onClick={() =>
+                                          handleApproveInventory(approval)
+                                        }
+                                        disabled={processing}
+                                      >
+                                        <CheckCircle className="w-4 h-4 mr-1" />
+                                        Approve
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={() =>
+                                          handleEditInventory(approval)
+                                        }
+                                        disabled={processing}
+                                      >
+                                        <Pencil className="w-4 h-4 mr-1" />
+                                        Edit
+                                      </Button>
+                                    </>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() =>
+                                      handleRejectInventoryClick(approval)
+                                    }
+                                    disabled={processing}
+                                  >
+                                    <XCircle className="w-4 h-4 mr-1" />
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -5964,6 +5975,14 @@ export function PendingApprovalsPage({
           ticketId={viewingTicketId}
           onClose={() => setViewingTicketId(null)}
           selectedDate={viewingTicketDate}
+        />
+      )}
+
+      {viewingInventoryTransactionId && (
+        <TransactionDetailModal
+          isOpen={true}
+          onClose={() => setViewingInventoryTransactionId(null)}
+          transactionId={viewingInventoryTransactionId}
         />
       )}
     </div>
