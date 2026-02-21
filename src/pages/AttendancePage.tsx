@@ -12,6 +12,7 @@ import {
   getCurrentDateEST,
 } from "../lib/timezone";
 import { ShiftDetailModal } from "../components/ShiftDetailModal";
+import { LandscapeBanner } from "../components/ui/LandscapeBanner";
 
 const OT_THRESHOLD_HOURS = 8;
 
@@ -586,268 +587,283 @@ export function AttendancePage({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left p-1 text-[11px] font-semibold text-gray-900 sticky left-0 bg-white z-10 w-[70px] min-w-[70px] max-w-[70px]">
-                    {t("attendance.employee")}
-                  </th>
-                  {calendarDays.map((day, index) => {
-                    const isToday =
-                      formatDateISOEST(day) === formatDateISOEST(new Date());
-                    return (
-                      <th
-                        key={index}
-                        className={`text-center p-0.5 text-[10px] font-semibold w-[48px] min-w-[48px] max-w-[48px] ${
-                          isToday ? "bg-blue-50 text-blue-700" : "text-gray-900"
-                        }`}
+          <>
+            <LandscapeBanner />
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left p-1 text-[11px] font-semibold text-gray-900 sticky left-0 bg-white z-10 w-[70px] min-w-[70px] max-w-[70px]">
+                      {t("attendance.employee")}
+                    </th>
+                    {calendarDays.map((day, index) => {
+                      const isToday =
+                        formatDateISOEST(day) === formatDateISOEST(new Date());
+                      return (
+                        <th
+                          key={index}
+                          className={`text-center p-0.5 text-[10px] font-semibold w-[48px] min-w-[48px] max-w-[48px] ${
+                            isToday
+                              ? "bg-blue-50 text-blue-700"
+                              : "text-gray-900"
+                          }`}
+                        >
+                          <div className="text-[10px]">
+                            {day.toLocaleDateString("en-US", {
+                              weekday: "narrow",
+                              timeZone: "America/New_York",
+                            })}
+                          </div>
+                          <div className="text-xs font-bold">
+                            {day.getDate()}
+                          </div>
+                        </th>
+                      );
+                    })}
+                    <th className="text-right p-1 text-[11px] font-semibold text-gray-900 sticky right-0 bg-white z-10 w-[55px] min-w-[55px] max-w-[55px]">
+                      {t("attendance.total")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const { hourly, daily, commission } =
+                      groupByPayType(summary);
+
+                    const renderEmployeeRow = ([employeeId, employee]: [
+                      string,
+                      AttendanceSummary[string],
+                    ]) => (
+                      <tr
+                        key={employeeId}
+                        className="border-b border-gray-100 hover:bg-gray-50"
                       >
-                        <div className="text-[10px]">
-                          {day.toLocaleDateString("en-US", {
-                            weekday: "narrow",
-                            timeZone: "America/New_York",
-                          })}
-                        </div>
-                        <div className="text-xs font-bold">{day.getDate()}</div>
-                      </th>
-                    );
-                  })}
-                  <th className="text-right p-1 text-[11px] font-semibold text-gray-900 sticky right-0 bg-white z-10 w-[55px] min-w-[55px] max-w-[55px]">
-                    {t("attendance.total")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {(() => {
-                  const { hourly, daily, commission } = groupByPayType(summary);
-
-                  const renderEmployeeRow = ([employeeId, employee]: [
-                    string,
-                    AttendanceSummary[string],
-                  ]) => (
-                    <tr
-                      key={employeeId}
-                      className="border-b border-gray-100 hover:bg-gray-50"
-                    >
-                      <td className="p-1 text-[11px] font-medium text-gray-900 sticky left-0 bg-white w-[70px] min-w-[70px] max-w-[70px]">
-                        <div className="truncate" title={employee.employeeName}>
-                          {employee.employeeName}
-                        </div>
-                      </td>
-                      {calendarDays.map((day, index) => {
-                        const dateStr = formatDateISOEST(day);
-                        const sessions = employee.dates[dateStr];
-                        const dailyHoursSummary = employee.dailyHours[dateStr];
-                        const isToday =
-                          formatDateISOEST(day) ===
-                          formatDateISOEST(new Date());
-
-                        return (
-                          <td
-                            key={index}
-                            className={`p-0.5 text-center align-top w-[48px] min-w-[48px] max-w-[48px] ${
-                              isToday ? "bg-blue-50" : ""
-                            }`}
+                        <td className="p-1 text-[11px] font-medium text-gray-900 sticky left-0 bg-white w-[70px] min-w-[70px] max-w-[70px]">
+                          <div
+                            className="truncate"
+                            title={employee.employeeName}
                           >
-                            {sessions && sessions.length > 0 ? (
-                              <div className="space-y-0.5">
-                                {sessions.map((record, sessionIdx) => {
-                                  const isClickable = isRestrictedRole
-                                    ? employeeId === session?.employee_id
-                                    : true;
+                            {employee.employeeName}
+                          </div>
+                        </td>
+                        {calendarDays.map((day, index) => {
+                          const dateStr = formatDateISOEST(day);
+                          const sessions = employee.dates[dateStr];
+                          const dailyHoursSummary =
+                            employee.dailyHours[dateStr];
+                          const isToday =
+                            formatDateISOEST(day) ===
+                            formatDateISOEST(new Date());
 
-                                  return (
-                                    <div
-                                      key={sessionIdx}
-                                      onClick={() =>
-                                        isClickable &&
-                                        handleShiftClick(
-                                          record,
-                                          employeeId,
-                                          employee.employeeName,
-                                          dateStr,
-                                          employee.payType,
-                                        )
-                                      }
-                                      className={`relative group rounded p-0.5 transition-opacity ${
-                                        record.hasPendingProposal
-                                          ? "bg-yellow-100 animate-pulse cursor-pointer hover:opacity-80"
-                                          : record.status === "checked_in"
-                                            ? "bg-green-500 animate-pulse"
-                                            : "bg-gray-200"
-                                      } ${isClickable ? "cursor-pointer hover:opacity-80" : ""}`}
-                                    >
-                                      <div className="leading-tight">
-                                        {employee.isMultiStore && (
-                                          <div
-                                            className={`text-[7px] font-medium ${getStoreColor(record.storeCode)}`}
-                                          >
-                                            [
-                                            {getStoreCodeAbbreviation(
-                                              record.storeCode,
-                                            )}
-                                            ]
-                                          </div>
-                                        )}
-                                        <div
-                                          className={`text-[9px] ${
-                                            record.status === "checked_in"
-                                              ? "text-white"
-                                              : record.hasPendingProposal
-                                                ? "text-yellow-900"
-                                                : "text-gray-700"
-                                          }`}
-                                        >
-                                          {formatTimeEST(record.checkInTime, {
-                                            hour: "numeric",
-                                            minute: "2-digit",
-                                            hour12: false,
-                                          })}
-                                        </div>
-                                        {record.checkOutTime && (
+                          return (
+                            <td
+                              key={index}
+                              className={`p-0.5 text-center align-top w-[48px] min-w-[48px] max-w-[48px] ${
+                                isToday ? "bg-blue-50" : ""
+                              }`}
+                            >
+                              {sessions && sessions.length > 0 ? (
+                                <div className="space-y-0.5">
+                                  {sessions.map((record, sessionIdx) => {
+                                    const isClickable = isRestrictedRole
+                                      ? employeeId === session?.employee_id
+                                      : true;
+
+                                    return (
+                                      <div
+                                        key={sessionIdx}
+                                        onClick={() =>
+                                          isClickable &&
+                                          handleShiftClick(
+                                            record,
+                                            employeeId,
+                                            employee.employeeName,
+                                            dateStr,
+                                            employee.payType,
+                                          )
+                                        }
+                                        className={`relative group rounded p-0.5 transition-opacity ${
+                                          record.hasPendingProposal
+                                            ? "bg-yellow-100 animate-pulse cursor-pointer hover:opacity-80"
+                                            : record.status === "checked_in"
+                                              ? "bg-green-500 animate-pulse"
+                                              : "bg-gray-200"
+                                        } ${isClickable ? "cursor-pointer hover:opacity-80" : ""}`}
+                                      >
+                                        <div className="leading-tight">
+                                          {employee.isMultiStore && (
+                                            <div
+                                              className={`text-[7px] font-medium ${getStoreColor(record.storeCode)}`}
+                                            >
+                                              [
+                                              {getStoreCodeAbbreviation(
+                                                record.storeCode,
+                                              )}
+                                              ]
+                                            </div>
+                                          )}
                                           <div
                                             className={`text-[9px] ${
                                               record.status === "checked_in"
                                                 ? "text-white"
                                                 : record.hasPendingProposal
                                                   ? "text-yellow-900"
-                                                  : record.status ===
-                                                      "auto_checked_out"
-                                                    ? "text-orange-600"
-                                                    : "text-gray-700"
+                                                  : "text-gray-700"
                                             }`}
                                           >
-                                            {formatTimeEST(
-                                              record.checkOutTime,
-                                              {
-                                                hour: "numeric",
-                                                minute: "2-digit",
-                                                hour12: false,
-                                              },
-                                            )}
+                                            {formatTimeEST(record.checkInTime, {
+                                              hour: "numeric",
+                                              minute: "2-digit",
+                                              hour12: false,
+                                            })}
                                           </div>
+                                          {record.checkOutTime && (
+                                            <div
+                                              className={`text-[9px] ${
+                                                record.status === "checked_in"
+                                                  ? "text-white"
+                                                  : record.hasPendingProposal
+                                                    ? "text-yellow-900"
+                                                    : record.status ===
+                                                        "auto_checked_out"
+                                                      ? "text-orange-600"
+                                                      : "text-gray-700"
+                                              }`}
+                                            >
+                                              {formatTimeEST(
+                                                record.checkOutTime,
+                                                {
+                                                  hour: "numeric",
+                                                  minute: "2-digit",
+                                                  hour12: false,
+                                                },
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                  {/* Daily hours summary for hourly employees */}
+                                  {dailyHoursSummary &&
+                                    employee.payType === "hourly" && (
+                                      <div className="text-[9px] font-semibold text-gray-900 border-t border-gray-300 pt-0.5 mt-0.5">
+                                        {employee.countOt &&
+                                        dailyHoursSummary.overtimeHours > 0 ? (
+                                          <>
+                                            <div>
+                                              {dailyHoursSummary.regularHours.toFixed(
+                                                2,
+                                              )}
+                                            </div>
+                                            <div className="text-orange-600">
+                                              +
+                                              {dailyHoursSummary.overtimeHours.toFixed(
+                                                2,
+                                              )}{" "}
+                                              OT
+                                            </div>
+                                          </>
+                                        ) : (
+                                          <span>
+                                            {dailyHoursSummary.totalHours.toFixed(
+                                              2,
+                                            )}
+                                          </span>
                                         )}
                                       </div>
-                                    </div>
-                                  );
-                                })}
-                                {/* Daily hours summary for hourly employees */}
-                                {dailyHoursSummary &&
-                                  employee.payType === "hourly" && (
-                                    <div className="text-[9px] font-semibold text-gray-900 border-t border-gray-300 pt-0.5 mt-0.5">
-                                      {employee.countOt &&
-                                      dailyHoursSummary.overtimeHours > 0 ? (
-                                        <>
-                                          <div>
-                                            {dailyHoursSummary.regularHours.toFixed(
-                                              2,
-                                            )}
-                                          </div>
-                                          <div className="text-orange-600">
-                                            +
-                                            {dailyHoursSummary.overtimeHours.toFixed(
-                                              2,
-                                            )}{" "}
-                                            OT
-                                          </div>
-                                        </>
-                                      ) : (
-                                        <span>
-                                          {dailyHoursSummary.totalHours.toFixed(
-                                            2,
-                                          )}
-                                        </span>
-                                      )}
+                                    )}
+                                </div>
+                              ) : (
+                                <div className="text-gray-300 text-[10px]">
+                                  -
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="p-1 text-right text-[11px] font-bold text-gray-900 sticky right-0 bg-white w-[55px] min-w-[55px] max-w-[55px]">
+                          {employee.payType === "daily" ? (
+                            // Daily employees - only show days present
+                            <div>{employee.daysPresent}d</div>
+                          ) : employee.payType === "hourly" ? (
+                            // Hourly employees - show hours with OT breakdown if countOt is enabled
+                            <div>
+                              {employee.countOt ? (
+                                <>
+                                  <div>
+                                    {employee.totalRegularHours.toFixed(2)}
+                                  </div>
+                                  {employee.totalOvertimeHours > 0 && (
+                                    <div className="text-orange-600 text-[10px]">
+                                      +{employee.totalOvertimeHours.toFixed(2)}{" "}
+                                      OT
                                     </div>
                                   )}
-                              </div>
-                            ) : (
-                              <div className="text-gray-300 text-[10px]">-</div>
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className="p-1 text-right text-[11px] font-bold text-gray-900 sticky right-0 bg-white w-[55px] min-w-[55px] max-w-[55px]">
-                        {employee.payType === "daily" ? (
-                          // Daily employees - only show days present
-                          <div>{employee.daysPresent}d</div>
-                        ) : employee.payType === "hourly" ? (
-                          // Hourly employees - show hours with OT breakdown if countOt is enabled
-                          <div>
-                            {employee.countOt ? (
-                              <>
-                                <div>
-                                  {employee.totalRegularHours.toFixed(2)}
-                                </div>
-                                {employee.totalOvertimeHours > 0 && (
-                                  <div className="text-orange-600 text-[10px]">
-                                    +{employee.totalOvertimeHours.toFixed(2)} OT
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <div>{employee.totalHours.toFixed(2)}</div>
-                            )}
-                          </div>
-                        ) : (
-                          // Commission employees - show days only
-                          <div>{employee.daysPresent}d</div>
-                        )}
-                      </td>
-                    </tr>
-                  );
+                                </>
+                              ) : (
+                                <div>{employee.totalHours.toFixed(2)}</div>
+                              )}
+                            </div>
+                          ) : (
+                            // Commission employees - show days only
+                            <div>{employee.daysPresent}d</div>
+                          )}
+                        </td>
+                      </tr>
+                    );
 
-                  return (
-                    <>
-                      {/* Hourly Employees Section */}
-                      {hourly.length > 0 && (
-                        <>
-                          <tr className="bg-gray-100">
-                            <td
-                              colSpan={calendarDays.length + 2}
-                              className="p-1 text-xs font-bold text-gray-700"
-                            >
-                              {t("attendance.hourlyEmployees")}
-                            </td>
-                          </tr>
-                          {hourly.map(renderEmployeeRow)}
-                        </>
-                      )}
-                      {/* Daily Employees Section */}
-                      {daily.length > 0 && (
-                        <>
-                          <tr className="bg-gray-100">
-                            <td
-                              colSpan={calendarDays.length + 2}
-                              className="p-1 text-xs font-bold text-gray-700"
-                            >
-                              {t("attendance.dailyEmployees")}
-                            </td>
-                          </tr>
-                          {daily.map(renderEmployeeRow)}
-                        </>
-                      )}
-                      {/* Commission Employees Section */}
-                      {commission.length > 0 && (
-                        <>
-                          <tr className="bg-gray-100">
-                            <td
-                              colSpan={calendarDays.length + 2}
-                              className="p-1 text-xs font-bold text-gray-700"
-                            >
-                              {t("attendance.commissionEmployees")}
-                            </td>
-                          </tr>
-                          {commission.map(renderEmployeeRow)}
-                        </>
-                      )}
-                    </>
-                  );
-                })()}
-              </tbody>
-            </table>
-          </div>
+                    return (
+                      <>
+                        {/* Hourly Employees Section */}
+                        {hourly.length > 0 && (
+                          <>
+                            <tr className="bg-gray-100">
+                              <td
+                                colSpan={calendarDays.length + 2}
+                                className="p-1 text-xs font-bold text-gray-700"
+                              >
+                                {t("attendance.hourlyEmployees")}
+                              </td>
+                            </tr>
+                            {hourly.map(renderEmployeeRow)}
+                          </>
+                        )}
+                        {/* Daily Employees Section */}
+                        {daily.length > 0 && (
+                          <>
+                            <tr className="bg-gray-100">
+                              <td
+                                colSpan={calendarDays.length + 2}
+                                className="p-1 text-xs font-bold text-gray-700"
+                              >
+                                {t("attendance.dailyEmployees")}
+                              </td>
+                            </tr>
+                            {daily.map(renderEmployeeRow)}
+                          </>
+                        )}
+                        {/* Commission Employees Section */}
+                        {commission.length > 0 && (
+                          <>
+                            <tr className="bg-gray-100">
+                              <td
+                                colSpan={calendarDays.length + 2}
+                                className="p-1 text-xs font-bold text-gray-700"
+                              >
+                                {t("attendance.commissionEmployees")}
+                              </td>
+                            </tr>
+                            {commission.map(renderEmployeeRow)}
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

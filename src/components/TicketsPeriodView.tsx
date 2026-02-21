@@ -7,6 +7,7 @@ import { useToast } from "../components/ui/Toast";
 import { useAuth } from "../contexts/AuthContext";
 import { Permissions } from "../lib/permissions";
 import { WeeklyCalendarView } from "../components/WeeklyCalendarView";
+import { LandscapeBanner } from "../components/ui/LandscapeBanner";
 
 interface TechnicianSummary {
   technician_id: string;
@@ -528,6 +529,7 @@ export function TicketsPeriodView({
         </div>
       </div>
       <div className="p-2">
+        <LandscapeBanner />
         <WeeklyCalendarView
           selectedDate={selectedDate}
           weeklyData={weeklyData}

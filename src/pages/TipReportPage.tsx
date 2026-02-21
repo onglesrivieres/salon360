@@ -21,6 +21,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { Permissions } from "../lib/permissions";
 import { WeeklyCalendarView } from "../components/WeeklyCalendarView";
 import { TicketEditor } from "../components/TicketEditor";
+import { LandscapeBanner } from "../components/ui/LandscapeBanner";
 import {
   formatTimeEST,
   getCurrentDateEST,
@@ -1798,6 +1799,7 @@ export function TipReportPage({
           </div>
         ) : viewMode === "weekly" ? (
           <div className="p-2 overflow-x-auto">
+            <LandscapeBanner />
             <WeeklyCalendarView
               selectedDate={selectedDate}
               weeklyData={weeklyData}
@@ -1808,6 +1810,7 @@ export function TipReportPage({
           </div>
         ) : viewMode === "period" ? (
           <div className="p-2 overflow-x-auto">
+            <LandscapeBanner />
             <WeeklyCalendarView
               selectedDate={selectedDate}
               weeklyData={weeklyData}

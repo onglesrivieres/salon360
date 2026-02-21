@@ -771,6 +771,7 @@ export const translations = {
       unreadResourcesBlocked:
         "Please read all resources before navigating to other pages.",
       noTabs: "No tabs yet. Create your first tab to get started.",
+      rotateLandscape: "Rotate your phone for the best view",
     },
   },
   fr: {
@@ -1559,6 +1560,7 @@ export const translations = {
       unreadResourcesBlocked:
         "Veuillez lire toutes les ressources avant de naviguer vers d'autres pages.",
       noTabs: "Aucun onglet. Créez votre premier onglet pour commencer.",
+      rotateLandscape: "Tournez votre téléphone pour une meilleure vue",
     },
   },
   vi: {
@@ -2321,6 +2323,7 @@ export const translations = {
       unreadResourcesBlocked:
         "Vui lòng đọc tất cả tài nguyên trước khi chuyển sang trang khác.",
       noTabs: "Chưa có tab. Tạo tab đầu tiên để bắt đầu.",
+      rotateLandscape: "Xoay ngang điện thoại để xem tốt hơn",
     },
   },
   km: {
@@ -3083,6 +3086,7 @@ export const translations = {
       readNow: "អានឥឡូវ",
       unreadResourcesBlocked: "សូមអានធនធានទាំងអស់មុនពេលចូលទៅទំព័រផ្សេង។",
       noTabs: "មិនទាន់មានផ្ទាំង។ បង្កើតផ្ទាំងដំបូងដើម្បីចាប់ផ្តើម។",
+      rotateLandscape: "បង្វិលទូរសព្ទរបស់អ្នកដើម្បីមើលបានល្អបំផុត",
     },
   },
 };
