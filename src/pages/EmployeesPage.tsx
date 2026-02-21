@@ -1,60 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, AlertCircle, ChevronUp, ChevronDown } from 'lucide-react';
-import { supabase, Employee, Store } from '../lib/supabase';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
-import { MultiSelect } from '../components/ui/MultiSelect';
-import { Drawer } from '../components/ui/Drawer';
-import { Badge } from '../components/ui/Badge';
-import { Modal } from '../components/ui/Modal';
-import { useToast } from '../components/ui/Toast';
-import { useAuth } from '../contexts/AuthContext';
-import { resetPIN } from '../lib/auth';
-import { Permissions } from '../lib/permissions';
-import { getDefaultSchedule, getThreeLetterDayName, formatScheduleDisplay } from '../lib/schedule-utils';
+import React, { useState, useEffect } from "react";
+import {
+  Plus,
+  Search,
+  AlertCircle,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
+import { supabase, Employee, Store } from "../lib/supabase";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import { Select } from "../components/ui/Select";
+import { MultiSelect } from "../components/ui/MultiSelect";
+import { Drawer } from "../components/ui/Drawer";
+import { Badge } from "../components/ui/Badge";
+import { Modal } from "../components/ui/Modal";
+import { useToast } from "../components/ui/Toast";
+import { useAuth } from "../contexts/AuthContext";
+import { resetPIN } from "../lib/auth";
+import { Permissions } from "../lib/permissions";
+import {
+  getDefaultSchedule,
+  getThreeLetterDayName,
+  formatScheduleDisplay,
+} from "../lib/schedule-utils";
 
 function abbreviateStoreName(storeCode: string): string {
   const codeMap: Record<string, string> = {
-    'OM': 'M',
-    'OC': 'C',
-    'OR': 'R',
+    OM: "M",
+    OC: "C",
+    OR: "R",
   };
-  return codeMap[storeCode.toUpperCase()] || storeCode.substring(0, 1).toUpperCase();
+  return (
+    codeMap[storeCode.toUpperCase()] || storeCode.substring(0, 1).toUpperCase()
+  );
 }
 
 export function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
-  const [employeeStoresMap, setEmployeeStoresMap] = useState<Record<string, string[]>>({});
+  const [employeeStoresMap, setEmployeeStoresMap] = useState<
+    Record<string, string[]>
+  >({});
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterRole, setFilterRole] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterRole, setFilterRole] = useState("all");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetEmployee, setResetEmployee] = useState<Employee | null>(null);
-  const [tempPIN, setTempPIN] = useState('');
+  const [tempPIN, setTempPIN] = useState("");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
-  type EmpSortColumn = 'display_name' | 'role' | 'status' | 'stores' | 'schedule';
-  type EmpSortDirection = 'asc' | 'desc';
-  const [sortColumn, setSortColumn] = useState<EmpSortColumn>('display_name');
-  const [sortDirection, setSortDirection] = useState<EmpSortDirection>('asc');
+  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(
+    null,
+  );
+  type EmpSortColumn =
+    | "display_name"
+    | "role"
+    | "status"
+    | "stores"
+    | "schedule";
+  type EmpSortDirection = "asc" | "desc";
+  const [sortColumn, setSortColumn] = useState<EmpSortColumn>("display_name");
+  const [sortDirection, setSortDirection] = useState<EmpSortDirection>("asc");
   const { showToast } = useToast();
   const { session, selectedStoreId, t } = useAuth();
 
   const [formData, setFormData] = useState({
-    display_name: '',
-    role: ['Technician'] as Employee['role'],
-    status: 'Active' as Employee['status'],
-    pay_type: 'hourly' as 'hourly' | 'daily' | 'commission',
+    display_name: "",
+    role: ["Technician"] as Employee["role"],
+    status: "Active" as Employee["status"],
+    pay_type: "hourly" as "hourly" | "daily" | "commission",
     store_ids: [] as string[],
-    notes: '',
+    notes: "",
     tip_report_show_details: true,
     tip_paired_enabled: true,
+    commission_paired_enabled: true,
     attendance_display: true,
     count_ot: true,
     skip_queue_on_checkin: false,
@@ -75,22 +97,24 @@ export function EmployeesPage() {
     if (selectedStoreId) {
       filtered = filtered.filter((e) => {
         const assignedStores = employeeStoresMap[e.id] || [];
-        return assignedStores.length === 0 || assignedStores.includes(selectedStoreId);
+        return (
+          assignedStores.length === 0 ||
+          assignedStores.includes(selectedStoreId)
+        );
       });
     }
 
     if (searchTerm) {
-      filtered = filtered.filter(
-        (e) =>
-          e.display_name.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter((e) =>
+        e.display_name.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
 
-    if (filterStatus !== 'all') {
+    if (filterStatus !== "all") {
       filtered = filtered.filter((e) => e.status === filterStatus);
     }
 
-    if (filterRole !== 'all') {
+    if (filterRole !== "all") {
       filtered = filtered.filter((e) => e.role.includes(filterRole as any));
     }
 
@@ -100,30 +124,32 @@ export function EmployeesPage() {
       let bVal: string;
 
       switch (sortColumn) {
-        case 'display_name':
+        case "display_name":
           aVal = a.display_name.toLowerCase();
           bVal = b.display_name.toLowerCase();
           break;
-        case 'role':
-          aVal = (a.role[0] || '').toLowerCase();
-          bVal = (b.role[0] || '').toLowerCase();
+        case "role":
+          aVal = (a.role[0] || "").toLowerCase();
+          bVal = (b.role[0] || "").toLowerCase();
           break;
-        case 'status':
+        case "status":
           aVal = a.status;
           bVal = b.status;
           break;
-        case 'stores': {
+        case "stores": {
           const aStores = (employeeStoresMap[a.id] || [])
-            .map(sid => stores.find(s => s.id === sid)?.code || '')
-            .sort().join(',');
+            .map((sid) => stores.find((s) => s.id === sid)?.code || "")
+            .sort()
+            .join(",");
           const bStores = (employeeStoresMap[b.id] || [])
-            .map(sid => stores.find(s => s.id === sid)?.code || '')
-            .sort().join(',');
+            .map((sid) => stores.find((s) => s.id === sid)?.code || "")
+            .sort()
+            .join(",");
           aVal = aStores;
           bVal = bStores;
           break;
         }
-        case 'schedule':
+        case "schedule":
           aVal = formatScheduleDisplay(a.weekly_schedule);
           bVal = formatScheduleDisplay(b.weekly_schedule);
           break;
@@ -131,42 +157,53 @@ export function EmployeesPage() {
           return 0;
       }
 
-      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
       return 0;
     });
 
     setFilteredEmployees(filtered);
-  }, [employees, searchTerm, filterStatus, filterRole, selectedStoreId, employeeStoresMap, sortColumn, sortDirection, stores]);
+  }, [
+    employees,
+    searchTerm,
+    filterStatus,
+    filterRole,
+    selectedStoreId,
+    employeeStoresMap,
+    sortColumn,
+    sortDirection,
+    stores,
+  ]);
 
   async function fetchStores() {
     try {
       const { data, error } = await supabase
-        .from('stores')
-        .select('*')
-        .order('name');
+        .from("stores")
+        .select("*")
+        .order("name");
 
       if (error) throw error;
       setStores(data || []);
     } catch (error) {
-      showToast(t('messages.failed'), 'error');
+      showToast(t("messages.failed"), "error");
     }
   }
 
   async function fetchEmployees() {
     try {
       const { data, error } = await supabase
-        .from('employees')
-        .select('*')
-        .order('display_name');
+        .from("employees")
+        .select("*")
+        .order("display_name");
 
       if (error) throw error;
 
       let allEmployees = data || [];
 
       // Check logged-in user's role
-      const isOwnerOrAdmin = session?.role.includes('Owner') || session?.role.includes('Admin');
-      const isManager = session?.role.includes('Manager');
+      const isOwnerOrAdmin =
+        session?.role.includes("Owner") || session?.role.includes("Admin");
+      const isManager = session?.role.includes("Manager");
 
       if (isOwnerOrAdmin) {
         // Admin/Owner can see all employees
@@ -174,18 +211,20 @@ export function EmployeesPage() {
       } else if (isManager) {
         // Manager can only see employees with roles: Supervisor, Receptionist, Technician, Cashier
         // Exclude employees who have Admin, Owner, or Manager roles
-        allEmployees = allEmployees.filter(emp => {
-          const hasRestrictedRole = emp.role.some((r: string) => ['Admin', 'Owner', 'Manager'].includes(r));
+        allEmployees = allEmployees.filter((emp) => {
+          const hasRestrictedRole = emp.role.some((r: string) =>
+            ["Admin", "Owner", "Manager"].includes(r),
+          );
           return !hasRestrictedRole;
         });
       }
 
       const { data: employeeStoresData } = await supabase
-        .from('employee_stores')
-        .select('employee_id, store_id');
+        .from("employee_stores")
+        .select("employee_id, store_id");
 
       const storesMap: Record<string, string[]> = {};
-      employeeStoresData?.forEach(es => {
+      employeeStoresData?.forEach((es) => {
         if (!storesMap[es.employee_id]) {
           storesMap[es.employee_id] = [];
         }
@@ -197,7 +236,7 @@ export function EmployeesPage() {
       setEmployees(allEmployees);
       setFilteredEmployees(allEmployees);
     } catch (error) {
-      showToast(t('messages.failed'), 'error');
+      showToast(t("messages.failed"), "error");
     } finally {
       setLoading(false);
     }
@@ -211,11 +250,12 @@ export function EmployeesPage() {
         display_name: employee.display_name,
         role: employee.role,
         status: employee.status,
-        pay_type: employee.pay_type || 'hourly',
+        pay_type: employee.pay_type || "hourly",
         store_ids: storeIds,
         notes: employee.notes,
         tip_report_show_details: employee.tip_report_show_details ?? true,
         tip_paired_enabled: employee.tip_paired_enabled ?? true,
+        commission_paired_enabled: employee.commission_paired_enabled ?? true,
         attendance_display: employee.attendance_display ?? true,
         count_ot: employee.count_ot ?? true,
         skip_queue_on_checkin: employee.skip_queue_on_checkin ?? false,
@@ -224,14 +264,15 @@ export function EmployeesPage() {
     } else {
       setEditingEmployee(null);
       setFormData({
-        display_name: '',
-        role: ['Technician'],
-        status: 'Active',
-        pay_type: 'hourly',
+        display_name: "",
+        role: ["Technician"],
+        status: "Active",
+        pay_type: "hourly",
         store_ids: [],
-        notes: '',
+        notes: "",
         tip_report_show_details: true,
         tip_paired_enabled: true,
+        commission_paired_enabled: true,
         attendance_display: true,
         count_ot: true,
         skip_queue_on_checkin: false,
@@ -250,13 +291,23 @@ export function EmployeesPage() {
     e.preventDefault();
 
     if (!formData.display_name) {
-      showToast(t('forms.required'), 'error');
+      showToast(t("forms.required"), "error");
       return;
     }
 
     // Owner cannot edit Admin employees
-    if (editingEmployee && !Permissions.employees.canEditEmployee(session?.role || [], editingEmployee.role)) {
-      showToast(t('messages.permissionDenied') || 'You do not have permission to edit this employee', 'error');
+    if (
+      editingEmployee &&
+      !Permissions.employees.canEditEmployee(
+        session?.role || [],
+        editingEmployee.role,
+      )
+    ) {
+      showToast(
+        t("messages.permissionDenied") ||
+          "You do not have permission to edit this employee",
+        "error",
+      );
       return;
     }
 
@@ -273,6 +324,7 @@ export function EmployeesPage() {
         notes: formData.notes,
         tip_report_show_details: formData.tip_report_show_details,
         tip_paired_enabled: formData.tip_paired_enabled,
+        commission_paired_enabled: formData.commission_paired_enabled,
         attendance_display: formData.attendance_display,
         count_ot: formData.count_ot,
         skip_queue_on_checkin: formData.skip_queue_on_checkin,
@@ -284,132 +336,151 @@ export function EmployeesPage() {
 
       if (editingEmployee) {
         const { error } = await supabase
-          .from('employees')
+          .from("employees")
           .update(employeeData)
-          .eq('id', editingEmployee.id);
+          .eq("id", editingEmployee.id);
 
         if (error) throw error;
         employeeId = editingEmployee.id;
 
         await supabase
-          .from('employee_stores')
+          .from("employee_stores")
           .delete()
-          .eq('employee_id', employeeId);
+          .eq("employee_id", employeeId);
       } else {
         const { data: newEmployee, error } = await supabase
-          .from('employees')
+          .from("employees")
           .insert([employeeData])
-          .select('id')
+          .select("id")
           .single();
 
         if (error) throw error;
-        if (!newEmployee) throw new Error('Failed to create employee');
+        if (!newEmployee) throw new Error("Failed to create employee");
         employeeId = newEmployee.id;
       }
 
       if (formData.store_ids.length > 0) {
-        const employeeStoreRecords = formData.store_ids.map(storeId => ({
+        const employeeStoreRecords = formData.store_ids.map((storeId) => ({
           employee_id: employeeId,
           store_id: storeId,
         }));
 
         const { error: storesError } = await supabase
-          .from('employee_stores')
+          .from("employee_stores")
           .insert(employeeStoreRecords);
 
         if (storesError) throw storesError;
       }
 
       showToast(
-        editingEmployee ? t('messages.saved') : t('messages.saved'),
-        'success'
+        editingEmployee ? t("messages.saved") : t("messages.saved"),
+        "success",
       );
 
       await fetchEmployees();
       closeDrawer();
     } catch (error) {
-      showToast(t('messages.failed'), 'error');
+      showToast(t("messages.failed"), "error");
     }
   }
 
   async function handleResetPIN(employee: Employee) {
     if (!session || !Permissions.employees.canResetPIN(session.role)) {
-      showToast('You do not have permission to reset PINs', 'error');
+      showToast("You do not have permission to reset PINs", "error");
       return;
     }
 
     // Check target-aware permission
-    if (!Permissions.employees.canResetEmployeePIN(session.role, employee.role)) {
-      showToast(t('messages.permissionDenied') || 'You do not have permission to reset this employee\'s PIN', 'error');
+    if (
+      !Permissions.employees.canResetEmployeePIN(session.role, employee.role)
+    ) {
+      showToast(
+        t("messages.permissionDenied") ||
+          "You do not have permission to reset this employee's PIN",
+        "error",
+      );
       return;
     }
 
     try {
       const result = await resetPIN(employee.id);
       if (result.success) {
-        setTempPIN(result.tempPIN || '');
+        setTempPIN(result.tempPIN || "");
         setResetEmployee(employee);
         setResetModalOpen(true);
-        showToast(t('emp.pinReset'), 'success');
+        showToast(t("emp.pinReset"), "success");
       } else {
-        showToast(result.error || 'Failed to reset PIN', 'error');
+        showToast(result.error || "Failed to reset PIN", "error");
       }
     } catch (error) {
-      showToast('Failed to reset PIN', 'error');
+      showToast("Failed to reset PIN", "error");
     }
   }
 
   async function handleDeleteEmployee() {
-    if (!deletingEmployee || !session || !Permissions.employees.canDelete(session.role)) {
-      showToast('You do not have permission to delete employees', 'error');
+    if (
+      !deletingEmployee ||
+      !session ||
+      !Permissions.employees.canDelete(session.role)
+    ) {
+      showToast("You do not have permission to delete employees", "error");
       return;
     }
 
     // Owner cannot delete Admin employees
-    if (!Permissions.employees.canDeleteEmployee(session.role, deletingEmployee.role)) {
-      showToast(t('messages.permissionDenied') || 'You do not have permission to delete this employee', 'error');
+    if (
+      !Permissions.employees.canDeleteEmployee(
+        session.role,
+        deletingEmployee.role,
+      )
+    ) {
+      showToast(
+        t("messages.permissionDenied") ||
+          "You do not have permission to delete this employee",
+        "error",
+      );
       return;
     }
 
     try {
       // First delete employee store assignments
       await supabase
-        .from('employee_stores')
+        .from("employee_stores")
         .delete()
-        .eq('employee_id', deletingEmployee.id);
+        .eq("employee_id", deletingEmployee.id);
 
       // Then delete the employee
       const { error } = await supabase
-        .from('employees')
+        .from("employees")
         .delete()
-        .eq('id', deletingEmployee.id);
+        .eq("id", deletingEmployee.id);
 
       if (error) throw error;
 
-      showToast('Employee deleted successfully', 'success');
+      showToast("Employee deleted successfully", "success");
       setDeleteModalOpen(false);
       setDeletingEmployee(null);
       closeDrawer();
       await fetchEmployees();
     } catch (error: any) {
-      console.error('Error deleting employee:', error);
-      showToast('Failed to delete employee', 'error');
+      console.error("Error deleting employee:", error);
+      showToast("Failed to delete employee", "error");
     }
   }
 
   function handleSort(column: EmpSortColumn) {
     if (sortColumn === column) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
       setSortColumn(column);
-      setSortDirection('asc');
+      setSortDirection("asc");
     }
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">{t('messages.loading')}</div>
+        <div className="text-gray-500">{t("messages.loading")}</div>
       </div>
     );
   }
@@ -417,10 +488,10 @@ export function EmployeesPage() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-900">{t('emp.title')}</h2>
+        <h2 className="text-lg font-bold text-gray-900">{t("emp.title")}</h2>
         <Button size="sm" onClick={() => openDrawer()}>
           <Plus className="w-3 h-3 mr-1" />
-          {t('actions.add')}
+          {t("actions.add")}
         </Button>
       </div>
 
@@ -431,7 +502,7 @@ export function EmployeesPage() {
               <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder={t('actions.search')}
+                placeholder={t("actions.search")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-8 pr-3 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -442,30 +513,32 @@ export function EmployeesPage() {
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             options={[
-              { value: 'all', label: 'All Status' },
-              { value: 'Active', label: t('emp.active') },
-              { value: 'Inactive', label: t('emp.inactive') },
+              { value: "all", label: "All Status" },
+              { value: "Active", label: t("emp.active") },
+              { value: "Inactive", label: t("emp.inactive") },
             ]}
           />
           <Select
             value={filterRole}
             onChange={(e) => setFilterRole(e.target.value)}
             options={(() => {
-              const isOwnerOrAdmin = session?.role.includes('Owner') || session?.role.includes('Admin');
+              const isOwnerOrAdmin =
+                session?.role.includes("Owner") ||
+                session?.role.includes("Admin");
               const baseOptions = [
-                { value: 'all', label: 'All Roles' },
-                { value: 'Technician', label: t('emp.technician') },
-                { value: 'Trainee', label: t('emp.trainee') },
-                { value: 'Receptionist', label: t('emp.receptionist') },
-                { value: 'Supervisor', label: t('emp.supervisor') },
-                { value: 'Cashier', label: t('emp.cashier') },
+                { value: "all", label: "All Roles" },
+                { value: "Technician", label: t("emp.technician") },
+                { value: "Trainee", label: t("emp.trainee") },
+                { value: "Receptionist", label: t("emp.receptionist") },
+                { value: "Supervisor", label: t("emp.supervisor") },
+                { value: "Cashier", label: t("emp.cashier") },
               ];
               if (isOwnerOrAdmin) {
                 return [
                   ...baseOptions,
-                  { value: 'Manager', label: t('emp.manager') },
-                  { value: 'Owner', label: t('emp.owner') },
-                  { value: 'Admin', label: t('emp.admin') },
+                  { value: "Manager", label: t("emp.manager") },
+                  { value: "Owner", label: t("emp.owner") },
+                  { value: "Admin", label: t("emp.admin") },
                 ];
               }
               return baseOptions;
@@ -477,13 +550,19 @@ export function EmployeesPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                {([
-                  { key: 'display_name' as EmpSortColumn, label: t('emp.displayName') },
-                  { key: 'role' as EmpSortColumn, label: t('emp.role') },
-                  { key: 'status' as EmpSortColumn, label: t('emp.status') },
-                  { key: 'stores' as EmpSortColumn, label: t('emp.assignedStores') },
-                  { key: 'schedule' as EmpSortColumn, label: 'Schedule' },
-                ]).map(({ key, label }) => (
+                {[
+                  {
+                    key: "display_name" as EmpSortColumn,
+                    label: t("emp.displayName"),
+                  },
+                  { key: "role" as EmpSortColumn, label: t("emp.role") },
+                  { key: "status" as EmpSortColumn, label: t("emp.status") },
+                  {
+                    key: "stores" as EmpSortColumn,
+                    label: t("emp.assignedStores"),
+                  },
+                  { key: "schedule" as EmpSortColumn, label: "Schedule" },
+                ].map(({ key, label }) => (
                   <th
                     key={key}
                     className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
@@ -491,11 +570,12 @@ export function EmployeesPage() {
                   >
                     <div className="flex items-center gap-1">
                       {label}
-                      {sortColumn === key && (
-                        sortDirection === 'asc'
-                          ? <ChevronUp className="w-3 h-3" />
-                          : <ChevronDown className="w-3 h-3" />
-                      )}
+                      {sortColumn === key &&
+                        (sortDirection === "asc" ? (
+                          <ChevronUp className="w-3 h-3" />
+                        ) : (
+                          <ChevronDown className="w-3 h-3" />
+                        ))}
                     </div>
                   </th>
                 ))}
@@ -505,12 +585,12 @@ export function EmployeesPage() {
               {filteredEmployees.map((employee) => {
                 const assignedStores = employeeStoresMap[employee.id] || [];
                 const storeNames = assignedStores
-                  .map(storeId => {
-                    const code = stores.find(s => s.id === storeId)?.code;
+                  .map((storeId) => {
+                    const code = stores.find((s) => s.id === storeId)?.code;
                     return code ? abbreviateStoreName(code) : null;
                   })
                   .filter(Boolean)
-                  .join(', ');
+                  .join(", ");
 
                 return (
                   <tr
@@ -531,7 +611,11 @@ export function EmployeesPage() {
                       </div>
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      <Badge variant={employee.status === 'Active' ? 'success' : 'danger'}>
+                      <Badge
+                        variant={
+                          employee.status === "Active" ? "success" : "danger"
+                        }
+                      >
                         {employee.status}
                       </Badge>
                     </td>
@@ -543,7 +627,9 @@ export function EmployeesPage() {
                       )}
                     </td>
                     <td className="px-3 py-2 text-xs text-gray-600">
-                      <span className="font-mono">{formatScheduleDisplay(employee.weekly_schedule)}</span>
+                      <span className="font-mono">
+                        {formatScheduleDisplay(employee.weekly_schedule)}
+                      </span>
                     </td>
                   </tr>
                 );
@@ -562,45 +648,60 @@ export function EmployeesPage() {
       <Drawer
         isOpen={isDrawerOpen}
         onClose={closeDrawer}
-        title={editingEmployee ? t('actions.edit') : t('actions.add')}
+        title={editingEmployee ? t("actions.edit") : t("actions.add")}
         headerActions={
           <div className="flex items-center gap-2">
-            {editingEmployee && session && Permissions.employees.canDelete(session.role) &&
-             Permissions.employees.canDeleteEmployee(session.role, editingEmployee.role) && (
-              <Button
-                type="button"
-                variant="danger"
-                size="sm"
-                onClick={() => {
-                  setDeletingEmployee(editingEmployee);
-                  setDeleteModalOpen(true);
-                }}
-              >
-                Delete
-              </Button>
-            )}
-            {(!editingEmployee || (session && Permissions.employees.canEditEmployee(session.role, editingEmployee.role))) && (
+            {editingEmployee &&
+              session &&
+              Permissions.employees.canDelete(session.role) &&
+              Permissions.employees.canDeleteEmployee(
+                session.role,
+                editingEmployee.role,
+              ) && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  onClick={() => {
+                    setDeletingEmployee(editingEmployee);
+                    setDeleteModalOpen(true);
+                  }}
+                >
+                  Delete
+                </Button>
+              )}
+            {(!editingEmployee ||
+              (session &&
+                Permissions.employees.canEditEmployee(
+                  session.role,
+                  editingEmployee.role,
+                ))) && (
               <Button type="submit" size="sm" form="employee-form">
-                {editingEmployee ? t('actions.save') : t('actions.add')}
+                {editingEmployee ? t("actions.save") : t("actions.add")}
               </Button>
             )}
           </div>
         }
       >
         <form id="employee-form" onSubmit={handleSubmit} className="space-y-4">
-          {editingEmployee && session && !Permissions.employees.canEditEmployee(session.role, editingEmployee.role) && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-              <div className="flex items-center gap-2 text-yellow-800">
-                <AlertCircle className="w-4 h-4" />
-                <span className="text-sm font-medium">View Only</span>
+          {editingEmployee &&
+            session &&
+            !Permissions.employees.canEditEmployee(
+              session.role,
+              editingEmployee.role,
+            ) && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                <div className="flex items-center gap-2 text-yellow-800">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="text-sm font-medium">View Only</span>
+                </div>
+                <p className="text-xs text-yellow-700 mt-1">
+                  You do not have permission to edit this employee.
+                </p>
               </div>
-              <p className="text-xs text-yellow-700 mt-1">
-                You do not have permission to edit this employee.
-              </p>
-            </div>
-          )}
+            )}
           <Input
-            label={`${t('emp.displayName')} *`}
+            label={`${t("emp.displayName")} *`}
             value={formData.display_name}
             onChange={(e) =>
               setFormData({ ...formData, display_name: e.target.value })
@@ -608,52 +709,53 @@ export function EmployeesPage() {
             required
           />
           <MultiSelect
-            label={`${t('emp.role')} *`}
+            label={`${t("emp.role")} *`}
             value={formData.role}
             onChange={(values) =>
               setFormData({
                 ...formData,
-                role: values as Employee['role'],
+                role: values as Employee["role"],
               })
             }
             options={(() => {
-              const isAdmin = session?.role.includes('Admin');
-              const isOwner = session?.role.includes('Owner') && !isAdmin;
-              const isManager = session?.role.includes('Manager') && !isOwner && !isAdmin;
+              const isAdmin = session?.role.includes("Admin");
+              const isOwner = session?.role.includes("Owner") && !isAdmin;
+              const isManager =
+                session?.role.includes("Manager") && !isOwner && !isAdmin;
 
               // Manager can only assign lower-level roles
               if (isManager) {
                 return [
-                  { value: 'Technician', label: t('emp.technician') },
-                  { value: 'Trainee', label: t('emp.trainee') },
-                  { value: 'Receptionist', label: t('emp.receptionist') },
-                  { value: 'Cashier', label: t('emp.cashier') },
-                  { value: 'Supervisor', label: t('emp.supervisor') },
+                  { value: "Technician", label: t("emp.technician") },
+                  { value: "Trainee", label: t("emp.trainee") },
+                  { value: "Receptionist", label: t("emp.receptionist") },
+                  { value: "Cashier", label: t("emp.cashier") },
+                  { value: "Supervisor", label: t("emp.supervisor") },
                 ];
               }
 
               // Base roles for Owner (includes Manager)
               const baseRoles = [
-                { value: 'Technician', label: t('emp.technician') },
-                { value: 'Trainee', label: t('emp.trainee') },
-                { value: 'Receptionist', label: t('emp.receptionist') },
-                { value: 'Cashier', label: t('emp.cashier') },
-                { value: 'Supervisor', label: t('emp.supervisor') },
-                { value: 'Manager', label: t('emp.manager') },
+                { value: "Technician", label: t("emp.technician") },
+                { value: "Trainee", label: t("emp.trainee") },
+                { value: "Receptionist", label: t("emp.receptionist") },
+                { value: "Cashier", label: t("emp.cashier") },
+                { value: "Supervisor", label: t("emp.supervisor") },
+                { value: "Manager", label: t("emp.manager") },
               ];
 
               if (isAdmin) {
                 // Admin can assign ALL roles including Admin and Owner
                 return [
                   ...baseRoles,
-                  { value: 'Owner', label: t('emp.owner') },
-                  { value: 'Admin', label: t('emp.admin') },
+                  { value: "Owner", label: t("emp.owner") },
+                  { value: "Admin", label: t("emp.admin") },
                 ];
               } else if (isOwner) {
                 // Owner can assign all roles EXCEPT Admin
                 return [
                   ...baseRoles,
-                  { value: 'Owner', label: t('emp.owner') },
+                  { value: "Owner", label: t("emp.owner") },
                 ];
               }
               return baseRoles;
@@ -661,80 +763,102 @@ export function EmployeesPage() {
             placeholder="Select roles"
           />
           <Select
-            label={`${t('emp.status')} *`}
+            label={`${t("emp.status")} *`}
             value={formData.status}
             onChange={(e) =>
               setFormData({
                 ...formData,
-                status: e.target.value as Employee['status'],
+                status: e.target.value as Employee["status"],
               })
             }
             options={[
-              { value: 'Active', label: t('emp.active') },
-              { value: 'Inactive', label: t('emp.inactive') },
+              { value: "Active", label: t("emp.active") },
+              { value: "Inactive", label: t("emp.inactive") },
             ]}
           />
-          {session && session.role && (session.role.includes('Owner') || session.role.includes('Manager')) && (
-            <Select
-              label="Pay Type *"
-              value={formData.pay_type}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  pay_type: e.target.value as 'hourly' | 'daily' | 'commission',
-                })
-              }
-              options={[
-                { value: 'hourly', label: 'Hourly' },
-                { value: 'daily', label: 'Daily' },
-                { value: 'commission', label: 'Commission' },
-              ]}
-            />
-          )}
-          {session && session.role && (session.role.includes('Owner') || session.role.includes('Manager')) && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Weekly Schedule *
-              </label>
-              <p className="text-xs text-gray-500 mb-3">
-                Select the days this employee is scheduled to work
-              </p>
-              <div className="grid grid-cols-7 gap-2">
-                {(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const).map((day) => (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => {
-                      setFormData({
-                        ...formData,
-                        weekly_schedule: {
-                          ...formData.weekly_schedule,
-                          [day]: {
-                            ...formData.weekly_schedule[day],
-                            is_working: !formData.weekly_schedule[day].is_working,
+          {session &&
+            session.role &&
+            (session.role.includes("Owner") ||
+              session.role.includes("Manager")) && (
+              <Select
+                label="Pay Type *"
+                value={formData.pay_type}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    pay_type: e.target.value as
+                      | "hourly"
+                      | "daily"
+                      | "commission",
+                  })
+                }
+                options={[
+                  { value: "hourly", label: "Hourly" },
+                  { value: "daily", label: "Daily" },
+                  { value: "commission", label: "Commission" },
+                ]}
+              />
+            )}
+          {session &&
+            session.role &&
+            (session.role.includes("Owner") ||
+              session.role.includes("Manager")) && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Weekly Schedule *
+                </label>
+                <p className="text-xs text-gray-500 mb-3">
+                  Select the days this employee is scheduled to work
+                </p>
+                <div className="grid grid-cols-7 gap-2">
+                  {(
+                    [
+                      "monday",
+                      "tuesday",
+                      "wednesday",
+                      "thursday",
+                      "friday",
+                      "saturday",
+                      "sunday",
+                    ] as const
+                  ).map((day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          weekly_schedule: {
+                            ...formData.weekly_schedule,
+                            [day]: {
+                              ...formData.weekly_schedule[day],
+                              is_working:
+                                !formData.weekly_schedule[day].is_working,
+                            },
                           },
-                        },
-                      });
-                    }}
-                    className={`py-1.5 px-1 rounded-lg font-medium transition-all ${
-                      formData.weekly_schedule[day].is_working
-                        ? 'bg-green-600 text-white shadow-md'
-                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                    }`}
-                  >
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span className="text-[10px] leading-tight">{getThreeLetterDayName(day)}</span>
-                      {formData.weekly_schedule[day].is_working && (
-                        <span className="text-[10px]">✓</span>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                        });
+                      }}
+                      className={`py-1.5 px-1 rounded-lg font-medium transition-all ${
+                        formData.weekly_schedule[day].is_working
+                          ? "bg-green-600 text-white shadow-md"
+                          : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-[10px] leading-tight">
+                          {getThreeLetterDayName(day)}
+                        </span>
+                        {formData.weekly_schedule[day].is_working && (
+                          <span className="text-[10px]">✓</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
           <MultiSelect
-            label={t('emp.assignedStores')}
+            label={t("emp.assignedStores")}
             value={formData.store_ids}
             onChange={(values) =>
               setFormData({
@@ -742,9 +866,9 @@ export function EmployeesPage() {
                 store_ids: values,
               })
             }
-            options={stores.map(store => ({
+            options={stores.map((store) => ({
               value: store.id,
-              label: `${store.name} (${store.code})`
+              label: `${store.name} (${store.code})`,
             }))}
             placeholder="Select stores (No stores = No access)"
           />
@@ -753,10 +877,18 @@ export function EmployeesPage() {
               type="checkbox"
               id="tip_report_show_details"
               checked={formData.tip_report_show_details}
-              onChange={(e) => setFormData({ ...formData, tip_report_show_details: e.target.checked })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  tip_report_show_details: e.target.checked,
+                })
+              }
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
-            <label htmlFor="tip_report_show_details" className="ml-2 text-sm font-medium text-gray-700">
+            <label
+              htmlFor="tip_report_show_details"
+              className="ml-2 text-sm font-medium text-gray-700"
+            >
               Tip Report: Detail
             </label>
           </div>
@@ -765,76 +897,136 @@ export function EmployeesPage() {
               type="checkbox"
               id="tip_paired_enabled"
               checked={formData.tip_paired_enabled}
-              onChange={(e) => setFormData({ ...formData, tip_paired_enabled: e.target.checked })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  tip_paired_enabled: e.target.checked,
+                })
+              }
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
-            <label htmlFor="tip_paired_enabled" className="ml-2 text-sm font-medium text-gray-700">
+            <label
+              htmlFor="tip_paired_enabled"
+              className="ml-2 text-sm font-medium text-gray-700"
+            >
               Tip Paired
             </label>
           </div>
+          {formData.pay_type !== "commission" && (
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="commission_paired_enabled"
+                checked={formData.commission_paired_enabled}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    commission_paired_enabled: e.target.checked,
+                  })
+                }
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <label
+                htmlFor="commission_paired_enabled"
+                className="ml-2 text-sm font-medium text-gray-700"
+              >
+                Commission Paired
+              </label>
+            </div>
+          )}
           <div className="flex items-center">
             <input
               type="checkbox"
               id="attendance_display"
               checked={formData.attendance_display}
-              onChange={(e) => setFormData({ ...formData, attendance_display: e.target.checked })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  attendance_display: e.target.checked,
+                })
+              }
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
-            <label htmlFor="attendance_display" className="ml-2 text-sm font-medium text-gray-700">
+            <label
+              htmlFor="attendance_display"
+              className="ml-2 text-sm font-medium text-gray-700"
+            >
               Attendance Display
             </label>
           </div>
-          {formData.pay_type === 'hourly' && (
+          {formData.pay_type === "hourly" && (
             <div className="flex items-center">
               <input
                 type="checkbox"
                 id="count_ot"
                 checked={formData.count_ot}
-                onChange={(e) => setFormData({ ...formData, count_ot: e.target.checked })}
+                onChange={(e) =>
+                  setFormData({ ...formData, count_ot: e.target.checked })
+                }
                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
-              <label htmlFor="count_ot" className="ml-2 text-sm font-medium text-gray-700">
+              <label
+                htmlFor="count_ot"
+                className="ml-2 text-sm font-medium text-gray-700"
+              >
                 Count OT
               </label>
             </div>
           )}
-          {(formData.role.includes('Technician') || formData.role.includes('Trainee')) && formData.pay_type === 'hourly' && (
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="skip_queue_on_checkin"
-                checked={formData.skip_queue_on_checkin}
-                onChange={(e) => setFormData({ ...formData, skip_queue_on_checkin: e.target.checked })}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <label htmlFor="skip_queue_on_checkin" className="ml-2 text-sm font-medium text-gray-700">
-                Check-in without Queue
-              </label>
-            </div>
-          )}
+          {(formData.role.includes("Technician") ||
+            formData.role.includes("Trainee")) &&
+            formData.pay_type === "hourly" && (
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="skip_queue_on_checkin"
+                  checked={formData.skip_queue_on_checkin}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      skip_queue_on_checkin: e.target.checked,
+                    })
+                  }
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label
+                  htmlFor="skip_queue_on_checkin"
+                  className="ml-2 text-sm font-medium text-gray-700"
+                >
+                  Check-in without Queue
+                </label>
+              </div>
+            )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('tickets.notes')}
+              {t("tickets.notes")}
             </label>
             <textarea
               value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, notes: e.target.value })
+              }
               rows={1}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          {editingEmployee && session && Permissions.employees.canResetPIN(session.role) &&
-           Permissions.employees.canResetEmployeePIN(session.role, editingEmployee.role) && (
-            <div>
-              <button
-                type="button"
-                onClick={() => handleResetPIN(editingEmployee)}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
-              >
-                Change PIN
-              </button>
-            </div>
-          )}
+          {editingEmployee &&
+            session &&
+            Permissions.employees.canResetPIN(session.role) &&
+            Permissions.employees.canResetEmployeePIN(
+              session.role,
+              editingEmployee.role,
+            ) && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => handleResetPIN(editingEmployee)}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                >
+                  Change PIN
+                </button>
+              </div>
+            )}
         </form>
       </Drawer>
 
@@ -842,33 +1034,37 @@ export function EmployeesPage() {
         isOpen={resetModalOpen}
         onClose={() => {
           setResetModalOpen(false);
-          setTempPIN('');
+          setTempPIN("");
           setResetEmployee(null);
         }}
-        title={t('emp.resetPIN')}
+        title={t("emp.resetPIN")}
       >
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            PIN has been reset for <strong>{resetEmployee?.display_name}</strong>
+            PIN has been reset for{" "}
+            <strong>{resetEmployee?.display_name}</strong>
           </p>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-xs text-blue-800 mb-2 font-medium">{t('emp.tempPIN')}:</p>
+            <p className="text-xs text-blue-800 mb-2 font-medium">
+              {t("emp.tempPIN")}:
+            </p>
             <p className="text-3xl font-bold text-blue-900 text-center tracking-wider">
               {tempPIN}
             </p>
           </div>
           <p className="text-xs text-gray-500">
-            Please provide this temporary PIN to the employee. They will be able to use it to log in.
+            Please provide this temporary PIN to the employee. They will be able
+            to use it to log in.
           </p>
           <div className="flex justify-end">
             <Button
               onClick={() => {
                 setResetModalOpen(false);
-                setTempPIN('');
+                setTempPIN("");
                 setResetEmployee(null);
               }}
             >
-              {t('actions.close')}
+              {t("actions.close")}
             </Button>
           </div>
         </div>
@@ -890,7 +1086,9 @@ export function EmployeesPage() {
                 Warning: This action cannot be undone
               </p>
               <p className="text-sm text-red-700">
-                You are about to permanently delete <strong>{deletingEmployee?.display_name}</strong> from the system.
+                You are about to permanently delete{" "}
+                <strong>{deletingEmployee?.display_name}</strong> from the
+                system.
               </p>
             </div>
           </div>
@@ -903,7 +1101,7 @@ export function EmployeesPage() {
               }}
               className="flex-1"
             >
-              {t('actions.cancel')}
+              {t("actions.cancel")}
             </Button>
             <Button
               variant="danger"

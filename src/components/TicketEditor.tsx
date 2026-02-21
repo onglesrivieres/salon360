@@ -4122,6 +4122,13 @@ export function TicketEditor({
                 return employee?.tip_paired_enabled !== false;
               });
 
+              const isCommissionPairedEnabled = items.some((item) => {
+                const employee = employees.find(
+                  (emp) => emp.id === item.employee_id,
+                );
+                return employee?.commission_paired_enabled !== false;
+              });
+
               return (
                 <div className="border-t border-gray-200 pt-4">
                   <h4 className="text-sm font-semibold text-gray-900 mb-3">
@@ -4242,11 +4249,21 @@ export function TicketEditor({
                               tip_commission: e.target.value,
                             })
                           }
-                          disabled={isTicketClosed || isReadOnly}
+                          disabled={
+                            isTicketClosed ||
+                            isReadOnly ||
+                            !isCommissionPairedEnabled
+                          }
                           className="pl-8 pr-3"
                           placeholder="0.00"
                         />
                       </div>
+                      {!isCommissionPairedEnabled && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Commission pairing is disabled for all employees on
+                          this ticket
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

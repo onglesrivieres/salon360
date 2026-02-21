@@ -65,6 +65,7 @@ export interface Technician {
   last_pin_change?: string;
   tip_report_show_details?: boolean;
   tip_paired_enabled?: boolean;
+  commission_paired_enabled?: boolean;
   attendance_display?: boolean;
   count_ot?: boolean;
   skip_queue_on_checkin?: boolean;
