@@ -14,6 +14,7 @@ import {
   User,
   Eye,
   XCircle,
+  HelpCircle,
 } from "lucide-react";
 import {
   supabase,
@@ -331,6 +332,8 @@ export function TicketEditor({
   const [tempOpeningTime, setTempOpeningTime] = useState("");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showRequestChangesModal, setShowRequestChangesModal] = useState(false);
+  const [showTipPairedGuide, setShowTipPairedGuide] = useState(false);
+  const [showCommissionGuide, setShowCommissionGuide] = useState(false);
   const [hasPendingReopenRequest, setHasPendingReopenRequest] = useState(false);
   const [tempPaymentData, setTempPaymentData] = useState({
     payment_cash: "",
@@ -966,6 +969,25 @@ export function TicketEditor({
     return { tierMax, allowance: Math.max(0, tierMax - customerTip) };
   }
 
+  function getCommissionTierMax(): number {
+    return items.reduce((sum, item) => {
+      const addonPrice = parseFloat(item.addon_price) || 0;
+      if (addonPrice < 20) return sum + 0;
+      if (addonPrice < 30) return sum + 5;
+      return sum + 10;
+    }, 0);
+  }
+
+  function getMaxCommissionTip(): { tierMax: number; allowance: number } {
+    const tierMax = getCommissionTierMax();
+    const customerTip =
+      (parseFloat(tempPaymentData.tip_customer_cash) || 0) +
+      (parseFloat(tempPaymentData.tip_customer_card) || 0);
+    const { tierMax: tipTierMax } = getMaxReceptionistTip();
+    const remainingCustomerTip = Math.max(0, customerTip - tipTierMax);
+    return { tierMax, allowance: Math.max(0, tierMax - remainingCustomerTip) };
+  }
+
   function calculateTaxGst(): number {
     if (!enableTax) return 0;
     if (isTicketClosed) return Number(ticket?.tax_gst) || 0;
@@ -1104,6 +1126,19 @@ export function TicketEditor({
       if (tipReceptionistValue > allowance + 0.005) {
         showToast(
           `Receptionist paired tip cannot exceed $${allowance.toFixed(2)} for this ticket`,
+          "error",
+        );
+        return;
+      }
+    }
+
+    // Validate commission tip against tier-based maximum
+    const tipCommissionValue = parseFloat(tempPaymentData.tip_commission) || 0;
+    if (tipCommissionValue > 0) {
+      const { allowance: commissionAllowance } = getMaxCommissionTip();
+      if (tipCommissionValue > commissionAllowance + 0.005) {
+        showToast(
+          `Commission cannot exceed $${commissionAllowance.toFixed(2)} for this ticket`,
           "error",
         );
         return;
@@ -4162,6 +4197,12 @@ export function TicketEditor({
                 getMaxReceptionistTip();
               const isTipAllowanceExhausted = tipAllowance <= 0;
 
+              const {
+                tierMax: commissionTierMax,
+                allowance: commissionAllowance,
+              } = getMaxCommissionTip();
+              const isCommissionAllowanceExhausted = commissionAllowance <= 0;
+
               return (
                 <div className="border-t border-gray-200 pt-4">
                   <h4 className="text-sm font-semibold text-gray-900 mb-3">
@@ -4194,15 +4235,28 @@ export function TicketEditor({
                               const otherTip =
                                 parseFloat(tempPaymentData.tip_customer_card) ||
                                 0;
-                              const newAllowance = Math.max(
+                              const totalCustomerTip = newCash + otherTip;
+                              const newTipAllowance = Math.max(
                                 0,
-                                tierMax - newCash - otherTip,
+                                tierMax - totalCustomerTip,
+                              );
+                              const commTierMax = getCommissionTierMax();
+                              const overflow = Math.max(
+                                0,
+                                totalCustomerTip - tierMax,
+                              );
+                              const newCommAllowance = Math.max(
+                                0,
+                                commTierMax - overflow,
                               );
                               setTempPaymentData({
                                 ...tempPaymentData,
                                 tip_customer_cash: e.target.value,
-                                ...(newAllowance <= 0
+                                ...(newTipAllowance <= 0
                                   ? { tip_receptionist: "0" }
+                                  : {}),
+                                ...(newCommAllowance <= 0
+                                  ? { tip_commission: "0" }
                                   : {}),
                               });
                             }}
@@ -4233,15 +4287,28 @@ export function TicketEditor({
                               const otherTip =
                                 parseFloat(tempPaymentData.tip_customer_cash) ||
                                 0;
-                              const newAllowance = Math.max(
+                              const totalCustomerTip = newCard + otherTip;
+                              const newTipAllowance = Math.max(
                                 0,
-                                tierMax - newCard - otherTip,
+                                tierMax - totalCustomerTip,
+                              );
+                              const commTierMax = getCommissionTierMax();
+                              const overflow = Math.max(
+                                0,
+                                totalCustomerTip - tierMax,
+                              );
+                              const newCommAllowance = Math.max(
+                                0,
+                                commTierMax - overflow,
                               );
                               setTempPaymentData({
                                 ...tempPaymentData,
                                 tip_customer_card: e.target.value,
-                                ...(newAllowance <= 0
+                                ...(newTipAllowance <= 0
                                   ? { tip_receptionist: "0" }
+                                  : {}),
+                                ...(newCommAllowance <= 0
+                                  ? { tip_commission: "0" }
                                   : {}),
                               });
                             }}
@@ -4254,8 +4321,15 @@ export function TicketEditor({
                     )}
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
                         Tip Paired by Receptionist
+                        <button
+                          type="button"
+                          onClick={() => setShowTipPairedGuide(true)}
+                          className="text-gray-400 hover:text-blue-500"
+                        >
+                          <HelpCircle className="w-4 h-4" />
+                        </button>
                       </label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">
@@ -4304,8 +4378,15 @@ export function TicketEditor({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
                         Commission
+                        <button
+                          type="button"
+                          onClick={() => setShowCommissionGuide(true)}
+                          className="text-gray-400 hover:text-blue-500"
+                        >
+                          <HelpCircle className="w-4 h-4" />
+                        </button>
                       </label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 z-10">
@@ -4314,6 +4395,12 @@ export function TicketEditor({
                         <NumericInput
                           step="0.01"
                           min="0"
+                          max={
+                            isCommissionPairedEnabled &&
+                            !isCommissionAllowanceExhausted
+                              ? commissionAllowance.toString()
+                              : undefined
+                          }
                           value={tempPaymentData.tip_commission}
                           onChange={(e) =>
                             setTempPaymentData({
@@ -4324,16 +4411,30 @@ export function TicketEditor({
                           disabled={
                             isTicketClosed ||
                             isReadOnly ||
-                            !isCommissionPairedEnabled
+                            !isCommissionPairedEnabled ||
+                            isCommissionAllowanceExhausted
                           }
                           className="pl-8 pr-3"
                           placeholder="0.00"
                         />
                       </div>
-                      {!isCommissionPairedEnabled && (
+                      {!isCommissionPairedEnabled ? (
                         <p className="text-xs text-gray-500 mt-1">
                           Commission pairing is disabled for all employees on
                           this ticket
+                        </p>
+                      ) : commissionTierMax === 0 ? (
+                        <p className="text-xs text-gray-500 mt-1">
+                          No add-ons qualify for commission on this ticket
+                        </p>
+                      ) : isCommissionAllowanceExhausted ? (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Customer tip exceeds combined allowance ($
+                          {commissionTierMax.toFixed(2)})
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Max ${commissionAllowance.toFixed(2)}
                         </p>
                       )}
                     </div>
@@ -4469,6 +4570,199 @@ export function TicketEditor({
               </Button>
             )}
           </div>
+        </div>
+      </Modal>
+
+      {/* Tip Paired Guide Modal */}
+      <Modal
+        isOpen={showTipPairedGuide}
+        onClose={() => setShowTipPairedGuide(false)}
+        title="Tip Paired Guide"
+      >
+        <div className="space-y-4 text-sm text-gray-700">
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-1">How It Works</h4>
+            <p>
+              The receptionist can pair a tip for the technician based on the
+              service price. The maximum paired tip depends on the base service
+              price (excluding add-ons).
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-1">Tier Maximums</h4>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="py-1 pr-4 font-medium">Service Price</th>
+                  <th className="py-1 font-medium">Max Paired Tip</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-gray-100">
+                  <td className="py-1 pr-4">$20 or less</td>
+                  <td className="py-1">$2.00</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="py-1 pr-4">$20.01 – $40</td>
+                  <td className="py-1">$3.00</td>
+                </tr>
+                <tr>
+                  <td className="py-1 pr-4">Over $40</td>
+                  <td className="py-1">$5.00</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-1">
+              Paired Tip Allowance
+            </h4>
+            <p>
+              <span className="font-mono bg-gray-100 px-1 rounded">
+                Allowance = Tier Max − Customer Tip
+              </span>
+            </p>
+            <p className="mt-1">
+              Customer tips (cash + card) reduce the paired tip allowance. If
+              the customer tip meets or exceeds the tier max, the paired tip
+              field is disabled.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-1">Examples</h4>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>
+                $25 service, no customer tip → max paired tip is{" "}
+                <strong>$3.00</strong>
+              </li>
+              <li>
+                $25 service, $1 customer tip → max paired tip is{" "}
+                <strong>$2.00</strong>
+              </li>
+              <li>
+                $25 service, $3+ customer tip → paired tip{" "}
+                <strong>disabled</strong>
+              </li>
+              <li>
+                $15 + $30 services (2 items), no customer tip → max is $2 + $3 ={" "}
+                <strong>$5.00</strong>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-1">Note</h4>
+            <p>
+              Tip pairing must be enabled per employee (Employees page → "Tip
+              Paired" checkbox). The field only appears when at least one
+              technician on the ticket has tip pairing enabled.
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-end mt-4">
+          <Button onClick={() => setShowTipPairedGuide(false)}>Close</Button>
+        </div>
+      </Modal>
+
+      {/* Commission Guide Modal */}
+      <Modal
+        isOpen={showCommissionGuide}
+        onClose={() => setShowCommissionGuide(false)}
+        title="Commission Guide"
+      >
+        <div className="space-y-4 text-sm text-gray-700">
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-1">How It Works</h4>
+            <p>
+              Commission is based on the add-on price of each service item. The
+              maximum commission depends on the add-on price tier, and customer
+              tips reduce the tip paired allowance first before affecting
+              commission.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-1">
+              Commission Tiers (by Add-On Price)
+            </h4>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="py-1 pr-4 font-medium">Add-On Price</th>
+                  <th className="py-1 font-medium">Max Commission</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-gray-100">
+                  <td className="py-1 pr-4">Under $20</td>
+                  <td className="py-1">$0.00 (blocked)</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="py-1 pr-4">$20.00 – $29.99</td>
+                  <td className="py-1">$5.00</td>
+                </tr>
+                <tr>
+                  <td className="py-1 pr-4">$30.00 or more</td>
+                  <td className="py-1">$10.00</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-1">
+              Combined Allowance
+            </h4>
+            <p>
+              <span className="font-mono bg-gray-100 px-1 rounded">
+                Combined = Tip Tier Max + Commission Tier Max − Customer Tip
+              </span>
+            </p>
+            <p className="mt-1">
+              Customer tips reduce the tip paired allowance first. Only the
+              overflow (customer tip exceeding the tip tier max) then reduces
+              the commission allowance.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-1">Examples</h4>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>
+                $25 service, $20 add-on, $0 customer tip → tip max{" "}
+                <strong>$3</strong>, commission max <strong>$5</strong>
+              </li>
+              <li>
+                $25 service, $20 add-on, $1 customer tip → tip max{" "}
+                <strong>$2</strong>, commission max <strong>$5</strong>
+              </li>
+              <li>
+                $25 service, $20 add-on, $8+ customer tip → both{" "}
+                <strong>disabled</strong> (tip max $3 exhausted, $5 overflow
+                exhausts commission $5)
+              </li>
+              <li>
+                $15 + $30 services, $30-service has $20 add-on, $1 customer tip
+                → tip max $2+$3=$5, minus $1 = <strong>$4</strong>; commission
+                max <strong>$5</strong> (no overflow)
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-1">Note</h4>
+            <p>
+              Commission pairing must be enabled per employee (Employees page →
+              "Commission Paired" checkbox). The field only appears when at
+              least one technician on the ticket has commission pairing enabled.
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-end mt-4">
+          <Button onClick={() => setShowCommissionGuide(false)}>Close</Button>
         </div>
       </Modal>
 
