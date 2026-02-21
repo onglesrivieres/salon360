@@ -8,7 +8,10 @@ ALTER TABLE public.inventory_distributions
   ADD COLUMN IF NOT EXISTS rejected_at timestamptz;
 
 -- 2. Update status CHECK constraint to include 'rejected'
--- Drop old constraint, add new one
+-- Drop old constraints, add new one
+ALTER TABLE public.inventory_distributions
+  DROP CONSTRAINT IF EXISTS inventory_distributions_status_valid;
+
 ALTER TABLE public.inventory_distributions
   DROP CONSTRAINT IF EXISTS inventory_distributions_status_check;
 
