@@ -1242,7 +1242,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
             <div className="flex items-center gap-2 md:gap-3">
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden p-1.5 hover:bg-gray-100 rounded transition-colors"
+                className="md:hidden p-2 min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-gray-100 rounded transition-colors"
               >
                 {isMobileMenuOpen ? (
                   <X className="w-5 h-5 text-gray-700" />
@@ -1254,13 +1254,13 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setIsStoreDropdownOpen(!isStoreDropdownOpen)}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 min-h-[44px] bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors truncate max-w-[calc(100vw-120px)]"
                   >
                     {currentStore.name}
                     <ChevronDown className="w-4 h-4" />
                   </button>
                   {isStoreDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[200px] z-50">
+                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[200px] max-w-[calc(100vw-2rem)] z-50">
                       {allStores.map((store) => (
                         <button
                           key={store.id}
@@ -1297,7 +1297,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                 shouldShowQueueButton && (
                   <button
                     onClick={handleOpenQueueModal}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 border-2 border-blue-600 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 min-h-[44px] border-2 border-blue-600 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors"
                   >
                     <Circle
                       className={`w-4 h-4 animate-pulse ${
@@ -1349,7 +1349,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                 canAccessPage("settings", effectiveRole) && (
                   <button
                     onClick={() => guardedNavigate("settings")}
-                    className="flex items-center gap-2 px-2 py-1 text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
+                    className="flex items-center gap-2 px-2 py-1 min-h-[44px] text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
                     title={t("nav.settings")}
                   >
                     <Settings className="w-4 h-4" />
@@ -1360,7 +1360,7 @@ export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
                 )}
               <button
                 onClick={logout}
-                className="flex items-center gap-2 px-2 py-1 text-xs text-red-700 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                className="flex items-center gap-2 px-2 py-1 min-h-[44px] text-xs text-red-700 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
                 title={t("actions.logout")}
               >
                 <LogOut className="w-3 h-3" />

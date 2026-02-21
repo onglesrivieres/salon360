@@ -1424,7 +1424,7 @@ export function TipReportPage({
               )}
             </Button>
             {isFilterPanelOpen && (
-              <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 min-w-[220px]">
+              <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 min-w-[180px] xs:min-w-[220px] max-w-[calc(100vw-2rem)]">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-semibold text-gray-900">
                     {t("tickets.filters")}
@@ -1508,7 +1508,7 @@ export function TipReportPage({
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <span className="text-sm font-medium text-gray-700 min-w-[130px] text-center">
+                <span className="text-sm font-medium text-gray-700 text-center whitespace-nowrap">
                   {getCurrentWeekLabel()}
                 </span>
                 <Button
@@ -1588,7 +1588,7 @@ export function TipReportPage({
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <span className="text-sm font-medium text-gray-700 min-w-[130px] text-center">
+                <span className="text-sm font-medium text-gray-700 text-center whitespace-nowrap">
                   {getCurrentPeriodLabel()}
                 </span>
                 <Button
@@ -1825,10 +1825,10 @@ export function TipReportPage({
                   className="flex-shrink-0 w-[140px] md:w-[10%] md:min-w-[110px] border border-gray-200 rounded-md bg-white shadow-sm"
                 >
                   <div className="bg-gray-50 border-b border-gray-200 px-1.5 py-1 rounded-t-md">
-                    <h4 className="text-[10px] font-semibold text-gray-900 leading-tight truncate">
+                    <h4 className="text-[11px] font-semibold text-gray-900 leading-tight truncate">
                       {summary.technician_name}
                     </h4>
-                    <p className="text-[9px] text-gray-500">
+                    <p className="text-[10px] text-gray-500">
                       {summary.services_count} service
                       {summary.services_count !== 1 ? "s" : ""}
                     </p>
@@ -1836,41 +1836,41 @@ export function TipReportPage({
 
                   <div className="p-1">
                     <div className="mb-1 pb-1 border-b border-gray-200 space-y-0.5">
-                      <p className="text-[9px] font-medium text-gray-500 uppercase tracking-wide">
+                      <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">
                         Daily Total
                       </p>
                       <div className="space-y-0.5">
                         {showDetails ? (
                           <>
                             <div className="flex justify-between items-center">
-                              <span className="text-[9px] text-gray-600">
+                              <span className="text-[10px] text-gray-600">
                                 T. (given)
                               </span>
-                              <span className="text-[9px] font-semibold text-green-700">
+                              <span className="text-[10px] font-semibold text-green-700">
                                 {(summary.tips_customer || 0).toFixed(0)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-[9px] text-gray-600">
+                              <span className="text-[10px] text-gray-600">
                                 T. (paired)
                               </span>
-                              <span className="text-[9px] font-semibold text-blue-700">
+                              <span className="text-[10px] font-semibold text-blue-700">
                                 {(summary.tips_receptionist || 0).toFixed(0)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-[9px] text-gray-600">
+                              <span className="text-[10px] text-gray-600">
                                 Commission
                               </span>
-                              <span className="text-[9px] font-semibold text-purple-700">
+                              <span className="text-[10px] font-semibold text-purple-700">
                                 {(summary.tips_commission || 0).toFixed(0)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center pt-0.5 border-t border-gray-200">
-                              <span className="text-[9px] font-medium text-gray-900">
+                              <span className="text-[10px] font-medium text-gray-900">
                                 Total
                               </span>
-                              <span className="text-[10px] font-bold text-gray-900">
+                              <span className="text-[11px] font-bold text-gray-900">
                                 {(
                                   (summary.tips_customer || 0) +
                                   (summary.tips_receptionist || 0) +
@@ -1881,10 +1881,10 @@ export function TipReportPage({
                           </>
                         ) : (
                           <div className="flex justify-between items-center">
-                            <span className="text-[9px] font-medium text-gray-900">
+                            <span className="text-[10px] font-medium text-gray-900">
                               Total Tips
                             </span>
-                            <span className="text-[10px] font-bold text-gray-900">
+                            <span className="text-[11px] font-bold text-gray-900">
                               {(
                                 (summary.tips_customer || 0) +
                                 (summary.tips_receptionist || 0) +
@@ -1897,7 +1897,7 @@ export function TipReportPage({
                     </div>
 
                     <div>
-                      <p className="text-[9px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">
+                      <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-0.5">
                         Sale Tickets
                       </p>
                       <div className="space-y-1 max-h-[1500px] overflow-y-auto">
@@ -1927,7 +1927,7 @@ export function TipReportPage({
                               >
                                 {/* Header with opening time and total duration */}
                                 <div
-                                  className={`flex justify-between items-center text-[8px] text-gray-500 mb-1 pb-0.5 border-b ${borderColor}`}
+                                  className={`flex justify-between items-center text-[9px] text-gray-500 mb-1 pb-0.5 border-b ${borderColor}`}
                                 >
                                   <div className="flex items-center gap-0.5 truncate">
                                     <span className="truncate">
@@ -1999,7 +1999,7 @@ export function TipReportPage({
                                           {item.service_code}
                                         </span>
                                         <span
-                                          className={`text-[8px] font-semibold px-1 py-0.5 rounded ${timerColor}`}
+                                          className={`text-[9px] font-semibold px-1 py-0.5 rounded ${timerColor}`}
                                         >
                                           {formatTimerDisplay(svcDuration)}
                                           {timerStatus === "active" && "*"}
@@ -2014,26 +2014,26 @@ export function TipReportPage({
                                     className={`space-y-0.5 mt-1 pt-0.5 border-t ${borderColor}`}
                                   >
                                     <div className="flex justify-between items-center">
-                                      <span className="text-[8px] text-gray-600">
+                                      <span className="text-[9px] text-gray-600">
                                         T. (given)
                                       </span>
-                                      <span className="text-[8px] font-semibold text-green-700">
+                                      <span className="text-[9px] font-semibold text-green-700">
                                         {group.totalTipGiven.toFixed(0)}
                                       </span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                      <span className="text-[8px] text-gray-600">
+                                      <span className="text-[9px] text-gray-600">
                                         T. (paired)
                                       </span>
-                                      <span className="text-[8px] font-semibold text-blue-700">
+                                      <span className="text-[9px] font-semibold text-blue-700">
                                         {group.totalTipPaired.toFixed(0)}
                                       </span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                      <span className="text-[8px] text-gray-600">
+                                      <span className="text-[9px] text-gray-600">
                                         Commission
                                       </span>
-                                      <span className="text-[8px] font-semibold text-purple-700">
+                                      <span className="text-[9px] font-semibold text-purple-700">
                                         {group.totalTipCommission.toFixed(0)}
                                       </span>
                                     </div>
@@ -2042,10 +2042,10 @@ export function TipReportPage({
                                   <div
                                     className={`flex justify-between items-center mt-1 pt-0.5 border-t ${borderColor}`}
                                   >
-                                    <span className="text-[8px] text-gray-600">
+                                    <span className="text-[9px] text-gray-600">
                                       Total
                                     </span>
-                                    <span className="text-[8px] font-semibold text-gray-900">
+                                    <span className="text-[9px] font-semibold text-gray-900">
                                       {(
                                         group.totalTipGiven +
                                         group.totalTipPaired +
@@ -2102,7 +2102,7 @@ export function TipReportPage({
                               className={cardClasses}
                             >
                               <div className="mb-0.5">
-                                <div className="flex justify-between items-center text-[8px] text-gray-500 mb-0.5">
+                                <div className="flex justify-between items-center text-[9px] text-gray-500 mb-0.5">
                                   <div className="flex items-center gap-0.5 truncate">
                                     <span className="truncate">
                                       {openTime.replace(/\s/g, "")}
@@ -2122,7 +2122,7 @@ export function TipReportPage({
                                       )}
                                   </div>
                                   <span
-                                    className={`ml-1 flex-shrink-0 text-[8px] font-semibold px-1 py-0.5 rounded ${timerColor}`}
+                                    className={`ml-1 flex-shrink-0 text-[9px] font-semibold px-1 py-0.5 rounded ${timerColor}`}
                                   >
                                     {formatTimerDisplay(svcDuration)}
                                     {timerStatus === "active" && "*"}
@@ -2135,36 +2135,36 @@ export function TipReportPage({
                               {showDetails ? (
                                 <div className="space-y-0.5">
                                   <div className="flex justify-between items-center">
-                                    <span className="text-[8px] text-gray-600">
+                                    <span className="text-[9px] text-gray-600">
                                       T. (given)
                                     </span>
-                                    <span className="text-[8px] font-semibold text-green-700">
+                                    <span className="text-[9px] font-semibold text-green-700">
                                       {tipGiven.toFixed(0)}
                                     </span>
                                   </div>
                                   <div className="flex justify-between items-center">
-                                    <span className="text-[8px] text-gray-600">
+                                    <span className="text-[9px] text-gray-600">
                                       T. (paired)
                                     </span>
-                                    <span className="text-[8px] font-semibold text-blue-700">
+                                    <span className="text-[9px] font-semibold text-blue-700">
                                       {tipPaired.toFixed(0)}
                                     </span>
                                   </div>
                                   <div className="flex justify-between items-center">
-                                    <span className="text-[8px] text-gray-600">
+                                    <span className="text-[9px] text-gray-600">
                                       Commission
                                     </span>
-                                    <span className="text-[8px] font-semibold text-purple-700">
+                                    <span className="text-[9px] font-semibold text-purple-700">
                                       {tipCommission.toFixed(0)}
                                     </span>
                                   </div>
                                 </div>
                               ) : (
                                 <div className="flex justify-between items-center">
-                                  <span className="text-[8px] text-gray-600">
+                                  <span className="text-[9px] text-gray-600">
                                     Total
                                   </span>
-                                  <span className="text-[8px] font-semibold text-gray-900">
+                                  <span className="text-[9px] font-semibold text-gray-900">
                                     {totalTips.toFixed(0)}
                                   </span>
                                 </div>

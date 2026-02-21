@@ -48,6 +48,7 @@ import {
   AttendanceChangeProposalWithDetails,
   PendingTicketReopenRequest,
   PendingDistributionApproval,
+  DistributionBatchDetail,
 } from "../lib/supabase";
 import { Button } from "../components/ui/Button";
 import { Badge } from "../components/ui/Badge";
@@ -66,6 +67,8 @@ import { Permissions } from "../lib/permissions";
 import { TicketEditor } from "../components/TicketEditor";
 import { InventoryTransactionModal } from "../components/InventoryTransactionModal";
 import { TransactionDetailModal } from "../components/TransactionDetailModal";
+import { DistributionDetailModal } from "../components/inventory/DistributionDetailModal";
+import { EmployeeDistributionModal } from "../components/EmployeeDistributionModal";
 
 interface ViolationHistoryReport {
   report_id: string;
@@ -158,6 +161,15 @@ export function PendingApprovalsPage({
   const [distributionApprovals, setDistributionApprovals] = useState<
     PendingDistributionApproval[]
   >([]);
+  const [viewingDistributionBatchId, setViewingDistributionBatchId] = useState<
+    string | null
+  >(null);
+  const [selectedDistribution, setSelectedDistribution] =
+    useState<PendingDistributionApproval | null>(null);
+  const [showDistributionRejectModal, setShowDistributionRejectModal] =
+    useState(false);
+  const [showDistributionEditModal, setShowDistributionEditModal] =
+    useState(false);
   const [cashTransactionApprovals, setCashTransactionApprovals] = useState<
     PendingCashTransactionApproval[]
   >([]);
@@ -1021,6 +1033,83 @@ export function PendingApprovalsPage({
       fetchAllTabCounts();
     } catch (error: any) {
       showToast(error.message || "Failed to approve distribution", "error");
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  function handleViewDistribution(approval: PendingDistributionApproval) {
+    setViewingDistributionBatchId(approval.batch_id);
+  }
+
+  function handleRejectDistributionClick(
+    approval: PendingDistributionApproval,
+  ) {
+    if (!session?.employee_id) return;
+
+    if (approval.distributed_by_id === session.employee_id) {
+      showToast("You cannot reject your own distribution", "error");
+      return;
+    }
+
+    setSelectedDistribution(approval);
+    setRejectionReason("");
+    setShowDistributionRejectModal(true);
+  }
+
+  async function handleRejectDistribution() {
+    if (!selectedDistribution || !rejectionReason.trim()) {
+      showToast("Please provide a rejection reason", "error");
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      const { error } = await supabase.rpc("reject_distribution", {
+        p_batch_id: selectedDistribution.batch_id,
+        p_employee_id: session?.employee_id,
+        p_rejection_reason: rejectionReason.trim(),
+      });
+
+      if (error) throw error;
+      showToast("Distribution rejected and stock returned", "success");
+      setShowDistributionRejectModal(false);
+      setSelectedDistribution(null);
+      fetchDistributionApprovals();
+      fetchAllTabCounts();
+    } catch (error: any) {
+      showToast(error.message || "Failed to reject distribution", "error");
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function handleEditDistribution(approval: PendingDistributionApproval) {
+    if (!session?.employee_id) return;
+
+    if (approval.distributed_by_id === session.employee_id) {
+      showToast("You cannot edit your own distribution", "error");
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      const { error } = await supabase.rpc("reject_distribution", {
+        p_batch_id: approval.batch_id,
+        p_employee_id: session.employee_id,
+        p_rejection_reason: "Replaced by new distribution",
+      });
+
+      if (error) throw error;
+      showToast(
+        "Previous distribution rejected. Create new distribution.",
+        "info",
+      );
+      setShowDistributionEditModal(true);
+      fetchDistributionApprovals();
+      fetchAllTabCounts();
+    } catch (error: any) {
+      showToast(error.message || "Failed to edit distribution", "error");
     } finally {
       setProcessing(false);
     }
@@ -3275,7 +3364,15 @@ export function PendingApprovalsPage({
                                 </span>
                               </div>
                             </div>
-                            <div className="flex gap-2 ml-3">
+                            <div className="flex gap-2 ml-3 flex-wrap">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => handleViewDistribution(approval)}
+                              >
+                                <Eye className="w-4 h-4 mr-1" />
+                                View
+                              </Button>
                               {approval.approval_type === "acknowledge" && (
                                 <Button
                                   size="sm"
@@ -3289,16 +3386,40 @@ export function PendingApprovalsPage({
                                 </Button>
                               )}
                               {approval.approval_type === "manager_approve" && (
-                                <Button
-                                  size="sm"
-                                  onClick={() =>
-                                    handleApproveDistribution(approval)
-                                  }
-                                  disabled={processing}
-                                >
-                                  <CheckCircle className="w-4 h-4 mr-1" />
-                                  Approve
-                                </Button>
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      handleApproveDistribution(approval)
+                                    }
+                                    disabled={processing}
+                                  >
+                                    <CheckCircle className="w-4 h-4 mr-1" />
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() =>
+                                      handleEditDistribution(approval)
+                                    }
+                                    disabled={processing}
+                                  >
+                                    <Pencil className="w-4 h-4 mr-1" />
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() =>
+                                      handleRejectDistributionClick(approval)
+                                    }
+                                    disabled={processing}
+                                  >
+                                    <XCircle className="w-4 h-4 mr-1" />
+                                    Reject
+                                  </Button>
+                                </>
                               )}
                             </div>
                           </div>
@@ -5985,6 +6106,58 @@ export function PendingApprovalsPage({
           transactionId={viewingInventoryTransactionId}
         />
       )}
+
+      {viewingDistributionBatchId && (
+        <DistributionDetailModal
+          isOpen={true}
+          onClose={() => setViewingDistributionBatchId(null)}
+          batchId={viewingDistributionBatchId}
+        />
+      )}
+
+      <Modal
+        isOpen={showDistributionRejectModal}
+        onClose={() => !processing && setShowDistributionRejectModal(false)}
+        title="Reject Distribution"
+        onConfirm={handleRejectDistribution}
+        confirmText={processing ? "Rejecting..." : "Reject Distribution"}
+        confirmVariant="danger"
+        cancelText="Cancel"
+      >
+        {selectedDistribution && (
+          <div>
+            <p className="text-gray-700 mb-3">
+              Rejecting this distribution will return{" "}
+              <strong>{selectedDistribution.total_quantity} units</strong> of{" "}
+              <strong>{selectedDistribution.item_name}</strong> back to store
+              inventory.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Reason for Rejection <span className="text-red-600">*</span>
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Please explain why you are rejecting this distribution..."
+                disabled={processing}
+              />
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <EmployeeDistributionModal
+        isOpen={showDistributionEditModal}
+        onClose={() => setShowDistributionEditModal(false)}
+        onSuccess={() => {
+          setShowDistributionEditModal(false);
+          fetchDistributionApprovals();
+          fetchAllTabCounts();
+        }}
+      />
     </div>
   );
 }

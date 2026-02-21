@@ -77,7 +77,10 @@ export function WeeklyCalendarView({
   const [showTooltip, setShowTooltip] = useState(false);
 
   return (
-    <div className="overflow-x-auto -mx-4 sm:mx-0">
+    <div
+      className="overflow-x-auto -mx-4 sm:mx-0 scrollbar-hide"
+      style={{ WebkitOverflowScrolling: "touch" }}
+    >
       <div className="inline-block min-w-full align-middle px-4 sm:px-0">
         <table className="min-w-full border-collapse text-xs">
           <thead>
@@ -90,7 +93,7 @@ export function WeeklyCalendarView({
                 return (
                   <th
                     key={date}
-                    className="border border-gray-300 bg-gray-100 px-1 py-1 text-center font-semibold w-[72px] sm:w-20"
+                    className="border border-gray-300 bg-gray-100 px-1 py-1 text-center font-semibold w-[60px] sm:w-20"
                   >
                     <div className="font-bold text-[10px] sm:text-xs">
                       {day}
@@ -101,7 +104,7 @@ export function WeeklyCalendarView({
                   </th>
                 );
               })}
-              <th className="border border-gray-300 bg-blue-100 px-1 py-1 text-center font-semibold w-[72px] sm:w-20 relative">
+              <th className="border border-gray-300 bg-blue-100 px-1 py-1 text-center font-semibold w-[60px] sm:w-20 relative">
                 <div className="flex items-center justify-center gap-1">
                   <div className="font-bold text-[10px] sm:text-xs">
                     Period Total
