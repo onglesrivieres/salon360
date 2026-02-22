@@ -1393,6 +1393,17 @@ export interface ResourceReadStatus {
   read_at: string;
 }
 
+export interface ResourceReadSummary {
+  resource_id: string;
+  read_count: number;
+  total_targeted: number;
+  readers: {
+    employee_id: string;
+    display_name: string;
+    read_at: string | null;
+  }[];
+}
+
 // App Global Settings (app-wide settings like branding and storage)
 export interface AppGlobalSetting {
   id: string;

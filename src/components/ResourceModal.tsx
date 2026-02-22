@@ -113,17 +113,17 @@ export function ResourceModal({
 
   // Visibility targeting state
   const [visibilityStores, setVisibilityStores] = useState<"all" | "selected">(
-    "all",
+    "selected",
   );
   const [selectedStoreIds, setSelectedStoreIds] = useState<Set<string>>(
     new Set(),
   );
   const [visibilityRoles, setVisibilityRoles] = useState<"all" | "selected">(
-    "all",
+    "selected",
   );
   const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set());
   const [visibilityUsers, setVisibilityUsers] = useState<"all" | "selected">(
-    "all",
+    "selected",
   );
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(
     new Set(),
@@ -261,11 +261,11 @@ export function ResourceModal({
       setPhotosToDelete([]);
       setThumbnailPhotoId(null);
       setThumbnailMode("photo");
-      setVisibilityStores("all");
+      setVisibilityStores("selected");
       setSelectedStoreIds(new Set());
-      setVisibilityRoles("all");
+      setVisibilityRoles("selected");
       setSelectedRoles(new Set());
-      setVisibilityUsers("all");
+      setVisibilityUsers("selected");
       setSelectedEmployeeIds(new Set());
       setManagerStoreIds([]);
     }
@@ -345,11 +345,11 @@ export function ResourceModal({
     setShowNewCategory(false);
     setNewCategoryName("");
     setNewCategoryColor("blue");
-    setVisibilityStores("all");
+    setVisibilityStores("selected");
     setSelectedStoreIds(new Set());
-    setVisibilityRoles("all");
+    setVisibilityRoles("selected");
     setSelectedRoles(new Set());
-    setVisibilityUsers("all");
+    setVisibilityUsers("selected");
     setSelectedEmployeeIds(new Set());
     setManagerStoreIds([]);
     setExpandedSections(new Set());
@@ -533,7 +533,7 @@ export function ResourceModal({
         // Update existing resource
         const visibilityPayload = {
           visible_store_ids:
-            visibilityStores === "selected"
+            visibilityStores === "selected" && selectedStoreIds.size > 0
               ? Array.from(selectedStoreIds)
               : isAdminOrOwner
                 ? null
@@ -541,9 +541,11 @@ export function ResourceModal({
                   ? managerStoreIds
                   : null,
           visible_roles:
-            visibilityRoles === "all" ? null : Array.from(selectedRoles),
+            visibilityRoles === "selected" && selectedRoles.size > 0
+              ? Array.from(selectedRoles)
+              : null,
           visible_employee_ids:
-            visibilityUsers === "selected"
+            visibilityUsers === "selected" && selectedEmployeeIds.size > 0
               ? Array.from(selectedEmployeeIds)
               : isAdminOrOwner
                 ? null
@@ -588,7 +590,7 @@ export function ResourceModal({
         // Create new resource — return ID for photo uploads
         const visibilityPayload = {
           visible_store_ids:
-            visibilityStores === "selected"
+            visibilityStores === "selected" && selectedStoreIds.size > 0
               ? Array.from(selectedStoreIds)
               : isAdminOrOwner
                 ? null
@@ -596,9 +598,11 @@ export function ResourceModal({
                   ? managerStoreIds
                   : null,
           visible_roles:
-            visibilityRoles === "all" ? null : Array.from(selectedRoles),
+            visibilityRoles === "selected" && selectedRoles.size > 0
+              ? Array.from(selectedRoles)
+              : null,
           visible_employee_ids:
-            visibilityUsers === "selected"
+            visibilityUsers === "selected" && selectedEmployeeIds.size > 0
               ? Array.from(selectedEmployeeIds)
               : isAdminOrOwner
                 ? null

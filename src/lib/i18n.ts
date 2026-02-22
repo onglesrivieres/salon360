@@ -772,6 +772,10 @@ export const translations = {
         "Please read all resources before navigating to other pages.",
       noTabs: "No tabs yet. Create your first tab to get started.",
       rotateLandscape: "Rotate your phone for the best view",
+      readBy: "Read by",
+      readStatus: "Read Status",
+      noTargetedEmployees: "No targeted employees",
+      ofRead: "of",
     },
   },
   fr: {
@@ -1561,6 +1565,10 @@ export const translations = {
         "Veuillez lire toutes les ressources avant de naviguer vers d'autres pages.",
       noTabs: "Aucun onglet. Créez votre premier onglet pour commencer.",
       rotateLandscape: "Tournez votre téléphone pour une meilleure vue",
+      readBy: "Lu par",
+      readStatus: "Statut de lecture",
+      noTargetedEmployees: "Aucun employé ciblé",
+      ofRead: "de",
     },
   },
   vi: {
@@ -2324,6 +2332,10 @@ export const translations = {
         "Vui lòng đọc tất cả tài nguyên trước khi chuyển sang trang khác.",
       noTabs: "Chưa có tab. Tạo tab đầu tiên để bắt đầu.",
       rotateLandscape: "Xoay ngang điện thoại để xem tốt hơn",
+      readBy: "Đã đọc bởi",
+      readStatus: "Trạng thái đọc",
+      noTargetedEmployees: "Không có nhân viên được chỉ định",
+      ofRead: "trên",
     },
   },
   km: {
@@ -3087,6 +3099,10 @@ export const translations = {
       unreadResourcesBlocked: "សូមអានធនធានទាំងអស់មុនពេលចូលទៅទំព័រផ្សេង។",
       noTabs: "មិនទាន់មានផ្ទាំង។ បង្កើតផ្ទាំងដំបូងដើម្បីចាប់ផ្តើម។",
       rotateLandscape: "បង្វិលទូរសព្ទរបស់អ្នកដើម្បីមើលបានល្អបំផុត",
+      readBy: "អានដោយ",
+      readStatus: "ស្ថានភាពអាន",
+      noTargetedEmployees: "គ្មានបុគ្គលិកគោលដៅ",
+      ofRead: "នៃ",
     },
   },
 };
